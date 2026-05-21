@@ -24,6 +24,12 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 .input-row input:focus{border-color:#086266;}
 .input-row input[type="text"]{flex:1;}
 .input-row input[type="number"]{flex:1;text-align:center;}
+.add-grid{display:grid;grid-template-columns:auto 1fr;gap:8px;margin-bottom:10px;}
+.add-grid select{width:100%;}
+.num-field{display:flex;align-items:center;gap:5px;}
+.num-field label{font-size:13px;color:#555;white-space:nowrap;font-weight:600;}
+.num-field input[type="number"]{width:56px;padding:10px 6px;text-align:center;border:1.5px solid #cde8e7;border-radius:10px;font-size:14px;font-family:inherit;outline:none;}
+.num-field input[type="number"]:focus{border-color:#086266;}
 select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px;font-size:14px;font-family:inherit;outline:none;color:#333;}
 .child-toggle{display:flex;align-items:center;gap:6px;font-size:13px;color:#555;margin-bottom:12px;cursor:pointer;user-select:none;}
 .child-toggle input{accent-color:#f9a826;width:16px;height:16px;}
@@ -127,7 +133,9 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
 .img-btn-cancel{width:100%;background:#086266;color:#fff;border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;}
 .img-btn-cancel:disabled{opacity:.35;cursor:not-allowed;}
 .menuname-wrap{position:relative;flex:1;}
-.menuname-wrap input{width:100%;}
+.menuname-wrap input{width:100%;padding:10px 12px;padding-right:36px;border:1.5px solid #cde8e7;border-radius:10px;font-size:14px;font-family:inherit;outline:none;box-sizing:border-box;}
+.menuname-wrap input:focus{border-color:#086266;}
+.ac-toggle{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#086266;font-size:20px;padding:4px 4px;line-height:1;}
 .dup-warn{display:none;font-size:12px;color:#c0392b;background:#fff0f0;border:1px solid #f5c0c0;border-radius:8px;padding:6px 10px;margin-top:6px;}
 .dup-warn.show{display:block;}
 .ac-list{display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid #086266;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,0.12);z-index:50;max-height:200px;overflow-y:auto;margin-top:3px;}
@@ -243,9 +251,10 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
 .edit-label{font-size:12px;font-weight:700;color:#086266;display:block;margin-bottom:4px;}
 .edit-input{width:100%;border:1.5px solid #cde8e7;border-radius:8px;padding:8px 10px;font-size:13px;color:#333;background:#fff;font-family:inherit;outline:none;box-sizing:border-box;}
 .edit-input:focus{border-color:#086266;}
-.name-edit{cursor:pointer;}
+.name-edit{cursor:pointer;display:inline;}
 .name-edit:hover .edit-pen{opacity:1;}
 .edit-pen{font-size:12px;opacity:.4;margin-left:4px;transition:opacity .15s;}
+.menu-cb{width:16px;height:16px;accent-color:#086266;cursor:pointer;flex-shrink:0;margin-right:2px;}
 </style>
 </head>
 <body>
@@ -332,24 +341,24 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
   <div class="card"><div class="stats-grid" id="statsGrid"></div></div>
   <div class="card">
     <div class="card-title">일일 메뉴 추가 등록</div>
-    <div class="input-row">
-  <div class="menuname-wrap">
-    <input type="text" id="menuName" placeholder="메뉴명 입력" autocomplete="off"
-      oninput="onMenuNameInput()" onkeydown="onMenuNameKey(event)">
-    <div class="ac-list" id="acList"></div>
+    <div class="add-grid">
+  <select id="menuCat">
+    <option value="메인">메인</option><option value="반찬">반찬</option>
+    <option value="김치">김치</option><option value="밀키트">밀키트</option><option value="기타">기타</option>
+  </select>
+  <div class="num-field">
+    <label for="menuName">메뉴명</label>
+    <div class="menuname-wrap">
+      <input type="text" id="menuName" placeholder="입력" autocomplete="off"
+        oninput="onMenuNameInput()" onkeydown="onMenuNameKey(event)">
+      <button type="button" class="ac-toggle" onmousedown="toggleAcAll(event)" tabindex="-1">▾</button>
+      <div class="ac-list" id="acList"></div>
+    </div>
   </div>
+  <div class="num-field"><label for="menuPrice">금액(천원)</label><input type="number" id="menuPrice" min="1" style="width:72px;"></div>
+  <div class="num-field"><label for="menuStock">재고(수량)</label><input type="number" id="menuStock" min="0" value="0" style="width:72px;"></div>
 </div>
 <div class="dup-warn" id="dupWarn">&#9888; 이미 오늘 목록에 있는 메뉴예요!</div>
-    <div class="input-row">
-      <input type="number" id="menuPrice" placeholder="금액 (천원)" min="1">
-      <input type="number" id="menuStock" placeholder="재고 (개)" min="0" value="0">
-    </div>
-    <div class="input-row" style="margin-bottom:12px;">
-      <select id="menuCat">
-        <option value="메인">메인</option><option value="반찬">반찬</option>
-        <option value="김치">김치</option><option value="밀키트">밀키트</option><option value="기타">기타</option>
-      </select>
-    </div>
     <label class="child-toggle"><input type="checkbox" id="menuChild"> 어린이도 먹을 수 있는 메뉴</label>
     <button class="btn btn-add" onclick="addMenu()">추 가</button>
   </div>
@@ -360,8 +369,8 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
     <div class="menu-list" id="menuList"></div>
   </div>
   <div class="card">
-    <div class="card-title">메뉴 창고 저장</div>
-    <p style="font-size:13px;color:#666;margin-bottom:14px;">저장하면 메뉴 창고에서 다시 불러볼 수 있어요.</p>
+    <div class="card-title">날짜별 메뉴 묶음 저장</div>
+    <p style="font-size:13px;color:#666;margin-bottom:14px;">저장하면 날짜별 메뉴 묶음에서 다시 불러볼 수 있어요.</p>
     <button class="btn btn-add" onclick="saveToday()">메뉴 창고에 저장</button>
   </div>
 </div>
@@ -375,8 +384,8 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
     <button class="copy-btn" id="copyBtn" onclick="copyKakao()">텍스트 복사하기</button>
   </div>
   <div class="card">
-    <div class="card-title">메뉴 창고 저장</div>
-    <p style="font-size:13px;color:#666;margin-bottom:14px;">저장하면 메뉴 창고에서 다시 불러볼 수 있어요.</p>
+    <div class="card-title">날짜별 메뉴 묶음 저장</div>
+    <p style="font-size:13px;color:#666;margin-bottom:14px;">저장하면 날짜별 메뉴 묶음에서 다시 불러볼 수 있어요.</p>
     <button class="btn btn-add" onclick="saveToday()">메뉴 창고에 저장</button>
   </div>
 </div>
@@ -446,11 +455,37 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
 
 <div id="page-history" class="page">
   <div class="card">
-    <div class="card-title">메뉴 창고</div>
+    <div class="tabs" id="histSubTabs" style="margin-bottom:12px;"></div>
     <div id="historyList"></div>
+    <div id="allFilterTabs" class="tabs" style="display:none;margin-bottom:8px;"></div>
+    <div id="allMenuList" style="display:none;"></div>
   </div>
 </div>
 
+<!-- 메뉴 창고 저장 확인 팝업 -->
+<div class="cal-overlay" id="saveAllOverlay">
+  <div style="background:#fff;border-radius:16px;padding:24px;width:290px;max-width:92vw;text-align:center;" onclick="event.stopPropagation()">
+    <div style="font-size:32px;margin-bottom:10px;">🗄</div>
+    <div style="font-size:15px;font-weight:700;color:#1a1a1a;margin-bottom:8px;">메뉴 창고로 저장</div>
+    <p id="saveAllMsg" style="font-size:13px;color:#666;margin-bottom:20px;"></p>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-add" style="flex:1;" onclick="confirmSaveAll()">저장</button>
+      <button style="flex:1;background:#eee;color:#555;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;" onclick="cancelSaveAll()">취소</button>
+    </div>
+  </div>
+</div>
+<!-- 일일메뉴 전송 팝업 -->
+<div class="cal-overlay" id="sendToTodayOverlay" onclick="if(event.target===this)closeSendToTodayPopup()">
+  <div style="background:#fff;border-radius:16px;padding:22px;width:320px;max-width:93vw;max-height:80vh;display:flex;flex-direction:column;" onclick="event.stopPropagation()">
+    <div style="font-size:15px;font-weight:700;color:#1a1a1a;margin-bottom:10px;">📋 선택한 메뉴 목록</div>
+    <div id="sendToTodayList" style="flex:1;overflow-y:auto;max-height:280px;margin-bottom:14px;"></div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-add" style="flex:1;font-size:14px;" onclick="confirmSendToToday('add')">추가</button>
+      <button class="btn btn-add" style="flex:1;font-size:14px;background:#E9A826;color:#3A1D1D;" onclick="confirmSendToToday('replace')">대체</button>
+    </div>
+    <button style="margin-top:8px;width:100%;background:#eee;color:#555;border:none;border-radius:10px;padding:9px;font-size:13px;cursor:pointer;font-family:inherit;" onclick="closeSendToTodayPopup()">취소</button>
+  </div>
+</div>
 <!-- 추가/대체 모달 -->
 <div class="cal-overlay" id="histLoadOverlay" onclick="closeHistLoadModal(event)">
   <div style="background:#fff;border-radius:16px;padding:24px;width:280px;text-align:center;" onclick="event.stopPropagation()">
@@ -467,7 +502,48 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
 var IMGBB_KEY='b5a6e9481bb9cb4791108cf50761a459';
 var CAT_COLOR={'메인':'#1D9E75','반찬':'#378ADD','김치':'#D4537E','밀키트':'#E9A826','기타':'#888780'};
 var VALID_CATS=['메인','반찬','김치','밀키트','기타'];
-var menus=[],filterCat='전체',workDate='',calViewYear,calViewMonth,imgTargetId=null,parsedMenus=[],pendingImgUrl=null,menuEditTargetId=null,editPendingImgUrl=null;
+var menus=[],filterCat='전체',filterAllCat='전체',workDate='',calViewYear,calViewMonth,imgTargetId=null,parsedMenus=[],pendingImgUrl=null,menuEditTargetId=null,editPendingImgUrl=null;
+var imgCtx='menus',editCtx='menus';
+var allMenus=[];
+var selectedAllIds=new Set();
+function _arr(ctx){return ctx==='all'?allMenus:menus;}
+function _save(ctx){if(ctx==='all')saveAllMenus();else save();}
+function _render(ctx){if(ctx==='all')renderAllMenus();else renderMenuList();}
+// 수정 타임스탬프 찍기
+function touch(m){m.updatedAt=Date.now();return m;}
+function loadAllMenus(){var s=localStorage.getItem('onban_all_menus');if(s){allMenus=JSON.parse(s);return;}rebuildAllMenusFromHistory();}
+function saveAllMenus(){localStorage.setItem('onban_all_menus',JSON.stringify(allMenus));}
+function rebuildAllMenusFromHistory(){
+  var h=JSON.parse(localStorage.getItem('menu_history')||'[]');
+  var map={};var idx=Date.now();
+  h.forEach(function(e){if(!e.menus)return;e.menus.forEach(function(m){if(!m.name)return;if(!map[m.name])map[m.name]={id:idx++,name:m.name,cat:m.cat,price:m.price,stock:0,child:m.child,imgUrl:m.imgUrl||null,count:0,updatedAt:0};map[m.name].count++;map[m.name].price=m.price;if(m.imgUrl){map[m.name].imgUrl=m.imgUrl;map[m.name].updatedAt=m.updatedAt||0;}});});
+  allMenus=Object.values(map).sort(function(a,b){return b.count-a.count;});
+  saveAllMenus();
+}
+function mergeToAllMenus(){
+  if(!allMenus.length)loadAllMenus();
+  allMenus=deduplicateByName(allMenus); // 혹시 남아있는 중복 정리
+  var nameMap={};allMenus.forEach(function(m){nameMap[m.name]=m;});
+  var changed=false;
+  menus.forEach(function(m){
+    if(!nameMap[m.name]){
+      allMenus.push({id:Date.now()+Math.random(),name:m.name,cat:m.cat,price:m.price,stock:0,child:m.child,imgUrl:m.imgUrl||null,count:1,updatedAt:m.updatedAt||Date.now()});
+      changed=true;
+    }else{
+      // 기존 항목: 타임스탬프 비교 후 더 최신이면 필드 갱신
+      var existing=nameMap[m.name];
+      var localTs=m.updatedAt||0;
+      var existTs=existing.updatedAt||0;
+      if(localTs>existTs){
+        existing.price=m.price;existing.cat=m.cat;existing.child=m.child;
+        if(m.imgUrl)existing.imgUrl=m.imgUrl;
+        existing.updatedAt=localTs;changed=true;
+      }
+      existing.count=(existing.count||0)+1;changed=true;
+    }
+  });
+  if(changed)saveAllMenus();
+}
 
 function parseMenuCsv(csvText,defaultStock){
   var lines=csvText.trim().split(/\r?\n/);
@@ -511,20 +587,53 @@ function getDict(){return JSON.parse(localStorage.getItem(DICT_KEY)||'[]');}
 function saveToDict(names){
   var dict=getDict();
   names.forEach(function(n){n=n.trim();if(n&&dict.indexOf(n)<0)dict.push(n);});
-  dict.sort();
+  dict.sort(function(a,b){return a.localeCompare(b,'ko',{numeric:true});});
   localStorage.setItem(DICT_KEY,JSON.stringify(dict));
+}
+function removeFromDict(name){
+  var dict=getDict();
+  var idx=dict.indexOf(name.trim());
+  if(idx>=0){dict.splice(idx,1);localStorage.setItem(DICT_KEY,JSON.stringify(dict));}
+}
+// ▾ 버튼 — 전체 목록 토글
+// ── allMenus 기반으로 자동완성 사전 전체 재빌드 ──
+function syncDictFromAllMenus(){
+  loadAllMenus(); // localStorage 최신 반영
+  var names=allMenus.map(function(m){return m.name;}).filter(Boolean).map(function(n){return n.trim();});
+  menus.forEach(function(m){if(m.name&&names.indexOf(m.name.trim())<0)names.push(m.name.trim());});
+  names.sort(function(a,b){return a.localeCompare(b,'ko',{numeric:true});});
+  localStorage.setItem(DICT_KEY,JSON.stringify(names));
+}
+// useCat=true: 카테고리 필터 적용(타이핑용), false: 전체(▾버튼용)
+function acNames(useCat){
+  loadAllMenus(); // 항상 최신 로드
+  var cat=useCat?((document.getElementById('menuCat')||{}).value||''):'';
+  var names=allMenus.filter(function(m){return !cat||m.cat===cat;}).map(function(m){return m.name.trim();}).filter(Boolean);
+  menus.forEach(function(m){if(m.name&&(!cat||m.cat===cat)&&names.indexOf(m.name.trim())<0)names.push(m.name.trim());});
+  names.sort(function(a,b){return a.localeCompare(b,'ko',{numeric:true});});
+  return names;
+}
+// ▾ 버튼: 카테고리 무관 전체 표시 → 수정된 메뉴 어떤 카테고리든 항상 보임
+function toggleAcAll(e){
+  if(e)e.preventDefault();
+  var list=document.getElementById('acList');
+  if(list.classList.contains('open')){closeAcList();return;}
+  var names=acNames(false);
+  acIndex=-1;
+  list.innerHTML=names.map(function(n){
+    return '<div class="ac-item" data-val="'+n.replace(/"/g,'&quot;')+'" onmousedown="pickAc(this)">'+n+'</div>';
+  }).join('');
+  list.classList.add('open');
 }
 var acIndex=-1;
 function renderDatalist(){renderAcList();}  // 하위호환 유지
+// 타이핑: 선택된 카테고리로 필터링
 function renderAcList(){
   var inp=document.getElementById('menuName');
   var q=(inp.value||'').trim();
   var list=document.getElementById('acList');
-  // 사전 + 현재 메뉴 목록 합치기
-  var dict=getDict();
-  menus.forEach(function(m){if(m.name&&dict.indexOf(m.name.trim())<0)dict.push(m.name.trim());});
-  dict.sort();
-  var filtered=q?dict.filter(function(n){return n.toLowerCase().indexOf(q.toLowerCase())>=0;}):dict;
+  var names=acNames(true);
+  var filtered=q?names.filter(function(n){return n.toLowerCase().indexOf(q.toLowerCase())>=0;}):names;
   if(!filtered.length){list.classList.remove('open');return;}
   acIndex=-1;
   list.innerHTML=filtered.map(function(n){
@@ -539,6 +648,13 @@ function pickAc(el){
   document.getElementById('acList').classList.remove('open');
   acIndex=-1;
   checkDup(val);
+  // 메뉴창고 데이터 자동 반영 (가격·카테고리·어린이)
+  var ref=allMenus.find(function(m){return m.name.trim()===val.trim();});
+  if(ref){
+    if(ref.price)document.getElementById('menuPrice').value=ref.price;
+    if(ref.cat)document.getElementById('menuCat').value=ref.cat;
+    document.getElementById('menuChild').checked=!!ref.child;
+  }
   document.getElementById('menuPrice').focus();
 }
 function closeAcList(){document.getElementById('acList').classList.remove('open');acIndex=-1;}
@@ -624,7 +740,7 @@ function addMenu(){
   if(menus.some(function(m){return m.name.trim()===name;})){
     if(!confirm('['+name+']이(가) 이미 목록에 있어요.\n그래도 추가할까요?'))return;
   }
-  menus.push({id:Date.now(),name:name,price:price,stock:stock,cat:cat,child:child,imgUrl:null});
+  menus.push({id:Date.now(),name:name,price:price,stock:stock,cat:cat,child:child,imgUrl:null,updatedAt:Date.now()});
   saveToDict([name]);
   save();
   document.getElementById('menuName').value='';
@@ -636,14 +752,15 @@ function addMenu(){
   renderAll();
 }
 function deleteMenu(id){if(!confirm('이 메뉴를 삭제할까요?'))return;menus=menus.filter(function(m){return m.id!==id;});save();renderAll();}
-function changeStock(id,d){var m=menus.find(function(x){return x.id===id;});if(!m)return;m.stock=Math.max(0,(m.stock||0)+d);save();renderMenuList();renderStats();}
+function changeStock(id,d){var m=menus.find(function(x){return x.id===id;});if(!m)return;m.stock=Math.max(0,(m.stock||0)+d);touch(m);save();renderMenuList();renderStats();}
 function startEditPrice(id){document.getElementById('pd_'+id).style.display='none';var inp=document.getElementById('pi_'+id);inp.style.display='inline-block';inp.focus();inp.select();}
-function commitPrice(id){var inp=document.getElementById('pi_'+id);var val=parseInt(inp.value)||0;var m=menus.find(function(x){return x.id===id;});if(m){m.price=val;save();}var disp=document.getElementById('pd_'+id);if(disp){disp.textContent=val.toLocaleString()+'천원';disp.style.display='';}inp.style.display='none';renderKakao();}
+function commitPrice(id){var inp=document.getElementById('pi_'+id);var val=parseInt(inp.value)||0;var m=menus.find(function(x){return x.id===id;});if(m){m.price=val;touch(m);save();}var disp=document.getElementById('pd_'+id);if(disp){disp.textContent=val.toLocaleString()+'천원';disp.style.display='';}inp.style.display='none';renderKakao();}
 function cancelPrice(id){var m=menus.find(function(x){return x.id===id;});var inp=document.getElementById('pi_'+id);var disp=document.getElementById('pd_'+id);if(inp&&m)inp.value=m.price||0;if(disp)disp.style.display='';if(inp)inp.style.display='none';}
 
-function openImgPopup(id){
+function openImgPopup(id,ctx){
+  imgCtx=ctx||'menus';
   imgTargetId=id;pendingImgUrl=null;
-  var m=menus.find(function(x){return x.id===id;});if(!m)return;
+  var m=_arr(imgCtx).find(function(x){return x.id===id;});if(!m)return;
   document.getElementById('imgPopupTitle').textContent=m.name+' - 이미지 관리';
   document.getElementById('imgDeleteBtn').style.display=m.imgUrl?'':'none';
   document.getElementById('imgUploadBtn').textContent=m.imgUrl?'📁 사진 변경':'📁 사진 선택';
@@ -656,8 +773,8 @@ function openImgPopup(id){
 function closeImgPopup(e){if(e&&e.target!==document.getElementById('imgOverlay'))return;document.getElementById('imgOverlay').classList.remove('open');imgTargetId=null;pendingImgUrl=null;}
 function saveImg(){
   if(!pendingImgUrl||imgTargetId===null)return;
-  var m=menus.find(function(x){return x.id===imgTargetId;});
-  if(m){m.imgUrl=pendingImgUrl;save();renderMenuList();}
+  var m=_arr(imgCtx).find(function(x){return x.id===imgTargetId;});
+  if(m){m.imgUrl=pendingImgUrl;touch(m);_save(imgCtx);_render(imgCtx);if(imgCtx==='all')syncAllMenuToMenus(m);}
   pendingImgUrl=null;
   document.getElementById('imgSaveBtn').disabled=true;
   document.getElementById('imgUploadBtn').textContent='📁 사진 변경';
@@ -718,11 +835,12 @@ function uploadToImgBB(b64){
   xhr.timeout=30000;
   xhr.send(form);
 }
-function deleteImg(){if(imgTargetId===null)return;if(!confirm('이미지를 삭제할까요?'))return;var m=menus.find(function(x){return x.id===imgTargetId;});if(m){m.imgUrl=null;save();renderMenuList();}document.getElementById('imgOverlay').classList.remove('open');imgTargetId=null;}
+function deleteImg(){if(imgTargetId===null)return;if(!confirm('이미지를 삭제할까요?'))return;var m=_arr(imgCtx).find(function(x){return x.id===imgTargetId;});if(m){m.imgUrl=null;_save(imgCtx);_render(imgCtx);}document.getElementById('imgOverlay').classList.remove('open');imgTargetId=null;}
 
 // ── 메뉴 편집 팝업 ──
-function openMenuEditPopup(id){
-  var m=menus.find(function(x){return x.id===id;});
+function openMenuEditPopup(id,ctx){
+  editCtx=ctx||'menus';
+  var m=_arr(editCtx).find(function(x){return x.id===id;});
   if(!m)return;
   menuEditTargetId=id;
   editPendingImgUrl=null;
@@ -798,8 +916,8 @@ function uploadEditImgBB(b64){
 }
 function saveEditImg(){
   if(!editPendingImgUrl||menuEditTargetId===null)return;
-  var m=menus.find(function(x){return x.id===menuEditTargetId;});
-  if(m){m.imgUrl=editPendingImgUrl;save();renderMenuList();}
+  var m=_arr(editCtx).find(function(x){return x.id===menuEditTargetId;});
+  if(m){m.imgUrl=editPendingImgUrl;_save(editCtx);_render(editCtx);}
   editPendingImgUrl=null;
   document.getElementById('editImgSaveBtn').disabled=true;
   document.getElementById('editImgUploadBtn').textContent='📁 사진 변경';
@@ -809,8 +927,8 @@ function saveEditImg(){
 function deleteEditImg(){
   if(menuEditTargetId===null)return;
   if(!confirm('이미지를 삭제할까요?'))return;
-  var m=menus.find(function(x){return x.id===menuEditTargetId;});
-  if(m){m.imgUrl=null;save();renderMenuList();}
+  var m=_arr(editCtx).find(function(x){return x.id===menuEditTargetId;});
+  if(m){m.imgUrl=null;_save(editCtx);_render(editCtx);}
   editPendingImgUrl=null;
   setEditImgPreview(null);
   document.getElementById('editImgSaveBtn').disabled=true;
@@ -820,16 +938,26 @@ function deleteEditImg(){
 }
 function saveMenuEditAll(){
   if(menuEditTargetId===null)return;
-  var m=menus.find(function(x){return x.id===menuEditTargetId;});
+  var m=_arr(editCtx).find(function(x){return x.id===menuEditTargetId;});
   if(!m)return;
   var name=document.getElementById('editMenuName').value.trim();
   if(!name){alert('메뉴명을 입력해주세요.');return;}
+  var oldName=m.name;  // 이름 변경 추적
   m.name=name;
   m.price=parseInt(document.getElementById('editMenuPrice').value)||0;
   m.stock=parseInt(document.getElementById('editMenuStock').value)||0;
   m.cat=document.getElementById('editMenuCat').value;
   m.child=document.getElementById('editMenuChild').checked;
-  save();renderAll();
+  touch(m);
+  _save(editCtx);
+  if(editCtx==='menus'){
+    if(oldName!==m.name){removeFromDict(oldName);saveToDict([m.name]);}
+    renderAll();
+  }else{
+    renderAllMenus();
+    syncDictFromAllMenus(); // allMenus 전체 기준으로 dict 완전 재빌드
+    syncAllMenuToMenus(m,oldName);
+  }
   document.getElementById('menuEditOverlay').classList.remove('open');
   menuEditTargetId=null;editPendingImgUrl=null;
   showToast('메뉴가 수정되었습니다.');
@@ -855,7 +983,7 @@ function renderMenuList(){
     var chEl=m.child?' <span style="font-size:13px;">&#128103;</span>':'';
     return '<div class="menu-item">'+
       '<div class="cat-dot" style="background:'+(CAT_COLOR[m.cat]||'#888')+'"></div>'+imgEl+
-      '<div class="name name-edit" onclick="openMenuEditPopup('+m.id+')">'+m.name+chEl+' <span class="edit-pen">✏️</span></div>'+
+      '<div class="name"><span class="name-edit" onclick="openMenuEditPopup('+m.id+')">'+m.name+chEl+' <span class="edit-pen">✏️</span></span></div>'+
       '<div class="price-wrap"><span class="price-display" id="pd_'+m.id+'" onclick="startEditPrice('+m.id+')">'+(m.price||0).toLocaleString()+'천원</span><input class="price-input" id="pi_'+m.id+'" type="number" min="1" value="'+(m.price||0)+'" onblur="commitPrice('+m.id+')" onkeydown="if(event.key===\'Enter\')commitPrice('+m.id+');if(event.key===\'Escape\')cancelPrice('+m.id+');"></div>'+
       '<div class="qty-ctrl"><button class="qty-btn" onclick="changeStock('+m.id+',-1)">-</button><span class="qty">'+(m.stock||0)+'</span><button class="qty-btn" onclick="changeStock('+m.id+',1)">+</button></div>'+
       '<button class="del-btn" onclick="deleteMenu('+m.id+')">&#10005;</button>'+
@@ -882,11 +1010,12 @@ function copyKakao(){
     setTimeout(function(){btn.textContent='텍스트 복사하기';btn.classList.remove('copied');},2000);
   });
 }
-var _histLoadDate=null;
+var _histLoadDate=null,_histSubTab='dates';
 function saveToday(){
   if(!menus.length){alert('저장할 메뉴가 없어요.');return;}
   if(!confirm(fmtDate(workDate)+'\n메뉴 '+menus.length+'종을 창고에 저장할까요?')){return;}
   saveMenus(workDate);
+  mergeToAllMenus();
   exportMenuToSheet(workDate,function(ok){
     showToast(fmtDate(workDate)+' 저장'+(ok?' & 시트 동기화 완료!':'완료! (시트 동기화 실패)'));
   });
@@ -899,14 +1028,250 @@ function exportMenuToSheet(date,cb){
   var ms=stored?JSON.parse(stored):menus;
   var slim=ms.map(function(m){return[date,m.name,m.cat,m.price,m.stock,m.child?1:0,m.imgUrl||''];});
   if(!slim.length){if(cb)cb(false);return;}
-  var url=gasUrl+'?action=export_menu&data='+encodeURIComponent(JSON.stringify(slim));
-  fetch(url,{redirect:'follow'}).then(function(r){return r.json();}).then(function(d){if(cb)cb(d.success!==false);}).catch(function(){if(cb)cb(false);});
+  gasFetchPost(gasUrl+'?action=export_menu',{data:slim},function(err,d){if(cb)cb(!err&&d&&d.success!==false);});
 }
 var _histYM='전체';
+function renderHistSubTabs(){
+  var tabs=[{id:'dates',label:'날짜별 메뉴 묶음'},{id:'all',label:'등록된 모든 메뉴'}];
+  document.getElementById('histSubTabs').innerHTML=tabs.map(function(t){
+    return '<button class="tab'+(_histSubTab===t.id?' active':'')+'" onclick="switchHistSubTab(\''+t.id+'\')">'+t.label+'</button>';
+  }).join('');
+}
+function switchHistSubTab(tab){
+  _histSubTab=tab;
+  renderHistSubTabs();
+  var ft=document.getElementById('allFilterTabs');
+  if(tab==='dates'){
+    document.getElementById('historyList').style.display='';
+    document.getElementById('allMenuList').style.display='none';
+    if(ft)ft.style.display='none';
+    renderHistory();
+  }else{
+    document.getElementById('historyList').style.display='none';
+    if(ft)ft.style.display='';
+    var el=document.getElementById('allMenuList');
+    el.style.display='';
+    loadAllMenus();  // localStorage만 사용 (GAS 호출 없음)
+    renderAllMenus();
+  }
+}
+// allMenus 수정 → menus(일일) 실시간 동기화
+function syncAllMenuToMenus(m, oldName){
+  var key=oldName!==undefined?oldName:m.name;
+  var changed=false;
+  menus.forEach(function(dm){
+    if(dm.name===key){
+      dm.name=m.name;dm.price=m.price;dm.cat=m.cat;dm.child=m.child;
+      if(m.imgUrl)dm.imgUrl=m.imgUrl;
+      dm.updatedAt=m.updatedAt||Date.now();
+      changed=true;
+    }
+  });
+  if(changed){save();renderAll();}
+}
+function changeAllStock(id,d){var m=allMenus.find(function(x){return x.id===id;});if(!m)return;m.stock=Math.max(0,(m.stock||0)+d);touch(m);saveAllMenus();syncAllMenuToMenus(m);renderAllMenus();}
+function startEditAllPrice(id){document.getElementById('apd_'+id).style.display='none';var inp=document.getElementById('api_'+id);inp.style.display='inline-block';inp.focus();inp.select();}
+function commitAllPrice(id){var inp=document.getElementById('api_'+id);var val=parseInt(inp.value)||0;var m=allMenus.find(function(x){return x.id===id;});if(m){m.price=val;touch(m);saveAllMenus();syncAllMenuToMenus(m);}var disp=document.getElementById('apd_'+id);if(disp){disp.textContent=val.toLocaleString()+'천원';disp.style.display='';}inp.style.display='none';}
+function cancelAllPrice(id){var m=allMenus.find(function(x){return x.id===id;});var inp=document.getElementById('api_'+id);var disp=document.getElementById('apd_'+id);if(inp&&m)inp.value=m.price||0;if(disp)disp.style.display='';if(inp)inp.style.display='none';}
+function deleteAllMenu(id){if(!confirm('이 메뉴를 삭제할까요?'))return;allMenus=allMenus.filter(function(x){return x.id!==id;});saveAllMenus();renderAllMenus();}
+
+function exportAllMenusToSheet(){
+  var gasUrl=ONBAN_SHEET_URL;if(!gasUrl){showToast('GAS URL 없음');return;}
+  if(!allMenus.length){showToast('저장할 메뉴가 없어요.');return;}
+  // 1) 전체 체크박스 선택 표시
+  document.querySelectorAll('.menu-cb').forEach(function(cb){
+    cb.checked=true;selectedAllIds.add(Number(cb.value));
+  });
+  updateAllMenuBtns();
+  // 2) 브라우저가 체크 렌더링 후 팝업 표시
+  setTimeout(function(){
+    document.getElementById('saveAllMsg').textContent='등록된 모든 메뉴 '+allMenus.length+'개를 메뉴 창고에 저장할까요?';
+    document.getElementById('saveAllOverlay').classList.add('open');
+  },80);
+}
+function cancelSaveAll(){
+  document.querySelectorAll('.menu-cb').forEach(function(cb){cb.checked=false;});
+  selectedAllIds.clear();
+  updateAllMenuBtns();
+  document.getElementById('saveAllOverlay').classList.remove('open');
+}
+function confirmSaveAll(){
+  document.getElementById('saveAllOverlay').classList.remove('open');
+  var gasUrl=ONBAN_SHEET_URL;
+  var deduped=deduplicateByName(allMenus);
+  if(deduped.length<allMenus.length){allMenus=deduped;saveAllMenus();}
+  showToast('메뉴 창고로 저장 중...');
+  gasFetchPost(gasUrl+'?action=export_all_menus',{data:allMenus},function(err,d){
+    showToast(err||!d||!d.success?'저장 실패':'전체 메뉴 '+allMenus.length+'개 저장 완료!');
+    document.querySelectorAll('.menu-cb').forEach(function(cb){cb.checked=false;});
+    selectedAllIds.clear();
+    updateAllMenuBtns();
+  });
+}
+function deduplicateByName(arr){
+  var seen={};
+  return arr.filter(function(m){
+    if(!m.name)return false;
+    var k=m.name.trim().toLowerCase();
+    if(seen[k])return false;
+    seen[k]=true;
+    return true;
+  });
+}
+function importAllMenusFromSheet(cb){
+  var gasUrl=ONBAN_SHEET_URL;
+  if(!gasUrl){rebuildAllMenusFromHistory();if(cb)cb();return;}
+  gasFetch(gasUrl+'?action=import_all_menus',function(err,d){
+    var gasMenus=[];
+    if(!err&&d&&d.success&&d.menus&&d.menus.length){
+      d.menus.forEach(function(m){if(!m.id)m.id=Date.now()+Math.random();});
+      gasMenus=deduplicateByName(d.menus); // GAS 시트 중복 제거
+    }
+    // ── 로컬 allMenus vs GAS: 타임스탬프 비교 머지 ──
+    var gasMap={}; // lowerName → index
+    gasMenus.forEach(function(m,i){gasMap[(m.name||'').trim().toLowerCase()]=i;});
+    var localAll=[];
+    try{localAll=JSON.parse(localStorage.getItem('onban_all_menus')||'[]');}catch(ex){}
+    localAll.forEach(function(lm){
+      if(!lm.name)return;
+      var k=lm.name.trim().toLowerCase();
+      var gi=gasMap[k];
+      if(gi!==undefined){
+        // 양쪽에 있음 → 타임스탬프 비교: 로컬이 더 최신이면 로컬 우선
+        var gasTs=Number(gasMenus[gi].updatedAt)||0;
+        var localTs=Number(lm.updatedAt)||0;
+        if(localTs>gasTs){
+          gasMenus[gi]=Object.assign({},gasMenus[gi],{
+            price:lm.price,stock:lm.stock,child:lm.child,
+            cat:lm.cat,imgUrl:lm.imgUrl||gasMenus[gi].imgUrl,
+            count:Math.max(gasMenus[gi].count||0,lm.count||0),
+            updatedAt:localTs
+          });
+        }
+      }else{
+        gasMap[k]=gasMenus.length;
+        gasMenus.push(lm); // 로컬에만 있음 → 추가
+      }
+    });
+    // 히스토리에도 없는 메뉴 추가
+    var h=JSON.parse(localStorage.getItem('menu_history')||'[]');
+    var idx=Date.now();
+    h.forEach(function(entry){
+      (entry.menus||[]).forEach(function(m){
+        if(!m.name)return;
+        var k=m.name.trim().toLowerCase();
+        if(!(k in gasMap)){
+          gasMap[k]=gasMenus.length;
+          gasMenus.push({id:idx++,name:m.name,cat:m.cat||'기타',price:m.price||0,
+            stock:0,child:m.child||false,imgUrl:m.imgUrl||null,count:1,updatedAt:m.updatedAt||0});
+        }
+      });
+    });
+    if(gasMenus.length){allMenus=deduplicateByName(gasMenus);saveAllMenus();}
+    if(cb)cb();
+  });
+}
+function renderAllFilterTabs(){
+  var cats=['전체','메인','반찬','김치','기타'];
+  var el=document.getElementById('allFilterTabs');
+  if(!el)return;
+  el.innerHTML=cats.map(function(c){
+    return '<button class="tab'+(filterAllCat===c?' active':'')+'" onclick="setAllFilter(\''+c+'\')">'+c+'</button>';
+  }).join('');
+}
+function setAllFilter(cat){filterAllCat=cat;renderAllFilterTabs();renderAllMenus();}
+function renderAllMenus(){
+  loadAllMenus();
+  renderAllFilterTabs();
+  var el=document.getElementById('allMenuList');
+  var filtered=(filterAllCat==='전체'?allMenus:allMenus.filter(function(m){return m.cat===filterAllCat;})).slice();
+  filtered.sort(function(a,b){
+    return (a.name||'').localeCompare(b.name||'','ko',{numeric:true});
+  });
+  if(!filtered.length){el.innerHTML='<div class="empty">등록된 메뉴가 없어요.</div>';return;}
+  el.innerHTML=filtered.map(function(m){
+    var imgEl=m.imgUrl?'<img class="menu-thumb" src="'+m.imgUrl+'" alt="'+m.name+'" onclick="openImgPopup('+m.id+',\'all\')" onerror="this.style.display=\'none\'">':'<button class="img-btn" title="이미지 등록" onclick="openImgPopup('+m.id+',\'all\')">&#128247;</button>';
+    var chEl=m.child?' <span style="font-size:13px;">&#128103;</span>':'';
+    var cnt='<span style="font-size:11px;color:#aaa;margin-left:4px;">'+(m.count||0)+'회</span>';
+    var chk=selectedAllIds.has(m.id)?' checked':'';
+    return '<div class="menu-item">'+
+      '<input type="checkbox" class="menu-cb" id="cb_'+m.id+'" value="'+m.id+'"'+chk+' onchange="toggleAllSel(this)">'+
+      '<div class="cat-dot" style="background:'+(CAT_COLOR[m.cat]||'#888')+'"></div>'+imgEl+
+      '<div class="name"><span class="name-edit" onclick="openMenuEditPopup('+m.id+',\'all\')">'+m.name+chEl+' <span class="edit-pen">✏️</span></span>'+cnt+'</div>'+
+      '<div class="price-wrap"><span class="price-display" id="apd_'+m.id+'" onclick="startEditAllPrice('+m.id+')">'+(m.price||0).toLocaleString()+'천원</span><input class="price-input" id="api_'+m.id+'" type="number" min="1" value="'+(m.price||0)+'" onblur="commitAllPrice('+m.id+')" onkeydown="if(event.key===\'Enter\')commitAllPrice('+m.id+');if(event.key===\'Escape\')cancelAllPrice('+m.id+');"></div>'+
+      '<div class="qty-ctrl"><button class="qty-btn" onclick="changeAllStock('+m.id+',-1)">-</button><span class="qty">'+(m.stock||0)+'</span><button class="qty-btn" onclick="changeAllStock('+m.id+',1)">+</button></div>'+
+      '<button class="del-btn" onclick="deleteAllMenu('+m.id+')">&#10005;</button>'+
+    '</div>';
+  }).join('')+
+  '<div style="margin-top:16px;display:flex;gap:8px;">'+
+  '<button id="sendToTodayBtn" class="btn btn-add" style="flex:1;background:#1D9E75;font-size:13px;padding:11px 6px;display:flex;align-items:center;justify-content:center;gap:5px;opacity:.35;cursor:not-allowed;" disabled onclick="openSendToTodayPopup()"><span style="font-size:16px;">📤</span>일일 메뉴로 보내기</button>'+
+  '<button id="exportAllMenusBtn" class="btn btn-add" style="flex:1;font-size:13px;padding:11px 6px;display:flex;align-items:center;justify-content:center;gap:5px;" onclick="exportAllMenusToSheet()"><span style="font-size:16px;">🗄</span>메뉴 창고로 저장</button>'+
+  '</div>';
+}
+function toggleAllSel(cb){
+  var id=Number(cb.value);
+  if(cb.checked)selectedAllIds.add(id);else selectedAllIds.delete(id);
+  updateAllMenuBtns();
+}
+function updateAllMenuBtns(){
+  var has=selectedAllIds.size>0;
+  var sendBtn=document.getElementById('sendToTodayBtn');
+  var saveBtn=document.getElementById('exportAllMenusBtn');
+  if(!sendBtn||!saveBtn)return;
+  // 보내기: 선택 있을 때만 활성
+  sendBtn.disabled=!has;
+  sendBtn.style.opacity=has?'':'0.35';
+  sendBtn.style.cursor=has?'pointer':'not-allowed';
+  // 저장: 항상 활성 (클릭 시 전체 선택 후 확인)
+  saveBtn.disabled=false;
+  saveBtn.style.opacity='';
+  saveBtn.style.cursor='pointer';
+}
+function openSendToTodayPopup(){
+  if(!selectedAllIds.size){showToast('메뉴를 선택해주세요.');return;}
+  var selected=Array.from(selectedAllIds).map(function(id){return allMenus.find(function(m){return m.id===id;});}).filter(Boolean);
+  if(!selected.length){showToast('선택한 메뉴를 찾을 수 없어요.');return;}
+  document.getElementById('sendToTodayList').innerHTML=
+    '<div class="menu-list">'+selected.map(function(m){
+      return '<div class="menu-item" style="padding:8px 10px;">'+
+        '<div class="cat-dot" style="background:'+(CAT_COLOR[m.cat]||'#888')+'"></div>'+
+        '<div class="name" style="flex:1;font-size:13px;font-weight:500;">'+m.name+'</div>'+
+        '<span style="font-size:12px;color:#086266;font-weight:700;">'+(m.price||0).toLocaleString()+'천원</span>'+
+      '</div>';
+    }).join('')+'</div>';
+  document.getElementById('sendToTodayOverlay').classList.add('open');
+}
+function closeSendToTodayPopup(){
+  document.getElementById('sendToTodayOverlay').classList.remove('open');
+}
+function confirmSendToToday(mode){
+  var selected=Array.from(selectedAllIds).map(function(id){return allMenus.find(function(m){return m.id===id;});}).filter(Boolean);
+  if(!selected.length){closeSendToTodayPopup();return;}
+  if(mode==='replace'){
+    menus=selected.map(function(m){return {id:Date.now()+Math.random(),name:m.name,cat:m.cat,price:m.price,stock:m.stock||0,child:m.child,imgUrl:m.imgUrl||null};});
+    showToast(selected.length+'개로 일일 메뉴를 대체했어요!');
+  }else{
+    var existNames={};menus.forEach(function(m){existNames[m.name]=true;});
+    var added=0;
+    selected.forEach(function(m){
+      if(!existNames[m.name]){
+        menus.push({id:Date.now()+Math.random(),name:m.name,cat:m.cat,price:m.price,stock:m.stock||0,child:m.child,imgUrl:m.imgUrl||null});
+        added++;
+      }
+    });
+    showToast(added?added+'개를 일일 메뉴에 추가했어요!':'이미 추가된 메뉴예요.');
+  }
+  save();
+  renderAll();
+  selectedAllIds.clear();
+  closeSendToTodayPopup();
+}
 function renderHistory(){
+  renderHistSubTabs();
+  if(_histSubTab==='all'){renderAllMenus();return;}
   var h=JSON.parse(localStorage.getItem('menu_history')||'[]');
   var el=document.getElementById('historyList');
-  var syncBtn='<button class="parse-btn" style="width:100%;margin-bottom:12px;" onclick="fetchHistoryFromSheet()">☁️ 메뉴 창고 목록 갱신</button>';
+  var syncBtn='<button class="parse-btn" style="width:100%;margin-bottom:12px;" onclick="fetchHistoryFromSheet()">☁️ 메뉴 창고에서 불러오기</button>';
   if(!h.length){el.innerHTML=syncBtn+'<div class="empty">저장된 기록이 없어요.<br>위 버튼으로 메뉴 창고에서 불러오세요.</div>';return;}
 
   // 년월 목록 추출
@@ -949,19 +1314,16 @@ function fetchHistoryFromSheet(){
   var gasUrl=ONBAN_SHEET_URL;
   if(!gasUrl){showToast('GAS URL이 설정되지 않았어요.');return;}
   showToast('메뉴 창고에서 목록 불러오는 중...');
-  fetch(gasUrl+'?action=list_dates',{redirect:'follow'})
-    .then(function(r){return r.json();})
-    .then(function(d){
-      if(!d.dates||!d.dates.length){showToast('메뉴 창고에 저장된 날짜가 없어요.');return;}
-      var h=JSON.parse(localStorage.getItem('menu_history')||'[]');
-      var existing={};h.forEach(function(e){existing[e.date]=true;});
-      d.dates.forEach(function(date){if(!existing[date])h.push({date:date,menus:null});});
-      h.sort(function(a,b){return b.date.localeCompare(a.date);});
-      localStorage.setItem('menu_history',JSON.stringify(h));
-      renderHistory();
-      showToast(d.dates.length+'개 날짜 갱신 완료!');
-    })
-    .catch(function(){showToast('목록 불러오기 실패. 시트 URL을 확인해주세요.');});
+  gasFetch(gasUrl+'?action=list_dates',function(err,d){
+    if(err||!d||!d.dates||!d.dates.length){showToast(err?'목록 불러오기 실패. 재시도해주세요.':'메뉴 창고에 저장된 날짜가 없어요.');return;}
+    var h=JSON.parse(localStorage.getItem('menu_history')||'[]');
+    var existing={};h.forEach(function(e){existing[e.date]=true;});
+    d.dates.forEach(function(date){if(!existing[date])h.push({date:date,menus:null});});
+    h.sort(function(a,b){return b.date.localeCompare(a.date);});
+    localStorage.setItem('menu_history',JSON.stringify(h));
+    renderHistory();
+    showToast(d.dates.length+'개 날짜 갱신 완료!');
+  });
 }
 function openHistLoadModal(date){
   _histLoadDate=date;
@@ -1347,27 +1709,52 @@ function getAdminInfo(){
   return Object.assign(def,JSON.parse(localStorage.getItem(ADMIN_KEY)||'{}'));
 }
 // ── 설정 → 구글 시트 동기화 ──
+// ── GAS POST fetch 유틸 (대용량 데이터용) ──
+function gasFetchPost(url,body,cb){
+  var ctrl=new AbortController();
+  var timer=setTimeout(function(){ctrl.abort();},30000);
+  fetch(url,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(body),redirect:'follow',signal:ctrl.signal})
+    .then(function(r){clearTimeout(timer);return r.json();})
+    .then(function(d){cb(null,d);})
+    .catch(function(e){clearTimeout(timer);cb(e,null);});
+}
+// ── GAS fetch 공통 유틸 (타임아웃 15초 + 1회 재시도) ──
+function gasFetch(url,cb){
+  function attempt(retry){
+    var ctrl=new AbortController();
+    var timer=setTimeout(function(){ctrl.abort();},15000);
+    fetch(url,{redirect:'follow',signal:ctrl.signal})
+      .then(function(r){clearTimeout(timer);return r.json();})
+      .then(function(d){cb(null,d);})
+      .catch(function(e){
+        clearTimeout(timer);
+        if(retry>0){setTimeout(function(){attempt(retry-1);},2000);}
+        else{cb(e,null);}
+      });
+  }
+  attempt(1);
+}
+
 function syncSettingsToSheet(cb){
   var gasUrl=ONBAN_SHEET_URL;if(!gasUrl){if(cb)cb(false);return;}
   var s=getSettings(),a=getAdminInfo(),b=getBanks();
   var data={stock:s.stock,phone:a.phone,email:a.email,deliveryPhone:a.deliveryPhone||'',banks:b};
-  fetch(gasUrl+'?action=save_settings&data='+encodeURIComponent(JSON.stringify(data)),{redirect:'follow'})
-    .then(function(r){return r.json();}).then(function(d){if(cb)cb(d.success!==false);}).catch(function(){if(cb)cb(false);});
+  gasFetchPost(gasUrl+'?action=save_settings',{data:data},function(err,d){
+    if(cb)cb(!err&&d&&d.success!==false);
+  });
 }
 // ── 구글 시트 → 설정 로드 ──
 function loadSettingsFromSheet(cb){
   var gasUrl=ONBAN_SHEET_URL;if(!gasUrl){if(cb)cb(false);return;}
-  fetch(gasUrl+'?action=load_settings',{redirect:'follow'})
-    .then(function(r){return r.json();}
-    ).then(function(d){
-      if(d.success&&d.data){
-        var data=d.data;
-        if(data.stock!==undefined)localStorage.setItem(SETTINGS_KEY,JSON.stringify({stock:Number(data.stock)||0}));
-        localStorage.setItem(ADMIN_KEY,JSON.stringify({phone:data.phone||'',email:data.email||'',deliveryPhone:data.deliveryPhone||''}));
-        if(data.banks&&Array.isArray(data.banks))localStorage.setItem(BANKS_KEY,JSON.stringify(data.banks));
-        if(cb)cb(true);
-      }else{if(cb)cb(false);}
-    }).catch(function(){if(cb)cb(false);});
+  gasFetch(gasUrl+'?action=load_settings',function(err,d){
+    if(!err&&d&&d.success&&d.data){
+      var data=d.data;
+      if(data.stock!==undefined)localStorage.setItem(SETTINGS_KEY,JSON.stringify({stock:Number(data.stock)||0}));
+      localStorage.setItem(ADMIN_KEY,JSON.stringify({phone:data.phone||'',email:data.email||'',deliveryPhone:data.deliveryPhone||''}));
+      if(data.banks&&Array.isArray(data.banks))localStorage.setItem(BANKS_KEY,JSON.stringify(data.banks));
+      if(cb)cb(true);
+    }else{if(cb)cb(false);}
+  });
 }
 
 function saveAdminInfo(){
@@ -1482,9 +1869,11 @@ function renderBankList(){
     btnP.textContent=b.primary?'대표':'대표설정';
     btnP.onclick=(function(idx){return function(){setPrimary(idx);};})(i);
     var btnE=document.createElement('button');
-    btnE.className='btn-bank-primary';
-    btnE.textContent='✏';
+    btnE.className='btn-bank-del';
+    btnE.innerHTML='✏️';
     btnE.title='편집';
+    btnE.style.fontSize='15px';
+    btnE.style.color='#aaa';
     btnE.onclick=(function(idx){return function(){editBank(idx);};})(i);
     var btnD=document.createElement('button');
     btnD.className='btn-bank-del';
@@ -1621,10 +2010,22 @@ function importFromSheet(mode){
 }
 
 window.onload=function(){
+  // 접속 로그
+  (function(){
+    var ua=encodeURIComponent((navigator.userAgent||'').slice(0,200));
+    var ref=encodeURIComponent((document.referrer||'').slice(0,200));
+    fetch(ONBAN_SHEET_URL+'?action=log_access&page=manager&ua='+ua+'&ref='+ref,{redirect:'follow'}).catch(function(){});
+  })();
   var _goto=localStorage.getItem('mm_goto');if(_goto){localStorage.removeItem('mm_goto');setTimeout(function(){switchPage(_goto);},400);}
   workDate=toISO(new Date());loadMenus(workDate);
   document.getElementById('dateDisplayBtn').textContent=fmtDate(workDate);
   renderAll();renderHistory();
+  // 페이지 로드 시 1회 GAS "등록된모든메뉴" 시트 → localStorage 동기화
+  importAllMenusFromSheet(function(){
+    // 자동완성 사전도 갱신
+    var names=allMenus.map(function(m){return m.name;}).filter(Boolean);
+    if(names.length)saveToDict(names);
+  });
   // 기존 모든 히스토리 메뉴명을 사전에 동기화 (최초 실행 대비)
   (function(){
     var h=JSON.parse(localStorage.getItem('menu_history')||'[]');

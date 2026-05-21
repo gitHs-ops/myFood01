@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════
-// sms_proxy4onban.gs  —  오늘의 반찬 SMS + 알림톡 프록시
+// sms_proxy4onban.gs  —  오늘의 반찬 SMS + 알림톡 프록시 2026 05 21 v2
 //
 // 【설정 방법】
 //   GAS 프로젝트 속성 → 스크립트 속성 추가:
@@ -19,11 +19,25 @@ var TPL_CONFIRM   = 'KA01TP260420064826771YwlmOoWlKMa'; // 배송확정
 var TPL_DELIVERED = 'KA01TP260420064907492eIPbycJK6Mk'; // 배송완료
 var TPL_CANCEL    = 'KA01TP260420064944290l6Rv4uFM5yE'; // 주문취소
 
+// ── POST 진입점 (대용량 데이터) ──────────────────────
+function doPost(e) {
+  var action = e.parameter.action || '';
+  var body = {};
+  try { body = JSON.parse((e.postData && e.postData.contents) || '{}'); } catch(ex) {}
+  if (action === 'export_menu')      return exportMenu(null, body.data || []);
+  if (action === 'export_all_menus') return exportAllMenus(null, body.data || []);
+  if (action === 'save_settings')    return saveSettings(null, body.data || {});
+  return json({ success: false, error: '알 수 없는 POST 액션' });
+}
+
 // ── GET 진입점 ──────────────────────────────────────
 function doGet(e) {
   var action   = e.parameter.action   || 'sms';
   var receiver = e.parameter.receiver || '';
   var msg      = e.parameter.msg      || '';
+
+  // 접속 로그
+  if (action === 'log_access') return logAccess(e);
 
   // 날짜 목록 조회
   if (action === 'list_dates') return listDates();
@@ -31,6 +45,10 @@ function doGet(e) {
   // 설정 저장/로드
   if (action === 'save_settings') return saveSettings(e);
   if (action === 'load_settings') return loadSettings();
+
+  // 전체 메뉴 저장/로드
+  if (action === 'export_all_menus') return exportAllMenus(e);
+  if (action === 'import_all_menus') return importAllMenus();
 
   // 구글 시트 내보내기
   if (action === 'export_menu') return exportMenu(e);

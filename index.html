@@ -571,6 +571,15 @@ https://오늘의반찬.com</div>
   <p>오늘의 반찬 주문 서비스 &nbsp;|&nbsp;
   <a href="https://giths-ops.github.io/myOnban/onban.html">고객 주문 페이지</a> &nbsp;|&nbsp; 2026년 4월</p>
 </footer>
+<script>
+(function(){
+  var GAS_URL='https://script.google.com/macros/s/AKfycbwtXJL4_lMynbG4U13PqbnPOiTp15evyw0BPPQ0A9aV5QYlI5dSQB4Ru-8BOqVR9RPq1w/exec';
+  var ua=encodeURIComponent((navigator.userAgent||'').slice(0,200));
+  var ref=encodeURIComponent((document.referrer||'').slice(0,200));
+  var url=GAS_URL+'?action=log_access&page=index&ua='+ua+'&ref='+ref;
+  fetch(url,{redirect:'follow'}).catch(function(){});
+})();
+</script>
 
 </body>
 </html>
