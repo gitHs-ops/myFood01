@@ -990,12 +990,8 @@ function saveOrder(){
 
   // GAS 시트에 주문 저장 (관리자 동기화)
   (function(ord){
-    fetch(GAS_URL+'?action=save_order',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({data:ord}),
-      redirect:'follow'
-    }).catch(function(){});
+    fetch(GAS_URL+'?action=save_order&data='+encodeURIComponent(JSON.stringify(ord)),
+      {redirect:'follow'}).catch(function(){});
   })(order);
 
   // 고객에게 주문 접수 문자

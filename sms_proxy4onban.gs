@@ -58,7 +58,8 @@ function doGet(e) {
   // 구글 시트 가져오기
   if (action === 'import_menu') return importMenu(e);
 
-  // 주문 조회 / 상태 변경
+  // 주문 저장 / 조회 / 상태 변경
+  if (action === 'save_order')    return saveOrder(e);
   if (action === 'get_orders')    return getOrders(e);
   if (action === 'update_order')  return updateOrderStatus(e);
 
