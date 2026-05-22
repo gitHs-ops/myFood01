@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════
-// sms_proxy4onban.gs  —  오늘의 반찬 SMS + 알림톡 프록시 2026 05 21 v2
+// sms_proxy4onban.gs  —  오늘의 반찬 SMS + 알림톡 프록시 2026 05 22 v1
 //
 // 【설정 방법】
 //   GAS 프로젝트 속성 → 스크립트 속성 추가:
@@ -11,13 +11,14 @@
 // ══════════════════════════════════════════════════════
 
 var SENDER = '01026989056';
-var PFID   = 'KA01PF2604200643463721Nt5zowB1yk'; // 솔라피 카카오채널 PFID
+var PFID   = 'KA01PF260522042406725lEvbzrwC4mk'; // 솔라피 카카오채널 PFID
 
 // 알림톡 템플릿 ID
-var TPL_ORDER     = 'KA01TP260420064728982mRP1sQswzyJ'; // 주문접수
-var TPL_CONFIRM   = 'KA01TP260420064826771YwlmOoWlKMa'; // 배송확정
-var TPL_DELIVERED = 'KA01TP260420064907492eIPbycJK6Mk'; // 배송완료
-var TPL_CANCEL    = 'KA01TP260420064944290l6Rv4uFM5yE'; // 주문취소
+var TPL_MENU      = 'KA01TP2605220438296770OeNw4OcLkI'; // 메뉴발송
+var TPL_ORDER     = 'KA01TP260522043036061jyoL3rs2iVT'; // 주문접수
+var TPL_CONFIRM   = 'KA01TP260522043220298Ev0vb3LtcjG'; // 배송확정
+var TPL_DELIVERED = 'KA01TP260522043333235AUBreysEIxj'; // 배송완료
+var TPL_CANCEL    = 'KA01TP2605220434459714HrsH0pRr0l'; // 주문취소
 
 // ── POST 진입점 (대용량 데이터) ──────────────────────
 function doPost(e) {
