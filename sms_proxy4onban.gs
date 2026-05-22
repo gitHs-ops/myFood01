@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════
-// sms_proxy4onban.gs  —  오늘의 반찬 SMS + 알림톡 프록시 2026 05 22 v1.1
+// sms_proxy4onban.gs  —  오늘의 반찬 SMS + 알림톡 프록시 2026 05 22 v1.2
 //
 // 【설정 방법】
 //   GAS 프로젝트 속성 → 스크립트 속성 추가:
@@ -16,6 +16,7 @@ var PFID   = 'KA01PF260522042406725lEvbzrwC4mk'; // 솔라피 카카오채널 PF
 // 알림톡 템플릿 ID
 var TPL_MENU      = 'KA01TP2605220438296770OeNw4OcLkI'; // 메뉴발송
 var TPL_ORDER     = 'KA01TP260522043036061jyoL3rs2iVT'; // 주문접수
+var TPL_REORDER   = 'KA01TP260522215451814ICITJ2ltD6g'; // 재주문접수
 var TPL_CONFIRM   = 'KA01TP260522043220298Ev0vb3LtcjG'; // 배송확정
 var TPL_DELIVERED = 'KA01TP260522043333235AUBreysEIxj'; // 배송완료
 var TPL_CANCEL    = 'KA01TP2605220434459714HrsH0pRr0l'; // 주문취소

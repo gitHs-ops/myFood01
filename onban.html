@@ -945,19 +945,41 @@ function saveAddr(addr){
   localStorage.setItem(ADDR_KEY,JSON.stringify(list));
 }
 function showAddrList(){
-  var list=getAddrList();
+  var name=(document.getElementById('ordererName').value||'').trim();
+  var phone=(document.getElementById('ordererPhone').value||'').replace(/[^0-9]/g,'');
   var el=document.getElementById('addrListContent');
-  if(!list.length){
-    el.innerHTML='<div style="text-align:center;color:#aaa;padding:20px 0;">저장된 주소가 없어요.</div>';
-  } else {
-    el.innerHTML=list.map(function(addr){
-      var ae=addr.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-      return '<div class="addr-item" onclick="pickAddr(\''+ae+'\',\'\')">'
-        +'<div style="font-size:14px;color:#1a1a1a;">'+addr+'</div>'
-        +'</div>';
-    }).join('');
-  }
   document.getElementById('addrListOverlay').style.display='flex';
+
+  // 이전 주문에서 이름+전화번호 일치 주소 추출
+  var orders=JSON.parse(localStorage.getItem('orders')||'[]');
+  var seen={};
+  var matched=[];
+  orders.forEach(function(o){
+    if(!o.addr)return;
+    var oPhone=(o.phone||'').replace(/[^0-9]/g,'');
+    var nameOk=!name||o.name===name;
+    var phoneOk=!phone||oPhone===phone;
+    if(nameOk&&phoneOk&&!seen[o.addr]){
+      seen[o.addr]=true;
+      matched.push({name:o.name,phone:o.phone,addr:o.addr,memo:o.memo||''});
+    }
+  });
+
+  if(!matched.length){
+    el.innerHTML='<div style="text-align:center;color:#aaa;padding:20px 0;">'
+      +(name||phone?'일치하는 배송 주소가 없어요.':'저장된 주소가 없어요.')+'</div>';
+    return;
+  }
+  el.innerHTML=matched.map(function(c){
+    var ae=c.addr.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    var me=(c.memo||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return '<div class="addr-item" onclick="pickAddr(\''+ae+'\',\''+me+'\')">'
+      +'<div style="font-size:14px;font-weight:700;color:#1a1a1a;">'+c.name
+      +' <span style="font-size:12px;color:#888;font-weight:400;">'+c.phone+'</span></div>'
+      +'<div style="font-size:13px;color:#444;margin-top:3px;">'+c.addr+'</div>'
+      +(c.memo?'<div style="font-size:12px;color:#b8860b;margin-top:2px;">📝 '+c.memo+'</div>':'')
+      +'</div>';
+  }).join('');
 }
 function pickAddr(addr,memo){
   document.getElementById('ordererAddr').value=addr;
@@ -1267,14 +1289,49 @@ function cancelHistOrder(orderId){
   renderHistory();
 }
 function reorder(order){
-  order.items.forEach(function(item){
-    var existing=cart.find(function(c){return c.name===item.name;});
-    if(existing){existing.qty+=item.qty;}
-    else{cart.push({menuId:Date.now(),name:item.name,price:item.price,qty:item.qty,imgUrl:null,child:false,checked:true});}
-  });
-  updateCartCount();
-  showToast('장바구니에 담았어요!');
-  goPage('cart');
+  if(!confirm('동일한 내용으로 재주문하시겠어요?'))return;
+  var total=order.items.reduce(function(s,i){return s+i.price*i.qty;},0);
+  var newOrder={
+    id:'ORD'+Date.now(),
+    date:toISO(new Date()),
+    time:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),
+    name:order.name,phone:order.phone,addr:order.addr,memo:order.memo,
+    items:order.items.map(function(i){return {name:i.name,qty:i.qty,price:i.price};}),
+    total:total,status:'pending'
+  };
+  var orders=JSON.parse(localStorage.getItem('orders')||'[]');
+  orders.unshift(newOrder);
+  localStorage.setItem('orders',JSON.stringify(orders));
+
+  // GAS 시트 저장
+  fetch(GAS_URL+'?action=save_order&data='+encodeURIComponent(JSON.stringify(newOrder)),{redirect:'follow'}).catch(function(){});
+
+  // 재주문접수 알림톡
+  if(order.phone){
+    var menuList=order.items.map(function(i){return i.name+' '+i.qty+'개';}).join(', ');
+    sendAlimtalk(order.phone,
+      'KA01TP260522215451814ICITJ2ltD6g',
+      {'이름':order.name,'메뉴목록':menuList,'금액':String(total)},
+      '[오늘의 반찬] '+order.name+'님, 재주문이 접수됐습니다! '+menuList+' 합계: '+total.toLocaleString()+'천원'
+    );
+  }
+
+  // 관리자 알림 SMS (고정번호 + 설정 연락처)
+  var adminPhoneFixed='010-2698-9056';
+  var adminMsg='[오늘의 반찬] 재주문! '+order.name+(order.phone?' ('+order.phone+')':'')+' '
+    +order.items.map(function(i){return i.name+' '+i.qty+'개';}).join(', ')
+    +' 합계: '+total.toLocaleString()+'천원'+(order.memo?' 요청:'+order.memo:'');
+  sendSMS(adminPhoneFixed,adminMsg);
+  var adminInfo=JSON.parse(localStorage.getItem('onban_admin')||'{}');
+  var adminPhoneSettings=(adminInfo.phone||'').replace(/[^0-9]/g,'');
+  if(adminPhoneSettings&&adminPhoneSettings!==adminPhoneFixed.replace(/[^0-9]/g,'')){
+    sendSMS(adminPhoneSettings,adminMsg);
+  }
+
+  // 결제 페이지
+  lastOrderTotal=total;
+  cart=[];orderItems=[];updateCartCount();
+  goPage('payment');
 }
 
 window.onload=function(){loadMenus();};
