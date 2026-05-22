@@ -1130,7 +1130,7 @@ function renderHistory(){
   var el=document.getElementById('historyContent');
   el.innerHTML='';
   var all=JSON.parse(localStorage.getItem('orders')||'[]');
-  var orders=all.filter(function(o){return o.date===menuDate;});
+  var orders=all.filter(function(o){return o.date===menuDate&&o.status!=='cancelled'&&o.status!=='delivered';});
   if(!orders.length){
     var label=new Date(menuDate+'T00:00:00').toLocaleDateString('ko-KR',{month:'long',day:'numeric'});
     el.innerHTML='<div class="hist-empty"><span>📋</span><p>'+label+' 주문 내역이 없어요.</p></div>';
