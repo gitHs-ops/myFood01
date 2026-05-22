@@ -1259,6 +1259,9 @@ function cancelHistOrder(orderId){
   if(!o)return;
   o.status='cancelled';
   localStorage.setItem('orders',JSON.stringify(orders));
+  // GAS 시트 상태 업데이트 (관리자 동기화)
+  fetch(GAS_URL+'?action=update_order&id='+encodeURIComponent(orderId)+'&status=cancelled',{redirect:'follow'}).catch(function(){});
+  showToast('주문이 취소됐습니다.');
   renderHistory();
 }
 function reorder(order){
