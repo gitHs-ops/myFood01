@@ -171,6 +171,77 @@ function logAccess(e) {
   return json({ success: true });
 }
 
+// ── 주문 저장 (신규 또는 상태 업데이트) ──
+function saveOrder(e, dataOverride) {
+  var order = dataOverride || JSON.parse(decodeURIComponent((e&&e.parameter&&e.parameter.data)||'{}'));
+  if (!order.id) return json({ success: false, error: '주문 ID 없음' });
+
+  var ss    = SpreadsheetApp.openById(SHEET_ID);
+  var sheet = ss.getSheetByName('주문');
+  if (!sheet) {
+    sheet = ss.insertSheet('주문');
+    var hdr = ['id','date','time','name','phone','addr','memo','items','total','status'];
+    sheet.appendRow(hdr);
+    sheet.getRange(1,1,1,hdr.length).setFontWeight('bold')
+         .setBackground('#086266').setFontColor('#fff').setHorizontalAlignment('center');
+    sheet.setFrozenRows(1);
+  }
+
+  var rows = sheet.getDataRange().getValues();
+  for (var i = 1; i < rows.length; i++) {
+    if (String(rows[i][0]) === String(order.id)) {
+      if (order.status) sheet.getRange(i+1, 10).setValue(order.status);
+      return json({ success: true, action: 'updated' });
+    }
+  }
+  sheet.appendRow([
+    order.id, order.date, order.time||'', order.name||'', order.phone||'',
+    order.addr||'', order.memo||'',
+    JSON.stringify(order.items||[]), order.total||0, order.status||'pending'
+  ]);
+  return json({ success: true, action: 'inserted' });
+}
+
+// ── 주문 목록 조회 ──
+function getOrders(e) {
+  var date  = (e&&e.parameter&&e.parameter.date) || '';
+  var ss    = SpreadsheetApp.openById(SHEET_ID);
+  var sheet = ss.getSheetByName('주문');
+  if (!sheet) return json({ success: true, orders: [] });
+  var rows  = sheet.getDataRange().getValues();
+  if (rows.length < 2) return json({ success: true, orders: [] });
+  var orders = [];
+  for (var i = 1; i < rows.length; i++) {
+    var r = rows[i];
+    if (!r[0]) continue;
+    if (date && String(r[1]) !== date) continue;
+    var items = [];
+    try { items = JSON.parse(r[7]); } catch(ex) {}
+    orders.push({ id:String(r[0]), date:String(r[1]), time:String(r[2]),
+      name:String(r[3]), phone:String(r[4]), addr:String(r[5]), memo:String(r[6]),
+      items:items, total:Number(r[8]), status:String(r[9]) });
+  }
+  return json({ success: true, orders: orders });
+}
+
+// ── 주문 상태 변경 ──
+function updateOrderStatus(e) {
+  var id     = (e&&e.parameter&&e.parameter.id)     || '';
+  var status = (e&&e.parameter&&e.parameter.status) || '';
+  if (!id || !status) return json({ success: false, error: '파라미터 없음' });
+  var ss    = SpreadsheetApp.openById(SHEET_ID);
+  var sheet = ss.getSheetByName('주문');
+  if (!sheet) return json({ success: false, error: '시트 없음' });
+  var rows  = sheet.getDataRange().getValues();
+  for (var i = 1; i < rows.length; i++) {
+    if (String(rows[i][0]) === String(id)) {
+      sheet.getRange(i+1, 10).setValue(status);
+      return json({ success: true });
+    }
+  }
+  return json({ success: false, error: '주문 없음' });
+}
+
 function json(obj) {
   return ContentService
     .createTextOutput(JSON.stringify(obj))
