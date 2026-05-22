@@ -1621,8 +1621,6 @@ function confirmOrder(id){
   if(!o)return;
   o.status='confirmed';
   saveOrders(orders);
-  showKakaoBox(id);
-  copyConfirmMsg(id);
   // 재고 차감
   var dayMenus=JSON.parse(localStorage.getItem('menus_'+o.date)||'[]');
   if(dayMenus.length){
@@ -1655,6 +1653,7 @@ function confirmOrder(id){
     sendSMS(admin.deliveryPhone, delivMsg);
   }
   renderOrders();
+  copyConfirmMsg(id);
 }
 
 function showKakaoBox(id){
@@ -1703,9 +1702,11 @@ function copyConfirmMsg(id){
   var o=orders.find(function(o){return o.id===id;});
   if(!o)return;
   var msg=makeConfirmMsg(o);
-  navigator.clipboard.writeText(msg).then(function(){
-    showToast(o.name+'님 확정 문구 복사됐어요! 카카오에 붙여넣기 하세요.');
-  });
+  try{
+    navigator.clipboard.writeText(msg).then(function(){
+      showToast(o.name+'님 확정 문구 복사됐어요! 카카오에 붙여넣기 하세요.');
+    }).catch(function(){});
+  }catch(e){}
 }
 
 function showToast(msg){
