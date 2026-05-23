@@ -1008,7 +1008,7 @@ function renderKakao(){
     menus.filter(function(m){return m.cat===cat;}).forEach(function(m){lines.push(m.name+(m.child?'(어린이가능)':'')+' '+(m.price||0));});
     lines.push('');
   });
-  lines.push('메뉴 전체보기');lines.push('https://giths-ops.github.io/onban');
+  lines.push('메뉴 주문 하시려면 아래 클릭 !');lines.push('https://giths-ops.github.io/myFood01');
   el.textContent=lines.join('\n').trim();
 }
 function toggleKakaoEdit(){
@@ -1544,7 +1544,7 @@ function renderOrdersList(today,todayOrders){
     header.className='order-header';
     header.innerHTML='<div><div class="order-name">👤 '+order.name+(order.phone?' · '+order.phone:'')+'</div>'+
       '<div class="order-time">'+order.time+'</div></div>'+
-      '<span class="order-status '+statusClass[order.status]+'">'+statusText[order.status]+'</span>';
+      '<span style="font-size:11px;color:#888;margin-right:4px;">처리상태</span><span class="order-status '+statusClass[order.status]+'">'+statusText[order.status]+'</span>';
     card.appendChild(header);
 
     var items=document.createElement('div');
@@ -1623,7 +1623,7 @@ function renderOrdersList(today,todayOrders){
 function setOrderFilter(f){orderFilter=f;renderOrders();}
 
 function makeConfirmMsg(order){
-  var lines=['[오늘의 반찬] '+order.name+'님, 배송이 확정됐습니다! 🚚',''];
+  var lines=['[오늘의 반찬] '+order.name+'님, 배송업체에 요청했습니다! 🚚',''];
   order.items.forEach(function(i){lines.push('  '+i.name+' '+i.qty+'개');});
   lines.push('');
   lines.push('합계: '+order.total.toLocaleString()+'천원');
@@ -1672,7 +1672,7 @@ function confirmOrder(id){
     sendAlimtalk(o.phone,
       'KA01TP260522043220298Ev0vb3LtcjG',
       {'이름':o.name,'메뉴목록':menuList,'금액':o.total.toLocaleString()},
-      '[오늘의 반찬] '+o.name+'님, 배송이 확정됐습니다! '+menuList+' 합계: '+o.total.toLocaleString()+'천원'
+      '[오늘의 반찬] '+o.name+'님, 배송업체에 요청했습니다! '+menuList+' 합계: '+o.total.toLocaleString()+'천원'
     );
   }
   // 배송업체에 배송 정보 문자
