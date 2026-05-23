@@ -224,6 +224,23 @@ function getOrders(e) {
   return json({ success: true, orders: orders });
 }
 
+// ── 주문 삭제 ──
+function deleteOrder(e) {
+  var id = (e&&e.parameter&&e.parameter.id) || '';
+  if (!id) return json({ success: false, error: 'ID 없음' });
+  var ss    = SpreadsheetApp.openById(SHEET_ID);
+  var sheet = ss.getSheetByName('주문');
+  if (!sheet) return json({ success: false, error: '시트 없음' });
+  var rows = sheet.getDataRange().getValues();
+  for (var i = 1; i < rows.length; i++) {
+    if (String(rows[i][0]) === String(id)) {
+      sheet.deleteRow(i + 1);
+      return json({ success: true });
+    }
+  }
+  return json({ success: false, error: '주문 없음' });
+}
+
 // ── 주문 상태 변경 ──
 function updateOrderStatus(e) {
   var id     = (e&&e.parameter&&e.parameter.id)     || '';

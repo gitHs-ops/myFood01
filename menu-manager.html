@@ -1603,6 +1603,19 @@ function renderOrdersList(today,todayOrders){
       card.appendChild(actionsC);
     }
 
+    if(order.status==='cancelled'){
+      var actionsD=document.createElement('div');
+      actionsD.className='order-actions';
+
+      var btnDel=document.createElement('button');
+      btnDel.className='btn-cancel-order';
+      btnDel.textContent='🗑 삭제';
+      btnDel.onclick=function(){deleteOrder(order.id);};
+
+      actionsD.appendChild(btnDel);
+      card.appendChild(actionsD);
+    }
+
     el.appendChild(card);
   });
 }
@@ -1717,6 +1730,14 @@ function cancelOrder(id){
       fallback
     );
   }
+  renderOrders();
+}
+
+function deleteOrder(id){
+  if(!confirm('이 주문을 삭제할까요?'))return;
+  var orders=getOrders();
+  saveOrders(orders.filter(function(o){return o.id!==id;}));
+  fetch(ONBAN_SHEET_URL+'?action=delete_order&id='+encodeURIComponent(id),{redirect:'follow'}).catch(function(){});
   renderOrders();
 }
 
