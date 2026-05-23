@@ -1485,8 +1485,19 @@ function renderOrders(){
   var GAS=ONBAN_SHEET_URL;
   fetch(GAS+'?action=get_orders&date='+encodeURIComponent(today),{redirect:'follow'})
     .then(function(r){return r.json();})
-    .then(function(d){renderOrdersList(today,d.orders||[]);})
+    .then(function(d){
+      var gasOrders=d.orders||[];
+      // localStorage 주문과 병합 (GAS 미등록 주문 포함)
+      var localAll=getOrders();
+      var localToday=localAll.filter(function(o){return o.date===today;});
+      var gasIds=gasOrders.map(function(o){return o.id;});
+      localToday.forEach(function(o){
+        if(gasIds.indexOf(o.id)<0)gasOrders.push(o);
+      });
+      renderOrdersList(today,gasOrders);
+    })
     .catch(function(){
+      // 네트워크 오류 시 localStorage만 사용
       var all=getOrders();
       renderOrdersList(today,all.filter(function(o){return o.date===today;}));
     });
