@@ -43,7 +43,7 @@ body{padding-top:56px;}
 /* ── 표지 ── */
 .cover{
   background:linear-gradient(145deg,var(--teal) 0%,var(--teal2) 60%,#0d9b9f 100%);
-  padding:56px 24px 48px;text-align:center;position:relative;overflow:hidden;
+  padding:22px 24px 18px;text-align:center;position:relative;overflow:hidden;
 }
 .cover::before{
   content:'';position:absolute;top:-80px;right:-80px;
@@ -55,16 +55,20 @@ body{padding-top:56px;}
   width:320px;height:320px;border-radius:50%;
   background:rgba(255,255,255,.04);pointer-events:none;
 }
-.cover-emoji{font-size:64px;margin-bottom:16px;filter:drop-shadow(0 4px 12px rgba(0,0,0,.2));}
-.cover-title{font-size:34px;font-weight:900;color:#fff;margin-bottom:10px;letter-spacing:-.5px;}
-.cover-desc{font-size:15px;color:rgba(255,255,255,.75);font-weight:500;}
+.cover-emoji{font-size:40px;margin-bottom:8px;filter:drop-shadow(0 4px 12px rgba(0,0,0,.2));}
+.cover-title{font-size:26px;font-weight:900;color:#fff;margin-bottom:6px;letter-spacing:-.5px;}
+.cover-desc{font-size:13px;color:rgba(255,255,255,.75);font-weight:500;}
 
 /* ── 메뉴 카드 섹션 ── */
-.cards-section{padding:40px 20px 60px;max-width:900px;margin:0 auto;}
+.cards-section{
+  padding:20px 20px 28px;
+  background:linear-gradient(145deg,#086266 0%,#0a7a7f 60%,#0d9b9f 100%);
+}
 .cards-grid{
   display:grid;
   grid-template-columns:repeat(3,1fr);
   gap:18px;
+  max-width:900px;margin:0 auto;
 }
 @media(max-width:700px){
   .cards-grid{grid-template-columns:1fr;}
@@ -80,8 +84,8 @@ body{padding-top:56px;}
 
 /* 카드 이미지 영역 */
 .card-img{
-  height:160px;display:flex;align-items:center;justify-content:center;
-  font-size:72px;position:relative;overflow:hidden;
+  height:120px;display:flex;align-items:center;justify-content:center;
+  font-size:56px;position:relative;overflow:hidden;
 }
 .card-img::after{
   content:'';position:absolute;inset:0;
@@ -91,7 +95,7 @@ body{padding-top:56px;}
 .card-img-customer{background:linear-gradient(135deg,#b85c00 0%,#E9A826 100%);}
 .card-img-orders{background:linear-gradient(135deg,#0e6e4e 0%,#1D9E75 100%);}
 
-.card-body{padding:20px 18px 22px;}
+.card-body{padding:14px 16px 16px;}
 .card-label{
   display:inline-flex;align-items:center;gap:6px;
   font-size:11px;font-weight:700;letter-spacing:.08em;

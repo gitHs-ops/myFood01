@@ -73,7 +73,7 @@ MENU_RE = re.compile(r'^(.+?)\s+([\d.]+)\s*$')
 
 sections   = []
 cur_date, cur_menus, in_menus = None, [], False
-cur_year   = 2026   # 파일 시작(최신) 연도
+cur_year   = 2026   # 파일 시작(최신) 연도 — 역순이므로 2026→2025→2024 자동 감소
 prev_month = None   # 직전 파싱 월
 
 for line in lines:
@@ -123,15 +123,18 @@ if cur_date and cur_menus:
     sections.append((cur_date, list(cur_menus)))
 
 
-# ── 2025-05 ~ 2026-05 필터 + 집계 ────────────────────────────
+# ── 2024-02 ~ 2026-05 필터 + 집계 ────────────────────────────
 def in_range(d):
     y, m = d[0], d[1]
-    return (y == 2025 and m >= 5) or (y == 2026 and m <= 5)
+    if y == 2024: return m >= 2
+    if y == 2025: return True
+    if y == 2026: return m <= 5
+    return False
 
 target_sections = [(d, ms) for d, ms in sections if in_range(d)]
 
 print("=" * 60)
-print(f"2025-05 ~ 2026-05  날짜 수: {len(target_sections)}일")
+print(f"2024-02 ~ 2026-05  날짜 수: {len(target_sections)}일")
 
 # 연·월별 요약
 ym_cnt = Counter((d[0], d[1]) for d, _ in target_sections)
