@@ -85,6 +85,12 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
 .hist-btn-preview:hover{background:#cce8e7;}
 .hist-btn-select{background:#086266;color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
 .hist-btn-select:hover{background:#0a7a7f;}
+/* 등록된모든메뉴 초성 네비게이션 */
+.all-nav-bar{display:flex;flex-wrap:wrap;gap:4px;padding:8px 4px 10px;background:#fff;position:sticky;top:0;z-index:10;border-bottom:2px solid #e8f5f4;margin-bottom:10px;}
+.all-nav-btn{min-width:30px;height:30px;border-radius:7px;border:1.5px solid #cde8e7;background:#f8fffe;color:#086266;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;padding:0 5px;transition:background .12s,color .12s;}
+.all-nav-btn:hover,.all-nav-btn.on{background:#086266;color:#fff;border-color:#086266;}
+.all-sec-hdr{font-size:12px;font-weight:700;color:#086266;background:#e8f5f4;border-radius:6px;padding:4px 12px;margin:10px 0 4px;display:flex;align-items:center;gap:6px;scroll-margin-top:52px;}
+.all-sec-count{font-size:11px;color:#888;font-weight:400;}
 /* 미리보기 팝업 */
 .preview-menu-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #f5f5f5;font-size:13px;}
 .preview-cat-label{font-size:11px;font-weight:700;margin-bottom:5px;display:flex;align-items:center;gap:4px;}
@@ -1237,6 +1243,19 @@ function importAllMenusFromSheet(cb){
     if(cb)cb();
   });
 }
+// ── 초성 추출 ──────────────────────────────────────────────────
+var CHOSUNG=['ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅅ','ㅆ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+function getChosung(str){
+  if(!str)return '#';
+  var c=str.charCodeAt(0);
+  if(c>=0xAC00&&c<=0xD7A3)return CHOSUNG[Math.floor((c-0xAC00)/588)];
+  if(c>=48&&c<=57)return '#';
+  return str[0].toUpperCase();
+}
+function scrollToAllSec(ch){
+  var el=document.getElementById('allsec_'+ch);
+  if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
+}
 function renderAllFilterTabs(){
   var cats=['전체','메인','반찬','김치','기타'];
   var el=document.getElementById('allFilterTabs');
@@ -1255,7 +1274,25 @@ function renderAllMenus(){
     return (a.name||'').localeCompare(b.name||'','ko',{numeric:true});
   });
   if(!filtered.length){el.innerHTML='<div class="empty">등록된 메뉴가 없어요.</div>';return;}
-  el.innerHTML=filtered.map(function(m){
+
+  // ── 초성 그룹핑 ──────────────────────────────────────────────
+  var groups={},groupOrder=[];
+  filtered.forEach(function(m){
+    var ch=getChosung(m.name||'');
+    if(!groups[ch]){groups[ch]=[];groupOrder.push(ch);}
+    groups[ch].push(m);
+  });
+
+  // ── 네비게이션 바 ─────────────────────────────────────────────
+  var navHtml='<div class="all-nav-bar">'+
+    '<span style="font-size:11px;color:#aaa;align-self:center;margin-right:2px;">'+filtered.length+'개</span>'+
+    groupOrder.map(function(ch){
+      return '<button class="all-nav-btn" onclick="scrollToAllSec(\''+ch+'\')">'+ch+'</button>';
+    }).join('')+
+  '</div>';
+
+  // ── 섹션별 아이템 ─────────────────────────────────────────────
+  function itemHtml(m){
     var imgEl=m.imgUrl?'<img class="menu-thumb" src="'+m.imgUrl+'" alt="'+m.name+'" onclick="openImgPopup('+m.id+',\'all\')" onerror="this.style.display=\'none\'">':'<button class="img-btn" title="이미지 등록" onclick="openImgPopup('+m.id+',\'all\')">&#128247;</button>';
     var chEl=m.child?' <span style="font-size:13px;">&#128103;</span>':'';
     var cnt='<span style="font-size:11px;color:#aaa;margin-left:4px;">'+(m.count||0)+'회</span>';
@@ -1268,7 +1305,16 @@ function renderAllMenus(){
       '<div class="qty-ctrl"><button class="qty-btn" onclick="changeAllStock('+m.id+',-1)">-</button><span class="qty">'+(m.stock||0)+'</span><button class="qty-btn" onclick="changeAllStock('+m.id+',1)">+</button></div>'+
       '<button class="del-btn" onclick="deleteAllMenu('+m.id+')">&#10005;</button>'+
     '</div>';
-  }).join('')+
+  }
+
+  var sectionsHtml=groupOrder.map(function(ch){
+    return '<div id="allsec_'+ch+'" class="all-menu-section">'+
+      '<div class="all-sec-hdr">'+ch+' <span class="all-sec-count">('+groups[ch].length+')</span></div>'+
+      '<div class="menu-list">'+groups[ch].map(itemHtml).join('')+'</div>'+
+    '</div>';
+  }).join('');
+
+  el.innerHTML=navHtml+sectionsHtml+
   '<div style="margin-top:16px;display:flex;gap:8px;">'+
   '<button id="sendToTodayBtn" class="btn btn-add" style="flex:1;background:#1D9E75;font-size:13px;padding:11px 6px;display:flex;align-items:center;justify-content:center;gap:5px;opacity:.35;cursor:not-allowed;" disabled onclick="openSendToTodayPopup()"><span style="font-size:16px;">📤</span>일일 메뉴로 보내기</button>'+
   '<button id="exportAllMenusBtn" class="btn btn-add" style="flex:1;font-size:13px;padding:11px 6px;display:flex;align-items:center;justify-content:center;gap:5px;" onclick="exportAllMenusToSheet()"><span style="font-size:16px;">🗄</span>메뉴 창고로 저장</button>'+
