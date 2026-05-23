@@ -2225,9 +2225,13 @@ function importFromSheet(mode){
 window.onload=function(){
   // 접속 로그
   (function(){
-    var ua=encodeURIComponent((navigator.userAgent||'').slice(0,200));
     var ref=encodeURIComponent((document.referrer||'').slice(0,200));
-    fetch(ONBAN_SHEET_URL+'?action=log_access&page=manager&ua='+ua+'&ref='+ref,{redirect:'follow'}).catch(function(){});
+    fetch('https://api.ipify.org?format=json').then(function(r){return r.json();}).then(function(d){
+      var ip=encodeURIComponent(d.ip||'');
+      fetch(ONBAN_SHEET_URL+'?action=log_access&page=manager&ip='+ip+'&ref='+ref,{redirect:'follow'}).catch(function(){});
+    }).catch(function(){
+      fetch(ONBAN_SHEET_URL+'?action=log_access&page=manager&ip=unknown&ref='+ref,{redirect:'follow'}).catch(function(){});
+    });
   })();
   var _goto=localStorage.getItem('mm_goto');if(_goto){localStorage.removeItem('mm_goto');setTimeout(function(){switchPage(_goto);},400);}
   workDate=toISO(new Date());loadMenus(workDate);

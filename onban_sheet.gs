@@ -155,7 +155,7 @@ function logAccess(e) {
   var sheet = ss.getSheetByName('접속로그');
   if (!sheet) {
     sheet = ss.insertSheet('접속로그');
-    sheet.appendRow(['일시', 'User-Agent', 'Referrer', '페이지']);
+    sheet.appendRow(['일시', '접속IP', 'Referrer', '페이지']);
     sheet.getRange(1, 1, 1, 4)
          .setFontWeight('bold').setBackground('#086266')
          .setFontColor('#ffffff').setHorizontalAlignment('center');
@@ -165,10 +165,10 @@ function logAccess(e) {
     sheet.setColumnWidth(3, 200);
     sheet.setColumnWidth(4, 80);
   }
-  var ua   = (e && e.parameter && e.parameter.ua)   || '';
+  var ip   = (e && e.parameter && e.parameter.ip)   || '';
   var ref  = (e && e.parameter && e.parameter.ref)  || '';
   var page = (e && e.parameter && e.parameter.page) || 'index';
-  sheet.appendRow([new Date(), ua, ref, page]);
+  sheet.appendRow([new Date(), ip, ref, page]);
   return json({ success: true });
 }
 
