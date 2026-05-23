@@ -209,9 +209,9 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
   margin-top:6px;
 }
 .order-empty{text-align:center;padding:40px 20px;color:#aaa;font-size:14px;}
-.order-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;}
-.order-stat{background:#f0faf9;border-radius:10px;padding:12px 8px;text-align:center;}
-.order-stat-num{font-size:20px;font-weight:900;color:#086266;}
+.order-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:16px;}
+.order-stat{background:#f0faf9;border-radius:10px;padding:10px 4px;text-align:center;}
+.order-stat-num{font-size:17px;font-weight:900;color:#086266;}
 .order-stat-lbl{font-size:11px;color:#666;margin-top:2px;}
 .kakao-preview-box{
   background:#FEE500;border-radius:12px;padding:14px;margin-top:8px;
@@ -462,6 +462,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
   <div class="card">
     <div class="tabs" id="histSubTabs" style="margin-bottom:12px;"></div>
     <div id="historyList"></div>
+    <div id="allCatLegend" class="legend" style="display:none;margin-bottom:4px;"></div>
     <div id="allFilterTabs" class="tabs" style="display:none;margin-bottom:8px;"></div>
     <div id="allMenuList" style="display:none;"></div>
   </div>
@@ -1074,14 +1075,22 @@ function switchHistSubTab(tab){
   _histSubTab=tab;
   renderHistSubTabs();
   var ft=document.getElementById('allFilterTabs');
+  var lg=document.getElementById('allCatLegend');
   if(tab==='dates'){
     document.getElementById('historyList').style.display='';
     document.getElementById('allMenuList').style.display='none';
     if(ft)ft.style.display='none';
+    if(lg)lg.style.display='none';
     renderHistory();
   }else{
     document.getElementById('historyList').style.display='none';
     if(ft)ft.style.display='';
+    if(lg){
+      lg.style.display='';
+      lg.innerHTML=Object.entries(CAT_COLOR).map(function(e){
+        return '<div class="legend-item"><div class="legend-dot" style="background:'+e[1]+'"></div>'+e[0]+'</div>';
+      }).join('');
+    }
     var el=document.getElementById('allMenuList');
     el.style.display='';
     loadAllMenus();  // localStorage만 사용 (GAS 호출 없음)
@@ -1544,7 +1553,7 @@ function renderOrdersList(today,todayOrders){
     header.className='order-header';
     header.innerHTML='<div><div class="order-name">👤 '+order.name+(order.phone?' · '+order.phone:'')+'</div>'+
       '<div class="order-time">'+order.time+'</div></div>'+
-      '<span style="font-size:11px;color:#888;margin-right:4px;">처리상태</span><span class="order-status '+statusClass[order.status]+'">'+statusText[order.status]+'</span>';
+      '<div style="display:flex;align-items:center;gap:4px;"><span style="font-size:11px;color:#888;">처리상태</span><span class="order-status '+statusClass[order.status]+'">'+statusText[order.status]+'</span></div>';
     card.appendChild(header);
 
     var items=document.createElement('div');
