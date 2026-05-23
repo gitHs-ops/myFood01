@@ -94,6 +94,15 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
 .history-preview{font-size:12px;color:#555;margin-top:6px;line-height:1.8;}
 .tag-pill{display:inline-block;background:#e8f5f4;color:#086266;border-radius:999px;padding:1px 8px;font-size:11px;margin:2px 3px 2px 0;}
 .empty{text-align:center;color:#aaa;font-size:13px;padding:20px;}
+/* 등록된모든메뉴 페이징 */
+.all-page-ctrl{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 0 4px;}
+.all-page-btn{min-width:64px;height:34px;border-radius:8px;border:1.5px solid #cde8e7;background:#f8fffe;color:#086266;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .12s;}
+.all-page-btn:hover:not(:disabled){background:#e0f7f6;}
+.all-page-btn:disabled{opacity:.35;cursor:not-allowed;}
+.all-page-info{font-size:13px;color:#555;min-width:84px;text-align:center;}
+.all-page-jump{display:flex;align-items:center;gap:4px;font-size:12px;color:#888;}
+.all-page-jump input{width:42px;padding:4px 6px;border:1.5px solid #cde8e7;border-radius:7px;font-size:13px;text-align:center;font-family:inherit;outline:none;}
+.all-page-jump input:focus{border-color:#086266;}
 .date-picker-wrap{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:20px;flex-wrap:wrap;}
 .date-nav-btn{width:32px;height:32px;border-radius:50%;border:none;background:rgba(255,255,255,.25);color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
 .date-nav-btn:hover{background:rgba(255,255,255,.45);}
@@ -535,6 +544,7 @@ var VALID_CATS=['메인','반찬','김치','밀키트','기타'];
 var menus=[],filterCat='전체',filterAllCat='전체',workDate='',calViewYear,calViewMonth,imgTargetId=null,parsedMenus=[],pendingImgUrl=null,menuEditTargetId=null,editPendingImgUrl=null;
 var imgCtx='menus',editCtx='menus';
 var allMenus=[];
+var _allMenuPage=0, ALL_PAGE_SIZE=10;
 var selectedAllIds=new Set();
 function _arr(ctx){return ctx==='all'?allMenus:menus;}
 function _save(ctx){if(ctx==='all')saveAllMenus();else save();}
@@ -1245,34 +1255,71 @@ function renderAllFilterTabs(){
     return '<button class="tab'+(filterAllCat===c?' active':'')+'" onclick="setAllFilter(\''+c+'\')">'+c+'</button>';
   }).join('');
 }
-function setAllFilter(cat){filterAllCat=cat;renderAllFilterTabs();renderAllMenus();}
+function setAllFilter(cat){filterAllCat=cat;_allMenuPage=0;renderAllFilterTabs();renderAllMenus();}
 function renderAllMenus(){
   loadAllMenus();
   renderAllFilterTabs();
   var el=document.getElementById('allMenuList');
   var filtered=(filterAllCat==='전체'?allMenus:allMenus.filter(function(m){return m.cat===filterAllCat;})).slice();
-  filtered.sort(function(a,b){
-    return (a.name||'').localeCompare(b.name||'','ko',{numeric:true});
-  });
+  filtered.sort(function(a,b){return (a.name||'').localeCompare(b.name||'','ko',{numeric:true});});
   if(!filtered.length){el.innerHTML='<div class="empty">등록된 메뉴가 없어요.</div>';return;}
-  el.innerHTML=filtered.map(function(m){
-    var imgEl=m.imgUrl?'<img class="menu-thumb" src="'+m.imgUrl+'" alt="'+m.name+'" onclick="openImgPopup('+m.id+',\'all\')" onerror="this.style.display=\'none\'">':'<button class="img-btn" title="이미지 등록" onclick="openImgPopup('+m.id+',\'all\')">&#128247;</button>';
-    var chEl=m.child?' <span style="font-size:13px;">&#128103;</span>':'';
-    var cnt='<span style="font-size:11px;color:#aaa;margin-left:4px;">'+(m.count||0)+'회</span>';
-    var chk=selectedAllIds.has(m.id)?' checked':'';
-    return '<div class="menu-item">'+
-      '<input type="checkbox" class="menu-cb" id="cb_'+m.id+'" value="'+m.id+'"'+chk+' onchange="toggleAllSel(this)">'+
-      '<div class="cat-dot" style="background:'+(CAT_COLOR[m.cat]||'#888')+'"></div>'+imgEl+
-      '<div class="name"><span class="name-edit" onclick="openMenuEditPopup('+m.id+',\'all\')">'+m.name+chEl+' <span class="edit-pen">✏️</span></span>'+cnt+'</div>'+
-      '<div class="price-wrap"><span class="price-display" id="apd_'+m.id+'" onclick="startEditAllPrice('+m.id+')">'+(m.price||0).toLocaleString()+'천원</span><input class="price-input" id="api_'+m.id+'" type="number" min="1" value="'+(m.price||0)+'" onblur="commitAllPrice('+m.id+')" onkeydown="if(event.key===\'Enter\')commitAllPrice('+m.id+');if(event.key===\'Escape\')cancelAllPrice('+m.id+');"></div>'+
-      '<div class="qty-ctrl"><button class="qty-btn" onclick="changeAllStock('+m.id+',-1)">-</button><span class="qty">'+(m.stock||0)+'</span><button class="qty-btn" onclick="changeAllStock('+m.id+',1)">+</button></div>'+
-      '<button class="del-btn" onclick="deleteAllMenu('+m.id+')">&#10005;</button>'+
+
+  var total=filtered.length;
+  var totalPages=Math.ceil(total/ALL_PAGE_SIZE);
+  if(_allMenuPage>=totalPages)_allMenuPage=totalPages-1;
+  if(_allMenuPage<0)_allMenuPage=0;
+
+  var pageItems=filtered.slice(_allMenuPage*ALL_PAGE_SIZE, (_allMenuPage+1)*ALL_PAGE_SIZE);
+  var startNo=_allMenuPage*ALL_PAGE_SIZE+1;
+
+  function pageCtrlHtml(){
+    var pg=_allMenuPage, tp=totalPages;
+    return '<div class="all-page-ctrl">'+
+      '<button class="all-page-btn" onclick="gotoAllPage(0)" '+(pg===0?'disabled':'')+'>◀◀</button>'+
+      '<button class="all-page-btn" onclick="gotoAllPage('+pg+'-1)" '+(pg===0?'disabled':'')+'>◀ 이전</button>'+
+      '<span class="all-page-info">'+(pg+1)+' / '+tp+'<span style="font-size:11px;color:#aaa;"> ('+total+'개)</span></span>'+
+      '<button class="all-page-btn" onclick="gotoAllPage('+pg+'+1)" '+(pg>=tp-1?'disabled':'')+'>다음 ▶</button>'+
+      '<button class="all-page-btn" onclick="gotoAllPage('+(tp-1)+')" '+(pg>=tp-1?'disabled':'')+'>▶▶</button>'+
+    '</div>'+
+    '<div class="all-page-jump">페이지 이동 <input type="number" min="1" max="'+tp+'" value="'+(pg+1)+'" id="allPageJumpInput" onkeydown="if(event.key===\'Enter\')jumpAllPage()"> / '+tp+'</div>';
+  }
+
+  el.innerHTML=
+    pageCtrlHtml()+
+    '<div class="menu-list" style="margin-top:8px;">'+
+    pageItems.map(function(m,i){
+      var imgEl=m.imgUrl?'<img class="menu-thumb" src="'+m.imgUrl+'" alt="'+m.name+'" onclick="openImgPopup('+m.id+',\'all\')" onerror="this.style.display=\'none\'">':'<button class="img-btn" title="이미지 등록" onclick="openImgPopup('+m.id+',\'all\')">&#128247;</button>';
+      var chEl=m.child?' <span style="font-size:13px;">&#128103;</span>':'';
+      var cnt='<span style="font-size:11px;color:#aaa;margin-left:4px;">'+(m.count||0)+'회</span>';
+      var chk=selectedAllIds.has(m.id)?' checked':'';
+      var num='<span style="font-size:11px;color:#bbb;min-width:22px;text-align:right;flex-shrink:0;">'+(startNo+i)+'</span>';
+      return '<div class="menu-item">'+num+
+        '<input type="checkbox" class="menu-cb" id="cb_'+m.id+'" value="'+m.id+'"'+chk+' onchange="toggleAllSel(this)">'+
+        '<div class="cat-dot" style="background:'+(CAT_COLOR[m.cat]||'#888')+'"></div>'+imgEl+
+        '<div class="name"><span class="name-edit" onclick="openMenuEditPopup('+m.id+',\'all\')">'+m.name+chEl+' <span class="edit-pen">✏️</span></span>'+cnt+'</div>'+
+        '<div class="price-wrap"><span class="price-display" id="apd_'+m.id+'" onclick="startEditAllPrice('+m.id+')">'+(m.price||0).toLocaleString()+'천원</span><input class="price-input" id="api_'+m.id+'" type="number" min="1" value="'+(m.price||0)+'" onblur="commitAllPrice('+m.id+')" onkeydown="if(event.key===\'Enter\')commitAllPrice('+m.id+');if(event.key===\'Escape\')cancelAllPrice('+m.id+');"></div>'+
+        '<div class="qty-ctrl"><button class="qty-btn" onclick="changeAllStock('+m.id+',-1)">-</button><span class="qty">'+(m.stock||0)+'</span><button class="qty-btn" onclick="changeAllStock('+m.id+',1)">+</button></div>'+
+        '<button class="del-btn" onclick="deleteAllMenu('+m.id+')">&#10005;</button>'+
+      '</div>';
+    }).join('')+
+    '</div>'+
+    pageCtrlHtml()+
+    '<div style="margin-top:12px;display:flex;gap:8px;">'+
+    '<button id="sendToTodayBtn" class="btn btn-add" style="flex:1;background:#1D9E75;font-size:13px;padding:11px 6px;display:flex;align-items:center;justify-content:center;gap:5px;opacity:.35;cursor:not-allowed;" disabled onclick="openSendToTodayPopup()"><span style="font-size:16px;">📤</span>일일 메뉴로 보내기</button>'+
+    '<button id="exportAllMenusBtn" class="btn btn-add" style="flex:1;font-size:13px;padding:11px 6px;display:flex;align-items:center;justify-content:center;gap:5px;" onclick="exportAllMenusToSheet()"><span style="font-size:16px;">🗄</span>메뉴 창고로 저장</button>'+
     '</div>';
-  }).join('')+
-  '<div style="margin-top:16px;display:flex;gap:8px;">'+
-  '<button id="sendToTodayBtn" class="btn btn-add" style="flex:1;background:#1D9E75;font-size:13px;padding:11px 6px;display:flex;align-items:center;justify-content:center;gap:5px;opacity:.35;cursor:not-allowed;" disabled onclick="openSendToTodayPopup()"><span style="font-size:16px;">📤</span>일일 메뉴로 보내기</button>'+
-  '<button id="exportAllMenusBtn" class="btn btn-add" style="flex:1;font-size:13px;padding:11px 6px;display:flex;align-items:center;justify-content:center;gap:5px;" onclick="exportAllMenusToSheet()"><span style="font-size:16px;">🗄</span>메뉴 창고로 저장</button>'+
-  '</div>';
+}
+function gotoAllPage(p){
+  var total=(_allMenuPage===0&&p<0)?0:p; // 연산 결과 그대로 사용
+  _allMenuPage=Number(p);
+  renderAllMenus();
+  document.getElementById('allMenuList').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function jumpAllPage(){
+  var inp=document.getElementById('allPageJumpInput');
+  if(!inp)return;
+  var p=parseInt(inp.value)||1;
+  gotoAllPage(p-1);
 }
 function toggleAllSel(cb){
   var id=Number(cb.value);
