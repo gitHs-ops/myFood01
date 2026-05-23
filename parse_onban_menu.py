@@ -3,7 +3,7 @@
 """
 parse_onban_menu.py
 온반 카카오채널 텍스트 → 메뉴 창고(등록된모든메뉴) 구글 시트 업로드
-2026년 1~5월 데이터 처리
+2025년 5월 ~ 2026년 5월 데이터 처리
 
 실행 전: pip install requests
 """
@@ -32,13 +32,10 @@ FILE    = r"C:\Users\user\Documents\522 금요일 메뉴입니다.txt"
 # ── 카테고리 분류 ──────────────────────────────────────────────
 def categorize(name):
     n = name
-    # 밀키트
     if '밀키트' in n or n.endswith('키트'):
         return '밀키트'
-    # 김치
     if any(k in n for k in ['김치', '겉절이', '소박이', '깍두기']):
         return '김치'
-    # 메인으로 분류할 볶음류 예외
     main_exc = [
         '제육볶음', '낙지볶음', '오징어볶음', '쭈꾸미볶음',
         '마파두부', '잡채', '고추잡채', '닭볶음탕', '콩나물잡채',
@@ -46,7 +43,6 @@ def categorize(name):
     ]
     if any(k in n for k in main_exc):
         return '메인'
-    # 반찬
     반찬_kw = [
         '무침', '조림', '나물', '멸치볶음', '미역줄기볶음', '미역줄기',
         '장아찌', '젓갈', '실채', '건가자미', '아구포', '쥐포', '진미채',
@@ -64,18 +60,21 @@ def categorize(name):
 
 
 # ── 파일 파싱 ──────────────────────────────────────────────────
+# 파일은 역순(최신→과거). 연도는 월이 증가할 때(12→1 역방향 = 1→12 감지) 감소
 with open(FILE, encoding='utf-8') as f:
     lines = [l.rstrip('\n') for l in f]
 
 STOP_WORDS = {
     '좋아요수', '댓글수', '공유수', '온반', '댓글 0개',
     '최신순', '등록순', '글 통계', '더보기 메뉴'
-}  # 빈 줄('')은 포함하지 않음 — 메뉴 항목 사이 빈줄 무시
+}
 DATE_RE = re.compile(r'^(\d+)/(\d+)\s+[가-힣]+요일\s+메뉴입니다')
 MENU_RE = re.compile(r'^(.+?)\s+([\d.]+)\s*$')
 
-sections = []
+sections   = []
 cur_date, cur_menus, in_menus = None, [], False
+cur_year   = 2026   # 파일 시작(최신) 연도
+prev_month = None   # 직전 파싱 월
 
 for line in lines:
     s = line.strip()
@@ -84,12 +83,18 @@ for line in lines:
     if dm:
         if cur_date and cur_menus:
             sections.append((cur_date, list(cur_menus)))
-        cur_date  = (2026, int(dm.group(1)), int(dm.group(2)))
+        month = int(dm.group(1))
+        day   = int(dm.group(2))
+        # 역순 파일: 이전 월보다 월이 커지면 연도 경계 넘은 것
+        if prev_month is not None and month > prev_month:
+            cur_year -= 1
+        prev_month = month
+        cur_date  = (cur_year, month, day)
         cur_menus = []
         in_menus  = True
         continue
 
-    if not s:          # 빈 줄 — 파싱 상태 유지하고 무시
+    if not s:
         continue
 
     if (s in STOP_WORDS
@@ -118,23 +123,27 @@ if cur_date and cur_menus:
     sections.append((cur_date, list(cur_menus)))
 
 
-# ── 1~5월 필터 + 집계 ─────────────────────────────────────────
-target_sections = [(d, m) for d, m in sections if 1 <= d[1] <= 5]
+# ── 2025-05 ~ 2026-05 필터 + 집계 ────────────────────────────
+def in_range(d):
+    y, m = d[0], d[1]
+    return (y == 2025 and m >= 5) or (y == 2026 and m <= 5)
 
-print("=" * 55)
-print(f"1~5월 날짜 수: {len(target_sections)}일")
+target_sections = [(d, ms) for d, ms in sections if in_range(d)]
 
-# 월별 날짜 수 요약
-month_cnt = Counter(d[1] for d, _ in target_sections)
-for mo in sorted(month_cnt):
-    print(f"  {mo}월 : {month_cnt[mo]}일")
+print("=" * 60)
+print(f"2025-05 ~ 2026-05  날짜 수: {len(target_sections)}일")
+
+# 연·월별 요약
+ym_cnt = Counter((d[0], d[1]) for d, _ in target_sections)
+for (y, m) in sorted(ym_cnt):
+    print(f"  {y}/{m:02d} : {ym_cnt[(y,m)]:2d}일")
 
 # 날짜별 메뉴 수
 print()
-for d, ms in sorted(target_sections, key=lambda x: (x[0][1], x[0][2])):
-    print(f"  {d[1]:2d}/{d[2]:02d} : {len(ms):3d}개")
+for d, ms in sorted(target_sections, key=lambda x: x[0]):
+    print(f"  {d[0]}/{d[1]:02d}/{d[2]:02d} : {len(ms):3d}개")
 
-# 전체 고유 메뉴 집계 (등장 횟수 포함)
+# 전체 고유 메뉴 집계
 agg = {}
 for date, menus in target_sections:
     for m in menus:
@@ -161,9 +170,9 @@ print(f"카테고리: {dict(cat_cnt)}")
 print("\n[등장 횟수 TOP 15]")
 for m in menus_list[:15]:
     ch = '👧' if m['child'] else '  '
-    print(f"  {m['count']:2d}회 [{m['cat']:4s}] {ch} {m['name']} {m['price']}천원")
+    print(f"  {m['count']:3d}회 [{m['cat']:4s}] {ch} {m['name']} {m['price']}천원")
 
-print("=" * 55)
+print("=" * 60)
 
 
 # ── 공통 GAS 헬퍼 ─────────────────────────────────────────────
@@ -201,7 +210,7 @@ else:
 
 
 # ── [2] 날짜별 메뉴 묶음 업로드 ───────────────────────────────
-day_map = ddict(dict)   # "2026-MM-DD" → {name: menu_dict}
+day_map = ddict(dict)   # "YYYY-MM-DD" → {name: menu_dict}
 for (year, month, day_n), menus in target_sections:
     date_str = f"{year}-{month:02d}-{day_n:02d}"
     for m in menus:
