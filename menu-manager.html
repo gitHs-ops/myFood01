@@ -76,10 +76,19 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
 .parse-item .pi-qty{background:#e8f5f4;color:#086266;font-weight:700;padding:2px 8px;border-radius:6px;font-size:12px;}
 .parse-item select{font-size:12px;padding:3px 6px;border:1px solid #cde8e7;border-radius:6px;font-family:inherit;color:#333;outline:none;width:auto;}
 .import-btn{width:100%;background:#086266;color:#fff;font-size:14px;font-weight:700;padding:11px;border-radius:10px;border:none;cursor:pointer;font-family:inherit;margin-top:6px;}
-.history-item{border:1px solid #d6efee;border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:background .15s;}
+.history-item{border:1px solid #d6efee;border-radius:10px;padding:12px 14px;margin-bottom:8px;transition:background .15s;}
 .history-item:hover{background:#f0faf9;}
 .history-item-header{display:flex;align-items:center;justify-content:space-between;}
 .history-item .arrow{font-size:18px;color:#ccc;flex-shrink:0;}
+.hist-act-btns{display:flex;gap:6px;align-items:center;flex-shrink:0;}
+.hist-btn-preview{background:#e8f5f4;color:#086266;border:none;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
+.hist-btn-preview:hover{background:#cce8e7;}
+.hist-btn-select{background:#086266;color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
+.hist-btn-select:hover{background:#0a7a7f;}
+/* 미리보기 팝업 */
+.preview-menu-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #f5f5f5;font-size:13px;}
+.preview-cat-label{font-size:11px;font-weight:700;margin-bottom:5px;display:flex;align-items:center;gap:4px;}
+.preview-cat-dot{width:8px;height:8px;border-radius:50%;display:inline-block;}
 .history-date{font-size:13px;font-weight:700;color:#086266;}
 .history-meta{font-size:12px;color:#888;margin-top:2px;}
 .history-preview{font-size:12px;color:#555;margin-top:6px;line-height:1.8;}
@@ -492,6 +501,21 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
     <button style="margin-top:8px;width:100%;background:#eee;color:#555;border:none;border-radius:10px;padding:9px;font-size:13px;cursor:pointer;font-family:inherit;" onclick="closeSendToTodayPopup()">취소</button>
   </div>
 </div>
+<!-- 미리보기 모달 -->
+<div class="cal-overlay" id="histPreviewOverlay" onclick="if(event.target===this)this.classList.remove('open')">
+  <div style="background:#fff;border-radius:16px;padding:20px 18px;width:320px;max-height:80vh;display:flex;flex-direction:column;" onclick="event.stopPropagation()">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div style="font-size:15px;font-weight:700;color:#1a1a1a;" id="histPreviewTitle"></div>
+      <button onclick="document.getElementById('histPreviewOverlay').classList.remove('open')" style="background:none;border:none;font-size:20px;color:#aaa;cursor:pointer;line-height:1;">✕</button>
+    </div>
+    <div id="histPreviewBody" style="overflow-y:auto;flex:1;"></div>
+    <button onclick="document.getElementById('histPreviewOverlay').classList.remove('open');openHistLoadModal(_histPreviewDate)"
+      style="margin-top:14px;width:100%;background:#086266;color:#fff;border:none;border-radius:10px;padding:10px;font-size:14px;font-weight:700;cursor:pointer;">
+      이 메뉴 선택하기 →
+    </button>
+  </div>
+</div>
+
 <!-- 추가/대체 모달 -->
 <div class="cal-overlay" id="histLoadOverlay" onclick="closeHistLoadModal(event)">
   <div style="background:#fff;border-radius:16px;padding:24px;width:280px;text-align:center;" onclick="event.stopPropagation()">
@@ -1346,7 +1370,11 @@ function renderHistory(){
       meta='메뉴 '+e.menus.length+'종 · 재고 '+st+'개 · 어린이 '+cn+'개';
       prev='<div class="history-preview">'+e.menus.slice(0,5).map(function(m){return'<span class="tag-pill">'+m.name+'</span>';}).join('')+(e.menus.length>5?'<span class="tag-pill">+'+(e.menus.length-5)+'개</span>':'')+'</div>';
     }else{meta='메뉴 창고에서 불러오기';}
-    return '<div class="history-item" style="'+border+'" onclick="openHistLoadModal(\''+e.date+'\')"><div class="history-item-header"><div><div class="history-date">'+label+badge+'</div><div class="history-meta">'+meta+'</div></div><span class="arrow">&#8250;</span></div>'+prev+'</div>';
+    var actBtns='<div class="hist-act-btns">'
+      +'<button class="hist-btn-preview" onclick="event.stopPropagation();openHistPreview(\''+e.date+'\')">🔍 미리보기</button>'
+      +'<button class="hist-btn-select" onclick="event.stopPropagation();openHistLoadModal(\''+e.date+'\')">선택 →</button>'
+      +'</div>';
+    return '<div class="history-item" style="'+border+'"><div class="history-item-header"><div><div class="history-date">'+label+badge+'</div><div class="history-meta">'+meta+'</div></div>'+actBtns+'</div>'+prev+'</div>';
   }).join('');
 
   el.innerHTML=syncBtn+filterTabs+(items||'<div class="empty">해당 월에 저장된 기록이 없어요.</div>');
@@ -1366,6 +1394,57 @@ function fetchHistoryFromSheet(){
     renderHistory();
     showToast(d.dates.length+'개 날짜 갱신 완료!');
   });
+}
+var _histPreviewDate = null;
+function openHistPreview(date){
+  _histPreviewDate = date;
+  var label=new Date(date+'T00:00:00').toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'short'});
+  document.getElementById('histPreviewTitle').textContent=label+' 메뉴';
+  document.getElementById('histPreviewOverlay').classList.add('open');
+
+  var h=JSON.parse(localStorage.getItem('menu_history')||'[]');
+  var entry=h.find(function(e){return e.date===date;});
+  if(entry&&entry.menus){
+    renderPreviewBody(entry.menus);
+    return;
+  }
+  // 메뉴 데이터 없으면 시트에서 로드
+  document.getElementById('histPreviewBody').innerHTML='<div style="text-align:center;padding:24px;color:#aaa;">메뉴 불러오는 중...</div>';
+  var csvUrl='https://docs.google.com/spreadsheets/d/'+ONBAN_SHEET_ID+'/gviz/tq?tqx=out:csv&sheet='+encodeURIComponent(date);
+  fetch(csvUrl)
+    .then(function(r){if(!r.ok)throw new Error('시트 없음');return r.text();})
+    .then(function(csv){
+      var lines=csv.split('\n').filter(function(l){return l.trim();});
+      var menus=[];
+      for(var i=1;i<lines.length;i++){
+        var cols=lines[i].split(',').map(function(c){return c.replace(/^"|"$/g,'').trim();});
+        if(!cols[0])continue;
+        menus.push({name:cols[0],cat:cols[1]||'기타',price:Number(cols[2])||0,stock:Number(cols[3])||0,child:cols[4]==='Y',imgUrl:cols[5]||''});
+      }
+      renderPreviewBody(menus);
+    })
+    .catch(function(){
+      document.getElementById('histPreviewBody').innerHTML='<div style="text-align:center;padding:24px;color:#e05;">불러오기 실패. 시트 공유를 확인하세요.</div>';
+    });
+}
+function renderPreviewBody(menus){
+  var catOrder=['메인','반찬','밀키트','김치','기타'];
+  var catMap={};
+  menus.forEach(function(m){var c=m.cat||'기타';if(!catMap[c])catMap[c]=[];catMap[c].push(m);});
+  var html=catOrder.filter(function(c){return catMap[c];}).map(function(cat){
+    var col=CAT_COLOR[cat]||'#888';
+    return '<div style="margin-bottom:10px;">'
+      +'<div class="preview-cat-label" style="color:'+col+';">'
+      +'<span class="preview-cat-dot" style="background:'+col+';"></span>'+cat+'</div>'
+      +catMap[cat].map(function(m){
+        return '<div class="preview-menu-row">'
+          +'<span>'+m.name+(m.child?' <span style="font-size:11px;">👧</span>':'')+'</span>'
+          +'<span style="color:#086266;font-weight:700;flex-shrink:0;margin-left:8px;">'+(m.price||0).toLocaleString()+'천원</span>'
+          +'</div>';
+      }).join('')
+      +'</div>';
+  }).join('');
+  document.getElementById('histPreviewBody').innerHTML=html||'<div style="text-align:center;padding:24px;color:#aaa;">메뉴 데이터 없음</div>';
 }
 function openHistLoadModal(date){
   _histLoadDate=date;
