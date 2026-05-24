@@ -2227,7 +2227,7 @@ window.onload=function(){
   (function(){
     var ref=encodeURIComponent((document.referrer||'').slice(0,200));
     fetch('https://api.ipify.org?format=json').then(function(r){return r.json();}).then(function(d){
-      var ip=encodeURIComponent(d.ip||'');
+      var ip=encodeURIComponent(d.ip||'unknown');
       fetch(ONBAN_SHEET_URL+'?action=log_access&page=manager&ip='+ip+'&ref='+ref,{redirect:'follow'}).catch(function(){});
     }).catch(function(){
       fetch(ONBAN_SHEET_URL+'?action=log_access&page=manager&ip=unknown&ref='+ref,{redirect:'follow'}).catch(function(){});
