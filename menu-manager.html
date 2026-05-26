@@ -1857,11 +1857,12 @@ function cancelOrder(id){
   saveOrders(orders);
   fetch(ONBAN_SHEET_URL+'?action=update_order&id='+encodeURIComponent(id)+'&status=cancelled',{redirect:'follow'}).catch(function(){});
   if(o.phone){
-    var primary=getPrimaryBank();
-    var fallback='[오늘의 반찬] '+o.name+'님, 주문이 취소됐습니다. 환불 방법을 카카오채널로 알려주세요.';
+    var menuList=o.items.map(function(i){return i.name+' '+i.qty+'개';}).join(', ');
+    var total=o.items.reduce(function(s,i){return s+i.price*i.qty;},0);
+    var fallback='[오늘의 반찬] '+o.name+'님, 주문이 취소됐습니다. '+menuList;
     sendAlimtalk(o.phone,
       'KA01TP2605220434459714HrsH0pRr0l',
-      {'이름':o.name},
+      {'이름':o.name,'메뉴목록':menuList,'금액':String(total)},
       fallback
     );
   }
