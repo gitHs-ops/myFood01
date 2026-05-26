@@ -1299,10 +1299,16 @@ function cancelHistOrder(orderId){
   renderHistory();
 }
 function reorder(order){
-  if(!confirm('변경된 내용으로 다시 주문하시겠어요?'))return;
   // 수량 수정이 반영된 최신 데이터를 localStorage에서 다시 읽음
   var fresh=JSON.parse(localStorage.getItem('orders')||'[]').find(function(o){return o.id===order.id;});
-  if(fresh)order=fresh;
+  if(fresh){
+    // 동일한 내용이면 재주문 불가
+    var origKey=JSON.stringify(order.items.map(function(i){return {name:i.name,qty:i.qty};}));
+    var freshKey=JSON.stringify(fresh.items.map(function(i){return {name:i.name,qty:i.qty};}));
+    if(origKey===freshKey){showToast('내용을 변경한 후 재주문해 주세요.');return;}
+    order=fresh;
+  }
+  if(!confirm('변경된 내용으로 다시 주문하시겠어요?'))return;
   var total=order.items.reduce(function(s,i){return s+i.price*i.qty;},0);
   var newOrder={
     id:'ORD'+Date.now(),
