@@ -1609,8 +1609,17 @@ function importParsed(){
 }
 /* ════ 주문 관리 ════ */
 var orderFilter='all';
+var _ordersCache={};  // GAS에서 불러온 주문 캐시 (id → order)
 
 function getOrders(){return JSON.parse(localStorage.getItem('orders')||'[]');}
+function _findOrder(orders,id){
+  var o=orders.find(function(o){return o.id===id;});
+  if(!o&&_ordersCache[id]){
+    o=JSON.parse(JSON.stringify(_ordersCache[id]));
+    orders.push(o);
+  }
+  return o;
+}
 function saveOrders(orders){localStorage.setItem('orders',JSON.stringify(orders));}
 
 function renderOrders(){
@@ -1629,12 +1638,17 @@ function renderOrders(){
       localToday.forEach(function(o){
         if(gasIds.indexOf(o.id)<0)gasOrders.push(o);
       });
+      _ordersCache={};
+      gasOrders.forEach(function(o){_ordersCache[o.id]=o;});
       renderOrdersList(today,gasOrders);
     })
     .catch(function(){
       // 네트워크 오류 시 localStorage만 사용
       var all=getOrders();
-      renderOrdersList(today,all.filter(function(o){return o.date===today;}));
+      var todayLocal=all.filter(function(o){return o.date===today;});
+      _ordersCache={};
+      todayLocal.forEach(function(o){_ordersCache[o.id]=o;});
+      renderOrdersList(today,todayLocal);
     });
 }
 function renderOrdersList(today,todayOrders){
@@ -1785,7 +1799,7 @@ function sendAlimtalk(phone, tplId, vars, fallbackMsg){
 
 function confirmOrder(id){
   var orders=getOrders();
-  var o=orders.find(function(o){return o.id===id;});
+  var o=_findOrder(orders,id);
   if(!o)return;
   o.status='confirmed';
   saveOrders(orders);
@@ -1833,7 +1847,7 @@ function showKakaoBox(id){
 function deliverOrder(id){
   if(!confirm('배송완료로 변경할까요?'))return;
   var orders=getOrders();
-  var o=orders.find(function(o){return o.id===id;});
+  var o=_findOrder(orders,id);
   if(!o)return;
   o.status='delivered';
   saveOrders(orders);
@@ -1851,7 +1865,7 @@ function deliverOrder(id){
 function cancelOrder(id){
   if(!confirm('이 주문을 취소할까요?'))return;
   var orders=getOrders();
-  var o=orders.find(function(o){return o.id===id;});
+  var o=_findOrder(orders,id);
   if(!o)return;
   o.status='cancelled';
   saveOrders(orders);
