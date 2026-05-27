@@ -10,18 +10,18 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 :root{
   --teal:#086266; --teal2:#0a7a7f; --mint:#9adcda;
-  --bg:#f4fafa; --white:#fff;
+  --bg:#0c1414; --white:#fff; /* bg는 fallback용 */
   --text:#1a1a1a; --sub:#666; --light:#aaa;
   --red:#e05; --amber:#E9A826;
   --shadow:0 2px 16px rgba(8,98,102,.10);
   --radius:14px;
 }
 html{scroll-behavior:smooth;}
-body{font-family:"Noto Sans KR",sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:80px;}
+body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,#000000 0%,#000000 3%,#0d2525 15%,#1a3838 100%) fixed;color:var(--text);min-height:100vh;padding-bottom:80px;}
 
 /* ── 헤더 ── */
 .top-bar{
-  background:linear-gradient(135deg,var(--teal),var(--teal2));
+  background:linear-gradient(to bottom,#000000 0%,#000000 40%,#0a1a1a 70%,#111f1f 100%);
   padding:16px 20px 14px;
   display:flex;align-items:center;justify-content:space-between;
   position:sticky;top:0;z-index:90;
@@ -46,8 +46,8 @@ body{font-family:"Noto Sans KR",sans-serif;background:var(--bg);color:var(--text
 
 /* ── 날짜 배너 ── */
 .date-banner{
-  background:linear-gradient(to right,var(--teal),var(--mint));
-  padding:10px 20px;font-size:13px;color:#fff;font-weight:500;
+  background:#ffffff;
+  padding:10px 20px;font-size:13px;color:#1a1a1a;font-weight:500;
   display:flex;align-items:center;gap:8px;
 }
 

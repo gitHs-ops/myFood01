@@ -12,38 +12,13 @@
   --amber:#E9A826;--green:#1D9E75;
   --bg:#f7fafa;--dark:#1a1a1a;--sub:#555;
 }
-html,body{min-height:100vh;font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--dark);}
+html,body{min-height:100vh;font-family:'Noto Sans KR',sans-serif;background:linear-gradient(to bottom,#1a3838,#000000) fixed;color:var(--dark);}
 
-/* ── 상단 네비 ── */
-.top-nav{
-  position:fixed;top:0;left:0;right:0;z-index:999;
-  background:rgba(8,98,102,.97);backdrop-filter:blur(8px);
-  display:flex;align-items:center;justify-content:space-between;
-  padding:0 24px;height:56px;
-  box-shadow:0 2px 12px rgba(0,0,0,.2);
-}
-.top-nav-logo{font-size:16px;font-weight:900;color:#fff;display:flex;align-items:center;gap:8px;text-decoration:none;}
-.top-nav-links{display:flex;align-items:center;gap:6px;}
-.top-nav-btn{
-  padding:7px 16px;border-radius:8px;font-size:13px;font-weight:700;
-  border:none;cursor:pointer;font-family:inherit;
-  transition:all .15s;text-decoration:none;display:inline-flex;align-items:center;gap:6px;
-}
-.top-nav-btn-ghost{background:rgba(255,255,255,.12);color:#fff;}
-.top-nav-btn-ghost:hover{background:rgba(255,255,255,.22);}
-.top-nav-btn-amber{background:var(--amber);color:#3A1D1D;}
-.top-nav-btn-amber:hover{filter:brightness(1.1);}
-body{padding-top:56px;}
-@media(max-width:600px){
-  .top-nav{padding:0 12px;}
-  .top-nav-btn{padding:6px 10px;font-size:12px;}
-  .top-nav-logo span{display:none;}
-}
 
 /* ── 표지 ── */
 .cover{
-  background:linear-gradient(145deg,var(--teal) 0%,var(--teal2) 60%,#0d9b9f 100%);
-  padding:22px 24px 18px;text-align:center;position:relative;overflow:hidden;
+  background:linear-gradient(to bottom,#000000 0%,#000000 40%,#0a1a1a 70%,#111f1f 100%);
+  padding:78px 24px 18px;text-align:center;position:relative;overflow:hidden;
 }
 .cover::before{
   content:'';position:absolute;top:-80px;right:-80px;
@@ -62,7 +37,7 @@ body{padding-top:56px;}
 /* ── 메뉴 카드 섹션 ── */
 .cards-section{
   padding:20px 20px 28px;
-  background:linear-gradient(145deg,#086266 0%,#0a7a7f 60%,#0d9b9f 100%);
+  background:linear-gradient(to bottom,#1a3838 0%,#1e4242 100%);
 }
 .cards-grid{
   display:grid;
@@ -120,14 +95,6 @@ footer{
 </head>
 <body>
 
-<nav class="top-nav">
-  <a class="top-nav-logo" href="#">🍱 <span>오늘의 반찬</span></a>
-  <div class="top-nav-links">
-    <a class="top-nav-btn top-nav-btn-ghost" href="menu-manager.html">🔒 관리자 메뉴</a>
-    <a class="top-nav-btn top-nav-btn-ghost" href="onban.html">🛒 고객 메뉴</a>
-    <a class="top-nav-btn top-nav-btn-amber" href="menu-manager.html" onclick="localStorage.setItem('mm_goto','orders')">📦 주문 관리</a>
-  </div>
-</nav>
 
 <!-- 표지 -->
 <section class="cover">
