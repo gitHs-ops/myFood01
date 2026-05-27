@@ -585,12 +585,22 @@ function mergeToAllMenus(){
   if(changed)saveAllMenus();
 }
 
+function parseCsvLine(line){
+  var result=[],cur='',inQ=false;
+  for(var i=0;i<line.length;i++){
+    var c=line[i];
+    if(inQ){if(c==='"'){if(line[i+1]==='"'){cur+='"';i++;}else inQ=false;}else cur+=c;}
+    else{if(c==='"'){inQ=true;}else if(c===','){result.push(cur.trim());cur='';}else cur+=c;}
+  }
+  result.push(cur.trim());
+  return result;
+}
 function parseMenuCsv(csvText,defaultStock){
   var lines=csvText.trim().split(/\r?\n/);
   if(lines.length<2)throw new Error('데이터가 없습니다.');
   var imported=[];var _csvId=Date.now();
   for(var i=1;i<lines.length;i++){
-    var cols=lines[i].split(',').map(function(c){return c.replace(/^"|"$/g,'').trim();});
+    var cols=parseCsvLine(lines[i]);
     if(!cols[0])continue;
     if(cols.length<3)continue;
     var cat=VALID_CATS.indexOf(cols[1])>=0?cols[1]:'기타';
@@ -1464,7 +1474,7 @@ function openHistPreview(date){
       var lines=csv.split('\n').filter(function(l){return l.trim();});
       var menus=[];
       for(var i=1;i<lines.length;i++){
-        var cols=lines[i].split(',').map(function(c){return c.replace(/^"|"$/g,'').trim();});
+        var cols=parseCsvLine(lines[i]);
         if(!cols[0])continue;
         menus.push({name:cols[0],cat:cols[1]||'기타',price:Number(cols[2])||0,stock:Number(cols[3])||0,child:cols[4]==='Y',imgUrl:cols[5]||''});
       }
