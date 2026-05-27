@@ -588,15 +588,15 @@ function mergeToAllMenus(){
 function parseMenuCsv(csvText,defaultStock){
   var lines=csvText.trim().split(/\r?\n/);
   if(lines.length<2)throw new Error('데이터가 없습니다.');
-  var imported=[];
+  var imported=[];var _csvId=Date.now();
   for(var i=1;i<lines.length;i++){
     var cols=lines[i].split(',').map(function(c){return c.replace(/^"|"$/g,'').trim();});
     if(!cols[0])continue;
     if(cols.length<3)continue;
     var cat=VALID_CATS.indexOf(cols[1])>=0?cols[1]:'기타';
     var price=parseInt(cols[2]);if(isNaN(price)||price<0)price=0;
-    var stock=parseInt(cols[3]);if(isNaN(stock)||stock<0)stock=defaultStock;
-    imported.push({id:Date.now()+Math.random(),name:cols[0],cat:cat,price:price,stock:stock,child:(cols[4]||'')==='Y',imgUrl:(cols[5]&&cols[5]!=='')?cols[5]:null});
+    var stock=parseInt(cols[3]);if(isNaN(stock)||stock<=0)stock=defaultStock;
+    imported.push({id:_csvId++,name:cols[0],cat:cat,price:price,stock:stock,child:(cols[4]||'')==='Y',imgUrl:(cols[5]&&cols[5]!=='')?cols[5]:null});
   }
   if(!imported.length)throw new Error('가져올 메뉴가 없습니다.');
   return imported;
@@ -1200,7 +1200,7 @@ function importAllMenusFromSheet(cb){
   gasFetch(gasUrl+'?action=import_all_menus',function(err,d){
     var gasMenus=[];
     if(!err&&d&&d.success&&d.menus&&d.menus.length){
-      d.menus.forEach(function(m){if(!m.id)m.id=Date.now()+Math.random();});
+      var _idGen=Date.now();d.menus.forEach(function(m){if(!m.id)m.id=_idGen++;});
       gasMenus=deduplicateByName(d.menus); // GAS 시트 중복 제거
     }
     // ── 로컬 allMenus vs GAS: 타임스탬프 비교 머지 ──
