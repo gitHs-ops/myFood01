@@ -449,12 +449,13 @@ select.orderer-input{appearance:none;-webkit-appearance:none;background:#fff url
       <input class="orderer-input" id="ordererAddr" type="text" placeholder="배송 주소 (선택)" maxlength="100">
       <button class="btn-addr-list" onclick="showAddrList()">📋 목록</button>
     </div>
-    <select class="orderer-input" id="ordererMemo">
-      <option value="">요청사항 선택 (선택)</option>
+    <select class="orderer-input" id="ordererMemo" required>
+      <option value="">요청사항 선택 (필수)</option>
       <option value="경비원실">경비원실</option>
       <option value="문앞">문앞</option>
       <option value="택배함">택배함</option>
       <option value="직접수령">직접수령</option>
+      <option value="매장픽업">매장 픽업</option>
     </select>
   </div>
   <div id="ordererOrderContent"></div>
@@ -901,6 +902,8 @@ function renderOrdererPage(){
     if(!name){alert('이름을 입력해주세요.');document.getElementById('ordererName').focus();return;}
     var phone=document.getElementById('ordererPhone').value.trim();
     if(!phone){alert('연락처를 입력해주세요.');document.getElementById('ordererPhone').focus();return;}
+    var memo=document.getElementById('ordererMemo').value;
+    if(!memo){alert('요청사항을 선택해주세요.');document.getElementById('ordererMemo').focus();return;}
     ordererInfo={
       name:name,
       phone:document.getElementById('ordererPhone').value.trim(),
