@@ -404,7 +404,10 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
       <div class="kakao-header">메뉴 안내</div>
       <div class="kakao-body" id="kakaoText" contenteditable="false">메뉴를 먼저 입력해주세요.</div>
     </div>
-    <button class="copy-btn" id="copyBtn" onclick="copyKakao()">텍스트 복사하기</button>
+    <div style="display:flex;gap:8px;margin-top:0;">
+      <button class="copy-btn" id="copyBtn" onclick="copyKakao()" style="flex:1;">텍스트 복사하기</button>
+      <button class="copy-btn" id="sendKakaoBtn" onclick="sendMenuAlimtalk()" style="flex:1;background:#086266;color:#fff;">카카오 발송하기</button>
+    </div>
   </div>
   <div class="card">
     <div class="card-title">날짜별 메뉴 묶음 저장</div>
@@ -1053,7 +1056,7 @@ function renderKakao(){
     menus.filter(function(m){return m.cat===cat;}).forEach(function(m){lines.push(m.name+(m.child?'(어린이가능)':'')+' '+(m.price||0));});
     lines.push('');
   });
-  lines.push('메뉴 주문 하시려면 아래 클릭 !');lines.push('https://giths-ops.github.io/myFood01');
+  lines.push('메뉴 주문 하시려면 아래 클릭 !');lines.push('https://giths-ops.github.io/myFood01/onban.html');
   el.textContent=lines.join('\n').trim();
 }
 function toggleKakaoEdit(){
@@ -1087,6 +1090,42 @@ function copyKakao(){
     var btn=document.getElementById('copyBtn');btn.textContent='복사 완료!';btn.classList.add('copied');
     setTimeout(function(){btn.textContent='텍스트 복사하기';btn.classList.remove('copied');},2000);
   });
+}
+function sendMenuAlimtalk(){
+  var el=document.getElementById('kakaoText');
+  var text=(el.innerText||el.textContent||'').trim();
+  if(!text||text==='메뉴를 먼저 입력해주세요.'){showToast('먼저 메뉴를 입력해주세요.');return;}
+  // 주문 목록에서 고유 전화번호 수집
+  var orders=getOrders();
+  var phones=[...new Set(orders.filter(function(o){return o.phone;}).map(function(o){return o.phone;}))];
+  if(!phones.length){
+    var ph=prompt('발송할 전화번호를 입력하세요 (쉼표로 구분)','');
+    if(!ph)return;
+    phones=ph.split(',').map(function(p){return p.trim();}).filter(Boolean);
+  }
+  if(!phones.length)return;
+  if(!confirm(phones.length+'명에게 오늘의 메뉴 알림톡을 발송할까요?'))return;
+  var btn=document.getElementById('sendKakaoBtn');
+  btn.textContent='발송 중...';btn.disabled=true;
+  var sent=0,failed=0,total=phones.length;
+  function done(){
+    btn.textContent='카카오 발송하기';btn.disabled=false;
+    showToast('발송 완료: 성공 '+sent+'건'+(failed?' / 실패 '+failed+'건':''));
+  }
+  function sendNext(idx){
+    if(idx>=total){done();return;}
+    var phone=phones[idx];
+    var qs='action=alimtalk'
+      +'&receiver='+encodeURIComponent(phone)
+      +'&tplId='+encodeURIComponent('KA01BP260528055426650uiSVNiXfS6R')
+      +'&vars='+encodeURIComponent(JSON.stringify({'내용':text}))
+      +'&msg='+encodeURIComponent(text);
+    fetch(ONBAN_SHEET_URL+'?'+qs,{redirect:'follow'})
+      .then(function(r){return r.json();})
+      .then(function(d){if(d&&d.success===false)failed++;else sent++;sendNext(idx+1);})
+      .catch(function(){failed++;sendNext(idx+1);});
+  }
+  sendNext(0);
 }
 var _histLoadDate=null,_histSubTab='dates';
 function saveToday(){
