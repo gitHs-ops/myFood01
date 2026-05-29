@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════
-// sms_proxy4onban.gs  —  오늘의 반찬 SMS + 알림톡 프록시 2026 05 23 v1.43
+// sms_proxy4onban.gs  —  오늘의 반찬 SMS + 알림톡 프록시 2026 05 23 v1.44
 //
 // 【설정 방법】
 //   GAS 프로젝트 속성 → 스크립트 속성 추가:
@@ -45,6 +45,7 @@ function doPost(e) {
     }
     return json({ success: false, error: '주문 없음' });
   }
+  if (action === 'save_admin_reply') return saveAdminReply(null, body.data || body);
   return json({ success: false, error: '알 수 없는 POST 액션' });
 }
 
@@ -74,12 +75,13 @@ function doGet(e) {
   // 구글 시트 가져오기
   if (action === 'import_menu') return importMenu(e);
 
-  // 주문 저장 / 조회 / 상태 변경 / 삭제 / 추가요청
+  // 주문 저장 / 조회 / 상태 변경 / 삭제 / 추가요청 / 관리자답변
   if (action === 'save_order')              return saveOrder(e);
   if (action === 'get_orders')              return getOrders(e);
   if (action === 'update_order')            return updateOrderStatus(e);
   if (action === 'delete_order')            return deleteOrder(e);
   if (action === 'save_additional_request') return saveAdditionalRequest(e);
+  if (action === 'save_admin_reply')        return saveAdminReply(e);
 
   // 알림톡 발송
   if (action === 'alimtalk') {

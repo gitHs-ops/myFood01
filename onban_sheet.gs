@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════
-// onban_sheet.gs — 구글 시트 연동 2026 05 29 v1.54
+// onban_sheet.gs — 구글 시트 연동 2026 05 29 v1.56
 // ══════════════════════════════════════════════════════
 
 var SHEET_ID = '1_jAZK1zwob2zbiOwKRYzmpKkaswOAi4RUGC043ujiLo';
@@ -212,12 +212,14 @@ function getOrders(e) {
   if (!sheet) return json({ success: true, orders: [] });
   var rows  = sheet.getDataRange().getValues();
   if (rows.length < 2) return json({ success: true, orders: [] });
-  // 헤더에서 '추가요청', 'addreqAt' 컬럼 위치 확인
+  // 헤더에서 동적 컬럼 위치 확인
   var headerRow = rows[0];
-  var addReqIdx = -1, addReqAtIdx = -1;
+  var addReqIdx = -1, addReqAtIdx = -1, adminReplyIdx = -1, replyAtIdx = -1;
   for (var j = 0; j < headerRow.length; j++) {
-    if (String(headerRow[j]) === '추가요청') addReqIdx   = j;
-    if (String(headerRow[j]) === 'addreqAt') addReqAtIdx = j;
+    if (String(headerRow[j]) === '추가요청')  addReqIdx      = j;
+    if (String(headerRow[j]) === 'addreqAt')  addReqAtIdx    = j;
+    if (String(headerRow[j]) === '관리자답변') adminReplyIdx  = j;
+    if (String(headerRow[j]) === 'replyAt')   replyAtIdx     = j;
   }
   var orders = [];
   for (var i = 1; i < rows.length; i++) {
@@ -241,11 +243,57 @@ function getOrders(e) {
     orders.push({ id:String(r[0]), date:rowDate, time:String(r[2]),
       name:String(r[3]), phone:phone, addr:String(r[5]), memo:String(r[6]),
       items:items, total:Number(r[8]), status:String(r[9]),
-      isReorder: String(r[10]||'') === 'Y',
-      additionalRequest: addReqIdx   >= 0 ? String(r[addReqIdx]||'')   : '',
-      addreqAt:          addReqAtIdx >= 0 ? Number(r[addReqAtIdx]||0) : 0 });
+      isReorder:     String(r[10]||'') === 'Y',
+      additionalRequest: addReqIdx     >= 0 ? String(r[addReqIdx]||'')    : '',
+      addreqAt:          addReqAtIdx   >= 0 ? Number(r[addReqAtIdx]||0)   : 0,
+      adminReply:        adminReplyIdx >= 0 ? String(r[adminReplyIdx]||'') : '',
+      replyAt:           replyAtIdx    >= 0 ? Number(r[replyAtIdx]||0)    : 0 });
   }
   return json({ success: true, orders: orders });
+}
+
+// ── 관리자 답변 저장 ──
+function saveAdminReply(e, dataOverride) {
+  var data = dataOverride || {};
+  var id   = data.id   || (e&&e.parameter&&e.parameter.id)   || '';
+  var text = data.text || (e&&e.parameter&&e.parameter.text) || '';
+  if (!id)   return json({ success: false, error: 'ID 없음' });
+  if (!text) return json({ success: false, error: '내용 없음' });
+
+  var ss    = SpreadsheetApp.openById(SHEET_ID);
+  var sheet = ss.getSheetByName('주문');
+  if (!sheet) return json({ success: false, error: '시트 없음' });
+
+  var lastCol    = sheet.getLastColumn();
+  var headerVals = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  var repColNum = -1, tsColNum = -1;
+  for (var j = 0; j < headerVals.length; j++) {
+    if (String(headerVals[j]) === '관리자답변') repColNum = j + 1;
+    if (String(headerVals[j]) === 'replyAt')   tsColNum  = j + 1;
+  }
+  if (repColNum === -1) {
+    repColNum = lastCol + 1; lastCol++;
+    var hc1 = sheet.getRange(1, repColNum);
+    hc1.setValue('관리자답변');
+    hc1.setFontWeight('bold').setBackground('#086266').setFontColor('#ffffff').setHorizontalAlignment('center');
+  }
+  if (tsColNum === -1) {
+    tsColNum = lastCol + 1;
+    var hc2 = sheet.getRange(1, tsColNum);
+    hc2.setValue('replyAt');
+    hc2.setFontWeight('bold').setBackground('#086266').setFontColor('#ffffff').setHorizontalAlignment('center');
+  }
+
+  var now  = new Date().getTime();
+  var rows = sheet.getDataRange().getValues();
+  for (var i = 1; i < rows.length; i++) {
+    if (String(rows[i][0]) === String(id)) {
+      sheet.getRange(i + 1, repColNum).setValue(text);
+      sheet.getRange(i + 1, tsColNum).setValue(now);
+      return json({ success: true, replyAt: now });
+    }
+  }
+  return json({ success: false, error: '주문 없음' });
 }
 
 // ── 주문 삭제 ──

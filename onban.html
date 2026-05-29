@@ -376,6 +376,19 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 .hist-actions{display:flex;gap:8px;padding:10px 14px 14px;}
 .order-memo-row{font-size:12px;color:#b8860b;background:#fff8e1;padding:6px 14px;line-height:1.5;}
 .order-addreq-row{color:#086266;background:#f0faf9;}
+.hist-req-wrap{padding:4px 14px;}
+.hist-req-row{display:flex;align-items:flex-start;gap:8px;font-size:12px;line-height:1.5;padding:5px 0;}
+.hist-req-row span{flex:1;color:#555;}
+.hist-req-row.memo-row span{color:#b8860b;}
+.hist-req-row.extra-row span{color:#086266;}
+.hist-req-edit-btn{flex-shrink:0;background:none;border:none;font-size:13px;cursor:pointer;padding:0;opacity:.6;}
+.hist-req-edit-btn:hover{opacity:1;}
+.hist-req-add-btn{width:100%;padding:6px;border:1.5px dashed #cde8e7;border-radius:8px;background:#f9fffe;color:#086266;font-size:12px;cursor:pointer;font-family:inherit;}
+.hist-req-textarea{width:100%;border:1.5px solid #cde8e7;border-radius:8px;padding:8px 10px;font-size:12px;font-family:inherit;resize:vertical;min-height:60px;outline:none;box-sizing:border-box;margin:2px 0;}
+.hist-req-textarea:focus{border-color:#086266;}
+.hist-req-actions{display:flex;gap:6px;margin-top:4px;}
+.hist-req-cancel{flex:1;padding:7px;border-radius:8px;border:1.5px solid #ddd;background:#fff;color:#666;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
+.hist-req-save{flex:1;padding:7px;border-radius:8px;border:none;background:#086266;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
 .hist-btn-cancel{flex:1;padding:10px;border-radius:9px;font-size:13px;font-weight:700;border:1.5px solid #f5c0c0;background:#fff;color:var(--red);cursor:pointer;}
 .hist-btn-reorder{flex:1;padding:10px;border-radius:9px;font-size:13px;font-weight:700;border:none;background:var(--teal);color:#fff;cursor:pointer;}
 /* ── 추가 요청 ── */
@@ -392,6 +405,21 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 .extra-req-saved-text{flex:1;}
 .extra-req-edit-btn{flex-shrink:0;background:none;border:none;cursor:pointer;font-size:15px;padding:0;line-height:1;opacity:.7;}
 .extra-req-edit-btn:hover{opacity:1;}
+/* ── 관리자 답변 채팅 버블 ── */
+.admin-reply-section{padding:0 14px 12px;}
+.admin-reply-bubble{
+  display:flex;flex-direction:column;align-items:flex-end;
+  margin-top:6px;
+}
+.admin-reply-label{font-size:10px;color:#666;margin-bottom:3px;font-weight:500;}
+.admin-reply-text{
+  background:#086266;color:#fff;
+  font-size:13px;line-height:1.6;
+  padding:10px 14px;border-radius:16px 16px 4px 16px;
+  max-width:88%;word-break:break-all;
+  box-shadow:0 2px 8px rgba(8,98,102,.2);
+}
+.admin-reply-time{font-size:10px;color:#aaa;margin-top:3px;}
 /* ── 요청사항 셀렉트 ── */
 select.orderer-input{appearance:none;-webkit-appearance:none;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'%3E%3Cpolyline points='6 9 12 15 18 9' fill='none' stroke='%23666' stroke-width='2'/%3E%3C/svg%3E") no-repeat right 14px center/12px;cursor:pointer;}
 
@@ -942,6 +970,53 @@ function updateStatusBtn(){
     lbl.textContent='접수상태';
   }
 }
+function _buildStatusCardHtml(o){
+  var st=STATUS_TEXT[o.status]||o.status;
+  var col=STATUS_COLOR[o.status]||'#555';
+  var bg=STATUS_BG[o.status]||'#f5f5f5';
+  var itemRows=(o.items||[]).map(function(i){
+    return '<div class="hist-item-row">'+
+      '<div class="hist-item-name">'+i.name+'</div>'+
+      '<div class="hist-item-price">'+i.qty+'개 · '+(i.price*i.qty).toLocaleString()+'천원</div>'+
+    '</div>';
+  }).join('');
+  // 추가요청 + 관리자 답변 영역
+  var chatHtml='';
+  if(o.additionalRequest){
+    chatHtml+='<div class="extra-req-wrap" id="extra_'+o.id+'">'+_extraSavedHtml(o.id,o.additionalRequest)+'</div>';
+    if(o.adminReply){
+      var safeRep=String(o.adminReply).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      var timeStr='';
+      if(o.replyAt){try{timeStr=new Date(Number(o.replyAt)).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});}catch(e2){}}
+      chatHtml+='<div class="admin-reply-section">'+
+        '<div class="admin-reply-bubble">'+
+          '<div class="admin-reply-label">💬 가게 답변</div>'+
+          '<div class="admin-reply-text">'+safeRep+'</div>'+
+          (timeStr?'<div class="admin-reply-time">'+timeStr+'</div>':'')+
+        '</div>'+
+      '</div>';
+    }
+  } else {
+    chatHtml+='<div class="extra-req-wrap" id="extra_'+o.id+'">'+
+      '<button class="extra-req-btn" onclick="toggleExtraReq(\''+o.id+'\')">✏️ 추가 요청</button>'+
+    '</div>';
+  }
+  return '<div class="hist-card" id="stcard_'+o.id+'">'+
+    '<div class="hist-head">'+
+      '<div>'+
+        '<div style="font-size:14px;font-weight:700;color:#1a1a1a;">'+(o.name||'')+'</div>'+
+        '<div class="hist-date">'+fmtDT(o.date,o.time)+'</div>'+
+      '</div>'+
+      '<span style="display:inline-flex;align-items:center;gap:3px;">'+
+        '<span class="hist-status '+(o.status||'')+'" style="background:'+bg+';color:'+col+';">'+st+'</span>'+
+        (o.isReorder?'<span style="font-size:10px;font-weight:700;background:#e0d4f7;color:#5b21b6;border-radius:999px;padding:2px 7px;">재주문</span>':'')+
+      '</span>'+
+    '</div>'+
+    '<div class="hist-body">'+itemRows+'</div>'+
+    '<div class="hist-total"><span>합계</span><span class="hist-total-val">'+(o.total||0).toLocaleString()+'천원</span></div>'+
+    chatHtml+
+  '</div>';
+}
 function renderStatusPage(){
   var el=document.getElementById('statusContent');
   var myInfo=JSON.parse(localStorage.getItem('onban_my_info')||'null');
@@ -951,7 +1026,6 @@ function renderStatusPage(){
   }
   var today=toISO(new Date());
   var orders=JSON.parse(localStorage.getItem('orders')||'[]');
-  // 오늘 날짜 + 저장된 주문자 일치 건만
   var sorted=orders.filter(function(o){
     return o.date===today && o.name===myInfo.name && o.phone===myInfo.phone;
   }).sort(function(a,b){return (b.id||'').localeCompare(a.id||'');});
@@ -959,41 +1033,46 @@ function renderStatusPage(){
     el.innerHTML='<div class="hist-empty"><span>📭</span>'
       +'<p>오늘 접수된 주문이 없어요.<br>'
       +'<small style="color:#aaa;font-size:12px;">'+myInfo.name+' · '+myInfo.phone+'</small></p></div>';
+    document.getElementById('statusBtn').classList.remove('has-order');
+    updateStatusBtn();
     return;
   }
-  el.innerHTML=sorted.map(function(o){
-    var st=STATUS_TEXT[o.status]||o.status;
-    var col=STATUS_COLOR[o.status]||'#555';
-    var bg=STATUS_BG[o.status]||'#f5f5f5';
-    var itemRows=(o.items||[]).map(function(i){
-      return '<div class="hist-item-row">'+
-        '<div class="hist-item-name">'+i.name+'</div>'+
-        '<div class="hist-item-price">'+i.qty+'개 · '+(i.price*i.qty).toLocaleString()+'천원</div>'+
-      '</div>';
-    }).join('');
-    return '<div class="hist-card">'+
-      '<div class="hist-head">'+
-        '<div>'+
-          '<div style="font-size:14px;font-weight:700;color:#1a1a1a;">'+(o.name||'')+'</div>'+
-          '<div class="hist-date">'+fmtDT(o.date,o.time)+'</div>'+
-        '</div>'+
-        '<span style="display:inline-flex;align-items:center;gap:3px;">'+
-          '<span class="hist-status '+(o.status||'')+'" style="background:'+bg+';color:'+col+';">'+st+'</span>'+
-          (o.isReorder?'<span style="font-size:10px;font-weight:700;background:#e0d4f7;color:#5b21b6;border-radius:999px;padding:2px 7px;">재주문</span>':'')+
-        '</span>'+
-      '</div>'+
-      '<div class="hist-body">'+itemRows+'</div>'+
-      '<div class="hist-total"><span>합계</span><span class="hist-total-val">'+(o.total||0).toLocaleString()+'천원</span></div>'+
-      '<div class="extra-req-wrap" id="extra_'+o.id+'">'+
-        (o.additionalRequest
-          ? _extraSavedHtml(o.id, o.additionalRequest)
-          : '<button class="extra-req-btn" onclick="toggleExtraReq(\''+o.id+'\')">✏️ 추가 요청</button>')+
-      '</div>'+
-    '</div>';
-  }).join('');
-  // 페이지 진입 시 버튼 강조 해제
+  // localStorage 기준 즉시 렌더
+  el.innerHTML=sorted.map(_buildStatusCardHtml).join('');
   document.getElementById('statusBtn').classList.remove('has-order');
   updateStatusBtn();
+  // GAS에서 최신 adminReply / status 갱신
+  _fetchStatusFromGAS(myInfo, today, sorted);
+}
+function _fetchStatusFromGAS(myInfo, today, localOrders){
+  var phone=String(myInfo.phone||'').replace(/[^0-9]/g,'');
+  if(!phone)return;
+  fetch(GAS_URL+'?action=get_orders&date='+encodeURIComponent(today)+'&phone='+encodeURIComponent(phone),{redirect:'follow'})
+  .then(function(r){return r.json();})
+  .then(function(data){
+    if(!data.success||!Array.isArray(data.orders))return;
+    var gasMap={};
+    data.orders.forEach(function(go){gasMap[go.id]=go;});
+    var allOrders=JSON.parse(localStorage.getItem('orders')||'[]');
+    var changed=false;
+    allOrders.forEach(function(o){
+      var go=gasMap[o.id];
+      if(!go)return;
+      if(go.adminReply!==undefined && go.adminReply!==o.adminReply){o.adminReply=go.adminReply;changed=true;}
+      if(go.replyAt  !==undefined && go.replyAt  !==o.replyAt) {o.replyAt =go.replyAt; changed=true;}
+      if(go.status   && go.status !==o.status)                  {o.status  =go.status;  changed=true;}
+    });
+    if(changed){
+      localStorage.setItem('orders',JSON.stringify(allOrders));
+      var updSorted=allOrders.filter(function(o){
+        return o.date===today && o.name===myInfo.name && o.phone===myInfo.phone;
+      }).sort(function(a,b){return (b.id||'').localeCompare(a.id||'');});
+      var el=document.getElementById('statusContent');
+      if(el)el.innerHTML=updSorted.map(_buildStatusCardHtml).join('');
+      updateStatusBtn();
+    }
+  })
+  .catch(function(){/* 네트워크 오류: 로컬 렌더 유지 */});
 }
 function _extraSavedHtml(id,text){
   var safe=String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -1030,7 +1109,12 @@ function toggleExtraReq(id){
 }
 function cancelExtraReq(id){
   var wrap=document.getElementById('extra_'+id);
-  wrap.innerHTML='<button class="extra-req-btn" onclick="toggleExtraReq(\''+id+'\')">✏️ 추가 요청</button>';
+  var ords=JSON.parse(localStorage.getItem('orders')||'[]');
+  var ord=ords.find(function(o){return o.id===id;});
+  var prev=ord&&ord.additionalRequest?ord.additionalRequest:'';
+  wrap.innerHTML=prev
+    ?_extraSavedHtml(id,prev)
+    :'<button class="extra-req-btn" onclick="toggleExtraReq(\''+id+'\')">✏️ 추가 요청</button>';
 }
 function saveExtraReq(id){
   var wrap=document.getElementById('extra_'+id);
@@ -1546,18 +1630,26 @@ function renderHistory(){
     totRow.id='histtotal-'+o.id;
     totRow.innerHTML='<span>합계</span><span class="hist-total-val">'+comma(total)+'천원</span>';
     card.appendChild(totRow);
-    // 요청사항 표시
-    if(o.memo){
-      var memoRow=document.createElement('div');
-      memoRow.className='order-memo-row';
-      memoRow.textContent='📝 '+o.memo;
-      card.appendChild(memoRow);
-    }
-    if(o.additionalRequest){
-      var addRow=document.createElement('div');
-      addRow.className='order-memo-row order-addreq-row';
-      addRow.textContent='✏️ '+o.additionalRequest;
-      card.appendChild(addRow);
+    // 직접 요청 (memo) — 편집 가능
+    if(!isCancelled){
+      var memoWrap=document.createElement('div');
+      memoWrap.className='hist-req-wrap';
+      memoWrap.id='histmemo-'+o.id;
+      memoWrap.innerHTML=_histMemoHtml(o.id, o.memo||'');
+      card.appendChild(memoWrap);
+      // 추가 요청 (additionalRequest) — 편집 가능
+      var extraWrap=document.createElement('div');
+      extraWrap.className='hist-req-wrap';
+      extraWrap.id='histextra-'+o.id;
+      extraWrap.innerHTML=_histExtraHtml(o.id, o.additionalRequest||'');
+      card.appendChild(extraWrap);
+    } else {
+      if(o.memo){
+        var mr=document.createElement('div');
+        mr.className='order-memo-row';
+        mr.textContent='📝 '+o.memo;
+        card.appendChild(mr);
+      }
     }
     // 액션 버튼
     var acts=document.createElement('div');
@@ -1609,6 +1701,73 @@ function histDelItem(orderId,itemName){
   if(tEl)tEl.innerHTML='<span>합계</span><span class="hist-total-val">'+comma(total)+'천원</span>';
   localStorage.setItem('orders',JSON.stringify(orders));
 }
+/* ── 주문 내역 직접요청/추가요청 편집 ── */
+function _histMemoHtml(id,text){
+  var safe=(text||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  if(text) return '<div class="hist-req-row memo-row"><span>📝 '+safe+'</span>'
+    +'<button class="hist-req-edit-btn" onclick="histEditMemo(\''+id+'\')" title="수정">✏️</button></div>';
+  return '<button class="hist-req-add-btn" onclick="histEditMemo(\''+id+'\')">📝 직접 요청 추가</button>';
+}
+function _histExtraHtml(id,text){
+  var safe=(text||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  if(text) return '<div class="hist-req-row extra-row"><span>✏️ '+safe+'</span>'
+    +'<button class="hist-req-edit-btn" onclick="histEditExtra(\''+id+'\')" title="수정">✏️</button></div>';
+  return '<button class="hist-req-add-btn" onclick="histEditExtra(\''+id+'\')">✏️ 추가 요청 추가</button>';
+}
+function histEditMemo(id){
+  var ords=JSON.parse(localStorage.getItem('orders')||'[]');
+  var ord=ords.find(function(o){return o.id===id;})||{};
+  var prev=(ord.memo||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  document.getElementById('histmemo-'+id).innerHTML=
+    '<textarea class="hist-req-textarea" id="histmemota-'+id+'" placeholder="배송 요청 / 직접 입력">'+prev+'</textarea>'
+    +'<div class="hist-req-actions">'
+      +'<button class="hist-req-cancel" onclick="histCancelMemo(\''+id+'\')">취소</button>'
+      +'<button class="hist-req-save" onclick="histSaveMemo(\''+id+'\')">저장</button>'
+    +'</div>';
+}
+function histCancelMemo(id){
+  var ords=JSON.parse(localStorage.getItem('orders')||'[]');
+  var ord=ords.find(function(o){return o.id===id;})||{};
+  document.getElementById('histmemo-'+id).innerHTML=_histMemoHtml(id,ord.memo||'');
+}
+function histSaveMemo(id){
+  var ta=document.getElementById('histmemota-'+id);
+  var text=ta?ta.value.trim():'';
+  var ords=JSON.parse(localStorage.getItem('orders')||'[]');
+  var ord=ords.find(function(o){return o.id===id;});
+  if(!ord)return;
+  ord.memo=text;
+  localStorage.setItem('orders',JSON.stringify(ords));
+  document.getElementById('histmemo-'+id).innerHTML=_histMemoHtml(id,text);
+  showToast('저장됐어요. 재주문 시 반영됩니다.');
+}
+function histEditExtra(id){
+  var ords=JSON.parse(localStorage.getItem('orders')||'[]');
+  var ord=ords.find(function(o){return o.id===id;})||{};
+  var prev=(ord.additionalRequest||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  document.getElementById('histextra-'+id).innerHTML=
+    '<textarea class="hist-req-textarea" id="histextrata-'+id+'" placeholder="추가 요청 사항">'+prev+'</textarea>'
+    +'<div class="hist-req-actions">'
+      +'<button class="hist-req-cancel" onclick="histCancelExtra(\''+id+'\')">취소</button>'
+      +'<button class="hist-req-save" onclick="histSaveExtra(\''+id+'\')">저장</button>'
+    +'</div>';
+}
+function histCancelExtra(id){
+  var ords=JSON.parse(localStorage.getItem('orders')||'[]');
+  var ord=ords.find(function(o){return o.id===id;})||{};
+  document.getElementById('histextra-'+id).innerHTML=_histExtraHtml(id,ord.additionalRequest||'');
+}
+function histSaveExtra(id){
+  var ta=document.getElementById('histextrata-'+id);
+  var text=ta?ta.value.trim():'';
+  var ords=JSON.parse(localStorage.getItem('orders')||'[]');
+  var ord=ords.find(function(o){return o.id===id;});
+  if(!ord)return;
+  ord.additionalRequest=text;
+  localStorage.setItem('orders',JSON.stringify(ords));
+  document.getElementById('histextra-'+id).innerHTML=_histExtraHtml(id,text);
+  showToast('저장됐어요. 재주문 시 반영됩니다.');
+}
 function cancelHistOrder(orderId){
   if(!confirm('주문을 취소할까요?'))return;
   var orders=JSON.parse(localStorage.getItem('orders')||'[]');
@@ -1632,13 +1791,21 @@ function cancelHistOrder(orderId){
   renderHistory();
 }
 function reorder(order){
-  // 수량 수정이 반영된 최신 데이터를 localStorage에서 다시 읽음
+  // 수량·메모·추가요청 수정이 반영된 최신 데이터를 localStorage에서 다시 읽음
   var fresh=JSON.parse(localStorage.getItem('orders')||'[]').find(function(o){return o.id===order.id;});
   if(fresh){
-    // 동일한 내용이면 재주문 불가
-    var origKey=JSON.stringify(order.items.map(function(i){return {name:i.name,qty:i.qty};}));
-    var freshKey=JSON.stringify(fresh.items.map(function(i){return {name:i.name,qty:i.qty};}));
-    if(origKey===freshKey){showToast('내용을 변경한 후 재주문해 주세요.');return;}
+    // 아이템·memo·추가요청 모두 동일하면 재주문 불가
+    var origKey=JSON.stringify({
+      items:order.items.map(function(i){return {name:i.name,qty:i.qty};}),
+      memo:(order.memo||'').trim(),
+      addreq:(order.additionalRequest||'').trim()
+    });
+    var freshKey=JSON.stringify({
+      items:fresh.items.map(function(i){return {name:i.name,qty:i.qty};}),
+      memo:(fresh.memo||'').trim(),
+      addreq:(fresh.additionalRequest||'').trim()
+    });
+    if(origKey===freshKey){showToast('수량·요청사항을 변경한 후 재주문해 주세요.');return;}
     order=fresh;
   }
   if(!confirm('변경된 내용으로 다시 주문하시겠어요?'))return;
@@ -1647,9 +1814,11 @@ function reorder(order){
     id:'ORD'+Date.now(),
     date:toISO(new Date()),
     time:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),
-    name:order.name,phone:order.phone,addr:order.addr,memo:order.memo,
+    name:order.name,phone:order.phone,addr:order.addr,
+    memo:order.memo||'',
     items:order.items.map(function(i){return {name:i.name,qty:i.qty,price:i.price};}),
-    total:total,status:'pending',isReorder:true
+    total:total,status:'pending',isReorder:true,
+    additionalRequest:order.additionalRequest||''
   };
   var orders=JSON.parse(localStorage.getItem('orders')||'[]');
   // 기존 주문 취소 처리
@@ -1663,8 +1832,12 @@ function reorder(order){
 
   // GAS 기존 주문 취소
   fetch(GAS_URL+'?action=update_order&id='+encodeURIComponent(order.id)+'&status=cancelled',{redirect:'follow'}).catch(function(){});
-  // GAS 시트 저장
+  // GAS 새 주문 저장
   fetch(GAS_URL+'?action=save_order&data='+encodeURIComponent(JSON.stringify(newOrder)),{redirect:'follow'}).catch(function(){});
+  // GAS 추가요청 별도 저장 (additionalRequest 컬럼)
+  if(newOrder.additionalRequest){
+    fetch(GAS_URL+'?action=save_additional_request&id='+encodeURIComponent(newOrder.id)+'&text='+encodeURIComponent(newOrder.additionalRequest),{redirect:'follow'}).catch(function(){});
+  }
 
   // 재주문접수 알림톡
   if(order.phone){
