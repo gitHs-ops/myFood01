@@ -1441,6 +1441,9 @@ function reorder(order){
   if(orig)orig.status='cancelled';
   orders.unshift(newOrder);
   localStorage.setItem('orders',JSON.stringify(orders));
+  // 재주문자 기억 (접수상태 조회용)
+  localStorage.setItem('onban_my_info',JSON.stringify({name:order.name,phone:order.phone}));
+  updateStatusBtn();
 
   // GAS 기존 주문 취소
   fetch(GAS_URL+'?action=update_order&id='+encodeURIComponent(order.id)+'&status=cancelled',{redirect:'follow'}).catch(function(){});
