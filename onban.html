@@ -1785,7 +1785,7 @@ function _histMemoHtml(id,text){
 }
 function _histExtraHtml(id,text){
   var safe=(text||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  if(text) return '<div class="hist-req-row extra-row"><span>✏️ '+safe+'</span>'
+  if(text) return '<div class="hist-req-row extra-row"><span>✅ '+safe+'</span>'
     +'<button class="hist-req-edit-btn" onclick="histEditExtra(\''+id+'\')" title="수정">✏️</button></div>';
   return '<button class="hist-req-add-btn" onclick="histEditExtra(\''+id+'\')">✏️ 추가 요청 추가</button>';
 }

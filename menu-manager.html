@@ -1921,7 +1921,7 @@ function renderOrdersList(today,todayOrders){
         var safeReq=order.additionalRequest.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
         var isNew=_isNewAddReq(order);
         var dotHtml=isNew?'<span class="addreq-new-dot" style="background:#086266;margin-right:2px;"></span>':'';
-        innerHtml='<div class="addreq-text-row">'+dotHtml+'✏️ '+safeReq+'</div>';
+        innerHtml='<div class="addreq-text-row">'+dotHtml+'✅ '+safeReq+'</div>';
       }
       if(order.phone){
         var safeRep=order.adminReply?order.adminReply.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):'';
