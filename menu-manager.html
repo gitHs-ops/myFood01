@@ -2000,13 +2000,19 @@ function cancelOrder(id){
 
 function deleteOrder(id){
   if(!confirm('이 주문을 삭제할까요?'))return;
-  var orders=getOrders();
-  saveOrders(orders.filter(function(o){return o.id!==id;}));
+  // localStorage + 캐시에서 즉시 제거
+  saveOrders(getOrders().filter(function(o){return o.id!==id;}));
   delete _ordersCache[id];
-  // GAS 삭제 완료 후 목록 갱신 (완료 전 재조회 시 재표시 방지)
+  // DOM 카드 즉시 제거
+  var card=document.getElementById('ocard_'+id);
+  if(card)card.remove();
+  // GAS 시트에서 삭제 (비동기, fire-and-forget)
   fetch(ONBAN_SHEET_URL+'?action=delete_order&id='+encodeURIComponent(id),{redirect:'follow'})
-    .then(function(){renderOrders();})
-    .catch(function(){renderOrders();});
+    .catch(function(){});
+  // 통계/필터 탭 갱신 (GAS 재조회 없이 현재 캐시 기준)
+  var remaining=Object.values(_ordersCache);
+  var today=workDate||toISO(new Date());
+  renderOrdersList(today,remaining);
 }
 
 function copyConfirmMsg(id){
