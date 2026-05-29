@@ -298,7 +298,9 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 .btn-home svg{width:20px;height:20px;fill:none;stroke:#fff;stroke-width:2;}
 
 /* ── 공통 ── */
-.section-title{font-size:15px;font-weight:700;padding:16px 16px 10px;color:#fff;}
+.section-title{font-size:15px;font-weight:700;padding:16px 16px 10px;color:#fff;display:flex;align-items:center;justify-content:space-between;}
+.status-refresh-btn{font-size:11px;font-weight:600;color:#9adcda;background:rgba(255,255,255,.08);border:1px solid rgba(154,220,218,.4);border-radius:20px;padding:4px 10px;cursor:pointer;white-space:nowrap;animation:status-blink 2s ease-in-out infinite;}
+@keyframes status-blink{0%,100%{opacity:1;}50%{opacity:.5;}}
 .toast{
   position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);
   background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:999px;
@@ -565,7 +567,10 @@ select.orderer-input{appearance:none;-webkit-appearance:none;background:#fff url
     <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
     메뉴 목록으로
   </div>
-  <div class="section-title">📬 주문 접수 상태</div>
+  <div class="section-title">
+    <span>📬 주문 접수 상태</span>
+    <span class="status-refresh-btn" onclick="renderStatusPage()">실시간 변경된 정보 확인 여기를 클릭 !</span>
+  </div>
   <div id="statusContent"></div>
 </div>
 
