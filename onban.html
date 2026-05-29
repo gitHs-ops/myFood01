@@ -28,19 +28,12 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
   box-shadow:0 2px 12px rgba(8,98,102,.25);
 }
 .top-bar h1{font-size:18px;font-weight:900;color:#fff;letter-spacing:-.3px;}
-.cart-btn{
-  position:relative;background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.4);
-  border-radius:999px;padding:6px 14px 6px 10px;
-  display:flex;align-items:center;gap:6px;
-  font-size:13px;font-weight:700;color:#fff;cursor:pointer;
-}
-.cart-btn svg{width:18px;height:18px;fill:none;stroke:#fff;stroke-width:2;}
+.cart-btn{display:none;}/* 구 cart-btn 숨김 — top-btn으로 대체 */
 .cart-count{
-  position:absolute;top:-6px;right:-6px;
   background:var(--red);color:#fff;font-size:10px;font-weight:900;
-  width:18px;height:18px;border-radius:50%;
-  display:flex;align-items:center;justify-content:center;
-  display:none;
+  width:17px;height:17px;border-radius:50%;
+  align-items:center;justify-content:center;
+  display:none;flex-shrink:0;
 }
 .cart-count.on{display:flex;}
 
@@ -316,12 +309,22 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 .addr-item:active{background:#e8f5f4;}
 .no-menu span{font-size:48px;display:block;margin-bottom:12px;}
 
-/* ── 주문 내역 버튼 ── */
-.history-btn{
-  background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.4);
-  border-radius:999px;padding:6px 13px;
-  font-size:13px;font-weight:700;color:#fff;cursor:pointer;
+/* ── 상단 공통 버튼 ── */
+.top-btn{
+  display:flex;align-items:center;gap:5px;
+  background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.35);
+  border-radius:999px;padding:6px 12px;
+  font-size:12px;font-weight:700;color:#fff;cursor:pointer;
+  white-space:nowrap;transition:background .15s;
 }
+.top-btn:hover{background:rgba(255,255,255,.30);}
+.top-btn svg{width:16px;height:16px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;}
+/* 주문접수 버튼 — 활성 주문 있을 때 강조 */
+.top-btn-status{background:rgba(233,168,38,.25);border-color:rgba(233,168,38,.6);}
+.top-btn-status.has-order{background:#E9A826;border-color:#E9A826;color:#3A1D1D;}
+.top-btn-status.has-order svg{stroke:#3A1D1D;}
+/* 기존 .history-btn 호환 (다른 곳 참조 없음) */
+.history-btn{display:none;}
 /* ── 주문 내역 페이지 ── */
 .hist-empty{text-align:center;padding:60px 20px;color:var(--light);}
 .hist-empty span{font-size:48px;display:block;margin-bottom:12px;}
@@ -392,12 +395,22 @@ select.orderer-input{appearance:none;-webkit-appearance:none;background:#fff url
 <!-- 상단바 -->
 <div class="top-bar">
   <h1>&#127857; 오늘의 반찬</h1>
-  <div style="display:flex;align-items:center;gap:6px;">
-    <button class="history-btn" onclick="goPage('history')">📋 주문내역</button>
-    <button class="cart-btn" onclick="goPage('cart')">
+  <div style="display:flex;align-items:center;gap:5px;">
+    <!-- ① 장바구니 -->
+    <button class="top-btn" onclick="goPage('cart')">
       <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
       장바구니
       <span class="cart-count" id="cartCount">0</span>
+    </button>
+    <!-- ② 주문 내역 -->
+    <button class="top-btn" onclick="goPage('history')">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      주문내역
+    </button>
+    <!-- ③ 주문접수상태 -->
+    <button class="top-btn top-btn-status" id="statusBtn" onclick="openStatusPopup()">
+      <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+      접수상태
     </button>
   </div>
 </div>
@@ -473,6 +486,17 @@ select.orderer-input{appearance:none;-webkit-appearance:none;background:#fff url
 <!-- ════ 페이지: 결제 ════ -->
 <div id="page-payment" class="page">
   <div id="paymentContent"></div>
+</div>
+
+<!-- ════ 주문접수상태 팝업 ════ -->
+<div id="statusPopup" style="display:none;position:fixed;inset:0;z-index:900;background:rgba(0,0,0,.45);align-items:flex-end;justify-content:center;" onclick="if(event.target===this)closeStatusPopup()">
+  <div style="background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:20px 18px 32px;max-height:70vh;overflow-y:auto;" onclick="event.stopPropagation()">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div style="font-size:16px;font-weight:800;color:#1a1a1a;">📬 주문 접수 상태</div>
+      <button onclick="closeStatusPopup()" style="background:none;border:none;font-size:22px;color:#aaa;cursor:pointer;line-height:1;">✕</button>
+    </div>
+    <div id="statusPopupBody"></div>
+  </div>
 </div>
 
 <!-- ════ 페이지: 주문 내역 ════ -->
@@ -782,6 +806,71 @@ function updateCartCount(){
   el.textContent=cnt;
   if(cnt>0)el.classList.add('on');else el.classList.remove('on');
 }
+
+// ── 주문 접수 상태 팝업 ──
+var STATUS_TEXT={pending:'⏳ 접수 대기',confirmed:'🚚 배송 확정',delivered:'✅ 배송 완료',cancelled:'❌ 취소됨'};
+var STATUS_COLOR={pending:'#856404',confirmed:'#0f5132',delivered:'#084298',cancelled:'#842029'};
+var STATUS_BG   ={pending:'#fff3cd',confirmed:'#d1e7dd',delivered:'#cfe2ff',cancelled:'#f8d7da'};
+
+function updateStatusBtn(){
+  var orders=JSON.parse(localStorage.getItem('orders')||'[]');
+  var active=orders.filter(function(o){return o.status==='pending'||o.status==='confirmed';});
+  var btn=document.getElementById('statusBtn');
+  if(!btn)return;
+  if(active.length){
+    btn.classList.add('has-order');
+    btn.querySelector('svg').nextSibling||btn;
+    // 버튼 텍스트 노드 업데이트
+    var nodes=btn.childNodes;
+    for(var i=0;i<nodes.length;i++){
+      if(nodes[i].nodeType===3&&nodes[i].textContent.trim()){
+        nodes[i].textContent='접수상태('+active.length+')';break;
+      }
+    }
+  }else{
+    btn.classList.remove('has-order');
+    var nodes=btn.childNodes;
+    for(var i=0;i<nodes.length;i++){
+      if(nodes[i].nodeType===3&&nodes[i].textContent.trim()){
+        nodes[i].textContent='접수상태';break;
+      }
+    }
+  }
+}
+function openStatusPopup(){
+  var orders=JSON.parse(localStorage.getItem('orders')||'[]');
+  var body=document.getElementById('statusPopupBody');
+  var pop=document.getElementById('statusPopup');
+  // 최신순 정렬
+  var sorted=orders.slice().sort(function(a,b){return (b.id||'').localeCompare(a.id||'');});
+  if(!sorted.length){
+    body.innerHTML='<div style="text-align:center;padding:40px 0;color:#aaa;font-size:14px;">주문 내역이 없어요.</div>';
+  }else{
+    body.innerHTML=sorted.map(function(o){
+      var st=STATUS_TEXT[o.status]||o.status;
+      var col=STATUS_COLOR[o.status]||'#555';
+      var bg=STATUS_BG[o.status]||'#f5f5f5';
+      var items=(o.items||[]).slice(0,3).map(function(i){return i.name+' '+i.qty+'개';}).join(', ');
+      if((o.items||[]).length>3)items+=' 외 '+((o.items||[]).length-3)+'종';
+      return '<div style="border:1px solid #e8f5f4;border-radius:12px;padding:12px 14px;margin-bottom:10px;">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'+
+          '<span style="font-size:12px;color:#888;">'+(o.date||'')+' '+(o.time||'')+'</span>'+
+          '<span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;background:'+bg+';color:'+col+';">'+st+'</span>'+
+        '</div>'+
+        '<div style="font-size:14px;font-weight:700;color:#1a1a1a;margin-bottom:3px;">'+(o.name||'')+'</div>'+
+        '<div style="font-size:12px;color:#666;margin-bottom:4px;">'+items+'</div>'+
+        '<div style="font-size:13px;font-weight:700;color:#086266;">합계 '+(o.total||0).toLocaleString()+'천원</div>'+
+      '</div>';
+    }).join('');
+  }
+  pop.style.display='flex';
+  // 팝업 열 때 버튼 강조 해제
+  document.getElementById('statusBtn').classList.remove('has-order');
+}
+function closeStatusPopup(){
+  document.getElementById('statusPopup').style.display='none';
+  updateStatusBtn();
+}
 function renderCart(){
   var el=document.getElementById('cartContent');
   el.innerHTML='';
@@ -1022,6 +1111,7 @@ function saveOrder(){
   };
   orders.unshift(order);
   localStorage.setItem('orders',JSON.stringify(orders));
+  updateStatusBtn();
 
   // GAS 시트에 주문 저장 (관리자 동기화)
   (function(ord){
@@ -1371,7 +1461,7 @@ function reorder(order){
   goPage('payment');
 }
 
-window.onload=function(){loadMenus();};
+window.onload=function(){loadMenus();updateStatusBtn();};
 </script>
 
 <!-- 배송 주소 목록 모달 -->
