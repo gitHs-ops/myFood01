@@ -257,6 +257,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
 .addreq-reply-send{flex:2;padding:8px;border-radius:8px;border:none;background:#086266;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;}
 .addreq-reply-sent{font-size:11px;color:#1D9E75;font-weight:700;padding:2px 6px;background:#e8f8f2;border-radius:6px;margin-left:6px;white-space:nowrap;}
 .addreq-reply-preview{font-size:12px;color:#0a5a5e;background:#e0f7f6;border-radius:8px;padding:6px 10px;margin-top:6px;line-height:1.5;word-break:break-all;}
+.addreq-admin-label{font-size:10px;font-weight:700;color:#086266;background:#c6e8e6;border-radius:999px;padding:1px 7px;margin-right:5px;white-space:nowrap;}
 .order-actions{display:flex;gap:8px;}
 .btn-confirm-order{
   flex:1;background:#086266;color:#fff;border:none;border-radius:8px;
@@ -1859,10 +1860,8 @@ function renderOrdersList(today,todayOrders){
     btn.onclick=function(){setOrderFilter(this.getAttribute('data-f'));};
   });
 
-  // 목록 — 추가요청 최신 순 → 주문 ID 최신 순
+  // 목록 — 주문 최신 순
   todayOrders.sort(function(a,b){
-    var ta=a.addreqAt||0, tb=b.addreqAt||0;
-    if(tb!==ta) return tb-ta;
     return String(b.id).localeCompare(String(a.id));
   });
   var filtered=orderFilter==='all'?todayOrders:todayOrders.filter(function(o){return o.status===orderFilter;});
@@ -1918,18 +1917,34 @@ function renderOrdersList(today,todayOrders){
       addWrap.className='addreq-row-wrap';
       addWrap.id='addreqwrap_'+order.id;
       var innerHtml='';
+      var safeRep=order.adminReply?order.adminReply.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):'';
+      var ph=order.phone?(order.phone.replace(/'/g,'')):'';
       if(order.additionalRequest){
         var safeReq=order.additionalRequest.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
         var isNew=_isNewAddReq(order);
         var dotHtml=isNew?'<span class="addreq-new-dot" style="background:#086266;margin-right:2px;"></span>':'';
-        innerHtml='<div class="addreq-text-row">'+dotHtml+'✅ '+safeReq+'</div>';
+        if(!safeRep && order.phone){
+          // 답변 없음: 버튼을 요청 텍스트 행 우측 인라인
+          innerHtml='<div class="addreq-text-row" style="display:flex;align-items:center;gap:8px;border-radius:6px;">'
+            +'<span style="flex:1;word-break:break-all;overflow-wrap:anywhere;">'+dotHtml+'✅ '+safeReq+'</span>'
+            +'<button class="addreq-reply-btn" style="flex-shrink:0;" onclick="showReplyBox(\''+order.id+'\',\''+ph+'\')">💬 답변</button>'
+            +'</div>';
+        } else {
+          innerHtml='<div class="addreq-text-row">'+dotHtml+'✅ '+safeReq+'</div>';
+        }
       }
-      if(order.phone){
-        var safeRep=order.adminReply?order.adminReply.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):'';
-        var actionsRadius=order.additionalRequest?'':'border-radius:6px;';
-        innerHtml+='<div class="addreq-actions-row" style="'+actionsRadius+'">'
-          +(safeRep?'<div class="addreq-reply-preview" id="replypreview_'+order.id+'" style="flex:1;text-align:left;margin-right:8px;">💬 '+safeRep+'</div>':'<div id="replypreview_'+order.id+'"></div>')
-          +'<button class="addreq-reply-btn" onclick="showReplyBox(\''+order.id+'\',\''+order.phone.replace(/'/g,'')+'\')">💬 답변</button>'
+      if(safeRep){
+        var ar=order.additionalRequest?'':'border-radius:6px;';
+        innerHtml+='<div class="addreq-actions-row" style="'+ar+'">'
+          +'<div class="addreq-reply-preview" id="replypreview_'+order.id+'" style="flex:1;text-align:left;margin-right:8px;">'
+          +'<span class="addreq-admin-label">💬 온반 답변</span>'+safeRep
+          +'</div>'
+          +'<button class="addreq-reply-btn" onclick="showReplyBox(\''+order.id+'\',\''+ph+'\')">✏️ 수정</button>'
+          +'</div>';
+      } else if(!order.additionalRequest && order.phone){
+        innerHtml+='<div class="addreq-actions-row" style="border-radius:6px;">'
+          +'<div id="replypreview_'+order.id+'" style="flex:1;"></div>'
+          +'<button class="addreq-reply-btn" onclick="showReplyBox(\''+order.id+'\',\''+ph+'\')">💬 답변</button>'
           +'</div>';
       }
       addWrap.innerHTML=innerHtml;
@@ -2048,20 +2063,21 @@ function sendAdminReply(orderId, phone){
     _ordersCache[orderId].adminReply=combined;
     _ordersCache[orderId].replyAt=Date.now();
   }
-  // 미리보기 갱신
-  var prevEl=document.getElementById('replypreview_'+orderId);
-  if(prevEl){
-    prevEl.className='addreq-reply-preview';
-    prevEl.style.flex='1';
-    prevEl.style.textAlign='left';
-    prevEl.style.marginRight='8px';
-    prevEl.textContent='💬 '+combined;
-  }
   var wrap=document.getElementById('addreqwrap_'+orderId);
   if(wrap){var box=wrap.querySelector('.addreq-reply-box');if(box)box.remove();}
   showToast(notifyOn?'고객에게 알림을 전송했어요.':'답변이 저장됐어요.');
+  _reRenderFromCache();
 }
 
+function _reRenderFromCache(){
+  var today=workDate||toISO(new Date());
+  var allToday=[];
+  Object.keys(_ordersCache).forEach(function(id){
+    var o=_ordersCache[id];
+    if(o&&o.date===today)allToday.push(o);
+  });
+  renderOrdersList(today,allToday);
+}
 function makeConfirmMsg(order){
   var lines=['[오늘의 반찬] '+order.name+'님, 배송업체에 요청했습니다! 🚚',''];
   order.items.forEach(function(i){lines.push('  '+i.name+' '+i.qty+'개');});
