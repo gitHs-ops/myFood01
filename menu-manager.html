@@ -173,6 +173,9 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
   position:relative;
 }
 .nav-tab.active{background:#fff;color:#086266;font-weight:700;}
+.nav-tab-badge{position:absolute;top:5px;right:8px;min-width:17px;height:17px;border-radius:999px;background:#e53935;color:#fff;font-size:10px;font-weight:700;line-height:17px;text-align:center;padding:0 4px;display:none;}
+.addreq-new{border:2px solid #e53935!important;}
+.addreq-new-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#e53935;margin-right:4px;vertical-align:middle;}
 .nav-tab .ti{font-size:18px;line-height:1;}
 .nav-tab .tl{font-size:11px;line-height:1;}
 /* 모바일: 라벨 숨기고 아이콘만 */
@@ -364,7 +367,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
 <div class="nav-tabs">
   <button class="nav-tab active" onclick="switchPage('manage')"><span class="ti">🍱</span><span class="tl">메뉴 관리</span></button>
   <button class="nav-tab" onclick="switchPage('kakao')"><span class="ti">💬</span><span class="tl">카카오 발송</span></button>
-  <button class="nav-tab" onclick="switchPage('orders')"><span class="ti">📦</span><span class="tl">주문 관리</span></button>
+  <button class="nav-tab" id="navTabOrders" onclick="switchPage('orders')"><span class="ti">📦</span><span class="tl">주문 관리</span><span class="nav-tab-badge" id="addreqBadge"></span></button>
   <button class="nav-tab" onclick="switchPage('history')"><span class="ti">🗄</span><span class="tl">메뉴 창고</span></button>
   <button class="nav-tab" onclick="switchPage('settings')"><span class="ti">⚙</span><span class="tl">설정</span></button>
 </div>
@@ -1702,6 +1705,24 @@ function importParsed(){
 var orderFilter='all';
 var _ordersCache={};  // GAS에서 불러온 주문 캐시 (id → order)
 
+/* ── 추가요청 미확인 배지 ── */
+var _seenAddReqs=new Set(JSON.parse(localStorage.getItem('onban_seen_addreq')||'[]'));
+function _saveSeenAddReqs(){
+  localStorage.setItem('onban_seen_addreq',JSON.stringify(Array.from(_seenAddReqs)));
+}
+function updateAddReqBadge(orders){
+  var unseen=(orders||[]).filter(function(o){return o.additionalRequest&&!_seenAddReqs.has(o.id);}).length;
+  var el=document.getElementById('addreqBadge');
+  if(!el)return;
+  if(unseen>0){el.textContent=unseen;el.style.display='block';}
+  else{el.style.display='none';}
+}
+function markAllAddReqSeen(orders){
+  (orders||[]).forEach(function(o){if(o.additionalRequest)_seenAddReqs.add(o.id);});
+  _saveSeenAddReqs();
+  updateAddReqBadge(orders);
+}
+
 function getOrders(){return JSON.parse(localStorage.getItem('orders')||'[]');}
 function _findOrder(orders,id){
   var o=orders.find(function(o){return o.id===id;});
@@ -1743,6 +1764,10 @@ function renderOrders(){
     });
 }
 function renderOrdersList(today,todayOrders){
+  // 주문 관리 페이지가 열려있으면 추가요청 모두 확인 처리
+  var ordersPageOpen=(document.getElementById('page-orders').classList.contains('active'));
+  if(ordersPageOpen){markAllAddReqSeen(todayOrders);}
+  else{updateAddReqBadge(todayOrders);}
 
   // 통계
   var pending=todayOrders.filter(function(o){return o.status==='pending';}).length;
@@ -1808,7 +1833,8 @@ function renderOrdersList(today,todayOrders){
       var addReq=document.createElement('div');
       addReq.className='order-memo';
       addReq.style.cssText='color:#086266;background:#f0faf9;';
-      addReq.textContent='✏️ '+order.additionalRequest;
+      var isNew=!_seenAddReqs.has(order.id);
+      addReq.innerHTML=(isNew?'<span class="addreq-new-dot"></span>':'')+('✏️ '+order.additionalRequest.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'));
       card.appendChild(addReq);
     }
 
