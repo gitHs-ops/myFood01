@@ -1037,7 +1037,7 @@ function _buildStatusCardHtml(o){
     if(o.replyAt){try{timeStr=new Date(Number(o.replyAt)).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});}catch(e2){}}
     chatHtml+='<div class="admin-reply-section">'+
       '<div class="admin-reply-bubble">'+
-        '<div class="admin-reply-label">💬 가게 답변</div>'+
+        '<div class="admin-reply-label">💬 온반 답변</div>'+
         '<div class="admin-reply-text">'+safeRep+'</div>'+
         (timeStr?'<div class="admin-reply-time">'+timeStr+'</div>':'')+
       '</div>'+
