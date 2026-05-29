@@ -778,9 +778,9 @@ function renderCatTabs(){
   });
   if(hasChild){
     var btn=document.createElement('button');
-    btn.className='cat-tab'+(filterCat==='👧어린이'?' active':'');
-    btn.textContent='👧 어린이';
-    btn.onclick=function(){setCat('👧어린이');};
+    btn.className='cat-tab'+(filterCat==='어린이'?' active':'');
+    btn.textContent='어린이';
+    btn.onclick=function(){setCat('어린이');};
     tabs.appendChild(btn);
   }
 }
@@ -788,7 +788,7 @@ function setCat(cat){filterCat=cat;renderCatTabs();renderMenuGrid();}
 
 // ── 메뉴 그리드 ──
 function renderMenuGrid(){
-  var filtered=filterCat==='전체'?allMenus:filterCat==='👧어린이'?allMenus.filter(function(m){return m.child;}):allMenus.filter(function(m){return m.cat===filterCat;});
+  var filtered=filterCat==='전체'?allMenus:filterCat==='어린이'?allMenus.filter(function(m){return m.child;}):allMenus.filter(function(m){return m.cat===filterCat;});
   var grid=document.getElementById('menuGrid');
   var noMenu=document.getElementById('noMenu');
   if(!filtered.length){grid.innerHTML='';noMenu.style.display='block';return;}
@@ -892,7 +892,7 @@ function renderDetail(){
     var cb2=document.createElement('span');
     cb2.className='badge badge-child';
     cb2.style.cssText='font-size:12px;padding:3px 10px;';
-    cb2.textContent='👧 어린이도 OK';
+    cb2.textContent='어린이도 OK';
     badges.appendChild(cb2);
   }
 
