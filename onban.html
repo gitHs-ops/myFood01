@@ -571,7 +571,7 @@ select.orderer-input{appearance:none;-webkit-appearance:none;background:#fff url
   <div class="section-title">
     <span>📬 주문 접수 상태</span>
     <div style="display:flex;align-items:center;gap:8px;">
-      <span class="status-refresh-btn" onclick="renderStatusPage._force=true;renderStatusPage()">실시간 변경된 정보 확인 여기를 클릭 !</span>
+      <span class="status-refresh-btn" onclick="refreshStatusNow()">실시간 변경된 정보 확인 여기를 클릭 !</span>
       <span id="statusCountdown" class="status-countdown">🔄 15</span>
     </div>
   </div>
@@ -1084,9 +1084,39 @@ function renderStatusPage(){
   el.innerHTML=sorted.map(_buildStatusCardHtml).join('');
   document.getElementById('statusBtn').classList.remove('has-order');
   updateStatusBtn();
-  // GAS에서 최신 adminReply / status 갱신 (forceRender: 클릭 시 true)
-  _fetchStatusFromGAS(myInfo, today, sorted, !!renderStatusPage._force);
-  renderStatusPage._force=false;
+  // GAS에서 최신 adminReply / status 갱신
+  _fetchStatusFromGAS(myInfo, today, sorted, false);
+}
+function refreshStatusNow(){
+  showToast('조회 중...');
+  var myInfo=JSON.parse(localStorage.getItem('onban_my_info')||'null');
+  if(!myInfo||!myInfo.name||!myInfo.phone){showToast('주문자 정보가 없어요.');return;}
+  var today=toISO(new Date());
+  var phone=String(myInfo.phone||'').replace(/[^0-9]/g,'');
+  fetch(GAS_URL+'?action=get_orders&date='+encodeURIComponent(today)+'&phone='+encodeURIComponent(phone),{redirect:'follow'})
+  .then(function(r){return r.json();})
+  .then(function(data){
+    if(!data.success||!Array.isArray(data.orders)){showToast('서버 오류');return;}
+    var gasMap={};
+    data.orders.forEach(function(go){gasMap[go.id]=go;});
+    var allOrders=JSON.parse(localStorage.getItem('orders')||'[]');
+    allOrders.forEach(function(o){
+      var go=gasMap[o.id];
+      if(!go)return;
+      if(go.adminReply!==undefined)o.adminReply=go.adminReply;
+      if(go.replyAt!==undefined)o.replyAt=go.replyAt;
+      if(go.status)o.status=go.status;
+    });
+    localStorage.setItem('orders',JSON.stringify(allOrders));
+    var sorted=allOrders.filter(function(o){
+      return o.date===today&&o.name===myInfo.name&&o.phone===myInfo.phone;
+    }).sort(function(a,b){return (b.id||'').localeCompare(a.id||'');});
+    var el=document.getElementById('statusContent');
+    if(el)el.innerHTML=sorted.map(_buildStatusCardHtml).join('');
+    updateStatusBtn();
+    showToast('최신 정보로 업데이트됐어요.');
+  })
+  .catch(function(){showToast('서버 연결 실패.');});
 }
 function _fetchStatusFromGAS(myInfo, today, localOrders, forceRender){
   var phone=String(myInfo.phone||'').replace(/[^0-9]/g,'');
