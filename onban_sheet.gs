@@ -181,7 +181,7 @@ function saveOrder(e, dataOverride) {
   var sheet = ss.getSheetByName('주문');
   if (!sheet) {
     sheet = ss.insertSheet('주문');
-    var hdr = ['id','date','time','name','phone','addr','memo','items','total','status'];
+    var hdr = ['id','date','time','name','phone','addr','memo','items','total','status','isReorder'];
     sheet.appendRow(hdr);
     sheet.getRange(1,1,1,hdr.length).setFontWeight('bold')
          .setBackground('#086266').setFontColor('#fff').setHorizontalAlignment('center');
@@ -198,7 +198,8 @@ function saveOrder(e, dataOverride) {
   sheet.appendRow([
     order.id, order.date, order.time||'', order.name||'', order.phone||'',
     order.addr||'', order.memo||'',
-    JSON.stringify(order.items||[]), order.total||0, order.status||'pending'
+    JSON.stringify(order.items||[]), order.total||0, order.status||'pending',
+    order.isReorder ? 'Y' : ''
   ]);
   return json({ success: true, action: 'inserted' });
 }
@@ -232,7 +233,8 @@ function getOrders(e) {
       : String(r[4] || '');
     orders.push({ id:String(r[0]), date:rowDate, time:String(r[2]),
       name:String(r[3]), phone:phone, addr:String(r[5]), memo:String(r[6]),
-      items:items, total:Number(r[8]), status:String(r[9]) });
+      items:items, total:Number(r[8]), status:String(r[9]),
+      isReorder: String(r[10]||'') === 'Y' });
   }
   return json({ success: true, orders: orders });
 }

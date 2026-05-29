@@ -873,7 +873,10 @@ function renderStatusPage(){
           '<div style="font-size:14px;font-weight:700;color:#1a1a1a;">'+(o.name||'')+'</div>'+
           '<div class="hist-date">'+(o.date||'')+' '+(o.time||'')+'</div>'+
         '</div>'+
-        '<span class="hist-status '+(o.status||'')+'" style="background:'+bg+';color:'+col+';">'+st+'</span>'+
+        '<span style="display:inline-flex;align-items:center;gap:3px;">'+
+          '<span class="hist-status '+(o.status||'')+'" style="background:'+bg+';color:'+col+';">'+st+'</span>'+
+          (o.isReorder?'<span style="font-size:10px;font-weight:700;background:#e0d4f7;color:#5b21b6;border-radius:999px;padding:2px 7px;">재주문</span>':'')+
+        '</span>'+
       '</div>'+
       '<div class="hist-body">'+itemRows+'</div>'+
       '<div class="hist-total"><span>합계</span><span class="hist-total-val">'+(o.total||0).toLocaleString()+'천원</span></div>'+
@@ -1306,8 +1309,9 @@ function renderHistory(){
     // 헤더
     var head=document.createElement('div');
     head.className='hist-head';
+    var reorderBadge=o.isReorder?'<span style="font-size:10px;font-weight:700;background:#e0d4f7;color:#5b21b6;border-radius:999px;padding:2px 7px;margin-left:4px;">재주문</span>':'';
     head.innerHTML='<span class="hist-date">'+o.date+' '+o.time+'</span>'
-      +'<span class="hist-status '+(statusCls[o.status]||'pending')+'">'+(statusMap[o.status]||'대기중')+'</span>';
+      +'<span style="display:inline-flex;align-items:center;gap:3px;"><span class="hist-status '+(statusCls[o.status]||'pending')+'">'+(statusMap[o.status]||'대기중')+'</span>'+reorderBadge+'</span>';
     card.appendChild(head);
     // 아이템 목록
     var body=document.createElement('div');
@@ -1441,7 +1445,7 @@ function reorder(order){
     time:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),
     name:order.name,phone:order.phone,addr:order.addr,memo:order.memo,
     items:order.items.map(function(i){return {name:i.name,qty:i.qty,price:i.price};}),
-    total:total,status:'pending'
+    total:total,status:'pending',isReorder:true
   };
   var orders=JSON.parse(localStorage.getItem('orders')||'[]');
   // 기존 주문 취소 처리
