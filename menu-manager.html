@@ -251,6 +251,17 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
 .setting-input:focus{border-color:#086266;}
 .btn-setting-save{background:#086266;color:#fff;border:none;border-radius:8px;padding:11px 20px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;width:100%;margin-top:6px;}
 .setting-saved{color:#1D9E75;font-size:13px;font-weight:700;text-align:center;margin-top:8px;display:none;}
+/* 발송 ON/OFF 토글 */
+.send-toggle-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid #f0f5f5;}
+.send-toggle-row:last-child{border-bottom:none;}
+.send-toggle-label{font-size:14px;font-weight:600;color:#333;}
+.send-toggle-desc{font-size:11px;color:#aaa;margin-top:2px;}
+.toggle-switch{position:relative;width:48px;height:26px;flex-shrink:0;}
+.toggle-switch input{opacity:0;width:0;height:0;}
+.toggle-slider{position:absolute;inset:0;border-radius:999px;background:#ccc;cursor:pointer;transition:background .2s;}
+.toggle-slider::before{content:'';position:absolute;width:20px;height:20px;border-radius:50%;background:#fff;top:3px;left:3px;transition:transform .2s;box-shadow:0 1px 4px rgba(0,0,0,.2);}
+.toggle-switch input:checked+.toggle-slider{background:#086266;}
+.toggle-switch input:checked+.toggle-slider::before{transform:translateX(22px);}
 .bank-item{display:flex;align-items:center;gap:6px;background:#f4fafa;border-radius:10px;padding:10px 12px;margin-bottom:8px;border:1.5px solid #e0f0ef;}
 .bank-item-info{flex:1;font-size:13px;}
 .bank-item-name{font-weight:700;color:#086266;}
@@ -467,6 +478,31 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
     </div>
     <button class="btn-setting-save" onclick="saveAdminInfo()">저장</button>
     <div class="setting-saved" id="settingSaved3">✓ 저장되었습니다</div>
+  </div>
+  <div class="setting-card">
+    <div class="setting-title">📱 발송 설정</div>
+    <div class="send-toggle-row">
+      <div>
+        <div class="send-toggle-label">💬 문자(SMS) 발송</div>
+        <div class="send-toggle-desc">주문 확정·배송·취소 시 배송업체 SMS 발송</div>
+      </div>
+      <label class="toggle-switch">
+        <input type="checkbox" id="cfgSmsEnabled" checked>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="send-toggle-row">
+      <div>
+        <div class="send-toggle-label">🔔 알림톡 발송</div>
+        <div class="send-toggle-desc">주문 접수·확정·완료·취소 시 고객 카카오 알림톡 발송</div>
+      </div>
+      <label class="toggle-switch">
+        <input type="checkbox" id="cfgAlimtalkEnabled" checked>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <button class="btn-setting-save" onclick="saveSendSettings()" style="margin-top:14px;">저장</button>
+    <div class="setting-saved" id="settingSaved4">✓ 저장되었습니다</div>
   </div>
 </div>
 
@@ -1832,12 +1868,14 @@ function makeConfirmMsg(order){
 
 function sendSMS(phone, msg){
   if(!phone)return;
+  if(getSettings().smsEnabled===false){console.log('[SMS OFF] 발송 건너뜀');return;}
   var qs='receiver='+encodeURIComponent(phone)+'&msg='+encodeURIComponent(msg);
   fetch('https://script.google.com/macros/s/AKfycbwtXJL4_lMynbG4U13PqbnPOiTp15evyw0BPPQ0A9aV5QYlI5dSQB4Ru-8BOqVR9RPq1w/exec?'+qs,{redirect:'follow'}).catch(function(){});
 }
 
 function sendAlimtalk(phone, tplId, vars, fallbackMsg){
   if(!phone)return;
+  if(getSettings().alimtalkEnabled===false){console.log('[알림톡 OFF] 발송 건너뜀');return;}
   var qs='action=alimtalk'
     +'&receiver='+encodeURIComponent(phone)
     +'&tplId='+encodeURIComponent(tplId)
@@ -1975,7 +2013,7 @@ var BANKS_KEY='onban_banks';
 
 var ADMIN_KEY='onban_admin';
 function getSettings(){
-  var def={stock:0};
+  var def={stock:0, smsEnabled:true, alimtalkEnabled:true};
   return Object.assign(def,JSON.parse(localStorage.getItem(SETTINGS_KEY)||'{}'));
 }
 function getAdminInfo(){
@@ -2012,7 +2050,8 @@ function gasFetch(url,cb){
 function syncSettingsToSheet(cb){
   var gasUrl=ONBAN_SHEET_URL;if(!gasUrl){if(cb)cb(false);return;}
   var s=getSettings(),a=getAdminInfo(),b=getBanks();
-  var data={stock:s.stock,phone:a.phone,email:a.email,deliveryPhone:a.deliveryPhone||'',banks:b};
+  var data={stock:s.stock,smsEnabled:s.smsEnabled,alimtalkEnabled:s.alimtalkEnabled,
+            phone:a.phone,email:a.email,deliveryPhone:a.deliveryPhone||'',banks:b};
   gasFetchPost(gasUrl+'?action=save_settings',{data:data},function(err,d){
     if(cb)cb(!err&&d&&d.success!==false);
   });
@@ -2023,7 +2062,10 @@ function loadSettingsFromSheet(cb){
   gasFetch(gasUrl+'?action=load_settings',function(err,d){
     if(!err&&d&&d.success&&d.data){
       var data=d.data;
-      if(data.stock!==undefined)localStorage.setItem(SETTINGS_KEY,JSON.stringify({stock:Number(data.stock)||0}));
+      var s={stock:Number(data.stock)||0,
+             smsEnabled:data.smsEnabled!==false&&data.smsEnabled!=='false',
+             alimtalkEnabled:data.alimtalkEnabled!==false&&data.alimtalkEnabled!=='false'};
+      localStorage.setItem(SETTINGS_KEY,JSON.stringify(s));
       localStorage.setItem(ADMIN_KEY,JSON.stringify({phone:data.phone||'',email:data.email||'',deliveryPhone:data.deliveryPhone||''}));
       if(data.banks&&Array.isArray(data.banks))localStorage.setItem(BANKS_KEY,JSON.stringify(data.banks));
       if(cb)cb(true);
@@ -2161,18 +2203,32 @@ function renderBankList(){
   });
 }
 
+function saveSendSettings(){
+  var s=getSettings();
+  s.smsEnabled      = document.getElementById('cfgSmsEnabled').checked;
+  s.alimtalkEnabled = document.getElementById('cfgAlimtalkEnabled').checked;
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+  syncSettingsToSheet(function(){
+    var el=document.getElementById('settingSaved4');
+    el.style.display='block';
+    setTimeout(function(){el.style.display='none';},2000);
+  });
+}
+
 function loadSettingsForm(){
   function fillForm(){
     var s=getSettings();
     document.getElementById('cfgStock').value=s.stock;
+    document.getElementById('cfgSmsEnabled').checked      = s.smsEnabled!==false;
+    document.getElementById('cfgAlimtalkEnabled').checked = s.alimtalkEnabled!==false;
     var a=getAdminInfo();
     document.getElementById('cfgAdminPhone').value=a.phone;
     document.getElementById('cfgAdminEmail').value=a.email;
     document.getElementById('cfgDeliveryPhone').value=a.deliveryPhone||'';
     renderBankList();
   }
-  fillForm(); // 로컬 우선 즉시 표시
-  loadSettingsFromSheet(function(ok){if(ok)fillForm();}); // 시트에서 갱신
+  fillForm();
+  loadSettingsFromSheet(function(ok){if(ok)fillForm();});
 }
 
 /* ════ 구글 시트 내보내기 ════ */
