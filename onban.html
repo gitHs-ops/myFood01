@@ -980,7 +980,9 @@ function renderStatusPage(){
       '<div class="hist-body">'+itemRows+'</div>'+
       '<div class="hist-total"><span>합계</span><span class="hist-total-val">'+(o.total||0).toLocaleString()+'천원</span></div>'+
       '<div class="extra-req-wrap" id="extra_'+o.id+'">'+
-        '<button class="extra-req-btn" onclick="toggleExtraReq(\''+o.id+'\')">✏️ 추가 요청</button>'+
+        (o.additionalRequest
+          ? '<div class="extra-req-saved">✅ '+String(o.additionalRequest).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</div>'
+          : '<button class="extra-req-btn" onclick="toggleExtraReq(\''+o.id+'\')">✏️ 추가 요청</button>')+
       '</div>'+
     '</div>';
   }).join('');
@@ -1014,6 +1016,10 @@ function saveExtraReq(id){
   .then(function(d){
     if(d&&d.success){
       showToast('✅ 추가 요청이 저장됐어요.');
+      // localStorage 업데이트
+      var ords=JSON.parse(localStorage.getItem('orders')||'[]');
+      var ord=ords.find(function(o){return o.id===id;});
+      if(ord){ord.additionalRequest=text;localStorage.setItem('orders',JSON.stringify(ords));}
       var safe=String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
       wrap.innerHTML='<div class="extra-req-saved">✅ '+safe+'</div>';
     } else {
@@ -1329,7 +1335,7 @@ function saveOrder(){
   sendSMS(adminPhoneFixed, adminMsg);
   // 설정 페이지 관리자 연락처로도 발송 (다를 경우만)
   var adminInfo=JSON.parse(localStorage.getItem('onban_admin')||'{}');
-  var adminPhoneSettings=(adminInfo.phone||'').replace(/[^0-9]/g,'');
+  var adminPhoneSettings=String(adminInfo.phone||'').replace(/[^0-9]/g,'');
   if(adminPhoneSettings&&adminPhoneSettings!==adminPhoneFixed.replace(/[^0-9]/g,'')){
     sendSMS(adminPhoneSettings, adminMsg);
   }
@@ -1637,7 +1643,7 @@ function reorder(order){
     +' 합계: '+total.toLocaleString()+'천원'+(order.memo?' 요청:'+order.memo:'');
   sendSMS(adminPhoneFixed,adminMsg);
   var adminInfo=JSON.parse(localStorage.getItem('onban_admin')||'{}');
-  var adminPhoneSettings=(adminInfo.phone||'').replace(/[^0-9]/g,'');
+  var adminPhoneSettings=String(adminInfo.phone||'').replace(/[^0-9]/g,'');
   if(adminPhoneSettings&&adminPhoneSettings!==adminPhoneFixed.replace(/[^0-9]/g,'')){
     sendSMS(adminPhoneSettings,adminMsg);
   }
