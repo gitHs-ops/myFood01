@@ -1047,6 +1047,7 @@ function _buildStatusCardHtml(o){
     '</div>'+
     '<div class="hist-body">'+itemRows+'</div>'+
     '<div class="hist-total"><span>합계</span><span class="hist-total-val">'+(o.total||0).toLocaleString()+'천원</span></div>'+
+    (o.memo?'<div class="order-memo-row">📝 '+String(o.memo).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</div>':'')+
     chatHtml+
   '</div>';
 }
