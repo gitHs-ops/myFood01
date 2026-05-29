@@ -787,7 +787,7 @@ function renderMenuGrid(){
     var soldout=(m.stock||0)===0;
     var card=document.createElement('div');
     card.className='menu-card'+(m.child&&!soldout?' child-ok':'')+(soldout?' soldout':'');
-    card.onclick=(function(mid){return function(){openDetail(mid);};})(m.id);
+    // 카드 전체 클릭 = 체크박스 토글 (상세 페이지 없음)
 
     // 카테고리 점
     var dot=document.createElement('div');
@@ -824,8 +824,7 @@ function renderMenuGrid(){
       var chk=document.createElement('div');
       chk.className='menu-chk'+(selectedMenuIds.has(String(m.id))?' checked':'');
       (function(mid,chkEl,cardEl){
-        chkEl.onclick=function(e){
-          e.stopPropagation();
+        function toggleMenu(){
           if(selectedMenuIds.has(mid)){
             selectedMenuIds.delete(mid);
             chkEl.classList.remove('checked');
@@ -836,7 +835,9 @@ function renderMenuGrid(){
             cardEl.classList.add('selected');
           }
           updateFloatCartBtn();
-        };
+        }
+        cardEl.onclick=toggleMenu;
+        chkEl.onclick=function(e){e.stopPropagation();toggleMenu();};
       })(String(m.id),chk,card);
       if(selectedMenuIds.has(String(m.id)))card.classList.add('selected');
       card.appendChild(dot);

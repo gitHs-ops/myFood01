@@ -272,6 +272,8 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
   margin-top:6px;
 }
 .order-empty{text-align:center;padding:40px 20px;color:#aaa;font-size:14px;}
+.orders-refresh-btn{font-size:11px;font-weight:600;color:#086266;background:#e0f7f6;border:1px solid #9adcda;border-radius:20px;padding:3px 10px;cursor:pointer;white-space:nowrap;animation:orders-blink 2s ease-in-out infinite;}
+@keyframes orders-blink{0%,100%{opacity:1;}50%{opacity:.4;}}
 .order-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:16px;}
 .order-stat{background:#f0faf9;border-radius:10px;padding:10px 4px;text-align:center;}
 .order-stat-num{font-size:17px;font-weight:900;color:#086266;}
@@ -555,10 +557,13 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
   <div class="card">
     <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
       <span>📦 주문 관리</span>
-      <span id="pollStatus" style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:400;color:#aaa;">
-        <span id="pollDot" style="width:7px;height:7px;border-radius:50%;background:#ccc;flex-shrink:0;"></span>
-        <span id="pollLabel">연결 중...</span>
-      </span>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="orders-refresh-btn" onclick="renderOrders()">실시간 변경된 정보 확인 : 여기를 클릭 !</span>
+        <span id="pollStatus" style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:400;color:#aaa;">
+          <span id="pollDot" style="width:7px;height:7px;border-radius:50%;background:#ccc;flex-shrink:0;"></span>
+          <span id="pollLabel">연결 중...</span>
+        </span>
+      </div>
     </div>
     <div class="order-stats" id="orderStats"></div>
     <div class="order-filter-tabs" id="orderFilterTabs"></div>
