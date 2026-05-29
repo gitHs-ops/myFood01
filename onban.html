@@ -1287,7 +1287,7 @@ function renderHistory(){
     el.innerHTML='<div class="hist-empty"><span>📋</span><p>'+label+' 주문 내역이 없어요.</p></div>';
     return;
   }
-  var statusMap={pending:'대기중',confirmed:'확정',delivered:'배송완료',cancelled:'취소됨'};
+  var statusMap={pending:'대기중',confirmed:'주문접수',delivered:'배송완료',cancelled:'취소됨'};
   var statusCls={pending:'pending',confirmed:'confirmed',delivered:'delivered',cancelled:'cancelled'};
   orders.forEach(function(o){
     var total=o.items.reduce(function(s,i){return s+i.price*i.qty;},0);
