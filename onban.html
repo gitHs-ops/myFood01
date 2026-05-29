@@ -149,10 +149,12 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 /* ── 뒤로 버튼 ── */
 .back-bar{
   display:flex;align-items:center;gap:8px;
-  padding:14px 16px;cursor:pointer;color:var(--teal);
+  padding:14px 16px;cursor:pointer;color:rgba(255,255,255,.85);
   font-size:14px;font-weight:700;
 }
-.back-bar svg{width:20px;height:20px;fill:none;stroke:var(--teal);stroke-width:2.5;}
+.back-bar svg{width:20px;height:20px;fill:none;stroke:rgba(255,255,255,.85);stroke-width:2.5;}
+.back-bar:hover{color:#fff;}
+.back-bar:hover svg{stroke:#fff;}
 
 /* ── 장바구니 ── */
 .cart-list{padding:0 14px;}
@@ -274,7 +276,7 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 .btn-home svg{width:20px;height:20px;fill:none;stroke:#fff;stroke-width:2;}
 
 /* ── 공통 ── */
-.section-title{font-size:15px;font-weight:700;padding:16px 16px 10px;color:var(--text);}
+.section-title{font-size:15px;font-weight:700;padding:16px 16px 10px;color:#fff;}
 .toast{
   position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);
   background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:999px;
