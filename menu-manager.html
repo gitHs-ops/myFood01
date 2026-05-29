@@ -1912,25 +1912,26 @@ function renderOrdersList(today,todayOrders){
       memo.textContent='📝 '+order.memo;
       card.appendChild(memo);
     }
-    if(order.additionalRequest){
+    if(order.additionalRequest || order.phone){
       var addWrap=document.createElement('div');
       addWrap.className='addreq-row-wrap';
       addWrap.id='addreqwrap_'+order.id;
-      var safeReq=order.additionalRequest.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-      var isNew=_isNewAddReq(order);
-      var dotHtml=isNew?'<span class="addreq-new-dot" style="background:#086266;margin-right:2px;"></span>':'';
-      var actionsHtml='';
+      var innerHtml='';
+      if(order.additionalRequest){
+        var safeReq=order.additionalRequest.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        var isNew=_isNewAddReq(order);
+        var dotHtml=isNew?'<span class="addreq-new-dot" style="background:#086266;margin-right:2px;"></span>':'';
+        innerHtml='<div class="addreq-text-row">'+dotHtml+'✏️ '+safeReq+'</div>';
+      }
       if(order.phone){
         var safeRep=order.adminReply?order.adminReply.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):'';
-        actionsHtml='<div class="addreq-actions-row">'
+        var actionsRadius=order.additionalRequest?'':'border-radius:6px;';
+        innerHtml+='<div class="addreq-actions-row" style="'+actionsRadius+'">'
           +(safeRep?'<div class="addreq-reply-preview" id="replypreview_'+order.id+'" style="flex:1;text-align:left;margin-right:8px;">💬 '+safeRep+'</div>':'<div id="replypreview_'+order.id+'"></div>')
           +'<button class="addreq-reply-btn" onclick="showReplyBox(\''+order.id+'\',\''+order.phone.replace(/'/g,'')+'\')">💬 답변</button>'
           +'</div>';
       }
-      addWrap.innerHTML='<div class="addreq-text-row">'
-        +dotHtml+'✏️ '+safeReq
-        +'</div>'
-        +actionsHtml;
+      addWrap.innerHTML=innerHtml;
       card.appendChild(addWrap);
     }
 
