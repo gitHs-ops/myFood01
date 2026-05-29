@@ -2010,19 +2010,25 @@ function deleteOrder(id){
   var remaining=Object.values(_ordersCache);
   var today=workDate||toISO(new Date());
   renderOrdersList(today,remaining);
-  // GAS 시트에서 삭제 + 응답 확인
+  // GAS 시트에서 삭제 + 실제 응답 텍스트로 진단
   fetch(ONBAN_SHEET_URL+'?action=delete_order&id='+encodeURIComponent(id),{redirect:'follow'})
-    .then(function(r){return r.json();})
-    .then(function(d){
+    .then(function(r){return r.text();})
+    .then(function(t){
+      var d;
+      try{d=JSON.parse(t);}catch(e){d=null;}
       if(d&&d.success){
-        showToast('🗑 시트에서도 삭제됐어요.');
+        showToast('🗑 시트 삭제 완료');
+      } else if(d&&!d.success){
+        showToast('⚠️ GAS: '+(d.error||'실패'));
+        renderOrders();
       } else {
-        showToast('⚠️ 시트 삭제 실패: '+(d&&d.error||'알 수 없는 오류'));
-        renderOrders(); // 실패 시 원래 목록 복구
+        // JSON이 아닌 응답 (HTML 오류 등) — 앞 80자 표시
+        showToast('⚠️ GAS 응답 오류: '+t.replace(/<[^>]*>/g,'').trim().slice(0,80));
+        renderOrders();
       }
     })
-    .catch(function(e){
-      showToast('⚠️ GAS 연결 오류 — 시트 삭제 실패');
+    .catch(function(err){
+      showToast('⚠️ 연결 오류: '+String(err).slice(0,60));
       renderOrders();
     });
 }
