@@ -321,6 +321,7 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
   margin-bottom:10px;transition:border-color .2s;
 }
 .orderer-input:focus{border-color:var(--teal);}
+.orderer-direct-req{resize:vertical;min-height:72px;font-size:13px;line-height:1.6;color:#333;}
 .orderer-req{color:var(--red);font-size:12px;margin-left:2px;}
 .cal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:100;align-items:flex-end;justify-content:center;}
 .cal-overlay.open{display:flex;}
@@ -375,6 +376,17 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 .hist-actions{display:flex;gap:8px;padding:10px 14px 14px;}
 .hist-btn-cancel{flex:1;padding:10px;border-radius:9px;font-size:13px;font-weight:700;border:1.5px solid #f5c0c0;background:#fff;color:var(--red);cursor:pointer;}
 .hist-btn-reorder{flex:1;padding:10px;border-radius:9px;font-size:13px;font-weight:700;border:none;background:var(--teal);color:#fff;cursor:pointer;}
+/* ── 추가 요청 ── */
+.extra-req-wrap{padding:0 14px 12px;}
+.extra-req-btn{width:100%;padding:9px;border-radius:9px;font-size:13px;font-weight:700;border:1.5px dashed #cde8e7;background:#f9fffe;color:#086266;cursor:pointer;font-family:inherit;transition:background .15s;}
+.extra-req-btn:active{background:#e8f5f4;}
+.extra-req-area{width:100%;border:1.5px solid #cde8e7;border-radius:9px;padding:10px 12px;font-size:13px;font-family:inherit;resize:vertical;min-height:80px;outline:none;color:#333;box-sizing:border-box;}
+.extra-req-area:focus{border-color:#086266;}
+.extra-req-actions{display:flex;gap:8px;margin-top:8px;}
+.extra-req-cancel{flex:1;padding:9px;border-radius:9px;font-size:13px;font-weight:700;border:1.5px solid #ddd;background:#fff;color:#666;cursor:pointer;font-family:inherit;}
+.extra-req-save{flex:1;padding:9px;border-radius:9px;font-size:13px;font-weight:700;border:none;background:#086266;color:#fff;cursor:pointer;font-family:inherit;}
+.extra-req-save:disabled{opacity:.6;}
+.extra-req-saved{font-size:13px;color:#086266;background:#f0faf9;border-radius:9px;padding:10px 12px;line-height:1.5;word-break:break-all;}
 /* ── 요청사항 셀렉트 ── */
 select.orderer-input{appearance:none;-webkit-appearance:none;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'%3E%3Cpolyline points='6 9 12 15 18 9' fill='none' stroke='%23666' stroke-width='2'/%3E%3C/svg%3E") no-repeat right 14px center/12px;cursor:pointer;}
 
@@ -495,6 +507,7 @@ select.orderer-input{appearance:none;-webkit-appearance:none;background:#fff url
       <option value="현관에서직접수령">현관에서 직접 수령</option>
       <option value="매장픽업">매장 픽업</option>
     </select>
+    <textarea class="orderer-input orderer-direct-req" id="ordererDirectReq" placeholder="✏️ 직접 요청 (선택) — 추가 요청 사항을 자유롭게 입력하세요" rows="3" maxlength="200"></textarea>
   </div>
   <div id="ordererOrderContent"></div>
 </div>
@@ -966,11 +979,57 @@ function renderStatusPage(){
       '</div>'+
       '<div class="hist-body">'+itemRows+'</div>'+
       '<div class="hist-total"><span>합계</span><span class="hist-total-val">'+(o.total||0).toLocaleString()+'천원</span></div>'+
+      '<div class="extra-req-wrap" id="extra_'+o.id+'">'+
+        '<button class="extra-req-btn" onclick="toggleExtraReq(\''+o.id+'\')">✏️ 추가 요청</button>'+
+      '</div>'+
     '</div>';
   }).join('');
   // 페이지 진입 시 버튼 강조 해제
   document.getElementById('statusBtn').classList.remove('has-order');
   updateStatusBtn();
+}
+function toggleExtraReq(id){
+  var wrap=document.getElementById('extra_'+id);
+  wrap.innerHTML=
+    '<textarea class="extra-req-area" placeholder="추가 요청 사항을 입력하세요..."></textarea>'+
+    '<div class="extra-req-actions">'+
+      '<button class="extra-req-cancel" onclick="cancelExtraReq(\''+id+'\')">취소</button>'+
+      '<button class="extra-req-save" onclick="saveExtraReq(\''+id+'\')">저장</button>'+
+    '</div>';
+  wrap.querySelector('textarea').focus();
+}
+function cancelExtraReq(id){
+  var wrap=document.getElementById('extra_'+id);
+  wrap.innerHTML='<button class="extra-req-btn" onclick="toggleExtraReq(\''+id+'\')">✏️ 추가 요청</button>';
+}
+function saveExtraReq(id){
+  var wrap=document.getElementById('extra_'+id);
+  var ta=wrap.querySelector('textarea');
+  var text=(ta.value||'').trim();
+  if(!text){showToast('내용을 입력해주세요.');return;}
+  var btn=wrap.querySelector('.extra-req-save');
+  btn.disabled=true; btn.textContent='저장 중...';
+  fetch(GAS_URL+'?action=save_additional_request',{
+    method:'POST',
+    redirect:'follow',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({id:id,text:text})
+  })
+  .then(function(r){return r.json();})
+  .then(function(d){
+    if(d&&d.success){
+      showToast('✅ 추가 요청이 저장됐어요.');
+      var safe=String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      wrap.innerHTML='<div class="extra-req-saved">✅ '+safe+'</div>';
+    } else {
+      showToast('⚠️ '+(d.error||d.message||'저장 실패'));
+      btn.disabled=false; btn.textContent='저장';
+    }
+  })
+  .catch(function(){
+    showToast('⚠️ 연결 오류');
+    btn.disabled=false; btn.textContent='저장';
+  });
 }
 function renderCart(){
   var el=document.getElementById('cartContent');
@@ -1082,7 +1141,7 @@ function renderOrdererPage(){
       if(nEl&&!nEl.value) nEl.value=prev.name||'';
       if(pEl&&!pEl.value) pEl.value=prev.phone||'';
       if(aEl&&!aEl.value) aEl.value=prev.addr||'';
-      if(mEl&&!mEl.value&&prev.memo) mEl.value=prev.memo;
+      if(mEl&&!mEl.value&&prev.memo) mEl.value=prev.memo.split(' / ')[0]||prev.memo;
     }
   }catch(e){}
 
@@ -1120,11 +1179,13 @@ function renderOrdererPage(){
     if(!phone){alert('연락처를 입력해주세요.');document.getElementById('ordererPhone').focus();return;}
     var memo=document.getElementById('ordererMemo').value;
     if(!memo){alert('요청사항을 선택해주세요.');document.getElementById('ordererMemo').focus();return;}
+    var directReq=(document.getElementById('ordererDirectReq').value||'').trim();
+    var fullMemo=memo+(directReq?' / '+directReq:'');
     ordererInfo={
       name:name,
       phone:document.getElementById('ordererPhone').value.trim(),
       addr:document.getElementById('ordererAddr').value.trim(),
-      memo:document.getElementById('ordererMemo').value.trim()
+      memo:fullMemo
     };
     // 주문자 기억 (접수상태 조회용)
     localStorage.setItem('onban_my_info',JSON.stringify({name:ordererInfo.name,phone:ordererInfo.phone}));

@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════
-// sms_proxy4onban.gs  —  오늘의 반찬 SMS + 알림톡 프록시 2026 05 23 v1.2
+// sms_proxy4onban.gs  —  오늘의 반찬 SMS + 알림톡 프록시 2026 05 23 v1.41
 //
 // 【설정 방법】
 //   GAS 프로젝트 속성 → 스크립트 속성 추가:
@@ -30,6 +30,21 @@ function doPost(e) {
   if (action === 'export_all_menus') return exportAllMenus(null, body.data || []);
   if (action === 'save_settings')    return saveSettings(null, body.data || {});
   if (action === 'save_order')       return saveOrder(null, body.data || {});
+  if (action === 'delete_order') {
+    var id = body.id || '';
+    if (!id) return json({ success: false, error: 'ID 없음' });
+    var ss    = SpreadsheetApp.openById(SHEET_ID);
+    var sheet = ss.getSheetByName('주문');
+    if (!sheet) return json({ success: false, error: '시트 없음' });
+    var rows = sheet.getDataRange().getValues();
+    for (var i = 1; i < rows.length; i++) {
+      if (String(rows[i][0]) === String(id)) {
+        sheet.deleteRow(i + 1);
+        return json({ success: true });
+      }
+    }
+    return json({ success: false, error: '주문 없음' });
+  }
   return json({ success: false, error: '알 수 없는 POST 액션' });
 }
 

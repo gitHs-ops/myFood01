@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════
-// onban_sheet.gs — 구글 시트 연동 2026 05 29 v1.0
+// onban_sheet.gs — 구글 시트 연동 2026 05 29 v1.51
 // ══════════════════════════════════════════════════════
 
 var SHEET_ID = '1_jAZK1zwob2zbiOwKRYzmpKkaswOAi4RUGC043ujiLo';
@@ -221,11 +221,6 @@ function getOrders(e) {
       ? Utilities.formatDate(r[1], 'Asia/Seoul', 'yyyy-MM-dd')
       : String(r[1]).trim().slice(0, 10);
     if (date && rowDate !== date) continue;
-    // 구글 시트가 시간 문자열을 Date 객체로 변환한 경우 HH:MM 형식으로 정규화
-    var rawTime = r[2];
-    var time = (rawTime instanceof Date)
-      ? String(rawTime.getHours()).padStart(2,'0') + ':' + String(rawTime.getMinutes()).padStart(2,'0')
-      : String(rawTime || '');
     var items = [];
     try { items = JSON.parse(r[7]); } catch(ex) {}
     // 구글 시트가 전화번호 앞자리 0을 숫자로 변환하여 제거한 경우 복원 후 포맷
@@ -236,7 +231,7 @@ function getOrders(e) {
       : rawPhone.length === 10
       ? rawPhone.slice(0,3)+'-'+rawPhone.slice(3,6)+'-'+rawPhone.slice(6)
       : String(r[4] || '');
-    orders.push({ id:String(r[0]), date:rowDate, time:time,
+    orders.push({ id:String(r[0]), date:rowDate, time:String(r[2]),
       name:String(r[3]), phone:phone, addr:String(r[5]), memo:String(r[6]),
       items:items, total:Number(r[8]), status:String(r[9]),
       isReorder: String(r[10]||'') === 'Y' });
@@ -255,6 +250,42 @@ function deleteOrder(e) {
   for (var i = 1; i < rows.length; i++) {
     if (String(rows[i][0]) === String(id)) {
       sheet.deleteRow(i + 1);
+      return json({ success: true });
+    }
+  }
+  return json({ success: false, error: '주문 없음' });
+}
+
+// ── 추가 요청 저장 ──
+function saveAdditionalRequest(e, dataOverride) {
+  var data = dataOverride || {};
+  var id   = data.id   || (e&&e.parameter&&e.parameter.id)   || '';
+  var text = data.text || (e&&e.parameter&&e.parameter.text) || '';
+  if (!id)   return json({ success: false, error: 'ID 없음' });
+  if (!text) return json({ success: false, error: '내용 없음' });
+
+  var ss    = SpreadsheetApp.openById(SHEET_ID);
+  var sheet = ss.getSheetByName('주문');
+  if (!sheet) return json({ success: false, error: '시트 없음' });
+
+  // '추가요청' 컬럼 찾기 — 없으면 마지막에 추가
+  var lastCol  = sheet.getLastColumn();
+  var headerVals = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  var reqColNum = -1;
+  for (var j = 0; j < headerVals.length; j++) {
+    if (String(headerVals[j]) === '추가요청') { reqColNum = j + 1; break; }
+  }
+  if (reqColNum === -1) {
+    reqColNum = lastCol + 1;
+    var hCell = sheet.getRange(1, reqColNum);
+    hCell.setValue('추가요청');
+    hCell.setFontWeight('bold').setBackground('#086266').setFontColor('#ffffff').setHorizontalAlignment('center');
+  }
+
+  var rows = sheet.getDataRange().getValues();
+  for (var i = 1; i < rows.length; i++) {
+    if (String(rows[i][0]) === String(id)) {
+      sheet.getRange(i + 1, reqColNum).setValue(text);
       return json({ success: true });
     }
   }

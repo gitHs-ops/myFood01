@@ -2010,20 +2010,25 @@ function deleteOrder(id){
   var remaining=Object.values(_ordersCache);
   var today=workDate||toISO(new Date());
   renderOrdersList(today,remaining);
-  // GAS 시트에서 삭제 + 실제 응답 텍스트로 진단
-  fetch(ONBAN_SHEET_URL+'?action=delete_order&id='+encodeURIComponent(id),{redirect:'follow'})
+  // GAS 시트에서 삭제 — POST 방식
+  fetch(ONBAN_SHEET_URL+'?action=delete_order', {
+    method:'POST',
+    redirect:'follow',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({id:id})
+  })
     .then(function(r){return r.text();})
     .then(function(t){
+      console.log('[deleteOrder] GAS raw:', t);
       var d;
       try{d=JSON.parse(t);}catch(e){d=null;}
       if(d&&d.success){
         showToast('🗑 시트 삭제 완료');
       } else if(d&&!d.success){
-        showToast('⚠️ GAS: '+(d.error||'실패'));
+        showToast('⚠️ GAS: '+(d.error||d.message||JSON.stringify(d)));
         renderOrders();
       } else {
-        // JSON이 아닌 응답 (HTML 오류 등) — 앞 80자 표시
-        showToast('⚠️ GAS 응답 오류: '+t.replace(/<[^>]*>/g,'').trim().slice(0,80));
+        showToast('⚠️ GAS 응답: '+t.replace(/<[^>]*>/g,'').trim().slice(0,80));
         renderOrders();
       }
     })
