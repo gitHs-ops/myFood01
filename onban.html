@@ -386,7 +386,7 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 .hist-req-row span{flex:1;color:#555;}
 .hist-req-row.memo-row span{color:#b8860b;}
 .hist-req-row.extra-row span{color:#086266;}
-.hist-req-edit-btn{flex-shrink:0;background:none;border:none;font-size:13px;cursor:pointer;padding:0;opacity:.6;}
+.hist-req-edit-btn{flex-shrink:0;background:none;border:1.5px solid #9adcda;border-radius:8px;font-size:12px;font-weight:700;color:#086266;cursor:pointer;padding:4px 8px;opacity:.85;font-family:inherit;}
 .hist-req-edit-btn:hover{opacity:1;}
 .hist-req-add-btn{width:100%;padding:6px;border:1.5px dashed #cde8e7;border-radius:8px;background:#f9fffe;color:#086266;font-size:12px;cursor:pointer;font-family:inherit;}
 .hist-req-textarea{width:100%;border:1.5px solid #cde8e7;border-radius:8px;padding:8px 10px;font-size:12px;font-family:inherit;resize:vertical;min-height:60px;outline:none;box-sizing:border-box;margin:2px 0;}
@@ -408,7 +408,7 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 .extra-req-save:disabled{opacity:.6;}
 .extra-req-saved{display:flex;align-items:flex-start;gap:8px;font-size:13px;color:#086266;background:#f0faf9;border-radius:9px;padding:10px 12px;line-height:1.5;word-break:break-all;}
 .extra-req-saved-text{flex:1;}
-.extra-req-edit-btn{flex-shrink:0;background:none;border:none;cursor:pointer;font-size:15px;padding:0;line-height:1;opacity:.7;}
+.extra-req-edit-btn{flex-shrink:0;background:none;border:1.5px solid #9adcda;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;color:#086266;padding:4px 8px;line-height:1.4;opacity:.85;font-family:inherit;}
 .extra-req-edit-btn:hover{opacity:1;}
 /* ── 관리자 답변 채팅 버블 ── */
 .admin-reply-section{padding:0 14px 12px;}
@@ -780,6 +780,7 @@ function renderCatTabs(){
     var btn=document.createElement('button');
     btn.className='cat-tab'+(filterCat==='어린이'?' active':'');
     btn.textContent='어린이';
+    btn.style.padding='6px 10px';
     btn.onclick=function(){setCat('어린이');};
     tabs.appendChild(btn);
   }
@@ -1148,7 +1149,7 @@ function _extraSavedHtml(id,text){
   var safe=String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   return '<div class="extra-req-saved">'
     +'<span class="extra-req-saved-text">✅ '+safe+'</span>'
-    +'<button class="extra-req-edit-btn" onclick="editExtraReq(\''+id+'\')" title="편집">✏️</button>'
+    +'<button class="extra-req-edit-btn" onclick="editExtraReq(\''+id+'\')" title="편집">✏️ 수정</button>'
     +'</div>';
 }
 function editExtraReq(id){
@@ -1775,13 +1776,13 @@ function histDelItem(orderId,itemName){
 function _histMemoHtml(id,text){
   var safe=(text||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   if(text) return '<div class="hist-req-row memo-row"><span>📝 '+safe+'</span>'
-    +'<button class="hist-req-edit-btn" onclick="histEditMemo(\''+id+'\')" title="수정">✏️</button></div>';
+    +'<button class="hist-req-edit-btn" onclick="histEditMemo(\''+id+'\')" title="수정">✏️ 수정</button></div>';
   return '<button class="hist-req-add-btn" onclick="histEditMemo(\''+id+'\')">📝 직접 요청 추가</button>';
 }
 function _histExtraHtml(id,text){
   var safe=(text||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   if(text) return '<div class="hist-req-row extra-row"><span>✅ '+safe+'</span>'
-    +'<button class="hist-req-edit-btn" onclick="histEditExtra(\''+id+'\')" title="수정">✏️</button></div>';
+    +'<button class="hist-req-edit-btn" onclick="histEditExtra(\''+id+'\')" title="수정">✏️ 수정</button></div>';
   return '<button class="hist-req-add-btn" onclick="histEditExtra(\''+id+'\')">✏️ 추가 요청 추가</button>';
 }
 function histEditMemo(id){
