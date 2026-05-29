@@ -374,6 +374,8 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 .hist-total{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-top:2px solid #e8f5f4;font-size:14px;font-weight:700;}
 .hist-total-val{color:var(--teal);font-size:16px;}
 .hist-actions{display:flex;gap:8px;padding:10px 14px 14px;}
+.order-memo-row{font-size:12px;color:#b8860b;background:#fff8e1;padding:6px 14px;line-height:1.5;}
+.order-addreq-row{color:#086266;background:#f0faf9;}
 .hist-btn-cancel{flex:1;padding:10px;border-radius:9px;font-size:13px;font-weight:700;border:1.5px solid #f5c0c0;background:#fff;color:var(--red);cursor:pointer;}
 .hist-btn-reorder{flex:1;padding:10px;border-radius:9px;font-size:13px;font-weight:700;border:none;background:var(--teal);color:#fff;cursor:pointer;}
 /* ── 추가 요청 ── */
@@ -1544,6 +1546,19 @@ function renderHistory(){
     totRow.id='histtotal-'+o.id;
     totRow.innerHTML='<span>합계</span><span class="hist-total-val">'+comma(total)+'천원</span>';
     card.appendChild(totRow);
+    // 요청사항 표시
+    if(o.memo){
+      var memoRow=document.createElement('div');
+      memoRow.className='order-memo-row';
+      memoRow.textContent='📝 '+o.memo;
+      card.appendChild(memoRow);
+    }
+    if(o.additionalRequest){
+      var addRow=document.createElement('div');
+      addRow.className='order-memo-row order-addreq-row';
+      addRow.textContent='✏️ '+o.additionalRequest;
+      card.appendChild(addRow);
+    }
     // 액션 버튼
     var acts=document.createElement('div');
     acts.className='hist-actions';

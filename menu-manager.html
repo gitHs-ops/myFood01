@@ -1804,6 +1804,13 @@ function renderOrdersList(today,todayOrders){
       memo.textContent='📝 '+order.memo;
       card.appendChild(memo);
     }
+    if(order.additionalRequest){
+      var addReq=document.createElement('div');
+      addReq.className='order-memo';
+      addReq.style.cssText='color:#086266;background:#f0faf9;';
+      addReq.textContent='✏️ '+order.additionalRequest;
+      card.appendChild(addReq);
+    }
 
     // 카카오 확정 문구 미리보기
     var kakaoBox=document.createElement('div');
