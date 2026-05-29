@@ -1982,7 +1982,7 @@ function copyConfirmMsg(id){
   var msg=makeConfirmMsg(o);
   try{
     navigator.clipboard.writeText(msg).then(function(){
-      showToast(o.name+'님 확정 문구 복사됐어요! 카카오에 붙여넣기 하세요.');
+      showToast(o.name+'님 확정 문구 복사됐어요!');
     }).catch(function(){});
   }catch(e){}
 }
