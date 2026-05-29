@@ -840,11 +840,22 @@ function updateStatusBtn(){
   }
 }
 function renderStatusPage(){
-  var orders=JSON.parse(localStorage.getItem('orders')||'[]');
   var el=document.getElementById('statusContent');
-  var sorted=orders.slice().sort(function(a,b){return (b.id||'').localeCompare(a.id||'');});
+  var myInfo=JSON.parse(localStorage.getItem('onban_my_info')||'null');
+  if(!myInfo||!myInfo.name||!myInfo.phone){
+    el.innerHTML='<div class="hist-empty"><span>📭</span><p>주문 이력이 없어요.<br><small style="color:#aaa;font-size:12px;">주문 확정 후 조회할 수 있어요.</small></p></div>';
+    return;
+  }
+  var today=toISO(new Date());
+  var orders=JSON.parse(localStorage.getItem('orders')||'[]');
+  // 오늘 날짜 + 저장된 주문자 일치 건만
+  var sorted=orders.filter(function(o){
+    return o.date===today && o.name===myInfo.name && o.phone===myInfo.phone;
+  }).sort(function(a,b){return (b.id||'').localeCompare(a.id||'');});
   if(!sorted.length){
-    el.innerHTML='<div class="hist-empty"><span>📭</span><p>주문 내역이 없어요.</p></div>';
+    el.innerHTML='<div class="hist-empty"><span>📭</span>'
+      +'<p>오늘 접수된 주문이 없어요.<br>'
+      +'<small style="color:#aaa;font-size:12px;">'+myInfo.name+' · '+myInfo.phone+'</small></p></div>';
     return;
   }
   el.innerHTML=sorted.map(function(o){
@@ -1011,6 +1022,8 @@ function renderOrdererPage(){
       addr:document.getElementById('ordererAddr').value.trim(),
       memo:document.getElementById('ordererMemo').value.trim()
     };
+    // 주문자 기억 (접수상태 조회용)
+    localStorage.setItem('onban_my_info',JSON.stringify({name:ordererInfo.name,phone:ordererInfo.phone}));
     lastOrderTotal=orderItems.reduce(function(s,c){return s+c.price*c.qty;},0);
     saveOrder();
     cart=[];orderItems=[];updateCartCount();
