@@ -573,9 +573,19 @@ function toISO(d){
 }
 function comma(n){return Number(n).toLocaleString();}
 function fmtDT(date,time){
+  var DAYS=['일','월','화','수','목','금','토'];
   var p=(date||'').split('-');
   var mmdd=p.length>=3?p[1]+'/'+p[2]:(date||'');
-  return mmdd+(time?' '+time:'');
+  var dow='';
+  if(p.length>=3){
+    var d=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));
+    dow=DAYS[d.getDay()]+'요일';
+  }
+  // "Sat Dec 30 1899 15:22:00 ..." 형태의 Date 문자열에서 HH:MM 추출
+  var t=String(time||'');
+  var m=t.match(/(\d{1,2}):(\d{2})(?::\d{2})?/);
+  var hhmm=m?String(m[1]).padStart(2,'0')+':'+m[2]:'';
+  return mmdd+(dow?' '+dow:'')+(hhmm?' '+hhmm:'');
 }
 function showToast(msg){
   var t=document.getElementById('toast');
