@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════
-// onban_sheet.gs — 구글 시트 연동 2026 05 29 v1.52
+// onban_sheet.gs — 구글 시트 연동 2026 05 29 v1.53
 // ══════════════════════════════════════════════════════
 
 var SHEET_ID = '1_jAZK1zwob2zbiOwKRYzmpKkaswOAi4RUGC043ujiLo';
@@ -212,11 +212,12 @@ function getOrders(e) {
   if (!sheet) return json({ success: true, orders: [] });
   var rows  = sheet.getDataRange().getValues();
   if (rows.length < 2) return json({ success: true, orders: [] });
-  // 헤더에서 '추가요청' 컬럼 위치 확인
+  // 헤더에서 '추가요청', 'addreqAt' 컬럼 위치 확인
   var headerRow = rows[0];
-  var addReqIdx = -1;
+  var addReqIdx = -1, addReqAtIdx = -1;
   for (var j = 0; j < headerRow.length; j++) {
-    if (String(headerRow[j]) === '추가요청') { addReqIdx = j; break; }
+    if (String(headerRow[j]) === '추가요청') addReqIdx   = j;
+    if (String(headerRow[j]) === 'addreqAt') addReqAtIdx = j;
   }
   var orders = [];
   for (var i = 1; i < rows.length; i++) {
@@ -241,7 +242,8 @@ function getOrders(e) {
       name:String(r[3]), phone:phone, addr:String(r[5]), memo:String(r[6]),
       items:items, total:Number(r[8]), status:String(r[9]),
       isReorder: String(r[10]||'') === 'Y',
-      additionalRequest: addReqIdx >= 0 ? String(r[addReqIdx]||'') : '' });
+      additionalRequest: addReqIdx   >= 0 ? String(r[addReqIdx]||'')   : '',
+      addreqAt:          addReqAtIdx >= 0 ? Number(r[addReqAtIdx]||0) : 0 });
   }
   return json({ success: true, orders: orders });
 }
@@ -275,25 +277,34 @@ function saveAdditionalRequest(e, dataOverride) {
   var sheet = ss.getSheetByName('주문');
   if (!sheet) return json({ success: false, error: '시트 없음' });
 
-  // '추가요청' 컬럼 찾기 — 없으면 마지막에 추가
-  var lastCol  = sheet.getLastColumn();
+  // 헤더에서 '추가요청', 'addreqAt' 컬럼 찾기 — 없으면 마지막에 추가
+  var lastCol    = sheet.getLastColumn();
   var headerVals = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
-  var reqColNum = -1;
+  var reqColNum = -1, tsColNum = -1;
   for (var j = 0; j < headerVals.length; j++) {
-    if (String(headerVals[j]) === '추가요청') { reqColNum = j + 1; break; }
+    if (String(headerVals[j]) === '추가요청') reqColNum = j + 1;
+    if (String(headerVals[j]) === 'addreqAt') tsColNum  = j + 1;
   }
   if (reqColNum === -1) {
-    reqColNum = lastCol + 1;
-    var hCell = sheet.getRange(1, reqColNum);
-    hCell.setValue('추가요청');
-    hCell.setFontWeight('bold').setBackground('#086266').setFontColor('#ffffff').setHorizontalAlignment('center');
+    reqColNum = lastCol + 1; lastCol++;
+    var hc1 = sheet.getRange(1, reqColNum);
+    hc1.setValue('추가요청');
+    hc1.setFontWeight('bold').setBackground('#086266').setFontColor('#ffffff').setHorizontalAlignment('center');
+  }
+  if (tsColNum === -1) {
+    tsColNum = lastCol + 1;
+    var hc2 = sheet.getRange(1, tsColNum);
+    hc2.setValue('addreqAt');
+    hc2.setFontWeight('bold').setBackground('#086266').setFontColor('#ffffff').setHorizontalAlignment('center');
   }
 
+  var now  = new Date().getTime(); // ms 타임스탬프
   var rows = sheet.getDataRange().getValues();
   for (var i = 1; i < rows.length; i++) {
     if (String(rows[i][0]) === String(id)) {
       sheet.getRange(i + 1, reqColNum).setValue(text);
-      return json({ success: true });
+      sheet.getRange(i + 1, tsColNum).setValue(now);
+      return json({ success: true, addreqAt: now });
     }
   }
   return json({ success: false, error: '주문 없음' });

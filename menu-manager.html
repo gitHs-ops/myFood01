@@ -1789,8 +1789,12 @@ function renderOrdersList(today,todayOrders){
     btn.onclick=function(){setOrderFilter(this.getAttribute('data-f'));};
   });
 
-  // 목록 (최신 주문 먼저)
-  todayOrders.sort(function(a,b){return String(b.id).localeCompare(String(a.id));});
+  // 목록 — 추가요청 최신 순 → 주문 ID 최신 순
+  todayOrders.sort(function(a,b){
+    var ta=a.addreqAt||0, tb=b.addreqAt||0;
+    if(tb!==ta) return tb-ta;
+    return String(b.id).localeCompare(String(a.id));
+  });
   var filtered=orderFilter==='all'?todayOrders:todayOrders.filter(function(o){return o.status===orderFilter;});
   var el=document.getElementById('orderList');
   if(!filtered.length){
