@@ -1009,12 +1009,7 @@ function saveExtraReq(id){
   if(!text){showToast('내용을 입력해주세요.');return;}
   var btn=wrap.querySelector('.extra-req-save');
   btn.disabled=true; btn.textContent='저장 중...';
-  fetch(GAS_URL+'?action=save_additional_request',{
-    method:'POST',
-    redirect:'follow',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({id:id,text:text})
-  })
+  fetch(GAS_URL+'?action=save_additional_request&id='+encodeURIComponent(id)+'&text='+encodeURIComponent(text),{redirect:'follow'})
   .then(function(r){return r.json();})
   .then(function(d){
     if(d&&d.success){

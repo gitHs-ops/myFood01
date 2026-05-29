@@ -2010,13 +2010,8 @@ function deleteOrder(id){
   var remaining=Object.values(_ordersCache);
   var today=workDate||toISO(new Date());
   renderOrdersList(today,remaining);
-  // GAS 시트에서 삭제 — POST 방식
-  fetch(ONBAN_SHEET_URL+'?action=delete_order', {
-    method:'POST',
-    redirect:'follow',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({id:id})
-  })
+  // GAS 시트에서 삭제
+  fetch(ONBAN_SHEET_URL+'?action=delete_order&id='+encodeURIComponent(id),{redirect:'follow'})
     .then(function(r){return r.text();})
     .then(function(t){
       console.log('[deleteOrder] GAS raw:', t);
