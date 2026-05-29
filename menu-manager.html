@@ -2002,8 +2002,11 @@ function deleteOrder(id){
   if(!confirm('이 주문을 삭제할까요?'))return;
   var orders=getOrders();
   saveOrders(orders.filter(function(o){return o.id!==id;}));
-  fetch(ONBAN_SHEET_URL+'?action=delete_order&id='+encodeURIComponent(id),{redirect:'follow'}).catch(function(){});
-  renderOrders();
+  delete _ordersCache[id];
+  // GAS 삭제 완료 후 목록 갱신 (완료 전 재조회 시 재표시 방지)
+  fetch(ONBAN_SHEET_URL+'?action=delete_order&id='+encodeURIComponent(id),{redirect:'follow'})
+    .then(function(){renderOrders();})
+    .catch(function(){renderOrders();});
 }
 
 function copyConfirmMsg(id){
