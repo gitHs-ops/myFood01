@@ -2156,7 +2156,7 @@ function _pollFetch(cb){
 }
 
 function _makeSnapshot(orders){
-  return orders.map(function(o){return o.id+':'+o.status;}).sort().join('|');
+  return orders.map(function(o){return o.id+':'+o.status+':'+(o.addreqAt||0);}).sort().join('|');
 }
 
 function _pollSetUI(ok,sec){
