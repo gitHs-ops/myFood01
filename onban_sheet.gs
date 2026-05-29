@@ -215,10 +215,14 @@ function getOrders(e) {
   for (var i = 1; i < rows.length; i++) {
     var r = rows[i];
     if (!r[0]) continue;
-    if (date && String(r[1]) !== date) continue;
+    // 구글 시트가 날짜 문자열을 Date 객체로 자동 변환하는 경우 대응
+    var rowDate = (r[1] instanceof Date)
+      ? Utilities.formatDate(r[1], 'Asia/Seoul', 'yyyy-MM-dd')
+      : String(r[1]).trim().slice(0, 10);
+    if (date && rowDate !== date) continue;
     var items = [];
     try { items = JSON.parse(r[7]); } catch(ex) {}
-    orders.push({ id:String(r[0]), date:String(r[1]), time:String(r[2]),
+    orders.push({ id:String(r[0]), date:rowDate, time:String(r[2]),
       name:String(r[3]), phone:String(r[4]), addr:String(r[5]), memo:String(r[6]),
       items:items, total:Number(r[8]), status:String(r[9]) });
   }

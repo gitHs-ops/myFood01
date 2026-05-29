@@ -2032,10 +2032,10 @@ function startOrderPolling(){
         _pollSnapshot=snap;
         _pollSetUI(true,15);
         if(changed){
-          // orders 탭 활성 시 자동 갱신, 아니면 알림만
+          // orders 탭 활성 시 자동 갱신 (캐시 포함 전체 재로드)
           var active=document.querySelector('.page.active');
           if(active&&active.id==='page-orders'){
-            renderOrdersList(workDate||toISO(new Date()),orders);
+            renderOrders();
           }
           _pollNotify(orders);
         }
