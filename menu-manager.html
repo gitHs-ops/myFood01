@@ -508,7 +508,13 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
 
 <div id="page-orders" class="page">
   <div class="card">
-    <div class="card-title">📦 주문 관리</div>
+    <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
+      <span>📦 주문 관리</span>
+      <span id="pollStatus" style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:400;color:#aaa;">
+        <span id="pollDot" style="width:7px;height:7px;border-radius:50%;background:#ccc;flex-shrink:0;"></span>
+        <span id="pollLabel">연결 중...</span>
+      </span>
+    </div>
     <div class="order-stats" id="orderStats"></div>
     <div class="order-filter-tabs" id="orderFilterTabs"></div>
     <div id="orderList"></div>
@@ -2005,6 +2011,88 @@ function showToast(msg){
   },2500);
 }
 
+/* ════ 주문 자동 폴링 (15초) ════ */
+var _pollSnapshot=null;
+var _pollCountdown=15;
+
+function startOrderPolling(){
+  // 초기 스냅샷 확보
+  _pollFetch(function(orders){
+    _pollSnapshot=_makeSnapshot(orders);
+    _pollSetUI(true,15);
+  });
+  // 1초마다: 카운트다운 UI + 15초마다 실제 폴링
+  setInterval(function(){
+    _pollCountdown--;
+    if(_pollCountdown<=0){
+      _pollCountdown=15;
+      _pollFetch(function(orders){
+        var snap=_makeSnapshot(orders);
+        var changed=(_pollSnapshot!==null && snap!==_pollSnapshot);
+        _pollSnapshot=snap;
+        _pollSetUI(true,15);
+        if(changed){
+          // orders 탭 활성 시 자동 갱신, 아니면 알림만
+          var active=document.querySelector('.page.active');
+          if(active&&active.id==='page-orders'){
+            renderOrdersList(workDate||toISO(new Date()),orders);
+          }
+          _pollNotify(orders);
+        }
+      });
+    } else {
+      _pollSetUI(null,_pollCountdown);
+    }
+  },1000);
+}
+
+function _pollFetch(cb){
+  var today=workDate||toISO(new Date());
+  fetch(ONBAN_SHEET_URL+'?action=get_orders&date='+encodeURIComponent(today),{redirect:'follow'})
+    .then(function(r){return r.json();})
+    .then(function(d){cb(d.orders||[]);})
+    .catch(function(){_pollSetUI(false,_pollCountdown);});
+}
+
+function _makeSnapshot(orders){
+  return orders.map(function(o){return o.id+':'+o.status;}).sort().join('|');
+}
+
+function _pollSetUI(ok,sec){
+  var dot=document.getElementById('pollDot');
+  var lbl=document.getElementById('pollLabel');
+  if(!dot||!lbl)return;
+  if(ok===false){
+    dot.style.background='#e05';
+    lbl.textContent='연결 오류';
+    return;
+  }
+  var now=new Date();
+  var hm=now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+  if(ok===true){
+    dot.style.background='#1D9E75';
+    lbl.textContent=hm+' 갱신 · '+sec+'초 후';
+  } else {
+    lbl.textContent=hm+' 갱신 · '+sec+'초 후';
+  }
+}
+
+function _pollNotify(orders){
+  var pending=orders.filter(function(o){return o.status==='pending';}).length;
+  var msg='🔔 주문 변동 감지!'+(pending?' (대기 '+pending+'건)':'');
+  showToast(msg);
+  // 브라우저 알림 (허용된 경우)
+  if(window.Notification&&Notification.permission==='granted'){
+    new Notification('오늘의 반찬 주문 알림',{body:msg,icon:'favicon.ico'});
+  }
+}
+
+function requestNotifyPermission(){
+  if(window.Notification&&Notification.permission==='default'){
+    Notification.requestPermission();
+  }
+}
+
 /* ════ 설정 ════ */
 var ONBAN_SHEET_URL='https://script.google.com/macros/s/AKfycbwtXJL4_lMynbG4U13PqbnPOiTp15evyw0BPPQ0A9aV5QYlI5dSQB4Ru-8BOqVR9RPq1w/exec';
 var ONBAN_SHEET_ID='1_jAZK1zwob2zbiOwKRYzmpKkaswOAi4RUGC043ujiLo';
@@ -2371,6 +2459,9 @@ window.onload=function(){
   document.getElementById('menuName').addEventListener('focus',function(){onMenuNameInput();});
   document.getElementById('menuName').addEventListener('blur',function(){setTimeout(closeAcList,150);});
   document.addEventListener('click',function(e){if(!e.target.closest('.menuname-wrap'))closeAcList();});
+  // 주문 자동 폴링 시작
+  startOrderPolling();
+  requestNotifyPermission();
 };
 </script>
 </body>
