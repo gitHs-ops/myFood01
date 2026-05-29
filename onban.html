@@ -300,6 +300,7 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 /* ── 공통 ── */
 .section-title{font-size:15px;font-weight:700;padding:16px 16px 10px;color:#fff;display:flex;align-items:center;justify-content:space-between;}
 .status-refresh-btn{font-size:11px;font-weight:600;color:#9adcda;background:rgba(255,255,255,.08);border:1px solid rgba(154,220,218,.4);border-radius:20px;padding:4px 10px;cursor:pointer;white-space:nowrap;animation:status-blink 2s ease-in-out infinite;}
+.status-countdown{font-size:12px;font-weight:700;color:#fff;background:rgba(8,98,102,.6);border-radius:20px;padding:3px 10px;white-space:nowrap;min-width:46px;text-align:center;}
 @keyframes status-blink{0%,100%{opacity:1;}50%{opacity:.5;}}
 .toast{
   position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);
@@ -569,7 +570,10 @@ select.orderer-input{appearance:none;-webkit-appearance:none;background:#fff url
   </div>
   <div class="section-title">
     <span>📬 주문 접수 상태</span>
-    <span class="status-refresh-btn" onclick="renderStatusPage()">실시간 변경된 정보 확인 여기를 클릭 !</span>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span class="status-refresh-btn" onclick="renderStatusPage()">실시간 변경된 정보 확인 여기를 클릭 !</span>
+      <span id="statusCountdown" class="status-countdown">🔄 15</span>
+    </div>
   </div>
   <div id="statusContent"></div>
 </div>
@@ -644,6 +648,28 @@ function showToast(msg){
   clearTimeout(t._t);
   t._t=setTimeout(function(){t.classList.remove('show');},2000);
 }
+var _statusTimerHandle=null;
+function _startStatusTimer(){
+  _stopStatusTimer();
+  var sec=15;
+  var el=document.getElementById('statusCountdown');
+  if(el)el.textContent='🔄 '+sec;
+  _statusTimerHandle=setInterval(function(){
+    sec--;
+    var el=document.getElementById('statusCountdown');
+    if(el)el.textContent='🔄 '+sec;
+    if(sec<=0){
+      sec=15;
+      if(el)el.textContent='🔄 '+sec;
+      renderStatusPage();
+    }
+  },1000);
+}
+function _stopStatusTimer(){
+  if(_statusTimerHandle){clearInterval(_statusTimerHandle);_statusTimerHandle=null;}
+  var el=document.getElementById('statusCountdown');
+  if(el)el.textContent='🔄 15';
+}
 function goPage(name){
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
   document.getElementById('page-'+name).classList.add('active');
@@ -652,7 +678,8 @@ function goPage(name){
   if(name==='order')renderOrder();
   if(name==='payment')renderPayment();
   if(name==='history')renderHistory();
-  if(name==='status')renderStatusPage();
+  if(name==='status'){renderStatusPage();_startStatusTimer();}
+  else{_stopStatusTimer();}
   // list 이탈 시 플로팅 버튼 숨김
   if(name!=='list'){
     var fw=document.getElementById('floatCartWrap');
