@@ -386,7 +386,10 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 .extra-req-cancel{flex:1;padding:9px;border-radius:9px;font-size:13px;font-weight:700;border:1.5px solid #ddd;background:#fff;color:#666;cursor:pointer;font-family:inherit;}
 .extra-req-save{flex:1;padding:9px;border-radius:9px;font-size:13px;font-weight:700;border:none;background:#086266;color:#fff;cursor:pointer;font-family:inherit;}
 .extra-req-save:disabled{opacity:.6;}
-.extra-req-saved{font-size:13px;color:#086266;background:#f0faf9;border-radius:9px;padding:10px 12px;line-height:1.5;word-break:break-all;}
+.extra-req-saved{display:flex;align-items:flex-start;gap:8px;font-size:13px;color:#086266;background:#f0faf9;border-radius:9px;padding:10px 12px;line-height:1.5;word-break:break-all;}
+.extra-req-saved-text{flex:1;}
+.extra-req-edit-btn{flex-shrink:0;background:none;border:none;cursor:pointer;font-size:15px;padding:0;line-height:1;opacity:.7;}
+.extra-req-edit-btn:hover{opacity:1;}
 /* ── 요청사항 셀렉트 ── */
 select.orderer-input{appearance:none;-webkit-appearance:none;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'%3E%3Cpolyline points='6 9 12 15 18 9' fill='none' stroke='%23666' stroke-width='2'/%3E%3C/svg%3E") no-repeat right 14px center/12px;cursor:pointer;}
 
@@ -981,7 +984,7 @@ function renderStatusPage(){
       '<div class="hist-total"><span>합계</span><span class="hist-total-val">'+(o.total||0).toLocaleString()+'천원</span></div>'+
       '<div class="extra-req-wrap" id="extra_'+o.id+'">'+
         (o.additionalRequest
-          ? '<div class="extra-req-saved">✅ '+String(o.additionalRequest).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</div>'
+          ? _extraSavedHtml(o.id, o.additionalRequest)
           : '<button class="extra-req-btn" onclick="toggleExtraReq(\''+o.id+'\')">✏️ 추가 요청</button>')+
       '</div>'+
     '</div>';
@@ -989,6 +992,29 @@ function renderStatusPage(){
   // 페이지 진입 시 버튼 강조 해제
   document.getElementById('statusBtn').classList.remove('has-order');
   updateStatusBtn();
+}
+function _extraSavedHtml(id,text){
+  var safe=String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return '<div class="extra-req-saved">'
+    +'<span class="extra-req-saved-text">✅ '+safe+'</span>'
+    +'<button class="extra-req-edit-btn" onclick="editExtraReq(\''+id+'\')" title="편집">✏️</button>'
+    +'</div>';
+}
+function editExtraReq(id){
+  // 현재 저장된 텍스트 가져오기
+  var ords=JSON.parse(localStorage.getItem('orders')||'[]');
+  var ord=ords.find(function(o){return o.id===id;})||{};
+  var prev=ord.additionalRequest||'';
+  var wrap=document.getElementById('extra_'+id);
+  wrap.innerHTML=
+    '<textarea class="extra-req-area" placeholder="추가 요청 사항을 입력하세요...">'+
+      String(prev).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+
+    '</textarea>'+
+    '<div class="extra-req-actions">'+
+      '<button class="extra-req-cancel" onclick="cancelExtraReq(\''+id+'\')">취소</button>'+
+      '<button class="extra-req-save" onclick="saveExtraReq(\''+id+'\')">저장</button>'+
+    '</div>';
+  wrap.querySelector('textarea').focus();
 }
 function toggleExtraReq(id){
   var wrap=document.getElementById('extra_'+id);
@@ -1020,8 +1046,7 @@ function saveExtraReq(id){
       var ords=JSON.parse(localStorage.getItem('orders')||'[]');
       var ord=ords.find(function(o){return o.id===id;});
       if(ord){ord.additionalRequest=text;localStorage.setItem('orders',JSON.stringify(ords));}
-      var safe=String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-      wrap.innerHTML='<div class="extra-req-saved">✅ '+safe+'</div>';
+      wrap.innerHTML=_extraSavedHtml(id,text);
     } else {
       showToast('⚠️ '+(d.error||d.message||'저장 실패'));
       btn.disabled=false; btn.textContent='저장';
