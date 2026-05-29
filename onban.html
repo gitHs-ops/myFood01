@@ -572,6 +572,11 @@ function toISO(d){
   return kst.getUTCFullYear()+'-'+String(kst.getUTCMonth()+1).padStart(2,'0')+'-'+String(kst.getUTCDate()).padStart(2,'0');
 }
 function comma(n){return Number(n).toLocaleString();}
+function fmtDT(date,time){
+  var p=(date||'').split('-');
+  var mmdd=p.length>=3?p[1]+'/'+p[2]:(date||'');
+  return mmdd+(time?' '+time:'');
+}
 function showToast(msg){
   var t=document.getElementById('toast');
   t.textContent=msg;t.classList.add('show');
@@ -942,7 +947,7 @@ function renderStatusPage(){
       '<div class="hist-head">'+
         '<div>'+
           '<div style="font-size:14px;font-weight:700;color:#1a1a1a;">'+(o.name||'')+'</div>'+
-          '<div class="hist-date">'+(o.date||'')+' '+(o.time||'')+'</div>'+
+          '<div class="hist-date">'+fmtDT(o.date,o.time)+'</div>'+
         '</div>'+
         '<span style="display:inline-flex;align-items:center;gap:3px;">'+
           '<span class="hist-status '+(o.status||'')+'" style="background:'+bg+';color:'+col+';">'+st+'</span>'+
@@ -1397,7 +1402,7 @@ function renderHistory(){
     var head=document.createElement('div');
     head.className='hist-head';
     var reorderBadge=o.isReorder?'<span style="font-size:10px;font-weight:700;background:#e0d4f7;color:#5b21b6;border-radius:999px;padding:2px 7px;margin-left:4px;">재주문</span>':'';
-    head.innerHTML='<span class="hist-date">'+o.date+' '+o.time+'</span>'
+    head.innerHTML='<span class="hist-date">'+fmtDT(o.date,o.time)+'</span>'
       +'<span style="display:inline-flex;align-items:center;gap:3px;"><span class="hist-status '+(statusCls[o.status]||'pending')+'">'+(statusMap[o.status]||'대기중')+'</span>'+reorderBadge+'</span>';
     card.appendChild(head);
     // 아이템 목록
