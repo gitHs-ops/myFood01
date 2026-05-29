@@ -1486,7 +1486,21 @@ function reorder(order){
   goPage('payment');
 }
 
-window.onload=function(){loadMenus();updateStatusBtn();};
+window.onload=function(){
+  loadMenus();
+  updateStatusBtn();
+  // 관리자 발송 설정을 GAS에서 로드하여 localStorage 갱신
+  fetch(GAS_URL+'?action=load_settings',{redirect:'follow'})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d&&d.success&&d.data){
+        var cur=JSON.parse(localStorage.getItem('onban_settings')||'{}');
+        if(d.data.smsEnabled!==undefined)      cur.smsEnabled      = d.data.smsEnabled!==false&&d.data.smsEnabled!=='false';
+        if(d.data.alimtalkEnabled!==undefined) cur.alimtalkEnabled = d.data.alimtalkEnabled!==false&&d.data.alimtalkEnabled!=='false';
+        localStorage.setItem('onban_settings',JSON.stringify(cur));
+      }
+    }).catch(function(){});
+};
 </script>
 
 <!-- 배송 주소 목록 모달 -->
