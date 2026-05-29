@@ -414,7 +414,7 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
   display:flex;flex-direction:column;align-items:flex-end;
   margin-top:6px;
 }
-.admin-reply-label{font-size:10px;color:#666;margin-bottom:3px;font-weight:500;}
+.admin-reply-label{font-size:10px;color:#666;font-weight:700;margin-right:4px;}
 .admin-reply-text{
   background:#086266;color:#fff;
   font-size:13px;line-height:1.6;
@@ -1037,8 +1037,7 @@ function _buildStatusCardHtml(o){
     if(o.replyAt){try{timeStr=new Date(Number(o.replyAt)).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});}catch(e2){}}
     chatHtml+='<div class="admin-reply-section">'+
       '<div class="admin-reply-bubble">'+
-        '<div class="admin-reply-label">💬 온반 답변</div>'+
-        '<div class="admin-reply-text">'+safeRep+'</div>'+
+        '<div class="admin-reply-text"><span class="admin-reply-label">💬 온반 답변</span> '+safeRep+'</div>'+
         (timeStr?'<div class="admin-reply-time">'+timeStr+'</div>':'')+
       '</div>'+
     '</div>';
