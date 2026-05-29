@@ -826,10 +826,9 @@ function updateStatusBtn(){
   }
   var today=toISO(new Date());
   var orders=JSON.parse(localStorage.getItem('orders')||'[]');
-  // 오늘 날짜 + 본인 주문 중 미완료 건
+  // 오늘 날짜 + 본인 주문 전체 (상태 무관)
   var active=orders.filter(function(o){
-    return o.date===today && o.name===myInfo.name && o.phone===myInfo.phone
-        && (o.status==='pending'||o.status==='confirmed');
+    return o.date===today && o.name===myInfo.name && o.phone===myInfo.phone;
   });
   if(active.length){
     btn.classList.add('has-order');
