@@ -2006,13 +2006,25 @@ function deleteOrder(id){
   // DOM 카드 즉시 제거
   var card=document.getElementById('ocard_'+id);
   if(card)card.remove();
-  // GAS 시트에서 삭제 (비동기, fire-and-forget)
-  fetch(ONBAN_SHEET_URL+'?action=delete_order&id='+encodeURIComponent(id),{redirect:'follow'})
-    .catch(function(){});
   // 통계/필터 탭 갱신 (GAS 재조회 없이 현재 캐시 기준)
   var remaining=Object.values(_ordersCache);
   var today=workDate||toISO(new Date());
   renderOrdersList(today,remaining);
+  // GAS 시트에서 삭제 + 응답 확인
+  fetch(ONBAN_SHEET_URL+'?action=delete_order&id='+encodeURIComponent(id),{redirect:'follow'})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d&&d.success){
+        showToast('🗑 시트에서도 삭제됐어요.');
+      } else {
+        showToast('⚠️ 시트 삭제 실패: '+(d&&d.error||'알 수 없는 오류'));
+        renderOrders(); // 실패 시 원래 목록 복구
+      }
+    })
+    .catch(function(e){
+      showToast('⚠️ GAS 연결 오류 — 시트 삭제 실패');
+      renderOrders();
+    });
 }
 
 function copyConfirmMsg(id){
