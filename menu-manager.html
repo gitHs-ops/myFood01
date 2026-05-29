@@ -1915,13 +1915,10 @@ function renderOrdersList(today,todayOrders){
       var isNew=_isNewAddReq(order);
       var dotHtml=isNew?'<span class="addreq-new-dot" style="background:#086266;margin-right:2px;"></span>':'';
       var actionsHtml='';
-      if(order.adminReply){
-        var safeRep=order.adminReply.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      if(order.phone){
+        var safeRep=order.adminReply?order.adminReply.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):'';
         actionsHtml='<div class="addreq-actions-row">'
-          +'<div class="addreq-reply-preview" style="width:100%;text-align:left;">💬 '+safeRep+'</div>'
-          +'</div>';
-      } else if(order.phone){
-        actionsHtml='<div class="addreq-actions-row">'
+          +(safeRep?'<div class="addreq-reply-preview" id="replypreview_'+order.id+'" style="flex:1;text-align:left;margin-right:8px;">💬 '+safeRep+'</div>':'<div id="replypreview_'+order.id+'"></div>')
           +'<button class="addreq-reply-btn" onclick="showReplyBox(\''+order.id+'\',\''+order.phone.replace(/'/g,'')+'\')">💬 답변</button>'
           +'</div>';
       }
@@ -2015,23 +2012,27 @@ function sendAdminReply(orderId, phone){
   if(!text){showToast('답변 내용을 입력하세요.');return;}
   var msg='[오늘의 반찬] '+text;
   sendSMS(phone, msg);
-  // GAS에 관리자 답변 저장
-  fetch(ONBAN_SHEET_URL+'?action=save_admin_reply&id='+encodeURIComponent(orderId)+'&text='+encodeURIComponent(text),{redirect:'follow'}).catch(function(){});
+  // 기존 답변에 이어붙이기
+  var prev=(_ordersCache[orderId]&&_ordersCache[orderId].adminReply)||'';
+  var combined=prev?prev+' / '+text:text;
+  // GAS에 합산 답변 저장
+  fetch(ONBAN_SHEET_URL+'?action=save_admin_reply&id='+encodeURIComponent(orderId)+'&text='+encodeURIComponent(combined),{redirect:'follow'}).catch(function(){});
   // 캐시 업데이트
   if(_ordersCache[orderId]){
-    _ordersCache[orderId].adminReply=text;
+    _ordersCache[orderId].adminReply=combined;
     _ordersCache[orderId].replyAt=Date.now();
   }
-  // 전송 완료 표시 — actions-row를 미리보기로 교체
-  var wrap=document.getElementById('addreqwrap_'+orderId);
-  if(wrap){
-    var box=wrap.querySelector('.addreq-reply-box');
-    if(box)box.remove();
-    var actRow=wrap.querySelector('.addreq-actions-row');
-    if(actRow){
-      actRow.innerHTML='<div class="addreq-reply-preview" style="width:100%;text-align:left;">💬 '+text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</div>';
-    }
+  // 미리보기 갱신
+  var prevEl=document.getElementById('replypreview_'+orderId);
+  if(prevEl){
+    prevEl.className='addreq-reply-preview';
+    prevEl.style.flex='1';
+    prevEl.style.textAlign='left';
+    prevEl.style.marginRight='8px';
+    prevEl.textContent='💬 '+combined;
   }
+  var wrap=document.getElementById('addreqwrap_'+orderId);
+  if(wrap){var box=wrap.querySelector('.addreq-reply-box');if(box)box.remove();}
   showToast('고객에게 SMS를 전송했어요.');
 }
 
