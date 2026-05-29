@@ -2000,6 +2000,7 @@ function showReplyBox(orderId, phone){
   var s=getSettings();
   var notifyOn=(s.smsEnabled!==false||s.alimtalkEnabled!==false);
   var btnLabel=notifyOn?'📨 알림 전송':'💾 저장하기';
+  var prevReply=(_ordersCache[orderId]&&_ordersCache[orderId].adminReply)||'';
   box.innerHTML=
     '<textarea class="addreq-reply-textarea" id="replyta_'+orderId+'" placeholder="고객에게 보낼 답변을 입력하세요..."></textarea>'
     +'<div class="addreq-reply-actions">'
@@ -2007,7 +2008,10 @@ function showReplyBox(orderId, phone){
       +'<button class="addreq-reply-send" onclick="sendAdminReply(\''+orderId+'\',\''+phone+'\')">'+btnLabel+'</button>'
     +'</div>';
   wrap.appendChild(box);
-  setTimeout(function(){var ta=document.getElementById('replyta_'+orderId);if(ta)ta.focus();},50);
+  setTimeout(function(){
+    var ta=document.getElementById('replyta_'+orderId);
+    if(ta){ta.value=prevReply;ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length);}
+  },50);
 }
 function sendAdminReply(orderId, phone){
   var ta=document.getElementById('replyta_'+orderId);
@@ -2028,9 +2032,8 @@ function sendAdminReply(orderId, phone){
       sendSMS(phone, fallbackMsg);
     }
   }
-  // 기존 답변에 이어붙이기
-  var prev=(_ordersCache[orderId]&&_ordersCache[orderId].adminReply)||'';
-  var combined=prev?prev+' / '+text:text;
+  // textarea 내용 그대로 저장 (수정/덮어쓰기)
+  var combined=text;
   // GAS에 합산 답변 저장
   fetch(ONBAN_SHEET_URL+'?action=save_admin_reply&id='+encodeURIComponent(orderId)+'&text='+encodeURIComponent(combined),{redirect:'follow'}).catch(function(){});
   // 캐시 업데이트
