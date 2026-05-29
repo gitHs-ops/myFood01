@@ -655,6 +655,10 @@ function _startStatusTimer(){
   var el=document.getElementById('statusCountdown');
   if(el)el.textContent='🔄 '+sec;
   _statusTimerHandle=setInterval(function(){
+    // 입력 중이면 카운트 정지 (리로드 안 함)
+    var active=document.activeElement;
+    var isTyping=active&&(active.tagName==='TEXTAREA'||active.tagName==='INPUT');
+    if(isTyping){return;}
     sec--;
     var el=document.getElementById('statusCountdown');
     if(el)el.textContent='🔄 '+sec;
