@@ -63,7 +63,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
 .kakao-header{font-size:13px;font-weight:700;color:#3A1D1D;margin-bottom:8px;}
 .kakao-body{font-size:13px;color:#3A1D1D;white-space:pre-wrap;line-height:1.9;font-family:monospace;max-height:280px;overflow-y:auto;outline:none;}
 .kakao-body.editable{border:2px solid #3A1D1D;border-radius:8px;padding:8px;min-height:120px;max-height:none;background:rgba(255,255,255,.45);}
-.kakao-edit-btn{background:none;border:none;font-size:18px;cursor:pointer;padding:2px 4px;line-height:1;}
+.kakao-edit-btn{background:none;border:1.5px solid #c8a800;border-radius:8px;font-size:13px;font-weight:700;color:#3A1D1D;cursor:pointer;padding:4px 10px;line-height:1.4;font-family:inherit;}
 .copy-btn{width:100%;background:#3A1D1D;color:#FEE500;font-size:14px;font-weight:700;padding:11px;border-radius:10px;border:none;cursor:pointer;font-family:inherit;}
 .copy-btn.copied{background:#086266;color:#fff;}
 .paste-area{width:100%;min-height:120px;padding:12px;font-size:13px;font-family:monospace;border:2px dashed #cde8e7;border-radius:10px;resize:vertical;outline:none;color:#333;background:#f8fffe;line-height:1.8;}
@@ -458,7 +458,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
   <div class="card">
     <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
       카카오채널 발송 텍스트
-      <button class="kakao-edit-btn" id="kakaoEditBtn" onclick="toggleKakaoEdit()" title="편집">✏️</button>
+      <button class="kakao-edit-btn" id="kakaoEditBtn" onclick="toggleKakaoEdit()" title="편집">✏️ 내용 수정</button>
     </div>
     <div class="kakao-box">
       <div class="kakao-header">메뉴 안내</div>
@@ -1160,12 +1160,12 @@ function toggleKakaoEdit(){
   if(editing){
     el.contentEditable='false';
     el.classList.remove('editable');
-    btn.textContent='✏️';
+    btn.textContent='✏️ 내용 수정';
     btn.title='편집';
   } else {
     el.contentEditable='true';
     el.classList.add('editable');
-    btn.textContent='✅';
+    btn.textContent='✅ 저장';
     btn.title='편집 완료';
     // 커서를 텍스트 끝으로
     el.focus();
