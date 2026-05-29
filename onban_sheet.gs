@@ -221,6 +221,11 @@ function getOrders(e) {
       ? Utilities.formatDate(r[1], 'Asia/Seoul', 'yyyy-MM-dd')
       : String(r[1]).trim().slice(0, 10);
     if (date && rowDate !== date) continue;
+    // 구글 시트가 시간 문자열을 Date 객체로 변환한 경우 HH:MM 형식으로 정규화
+    var rawTime = r[2];
+    var time = (rawTime instanceof Date)
+      ? String(rawTime.getHours()).padStart(2,'0') + ':' + String(rawTime.getMinutes()).padStart(2,'0')
+      : String(rawTime || '');
     var items = [];
     try { items = JSON.parse(r[7]); } catch(ex) {}
     // 구글 시트가 전화번호 앞자리 0을 숫자로 변환하여 제거한 경우 복원 후 포맷
@@ -231,7 +236,7 @@ function getOrders(e) {
       : rawPhone.length === 10
       ? rawPhone.slice(0,3)+'-'+rawPhone.slice(3,6)+'-'+rawPhone.slice(6)
       : String(r[4] || '');
-    orders.push({ id:String(r[0]), date:rowDate, time:String(r[2]),
+    orders.push({ id:String(r[0]), date:rowDate, time:time,
       name:String(r[3]), phone:phone, addr:String(r[5]), memo:String(r[6]),
       items:items, total:Number(r[8]), status:String(r[9]),
       isReorder: String(r[10]||'') === 'Y' });
