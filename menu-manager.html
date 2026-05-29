@@ -1783,7 +1783,7 @@ function renderOrdersList(today,todayOrders){
 
     var header=document.createElement('div');
     header.className='order-header';
-    header.innerHTML='<div><div class="order-name">👤 '+order.name+(order.phone?' · '+order.phone:'')+'</div>'+
+    header.innerHTML='<div><div class="order-name">👤 '+order.name+(order.phone?' · '+fmtPhone(order.phone):'')+'</div>'+
       '<div class="order-time">'+order.time+'</div></div>'+
       '<div style="display:flex;align-items:center;gap:4px;"><span style="font-size:11px;color:#888;">처리상태</span><span class="order-status '+statusClass[order.status]+'">'+statusText[order.status]+'</span></div>';
     card.appendChild(header);
@@ -1871,6 +1871,15 @@ function makeConfirmMsg(order){
   lines.push('');
   lines.push('입금 확인 완료! 감사합니다 😊');
   return lines.join('\n');
+}
+
+function fmtPhone(p){
+  if(!p)return '';
+  var d=String(p).replace(/[^0-9]/g,'');
+  if(d.length===10&&d.charAt(0)!=='0')d='0'+d;
+  if(d.length===11)return d.slice(0,3)+'-'+d.slice(3,7)+'-'+d.slice(7);
+  if(d.length===10)return d.slice(0,3)+'-'+d.slice(3,6)+'-'+d.slice(6);
+  return p;
 }
 
 function sendSMS(phone, msg){

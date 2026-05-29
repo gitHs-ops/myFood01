@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════
-// onban_sheet.gs — 구글 시트 연동 2026 05 24 v1.0
+// onban_sheet.gs — 구글 시트 연동 2026 05 29 v1.0
 // ══════════════════════════════════════════════════════
 
 var SHEET_ID = '1_jAZK1zwob2zbiOwKRYzmpKkaswOAi4RUGC043ujiLo';
@@ -222,8 +222,16 @@ function getOrders(e) {
     if (date && rowDate !== date) continue;
     var items = [];
     try { items = JSON.parse(r[7]); } catch(ex) {}
+    // 구글 시트가 전화번호 앞자리 0을 숫자로 변환하여 제거한 경우 복원 후 포맷
+    var rawPhone = String(r[4] || '').replace(/[^0-9]/g, '');
+    if (rawPhone.length === 10 && rawPhone.charAt(0) !== '0') rawPhone = '0' + rawPhone;
+    var phone = rawPhone.length === 11
+      ? rawPhone.slice(0,3)+'-'+rawPhone.slice(3,7)+'-'+rawPhone.slice(7)
+      : rawPhone.length === 10
+      ? rawPhone.slice(0,3)+'-'+rawPhone.slice(3,6)+'-'+rawPhone.slice(6)
+      : String(r[4] || '');
     orders.push({ id:String(r[0]), date:rowDate, time:String(r[2]),
-      name:String(r[3]), phone:String(r[4]), addr:String(r[5]), memo:String(r[6]),
+      name:String(r[3]), phone:phone, addr:String(r[5]), memo:String(r[6]),
       items:items, total:Number(r[8]), status:String(r[9]) });
   }
   return json({ success: true, orders: orders });
