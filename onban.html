@@ -408,7 +408,7 @@ select.orderer-input{appearance:none;-webkit-appearance:none;background:#fff url
       주문내역
     </button>
     <!-- ③ 주문접수상태 -->
-    <button class="top-btn top-btn-status" id="statusBtn" onclick="openStatusPopup()">
+    <button class="top-btn top-btn-status" id="statusBtn" onclick="goPage('status')">
       <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
       접수상태
     </button>
@@ -488,15 +488,14 @@ select.orderer-input{appearance:none;-webkit-appearance:none;background:#fff url
   <div id="paymentContent"></div>
 </div>
 
-<!-- ════ 주문접수상태 팝업 ════ -->
-<div id="statusPopup" style="display:none;position:fixed;inset:0;z-index:900;background:rgba(0,0,0,.45);align-items:flex-end;justify-content:center;" onclick="if(event.target===this)closeStatusPopup()">
-  <div style="background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:480px;padding:20px 18px 32px;max-height:70vh;overflow-y:auto;" onclick="event.stopPropagation()">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-      <div style="font-size:16px;font-weight:800;color:#1a1a1a;">📬 주문 접수 상태</div>
-      <button onclick="closeStatusPopup()" style="background:none;border:none;font-size:22px;color:#aaa;cursor:pointer;line-height:1;">✕</button>
-    </div>
-    <div id="statusPopupBody"></div>
+<!-- ════ 페이지: 주문 접수 상태 ════ -->
+<div id="page-status" class="page">
+  <div class="back-bar" onclick="goPage('list')">
+    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+    메뉴 목록으로
   </div>
+  <div class="section-title">📬 주문 접수 상태</div>
+  <div id="statusContent"></div>
 </div>
 
 <!-- ════ 페이지: 주문 내역 ════ -->
@@ -561,6 +560,7 @@ function goPage(name){
   if(name==='order')renderOrder();
   if(name==='payment')renderPayment();
   if(name==='history')renderHistory();
+  if(name==='status')renderStatusPage();
 }
 
 // ── 데이터 로드 ──
@@ -837,38 +837,38 @@ function updateStatusBtn(){
     }
   }
 }
-function openStatusPopup(){
+function renderStatusPage(){
   var orders=JSON.parse(localStorage.getItem('orders')||'[]');
-  var body=document.getElementById('statusPopupBody');
-  var pop=document.getElementById('statusPopup');
-  // 최신순 정렬
+  var el=document.getElementById('statusContent');
   var sorted=orders.slice().sort(function(a,b){return (b.id||'').localeCompare(a.id||'');});
   if(!sorted.length){
-    body.innerHTML='<div style="text-align:center;padding:40px 0;color:#aaa;font-size:14px;">주문 내역이 없어요.</div>';
-  }else{
-    body.innerHTML=sorted.map(function(o){
-      var st=STATUS_TEXT[o.status]||o.status;
-      var col=STATUS_COLOR[o.status]||'#555';
-      var bg=STATUS_BG[o.status]||'#f5f5f5';
-      var items=(o.items||[]).slice(0,3).map(function(i){return i.name+' '+i.qty+'개';}).join(', ');
-      if((o.items||[]).length>3)items+=' 외 '+((o.items||[]).length-3)+'종';
-      return '<div style="border:1px solid #e8f5f4;border-radius:12px;padding:12px 14px;margin-bottom:10px;">'+
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'+
-          '<span style="font-size:12px;color:#888;">'+(o.date||'')+' '+(o.time||'')+'</span>'+
-          '<span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;background:'+bg+';color:'+col+';">'+st+'</span>'+
-        '</div>'+
-        '<div style="font-size:14px;font-weight:700;color:#1a1a1a;margin-bottom:3px;">'+(o.name||'')+'</div>'+
-        '<div style="font-size:12px;color:#666;margin-bottom:4px;">'+items+'</div>'+
-        '<div style="font-size:13px;font-weight:700;color:#086266;">합계 '+(o.total||0).toLocaleString()+'천원</div>'+
+    el.innerHTML='<div class="hist-empty"><span>📭</span><p>주문 내역이 없어요.</p></div>';
+    return;
+  }
+  el.innerHTML=sorted.map(function(o){
+    var st=STATUS_TEXT[o.status]||o.status;
+    var col=STATUS_COLOR[o.status]||'#555';
+    var bg=STATUS_BG[o.status]||'#f5f5f5';
+    var itemRows=(o.items||[]).map(function(i){
+      return '<div class="hist-item-row">'+
+        '<div class="hist-item-name">'+i.name+'</div>'+
+        '<div class="hist-item-price">'+i.qty+'개 · '+(i.price*i.qty).toLocaleString()+'천원</div>'+
       '</div>';
     }).join('');
-  }
-  pop.style.display='flex';
-  // 팝업 열 때 버튼 강조 해제
+    return '<div class="hist-card">'+
+      '<div class="hist-head">'+
+        '<div>'+
+          '<div style="font-size:14px;font-weight:700;color:#1a1a1a;">'+(o.name||'')+'</div>'+
+          '<div class="hist-date">'+(o.date||'')+' '+(o.time||'')+'</div>'+
+        '</div>'+
+        '<span class="hist-status '+(o.status||'')+'" style="background:'+bg+';color:'+col+';">'+st+'</span>'+
+      '</div>'+
+      '<div class="hist-body">'+itemRows+'</div>'+
+      '<div class="hist-total"><span>합계</span><span class="hist-total-val">'+(o.total||0).toLocaleString()+'천원</span></div>'+
+    '</div>';
+  }).join('');
+  // 페이지 진입 시 버튼 강조 해제
   document.getElementById('statusBtn').classList.remove('has-order');
-}
-function closeStatusPopup(){
-  document.getElementById('statusPopup').style.display='none';
   updateStatusBtn();
 }
 function renderCart(){
