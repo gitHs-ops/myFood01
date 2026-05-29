@@ -1750,7 +1750,7 @@ function renderOrdersList(today,todayOrders){
     '<div class="order-stat"><div class="order-stat-num" style="color:#086266;">'+delivered+'</div><div class="order-stat-lbl">배송완료</div></div>';
 
   // 필터 탭
-  var filterLabels=[['all','전체'],['pending','대기중'],['confirmed','확정'],['delivered','배송완료'],['cancelled','취소']];
+  var filterLabels=[['all','전체'],['pending','대기중'],['confirmed','주문접수'],['delivered','배송완료'],['cancelled','취소']];
   document.getElementById('orderFilterTabs').innerHTML=filterLabels.map(function(f){
     return '<button class="order-filter-tab'+(orderFilter===f[0]?' active':'')+'" data-f="'+f[0]+'">'+f[1]+'</button>';
   }).join('');
@@ -1771,7 +1771,7 @@ function renderOrdersList(today,todayOrders){
     card.className='order-card '+order.status;
     card.id='ocard_'+order.id;
 
-    var statusText={'pending':'⏳ 대기중','confirmed':'✅ 확정','cancelled':'❌ 취소','delivered':'🚚 배송완료'};
+    var statusText={'pending':'⏳ 대기중','confirmed':'✅ 주문접수','cancelled':'❌ 취소','delivered':'🚚 배송완료'};
     var statusClass={'pending':'status-pending','confirmed':'status-confirmed','cancelled':'status-cancelled','delivered':'status-delivered'};
 
     var header=document.createElement('div');
@@ -1811,7 +1811,7 @@ function renderOrdersList(today,todayOrders){
 
       var btnCfm=document.createElement('button');
       btnCfm.className='btn-confirm-order';
-      btnCfm.textContent='🚚 배송 확정';
+      btnCfm.textContent='✅ 주문 접수';
       btnCfm.onclick=function(){confirmOrder(order.id);};
 
       var btnCnl=document.createElement('button');
@@ -1902,7 +1902,7 @@ function confirmOrder(id){
     // 현재 작업중인 날짜면 화면도 갱신
     if(workDate===o.date){loadMenus(workDate);renderAll();}
   }
-  // 고객에게 배송확정 알림톡 (실패시 SMS 대체)
+  // 고객에게 주문접수 알림톡 (실패시 SMS 대체)
   if(o.phone){
     var menuList=o.items.map(function(i){return i.name+' '+i.qty+'개';}).join(', ');
     sendAlimtalk(o.phone,
