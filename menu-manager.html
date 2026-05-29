@@ -1860,8 +1860,11 @@ function renderOrdersList(today,todayOrders){
     btn.onclick=function(){setOrderFilter(this.getAttribute('data-f'));};
   });
 
-  // 목록 — 주문 최신 순
+  // 목록 — 새 추가요청 우선, 그 다음 최신순
   todayOrders.sort(function(a,b){
+    var aN=_isNewAddReq(a)?1:0;
+    var bN=_isNewAddReq(b)?1:0;
+    if(bN!==aN)return bN-aN;
     return String(b.id).localeCompare(String(a.id));
   });
   var filtered=orderFilter==='all'?todayOrders:todayOrders.filter(function(o){return o.status===orderFilter;});
