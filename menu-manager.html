@@ -1997,11 +1997,14 @@ function showReplyBox(orderId, phone){
   if(existing){existing.remove();return;}
   var box=document.createElement('div');
   box.className='addreq-reply-box';
+  var s=getSettings();
+  var notifyOn=(s.smsEnabled!==false||s.alimtalkEnabled!==false);
+  var btnLabel=notifyOn?'📨 알림 전송':'💾 저장하기';
   box.innerHTML=
     '<textarea class="addreq-reply-textarea" id="replyta_'+orderId+'" placeholder="고객에게 보낼 답변을 입력하세요..."></textarea>'
     +'<div class="addreq-reply-actions">'
       +'<button class="addreq-reply-cancel" onclick="this.closest(\'.addreq-reply-box\').remove()">취소</button>'
-      +'<button class="addreq-reply-send" onclick="sendAdminReply(\''+orderId+'\',\''+phone+'\')">📨 SMS 전송</button>'
+      +'<button class="addreq-reply-send" onclick="sendAdminReply(\''+orderId+'\',\''+phone+'\')">'+btnLabel+'</button>'
     +'</div>';
   wrap.appendChild(box);
   setTimeout(function(){var ta=document.getElementById('replyta_'+orderId);if(ta)ta.focus();},50);
@@ -2010,8 +2013,21 @@ function sendAdminReply(orderId, phone){
   var ta=document.getElementById('replyta_'+orderId);
   var text=ta?ta.value.trim():'';
   if(!text){showToast('답변 내용을 입력하세요.');return;}
-  var msg='[오늘의 반찬] '+text;
-  sendSMS(phone, msg);
+  var s=getSettings();
+  var notifyOn=(s.smsEnabled!==false||s.alimtalkEnabled!==false);
+  if(notifyOn){
+    var fallbackMsg='[오늘의 반찬] '+text;
+    // 알림톡 (템플릿 있을 때만)
+    if(s.alimtalkEnabled!==false && TPL_ADMIN_REPLY){
+      var orderInfo=_ordersCache[orderId]||{};
+      sendAlimtalk(phone, TPL_ADMIN_REPLY,
+        {이름:orderInfo.name||''},
+        fallbackMsg);
+    } else if(s.smsEnabled!==false){
+      // 알림톡 템플릿 없으면 SMS만
+      sendSMS(phone, fallbackMsg);
+    }
+  }
   // 기존 답변에 이어붙이기
   var prev=(_ordersCache[orderId]&&_ordersCache[orderId].adminReply)||'';
   var combined=prev?prev+' / '+text:text;
@@ -2033,7 +2049,7 @@ function sendAdminReply(orderId, phone){
   }
   var wrap=document.getElementById('addreqwrap_'+orderId);
   if(wrap){var box=wrap.querySelector('.addreq-reply-box');if(box)box.remove();}
-  showToast('고객에게 SMS를 전송했어요.');
+  showToast(notifyOn?'고객에게 알림을 전송했어요.':'답변이 저장됐어요.');
 }
 
 function makeConfirmMsg(order){
@@ -2323,6 +2339,7 @@ function requestNotifyPermission(){
 
 /* ════ 설정 ════ */
 var ONBAN_SHEET_URL='https://script.google.com/macros/s/AKfycbwtXJL4_lMynbG4U13PqbnPOiTp15evyw0BPPQ0A9aV5QYlI5dSQB4Ru-8BOqVR9RPq1w/exec';
+var TPL_ADMIN_REPLY='KA01TP260529154902220c1zr7XODUTj'; // 관리자 답변 알림톡 템플릿 ID
 var ONBAN_SHEET_ID='1_jAZK1zwob2zbiOwKRYzmpKkaswOAi4RUGC043ujiLo';
 var SETTINGS_KEY='onban_settings';
 var BANKS_KEY='onban_banks';
