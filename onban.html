@@ -599,10 +599,10 @@ function fmtDT(date,time){
     var d=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));
     dow=DAYS[d.getDay()]+'요일';
   }
-  // "Sat Dec 30 1899 15:22:00 ..." 형태의 Date 문자열에서 HH:MM 추출
   var t=String(time||'');
   var m=t.match(/(\d{1,2}):(\d{2})(?::\d{2})?/);
-  var hhmm=m?String(m[1]).padStart(2,'0')+':'+m[2]:'';
+  var hhmm='';
+  if(m){var h=parseInt(m[1]),mn=m[2],ap=h>=12?'PM':'AM',h12=h%12||12;hhmm=String(h12).padStart(2,'0')+':'+mn+' '+ap;}
   return mmdd+(dow?' '+dow:'')+(hhmm?' '+hhmm:'');
 }
 function showToast(msg){
