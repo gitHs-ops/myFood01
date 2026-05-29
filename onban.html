@@ -1026,21 +1026,21 @@ function _buildStatusCardHtml(o){
   var chatHtml='';
   if(o.additionalRequest){
     chatHtml+='<div class="extra-req-wrap" id="extra_'+o.id+'">'+_extraSavedHtml(o.id,o.additionalRequest)+'</div>';
-    if(o.adminReply){
-      var safeRep=String(o.adminReply).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-      var timeStr='';
-      if(o.replyAt){try{timeStr=new Date(Number(o.replyAt)).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});}catch(e2){}}
-      chatHtml+='<div class="admin-reply-section">'+
-        '<div class="admin-reply-bubble">'+
-          '<div class="admin-reply-label">💬 가게 답변</div>'+
-          '<div class="admin-reply-text">'+safeRep+'</div>'+
-          (timeStr?'<div class="admin-reply-time">'+timeStr+'</div>':'')+
-        '</div>'+
-      '</div>';
-    }
   } else {
     chatHtml+='<div class="extra-req-wrap" id="extra_'+o.id+'">'+
       '<button class="extra-req-btn" onclick="toggleExtraReq(\''+o.id+'\')">✏️ 추가 요청</button>'+
+    '</div>';
+  }
+  if(o.adminReply){
+    var safeRep=String(o.adminReply).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    var timeStr='';
+    if(o.replyAt){try{timeStr=new Date(Number(o.replyAt)).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});}catch(e2){}}
+    chatHtml+='<div class="admin-reply-section">'+
+      '<div class="admin-reply-bubble">'+
+        '<div class="admin-reply-label">💬 가게 답변</div>'+
+        '<div class="admin-reply-text">'+safeRep+'</div>'+
+        (timeStr?'<div class="admin-reply-time">'+timeStr+'</div>':'')+
+      '</div>'+
     '</div>';
   }
   return '<div class="hist-card" id="stcard_'+o.id+'">'+
