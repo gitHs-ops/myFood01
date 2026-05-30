@@ -408,7 +408,7 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 .extra-req-cancel{flex:1;padding:9px;border-radius:9px;font-size:13px;font-weight:700;border:1.5px solid #ddd;background:#fff;color:#666;cursor:pointer;font-family:inherit;}
 .extra-req-save{flex:1;padding:9px;border-radius:9px;font-size:13px;font-weight:700;border:none;background:#086266;color:#fff;cursor:pointer;font-family:inherit;}
 .extra-req-save:disabled{opacity:.6;}
-.extra-req-saved{display:flex;align-items:flex-start;gap:8px;font-size:13px;color:#086266;background:#f0faf9;border-radius:9px;padding:10px 12px;line-height:1.5;word-break:break-all;}
+.extra-req-saved{display:flex;align-items:center;gap:8px;font-size:13px;color:#086266;background:#f0faf9;border-radius:0;padding:7px 14px;margin:0 -14px;line-height:1.5;word-break:break-all;}
 .extra-req-saved-text{flex:1;}
 .extra-req-edit-btn{flex-shrink:0;background:none;border:1.5px solid #9adcda;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;color:#086266;padding:4px 8px;line-height:1.4;opacity:.85;font-family:inherit;}
 .extra-req-edit-btn:hover{opacity:1;}
@@ -1033,11 +1033,12 @@ function _buildStatusCardHtml(o){
       '<div class="hist-item-price">'+i.qty+'개 · '+(i.price*i.qty).toLocaleString()+'천원</div>'+
     '</div>';
   }).join('');
-  // 추가요청 + 관리자 답변 영역
+  // 추가요청 + 관리자 답변 영역 (pending 상태만 편집 허용)
   var chatHtml='';
+  var isPending=(o.status==='pending');
   if(o.additionalRequest){
-    chatHtml+='<div class="extra-req-wrap" id="extra_'+o.id+'">'+_extraSavedHtml(o.id,o.additionalRequest)+'</div>';
-  } else {
+    chatHtml+='<div class="extra-req-wrap" id="extra_'+o.id+'">'+_extraSavedHtml(o.id,o.additionalRequest,isPending)+'</div>';
+  } else if(isPending){
     chatHtml+='<div class="extra-req-wrap" id="extra_'+o.id+'">'+
       '<button class="extra-req-btn" onclick="toggleExtraReq(\''+o.id+'\')">✏️ 추가 요청</button>'+
     '</div>';
@@ -1162,11 +1163,11 @@ function _fetchStatusFromGAS(myInfo, today, localOrders, forceRender){
   })
   .catch(function(){if(forceRender)showToast('서버 연결 실패.');});
 }
-function _extraSavedHtml(id,text){
+function _extraSavedHtml(id,text,editable){
   var safe=String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   return '<div class="extra-req-saved">'
     +'<span class="extra-req-saved-text">✅ '+safe+'</span>'
-    +'<button class="extra-req-edit-btn" onclick="editExtraReq(\''+id+'\')" title="편집">✏️ 수정</button>'
+    +(editable?'<button class="extra-req-edit-btn" onclick="editExtraReq(\''+id+'\')" title="편집">✏️ 수정</button>':'')
     +'</div>';
 }
 function editExtraReq(id){
@@ -1200,8 +1201,9 @@ function cancelExtraReq(id){
   var ords=JSON.parse(localStorage.getItem('orders')||'[]');
   var ord=ords.find(function(o){return o.id===id;});
   var prev=ord&&ord.additionalRequest?ord.additionalRequest:'';
+  var isPending=ord&&ord.status==='pending';
   wrap.innerHTML=prev
-    ?_extraSavedHtml(id,prev)
+    ?_extraSavedHtml(id,prev,isPending)
     :'<button class="extra-req-btn" onclick="toggleExtraReq(\''+id+'\')">✏️ 추가 요청</button>';
 }
 function saveExtraReq(id){
@@ -1220,7 +1222,8 @@ function saveExtraReq(id){
       var ords=JSON.parse(localStorage.getItem('orders')||'[]');
       var ord=ords.find(function(o){return o.id===id;});
       if(ord){ord.additionalRequest=text;localStorage.setItem('orders',JSON.stringify(ords));}
-      wrap.innerHTML=_extraSavedHtml(id,text);
+      var isPending=ord&&ord.status==='pending';
+      wrap.innerHTML=_extraSavedHtml(id,text,isPending);
     } else {
       showToast('⚠️ '+(d.error||d.message||'저장 실패'));
       btn.disabled=false; btn.textContent='저장';
@@ -1829,16 +1832,31 @@ function histSaveMemo(id){
   document.getElementById('histmemo-'+id).innerHTML=_histMemoHtml(id,text);
   showToast('저장됐어요. 재주문 시 반영됩니다.');
 }
-function histEditExtra(id){
-  var ords=JSON.parse(localStorage.getItem('orders')||'[]');
-  var ord=ords.find(function(o){return o.id===id;})||{};
-  var prev=(ord.additionalRequest||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  document.getElementById('histextra-'+id).innerHTML=
-    '<textarea class="hist-req-textarea" id="histextrata-'+id+'" placeholder="추가 요청 사항">'+prev+'</textarea>'
+var EXTRA_OPTS=['경비원실','문앞','택배함','현관에서 직접 수령','매장 픽업','직접 입력'];
+function _extraSelectHtml(id, prev){
+  var isCustom=prev&&EXTRA_OPTS.slice(0,-1).indexOf(prev)<0;
+  var selVal=isCustom?'직접 입력':(prev||'');
+  return '<select class="hist-req-textarea" id="histextrasel-'+id+'" onchange="histExtraSelChange(\''+id+'\')">'
+    +'<option value="">선택하세요</option>'
+    +EXTRA_OPTS.map(function(o){return '<option value="'+o+'"'+(selVal===o?' selected':'')+'>'+o+'</option>';}).join('')
+    +'</select>'
+    +'<textarea class="hist-req-textarea" id="histextrata-'+id+'" placeholder="직접 입력하세요" style="display:'+(isCustom?'block':'none')+';">'+(isCustom?prev.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):'')+'</textarea>'
     +'<div class="hist-req-actions">'
       +'<button class="hist-req-cancel" onclick="histCancelExtra(\''+id+'\')">취소</button>'
       +'<button class="hist-req-save" onclick="histSaveExtra(\''+id+'\')">저장</button>'
     +'</div>';
+}
+function histEditExtra(id){
+  var ords=JSON.parse(localStorage.getItem('orders')||'[]');
+  var ord=ords.find(function(o){return o.id===id;})||{};
+  document.getElementById('histextra-'+id).innerHTML=_extraSelectHtml(id, ord.additionalRequest||'');
+}
+function histExtraSelChange(id){
+  var sel=document.getElementById('histextrasel-'+id);
+  var ta=document.getElementById('histextrata-'+id);
+  if(!sel||!ta)return;
+  if(sel.value==='직접 입력'){ta.style.display='block';ta.focus();}
+  else{ta.style.display='none';}
 }
 function histCancelExtra(id){
   var ords=JSON.parse(localStorage.getItem('orders')||'[]');
@@ -1846,8 +1864,12 @@ function histCancelExtra(id){
   document.getElementById('histextra-'+id).innerHTML=_histExtraHtml(id,ord.additionalRequest||'');
 }
 function histSaveExtra(id){
+  var sel=document.getElementById('histextrasel-'+id);
   var ta=document.getElementById('histextrata-'+id);
-  var text=ta?ta.value.trim():'';
+  var text='';
+  if(sel&&sel.value==='직접 입력'){text=ta?ta.value.trim():'';}
+  else if(sel){text=sel.value;}
+  if(!text){showToast('항목을 선택해주세요.');return;}
   var ords=JSON.parse(localStorage.getItem('orders')||'[]');
   var ord=ords.find(function(o){return o.id===id;});
   if(!ord)return;
