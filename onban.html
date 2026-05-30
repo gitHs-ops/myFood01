@@ -831,9 +831,6 @@ function renderMenuGrid(){
 
     // 가격 또는 품절
     var priceEl=document.createElement('div');
-    var arrow=document.createElement('div');
-    arrow.className='menu-arrow';
-    arrow.textContent='›';
     if(soldout){
       var stag=document.createElement('span');
       stag.className='menu-soldout-tag';
@@ -841,14 +838,24 @@ function renderMenuGrid(){
       card.appendChild(dot);
       card.appendChild(nameWrap);
       card.appendChild(stag);
-      card.appendChild(arrow);
     } else {
       priceEl.className='menu-price';
       priceEl.textContent=comma(m.price)+'천원';
+      var chk=document.createElement('div');
+      chk.className='menu-chk'+(selectedMenuIds.has(String(m.id))?' checked':'');
+      (function(mid,chkEl,cardEl){
+        chkEl.onclick=function(e){
+          e.stopPropagation();
+          if(selectedMenuIds.has(mid)){selectedMenuIds.delete(mid);chkEl.classList.remove('checked');cardEl.classList.remove('selected');}
+          else{selectedMenuIds.add(mid);chkEl.classList.add('checked');cardEl.classList.add('selected');}
+          updateFloatCartBtn();
+        };
+      })(String(m.id),chk,card);
+      if(selectedMenuIds.has(String(m.id)))card.classList.add('selected');
       card.appendChild(dot);
       card.appendChild(nameWrap);
       card.appendChild(priceEl);
-      card.appendChild(arrow);
+      card.appendChild(chk);
     }
     grid.appendChild(card);
   });
