@@ -813,7 +813,8 @@ function renderMenuGrid(){
     var soldout=(m.stock||0)===0;
     var card=document.createElement('div');
     card.className='menu-card'+(m.child&&!soldout?' child-ok':'')+(soldout?' soldout':'');
-    // 카드 전체 클릭 = 체크박스 토글 (상세 페이지 없음)
+    // 카드 전체 클릭 = 상세 팝업
+    (function(mid){card.onclick=function(){openDetail(mid);};})(String(m.id));
 
     // 카테고리 점
     var dot=document.createElement('div');
@@ -830,6 +831,9 @@ function renderMenuGrid(){
 
     // 가격 또는 품절
     var priceEl=document.createElement('div');
+    var arrow=document.createElement('div');
+    arrow.className='menu-arrow';
+    arrow.textContent='›';
     if(soldout){
       var stag=document.createElement('span');
       stag.className='menu-soldout-tag';
@@ -837,33 +841,14 @@ function renderMenuGrid(){
       card.appendChild(dot);
       card.appendChild(nameWrap);
       card.appendChild(stag);
+      card.appendChild(arrow);
     } else {
       priceEl.className='menu-price';
       priceEl.textContent=comma(m.price)+'천원';
-      // 체크박스
-      var chk=document.createElement('div');
-      chk.className='menu-chk'+(selectedMenuIds.has(String(m.id))?' checked':'');
-      (function(mid,chkEl,cardEl){
-        function toggleMenu(){
-          if(selectedMenuIds.has(mid)){
-            selectedMenuIds.delete(mid);
-            chkEl.classList.remove('checked');
-            cardEl.classList.remove('selected');
-          }else{
-            selectedMenuIds.add(mid);
-            chkEl.classList.add('checked');
-            cardEl.classList.add('selected');
-          }
-          updateFloatCartBtn();
-        }
-        cardEl.onclick=toggleMenu;
-        chkEl.onclick=function(e){e.stopPropagation();toggleMenu();};
-      })(String(m.id),chk,card);
-      if(selectedMenuIds.has(String(m.id)))card.classList.add('selected');
       card.appendChild(dot);
       card.appendChild(nameWrap);
       card.appendChild(priceEl);
-      card.appendChild(chk);
+      card.appendChild(arrow);
     }
     grid.appendChild(card);
   });
