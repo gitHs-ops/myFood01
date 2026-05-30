@@ -131,6 +131,18 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 .page{display:none;}
 .page.active{display:block;}
 
+/* ── 메뉴 상세 팝업 (오버레이) ── */
+.menu-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.52);z-index:500;display:flex;align-items:flex-end;justify-content:center;animation:overlayFadeIn .2s ease;}
+@keyframes overlayFadeIn{from{opacity:0;}to{opacity:1;}}
+.menu-modal{position:relative;background:#fff;border-radius:22px 22px 0 0;width:100%;max-width:480px;max-height:82vh;overflow-y:auto;animation:modalSlideUp .25s ease;}
+@keyframes modalSlideUp{from{transform:translateY(50px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+.menu-modal-img{width:100%;height:200px;background:linear-gradient(135deg,#e8f5f4,#c8ebe9);display:flex;align-items:center;justify-content:center;font-size:68px;border-radius:22px 22px 0 0;overflow:hidden;flex-shrink:0;}
+.menu-modal-img img{width:100%;height:100%;object-fit:cover;}
+.menu-modal-close{position:absolute;top:12px;right:14px;background:rgba(0,0,0,.28);border:none;border-radius:50%;width:30px;height:30px;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;z-index:1;}
+.menu-modal-body{padding:18px 20px 32px;}
+.menu-modal-name{font-size:22px;font-weight:900;color:#1a1a1a;margin-bottom:8px;}
+.menu-modal-price{font-size:26px;font-weight:900;color:var(--teal);margin-bottom:4px;}
+.menu-modal-price span{font-size:14px;font-weight:400;color:var(--sub);}
 /* ── 상세 페이지 ── */
 .detail-img{
   width:100%;max-height:240px;overflow:hidden;
@@ -813,8 +825,8 @@ function renderMenuGrid(){
     var soldout=(m.stock||0)===0;
     var card=document.createElement('div');
     card.className='menu-card'+(m.child&&!soldout?' child-ok':'')+(soldout?' soldout':'');
-    // 카드 전체 클릭 = 상세 팝업
-    (function(mid){card.onclick=function(){openDetail(mid);};})(String(m.id));
+    // 카드 전체 클릭 = 상세 정보 팝업
+    (function(mid){card.onclick=function(){showMenuModal(mid);};})(String(m.id));
 
     // 카테고리 점
     var dot=document.createElement('div');
@@ -861,7 +873,54 @@ function renderMenuGrid(){
   });
 }
 
-// ── 상세 ──
+// ── 메뉴 상세 팝업 ──
+function showMenuModal(id){
+  var m=allMenus.find(function(x){return String(x.id)===String(id);});
+  if(!m)return;
+  var overlay=document.createElement('div');
+  overlay.className='menu-modal-overlay';
+  overlay.onclick=function(e){if(e.target===overlay)document.body.removeChild(overlay);};
+  var modal=document.createElement('div');
+  modal.className='menu-modal';
+  // 이미지
+  var imgWrap=document.createElement('div');
+  imgWrap.className='menu-modal-img';
+  if(m.imgUrl){var img=document.createElement('img');img.src=m.imgUrl;img.alt=m.name;imgWrap.appendChild(img);}
+  else{imgWrap.textContent=CAT_EMOJI[m.cat]||'🍽';}
+  // 닫기 버튼
+  var closeBtn=document.createElement('button');
+  closeBtn.className='menu-modal-close';
+  closeBtn.textContent='✕';
+  closeBtn.onclick=function(){document.body.removeChild(overlay);};
+  // 바디
+  var body=document.createElement('div');
+  body.className='menu-modal-body';
+  // 배지
+  var badges=document.createElement('div');
+  badges.className='detail-badges';
+  var catB=document.createElement('span');
+  catB.className='badge badge-cat';
+  catB.style.background=CAT_COLOR[m.cat]||'#888';
+  catB.textContent=m.cat;
+  badges.appendChild(catB);
+  if(m.child){var cb2=document.createElement('span');cb2.className='badge badge-child';cb2.style.cssText='font-size:12px;padding:3px 10px;';cb2.textContent='어린이도 OK';badges.appendChild(cb2);}
+  if((m.stock||0)===0){var sob=document.createElement('span');sob.className='badge';sob.style.cssText='background:#f0f0f0;color:#999;';sob.textContent='품절';badges.appendChild(sob);}
+  var nameEl=document.createElement('div');
+  nameEl.className='menu-modal-name';
+  nameEl.textContent=m.name;
+  var priceEl=document.createElement('div');
+  priceEl.className='menu-modal-price';
+  priceEl.innerHTML=comma(m.price)+'<span>천원</span>';
+  body.appendChild(badges);
+  body.appendChild(nameEl);
+  body.appendChild(priceEl);
+  modal.appendChild(imgWrap);
+  modal.appendChild(closeBtn);
+  modal.appendChild(body);
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+}
+// ── 상세 페이지 (주문하기 흐름용) ──
 function openDetail(id){
   // id 타입 무관하게 비교
   detailMenu=allMenus.find(function(m){return String(m.id)===String(id);});
