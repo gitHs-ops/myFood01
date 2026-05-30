@@ -840,6 +840,12 @@ function renderMenuGrid(){
     nameEl.className='menu-name';
     nameEl.textContent=m.name;
     nameWrap.appendChild(nameEl);
+    if(m.child&&!soldout){
+      var childTag=document.createElement('span');
+      childTag.className='menu-child-tag';
+      childTag.textContent='👧';
+      nameWrap.appendChild(childTag);
+    }
 
     // 가격 또는 품절
     var priceEl=document.createElement('div');
