@@ -561,10 +561,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
       <span>📦 주문 관리</span>
       <div style="display:flex;align-items:center;gap:8px;">
         <span class="orders-refresh-btn" onclick="renderOrders()">실시간 변경 확인  !</span>
-        <span id="pollStatus" style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:400;color:#aaa;">
-          <span id="pollDot" style="width:7px;height:7px;border-radius:50%;background:#ccc;flex-shrink:0;"></span>
-          <span id="pollLabel">연결 중...</span>
-        </span>
+        <span id="pollLabel" style="font-size:12px;font-weight:700;color:#fff;background:rgba(8,98,102,.6);border-radius:20px;padding:3px 10px;white-space:nowrap;min-width:46px;text-align:center;">🔄 15</span>
       </div>
     </div>
     <div class="order-stats" id="orderStats"></div>
@@ -2354,22 +2351,13 @@ function _makeSnapshot(orders){
 }
 
 function _pollSetUI(ok,sec){
-  var dot=document.getElementById('pollDot');
   var lbl=document.getElementById('pollLabel');
-  if(!dot||!lbl)return;
+  if(!lbl)return;
   if(ok===false){
-    dot.style.background='#e05';
-    lbl.textContent='연결 오류';
+    lbl.textContent='⚠ 오류';
     return;
   }
-  var now=new Date();
-  var hm=now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
-  if(ok===true){
-    dot.style.background='#1D9E75';
-    lbl.textContent=hm+' 갱신 · '+sec+'초 후';
-  } else {
-    lbl.textContent=hm+' 갱신 · '+sec+'초 후';
-  }
+  lbl.textContent='🔄 '+sec;
 }
 
 function _pollNotify(orders){
