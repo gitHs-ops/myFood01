@@ -825,20 +825,19 @@ function renderMenuGrid(){
     var soldout=(m.stock||0)===0;
     var card=document.createElement('div');
     card.className='menu-card'+(m.child&&!soldout?' child-ok':'')+(soldout?' soldout':'');
-    // 카드 전체 클릭 = 상세 정보 팝업
-    (function(mid){card.onclick=function(){showMenuModal(mid);};})(String(m.id));
-
     // 카테고리 점
     var dot=document.createElement('div');
     dot.className='menu-cat-dot';
     dot.style.background=soldout?'#ccc':(CAT_COLOR[m.cat]||'#888');
 
-    // 메뉴명 wrap
+    // 메뉴명 wrap — 메뉴명 클릭 시 상세 팝업
     var nameWrap=document.createElement('div');
     nameWrap.className='menu-name-wrap';
     var nameEl=document.createElement('div');
     nameEl.className='menu-name';
+    nameEl.style.cssText='cursor:pointer;text-decoration:underline dotted #aaa;';
     nameEl.textContent=m.name;
+    (function(mid){nameEl.onclick=function(e){e.stopPropagation();showMenuModal(mid);};})(String(m.id));
     nameWrap.appendChild(nameEl);
     if(m.child&&!soldout){
       var childTag=document.createElement('span');
