@@ -2005,7 +2005,13 @@ function renderOrdersList(today,todayOrders){
       btnDlv.textContent='✅ 배송완료';
       btnDlv.onclick=function(){deliverOrder(order.id);};
 
+      var btnCnlC=document.createElement('button');
+      btnCnlC.className='btn-cancel-order';
+      btnCnlC.textContent='주문취소';
+      btnCnlC.onclick=function(){cancelOrder(order.id);};
+
       actionsC.appendChild(btnDlv);
+      actionsC.appendChild(btnCnlC);
       card.appendChild(actionsC);
     }
 
