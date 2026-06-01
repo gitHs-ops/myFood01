@@ -475,7 +475,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
     </div>
     <div style="display:flex;gap:8px;margin-top:0;">
       <button class="copy-btn" id="copyBtn" onclick="copyKakao()" style="flex:1;">텍스트 복사하기</button>
-      <button class="copy-btn" id="sendKakaoBtn" onclick="sendMenuAlimtalk()" style="flex:1;background:#086266;color:#fff;">카카오 발송하기</button>
+      <button class="copy-btn" id="parseKakaoBtn" onclick="parseKakaoToMenu()" style="flex:1;background:#086266;color:#fff;">카카오 톡 내용으로 일일 메뉴 생성</button>
     </div>
   </div>
   <div class="card">
@@ -1191,41 +1191,47 @@ function copyKakao(){
     setTimeout(function(){btn.textContent='텍스트 복사하기';btn.classList.remove('copied');},2000);
   });
 }
-function sendMenuAlimtalk(){
+function parseKakaoToMenu(){
   var el=document.getElementById('kakaoText');
   var text=(el.innerText||el.textContent||'').trim();
   if(!text||text==='메뉴를 먼저 입력해주세요.'){showToast('먼저 메뉴를 입력해주세요.');return;}
-  // 주문 목록에서 고유 전화번호 수집
-  var orders=getOrders();
-  var phones=[...new Set(orders.filter(function(o){return o.phone;}).map(function(o){return o.phone;}))];
-  if(!phones.length){
-    var ph=prompt('발송할 전화번호를 입력하세요 (쉼표로 구분)','');
-    if(!ph)return;
-    phones=ph.split(',').map(function(p){return p.trim();}).filter(Boolean);
-  }
-  if(!phones.length)return;
-  if(!confirm(phones.length+'명에게 오늘의 메뉴 알림톡을 발송할까요?'))return;
-  var btn=document.getElementById('sendKakaoBtn');
-  btn.textContent='발송 중...';btn.disabled=true;
-  var sent=0,failed=0,total=phones.length;
-  function done(){
-    btn.textContent='카카오 발송하기';btn.disabled=false;
-    showToast('발송 완료: 성공 '+sent+'건'+(failed?' / 실패 '+failed+'건':''));
-  }
-  function sendNext(idx){
-    if(idx>=total){done();return;}
-    var phone=phones[idx];
-    var qs='action=alimtalk'
-      +'&receiver='+encodeURIComponent(phone)
-      +'&tplId='+encodeURIComponent('KA01BP260528055426650uiSVNiXfS6R')
-      +'&vars='+encodeURIComponent(JSON.stringify({'내용':text}))
-      +'&msg='+encodeURIComponent(text);
-    fetch(ONBAN_SHEET_URL+'?'+qs,{redirect:'follow'})
-      .then(function(r){return r.json();})
-      .then(function(d){if(d&&d.success===false)failed++;else sent++;sendNext(idx+1);})
-      .catch(function(){failed++;sendNext(idx+1);});
-  }
-  sendNext(0);
+
+  // 기본 재고 설정값 로드
+  var cfg=getSettings();
+  var defaultStock=Number(cfg.stock)||0;
+
+  var parsed=[];
+  var currentCat='기타';
+  var lines=text.split('\n');
+
+  lines.forEach(function(line){
+    line=line.trim();
+    if(!line)return;
+    // 카테고리 라인: [반찬] 형태
+    var catMatch=line.match(/^\[(.+)\]$/);
+    if(catMatch){currentCat=catMatch[1].trim();return;}
+    // 헤더/링크 라인 제외
+    if(line.match(/메뉴 안내$|메뉴 주문|https?:\/\//))return;
+
+    // 메뉴명 + 가격: 끝 숫자가 가격 (공백 구분)
+    var priceMatch=line.match(/^(.+?)\s+(\d+)(\s*천원)?(\s*👧)?$/);
+    if(priceMatch){
+      var name=priceMatch[1].trim();
+      var price=Number(priceMatch[2]);
+      var child=!!(priceMatch[4]&&priceMatch[4].indexOf('👧')>=0)||line.indexOf('👧')>=0;
+      // 👧 이모지가 이름에 포함된 경우 제거
+      name=name.replace(/\s*👧\s*/g,'').trim();
+      parsed.push({name:name,cat:currentCat,price:price,stock:defaultStock,child:child,imgUrl:null});
+    }
+  });
+
+  if(!parsed.length){showToast('파싱된 메뉴가 없습니다. 텍스트 형식을 확인해주세요.');return;}
+  if(!confirm(parsed.length+'개 메뉴를 일일 메뉴로 등록할까요?\n(기존 메뉴는 초기화됩니다)'))return;
+
+  menus=parsed.map(function(m){return Object.assign({id:Date.now()+Math.random()},m,{updatedAt:Date.now()});});
+  save();
+  renderAll();
+  showToast(menus.length+'개 메뉴가 등록되었습니다.');
 }
 var _histLoadDate=null,_histSubTab='dates';
 function saveToday(){
