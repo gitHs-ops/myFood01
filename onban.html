@@ -1400,7 +1400,6 @@ function renderOrdererPage(){
       if(nEl&&!nEl.value) nEl.value=prev.name||'';
       if(pEl&&!pEl.value) pEl.value=prev.phone||'';
       if(aEl&&!aEl.value) aEl.value=prev.addr||'';
-      if(mEl&&!mEl.value&&prev.memo) mEl.value=prev.memo.split(' / ')[0]||prev.memo;
     }
   }catch(e){}
 
