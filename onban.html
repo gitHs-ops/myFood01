@@ -23,13 +23,13 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 .top-bar{
   background:#000;
   padding:12px 16px 12px;
-  display:flex;align-items:center;justify-content:space-between;
+  display:flex;flex-direction:column;gap:10px;
   position:sticky;top:0;z-index:90;
   box-shadow:0 2px 12px rgba(8,98,102,.25);
 }
 .top-bar h1{font-size:18px;font-weight:900;color:#fff;letter-spacing:-.3px;}
-.top-bar-logo{height:40px;display:block;mix-blend-mode:lighten;}
-.top-bar-sub{font-size:11px;color:rgba(255,255,255,.7);font-weight:400;margin-top:8px;letter-spacing:-.2px;}
+.top-bar-logo{height:40px;display:block;mix-blend-mode:lighten;flex-shrink:0;}
+.top-bar-sub{font-size:11px;color:rgba(255,255,255,.7);font-weight:400;letter-spacing:-.2px;}
 .cart-btn{display:none;}/* 구 cart-btn 숨김 — top-btn으로 대체 */
 .cart-count{
   background:var(--red);color:#fff;font-size:10px;font-weight:900;
@@ -483,7 +483,7 @@ select.orderer-input{appearance:none;-webkit-appearance:none;background:#fff url
 
 <!-- 상단바 -->
 <div class="top-bar">
-  <div>
+  <div style="display:flex;align-items:center;gap:10px;">
     <img class="top-bar-logo" src="온반_로고.png" alt="오늘의 반찬">
     <div class="top-bar-sub">엄마의 정성처럼 따뜻한 마음과 온기를 담았습니다</div>
   </div>
