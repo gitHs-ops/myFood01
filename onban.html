@@ -66,12 +66,11 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 .menu-card{
   background:var(--white);border-radius:var(--radius);
   box-shadow:var(--shadow);overflow:hidden;
-  cursor:pointer;transition:transform .12s;
+  cursor:default;
   border:1.5px solid transparent;
   display:flex;align-items:center;
   padding:13px 12px;gap:8px;
 }
-.menu-card:active{transform:scale(.98);}
 .menu-card.child-ok{border-left:4px solid #FEE500;}
 .menu-cat-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
 .menu-name-wrap{
@@ -90,9 +89,9 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 .menu-card.soldout{opacity:.55;cursor:default;}
 /* ── 체크박스 ── */
 .menu-chk{
-  width:22px;height:22px;border-radius:5px;border:2px solid #ccc;
+  width:26px;height:26px;border-radius:6px;border:2px solid #ccc;
   flex-shrink:0;display:flex;align-items:center;justify-content:center;
-  transition:all .15s;background:#fff;
+  transition:all .15s;background:#fff;cursor:pointer;touch-action:manipulation;
 }
 .menu-chk.checked{background:var(--teal);border-color:var(--teal);}
 .menu-chk.checked::after{content:'✓';color:#fff;font-size:12px;font-weight:900;}
