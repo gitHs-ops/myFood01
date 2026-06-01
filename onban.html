@@ -28,6 +28,8 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
   box-shadow:0 2px 12px rgba(8,98,102,.25);
 }
 .top-bar h1{font-size:18px;font-weight:900;color:#fff;letter-spacing:-.3px;}
+.top-bar-logo{height:40px;display:block;mix-blend-mode:lighten;}
+.top-bar-sub{font-size:11px;color:rgba(255,255,255,.7);font-weight:400;margin-top:2px;letter-spacing:-.2px;}
 .cart-btn{display:none;}/* 구 cart-btn 숨김 — top-btn으로 대체 */
 .cart-count{
   background:var(--red);color:#fff;font-size:10px;font-weight:900;
@@ -481,7 +483,10 @@ select.orderer-input{appearance:none;-webkit-appearance:none;background:#fff url
 
 <!-- 상단바 -->
 <div class="top-bar">
-  <h1>&#127857; 오늘의 반찬</h1>
+  <div>
+    <img class="top-bar-logo" src="온반_로고_검정배경.png" alt="오늘의 반찬">
+    <div class="top-bar-sub">엄마의 정성처럼 따뜻한 마음과 온기를 담았습니다</div>
+  </div>
   <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">
     <!-- 1행: 장바구니 + 주문내역 -->
     <div style="display:flex;gap:5px;">
