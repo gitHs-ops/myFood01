@@ -1842,6 +1842,7 @@ function renderOrders(){
         }
         _ordersCache[o.id]=o;
       });
+      _reconcileStock(gasOrders);
       renderOrdersList(today,gasOrders);
     })
     .catch(function(){
@@ -2182,6 +2183,50 @@ function sendAlimtalk(phone, tplId, vars, fallbackMsg){
   fetch('https://script.google.com/macros/s/AKfycbwtXJL4_lMynbG4U13PqbnPOiTp15evyw0BPPQ0A9aV5QYlI5dSQB4Ru-8BOqVR9RPq1w/exec?'+qs,{redirect:'follow'}).catch(function(){});
 }
 
+// ── 재고 동기화 (주문 접수 즉시 차감 / 취소 시 복원) ──
+function _getStockApplied(){try{return JSON.parse(localStorage.getItem('stock_applied_orders')||'[]');}catch(e){return [];}}
+function _setStockApplied(arr){localStorage.setItem('stock_applied_orders',JSON.stringify(arr));}
+function _adjustLocalStock(date,items,sign){
+  if(!date||!items)return false;
+  var key='menus_'+date;
+  var dayMenus=JSON.parse(localStorage.getItem(key)||'[]');
+  if(!dayMenus.length)return false;
+  var changed=false;
+  items.forEach(function(it){
+    var m=dayMenus.find(function(x){return x.name===it.name;});
+    if(m){m.stock=Math.max(0,(m.stock||0)+sign*(it.qty||0));changed=true;}
+  });
+  if(changed)localStorage.setItem(key,JSON.stringify(dayMenus));
+  return changed;
+}
+function _reconcileStock(orders){
+  if(!orders||!orders.length)return;
+  var appliedSet={};_getStockApplied().forEach(function(id){appliedSet[id]=true;});
+  // 최초 1회: 기존 확정/배송 주문은 이미 차감된 것으로 간주 (재차감 방지)
+  if(localStorage.getItem('stock_reconcile_init')!=='1'){
+    orders.forEach(function(o){if(o.status==='confirmed'||o.status==='delivered')appliedSet[o.id]=true;});
+    _setStockApplied(Object.keys(appliedSet));
+    localStorage.setItem('stock_reconcile_init','1');
+  }
+  var dirtyDates={},changedApplied=false;
+  orders.forEach(function(o){
+    var consumes=(o.status==='pending'||o.status==='confirmed'||o.status==='delivered');
+    if(consumes&&!appliedSet[o.id]){
+      if(_adjustLocalStock(o.date,o.items,-1))dirtyDates[o.date]=true;
+      appliedSet[o.id]=true;changedApplied=true;
+    }else if(o.status==='cancelled'&&appliedSet[o.id]){
+      if(_adjustLocalStock(o.date,o.items,1))dirtyDates[o.date]=true;
+      delete appliedSet[o.id];changedApplied=true;
+    }
+  });
+  if(changedApplied)_setStockApplied(Object.keys(appliedSet));
+  var dates=Object.keys(dirtyDates);
+  if(dates.length){
+    dates.forEach(function(d){exportMenuToSheet(d);});
+    if(dirtyDates[workDate]){loadMenus(workDate);renderAll();}
+  }
+}
+
 function confirmOrder(id){
   var orders=getOrders();
   var o=_findOrder(orders,id);
@@ -2189,19 +2234,7 @@ function confirmOrder(id){
   o.status='confirmed';
   saveOrders(orders);
   fetch(ONBAN_SHEET_URL+'?action=update_order&id='+encodeURIComponent(id)+'&status=confirmed',{redirect:'follow'}).catch(function(){});
-  // 재고 차감
-  var dayMenus=JSON.parse(localStorage.getItem('menus_'+o.date)||'[]');
-  if(dayMenus.length){
-    o.items.forEach(function(item){
-      var m=dayMenus.find(function(m){return m.name===item.name;});
-      if(m)m.stock=Math.max(0,(m.stock||0)-item.qty);
-    });
-    localStorage.setItem('menus_'+o.date,JSON.stringify(dayMenus));
-    // 구글시트에도 재고 동기화 (고객 페이지 반영용)
-    exportMenuToSheet(o.date);
-    // 현재 작업중인 날짜면 화면도 갱신
-    if(workDate===o.date){loadMenus(workDate);renderAll();}
-  }
+  // 재고 차감은 주문 접수(pending) 시점에 _reconcileStock에서 처리됨
   // 고객에게 주문접수 알림톡 (실패시 SMS 대체)
   if(o.phone){
     var menuList=o.items.map(function(i){return i.name+' '+i.qty+'개';}).join(', ');
@@ -2257,6 +2290,7 @@ function cancelOrder(id){
   o.status='cancelled';
   saveOrders(orders);
   fetch(ONBAN_SHEET_URL+'?action=update_order&id='+encodeURIComponent(id)+'&status=cancelled',{redirect:'follow'}).catch(function(){});
+  _reconcileStock([o]);  // 즉시 재고 복원
   if(o.phone){
     sendAlimtalk(o.phone,
       'KA01TP2605220434459714HrsH0pRr0l',
@@ -2373,7 +2407,7 @@ function _pollFetch(cb){
   var today=workDate||toISO(new Date());
   fetch(ONBAN_SHEET_URL+'?action=get_orders&date='+encodeURIComponent(today),{redirect:'follow'})
     .then(function(r){return r.json();})
-    .then(function(d){cb(d.orders||[]);})
+    .then(function(d){var orders=d.orders||[];_reconcileStock(orders);cb(orders);})
     .catch(function(){_pollSetUI(false,_pollCountdown);});
 }
 
