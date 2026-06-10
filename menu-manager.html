@@ -54,6 +54,9 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
 .legend-dot{width:10px;height:10px;border-radius:50%;}
 .menu-list{display:flex;flex-direction:column;gap:8px;}
 .menu-item{display:flex;align-items:center;background:#f8fffe;border:1px solid #d6efee;border-radius:10px;padding:10px 12px;gap:8px;}
+.menu-item.ml-2line{flex-direction:column;align-items:stretch;gap:8px;}
+.menu-item.ml-2line .mi-row1{display:flex;align-items:center;gap:8px;}
+.menu-item.ml-2line .mi-row2{display:flex;align-items:center;gap:8px;justify-content:flex-end;}
 .menu-item .cat-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
 .menu-item .name{flex:1;font-size:14px;color:#1a1a1a;}
 .img-btn{width:28px;height:28px;border-radius:6px;border:1px solid #cde8e7;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:14px;}
@@ -1141,12 +1144,16 @@ function renderMenuList(){
   list.innerHTML=filtered.map(function(m){
     var imgEl=m.imgUrl?'<img class="menu-thumb" src="'+m.imgUrl+'" alt="'+m.name+'" onclick="openImgPopup('+m.id+')" onerror="this.style.display=\'none\'">':'<button class="img-btn" title="이미지 등록" onclick="openImgPopup('+m.id+')">&#128247;</button>';
     var chEl=m.child?' <span style="font-size:13px;">&#128103;</span>':'';
-    return '<div class="menu-item">'+
-      '<div class="cat-dot" style="background:'+(CAT_COLOR[m.cat]||'#888')+'"></div>'+imgEl+
-      '<div class="name"><span class="name-edit" onclick="openMenuEditPopup('+m.id+')">'+m.name+chEl+' <span class="edit-pen">✏️</span></span></div>'+
-      '<div class="price-wrap"><span class="price-display" id="pd_'+m.id+'" onclick="startEditPrice('+m.id+')">'+(m.price||0).toLocaleString()+'천원</span><input class="price-input" id="pi_'+m.id+'" type="number" min="1" value="'+(m.price||0)+'" onblur="commitPrice('+m.id+')" onkeydown="if(event.key===\'Enter\')commitPrice('+m.id+');if(event.key===\'Escape\')cancelPrice('+m.id+');"></div>'+
-      '<div class="qty-ctrl"><button class="qty-btn" onclick="changeStock('+m.id+',-1)">-</button><span class="qty">'+(m.stock||0)+'</span><button class="qty-btn" onclick="changeStock('+m.id+',1)">+</button></div>'+
-      '<button class="del-btn" onclick="deleteMenu('+m.id+')">&#10005;</button>'+
+    return '<div class="menu-item ml-2line">'+
+      '<div class="mi-row1">'+
+        '<div class="cat-dot" style="background:'+(CAT_COLOR[m.cat]||'#888')+'"></div>'+imgEl+
+        '<div class="name"><span class="name-edit" onclick="openMenuEditPopup('+m.id+')">'+m.name+chEl+' <span class="edit-pen">✏️</span></span></div>'+
+      '</div>'+
+      '<div class="mi-row2">'+
+        '<div class="price-wrap"><span class="price-display" id="pd_'+m.id+'" onclick="startEditPrice('+m.id+')">'+(m.price||0).toLocaleString()+'천원</span><input class="price-input" id="pi_'+m.id+'" type="number" min="1" value="'+(m.price||0)+'" onblur="commitPrice('+m.id+')" onkeydown="if(event.key===\'Enter\')commitPrice('+m.id+');if(event.key===\'Escape\')cancelPrice('+m.id+');"></div>'+
+        '<div class="qty-ctrl"><button class="qty-btn" onclick="changeStock('+m.id+',-1)">-</button><span class="qty">'+(m.stock||0)+'</span><button class="qty-btn" onclick="changeStock('+m.id+',1)">+</button></div>'+
+        '<button class="del-btn" onclick="deleteMenu('+m.id+')">&#10005;</button>'+
+      '</div>'+
     '</div>';
   }).join('');
 }
