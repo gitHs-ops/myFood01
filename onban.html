@@ -1500,9 +1500,12 @@ function renderOrdererPage(){
     // 주문자 기억 (접수상태 조회용)
     localStorage.setItem('onban_my_info',JSON.stringify({name:ordererInfo.name,phone:ordererInfo.phone}));
     lastOrderTotal=orderItems.reduce(function(s,c){return s+c.price*c.qty;},0);
-    saveOrder();
-    cart=[];orderItems=[];updateCartCount();
-    goPage('payment');
+    verifyStock(function(ok,short){
+      if(!ok){_notifyOutOfStock(short);return;}
+      saveOrder();
+      cart=[];orderItems=[];updateCartCount();
+      goPage('payment');
+    });
   };
   el.appendChild(btn);
 }
@@ -1589,6 +1592,39 @@ function pickAddr(addr,memo){
 function closeAddrList(e){
   if(e.target===document.getElementById('addrListOverlay'))
     document.getElementById('addrListOverlay').style.display='none';
+}
+
+// ── 주문 직전 최신 재고 확인 (동시 주문 품절 방지) ──
+function verifyStock(onResult){
+  var iso=toISO(new Date());
+  var csvUrl='https://docs.google.com/spreadsheets/d/'+SHEET_ID
+    +'/gviz/tq?tqx=out:csv&sheet='+encodeURIComponent(iso)+'&_cb='+Date.now();
+  fetch(csvUrl,{cache:'no-store'})
+    .then(function(r){if(!r.ok)throw new Error('no sheet');return r.text();})
+    .then(function(csv){
+      var lines=csv.trim().split(/\r?\n/);
+      var stockMap={};
+      for(var i=1;i<lines.length;i++){
+        var c=parseCsvLine(lines[i]);
+        if(!c[0])continue;
+        stockMap[c[0]]=parseInt(c[3])||0;
+      }
+      var short=[];
+      orderItems.forEach(function(it){
+        var avail=stockMap.hasOwnProperty(it.name)?stockMap[it.name]:0;
+        if(avail<it.qty)short.push({name:it.name,want:it.qty,have:avail});
+      });
+      onResult(short.length===0,short);
+    })
+    .catch(function(){onResult(true,[]);});  // 조회 실패 시 주문 진행(네트워크 오류로 막지 않음)
+}
+function _notifyOutOfStock(list){
+  var msg=list.map(function(s){return '• '+s.name+' (남은 재고 '+s.have+'개 / 주문 '+s.want+'개)';}).join('\n');
+  alert('죄송합니다. 방금 재고가 변경되어 아래 메뉴를 주문할 수 없습니다:\n\n'+msg+'\n\n메뉴를 다시 확인해주세요.');
+  selectedMenuIds.clear();
+  cart=[];orderItems=[];updateCartCount();
+  loadMenus();
+  goPage('list');
 }
 
 // ── 주문 저장 (localStorage) + SMS 발송 ──
@@ -1704,8 +1740,11 @@ function renderOrder(){
   btnCfm.className='btn-confirm';
   btnCfm.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" width="22" height="22"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>구매 확정하기';
   btnCfm.onclick=function(){
-    saveOrder();
-    goPage('payment');
+    verifyStock(function(ok,short){
+      if(!ok){_notifyOutOfStock(short);return;}
+      saveOrder();
+      goPage('payment');
+    });
   };
   el.appendChild(btnCfm);
 }
