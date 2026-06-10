@@ -768,9 +768,10 @@ function loadMenus(silent){
   if(!silent)document.getElementById('dateBanner').textContent='📅 '+label+' 오늘의 메뉴 불러오는 중...';
 
   var csvUrl='https://docs.google.com/spreadsheets/d/'+SHEET_ID
-    +'/gviz/tq?tqx=out:csv&sheet='+encodeURIComponent(iso);
+    +'/gviz/tq?tqx=out:csv&sheet='+encodeURIComponent(iso)
+    +'&_cb='+Date.now();   // 캐시 버스터 (실시간 갱신용)
 
-  fetch(csvUrl)
+  fetch(csvUrl,{cache:'no-store'})
     .then(function(r){if(!r.ok)throw new Error('no sheet');return r.text();})
     .then(function(csv){
       var lines=csv.trim().split(/\r?\n/);
