@@ -2197,6 +2197,8 @@ function confirmOrder(id){
       if(m)m.stock=Math.max(0,(m.stock||0)-item.qty);
     });
     localStorage.setItem('menus_'+o.date,JSON.stringify(dayMenus));
+    // 구글시트에도 재고 동기화 (고객 페이지 반영용)
+    exportMenuToSheet(o.date);
     // 현재 작업중인 날짜면 화면도 갱신
     if(workDate===o.date){loadMenus(workDate);renderAll();}
   }
