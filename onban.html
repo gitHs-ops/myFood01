@@ -149,6 +149,7 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 .menu-modal-name{font-size:22px;font-weight:900;color:#1a1a1a;margin-bottom:8px;}
 .menu-modal-price{font-size:26px;font-weight:900;color:var(--teal);margin-bottom:4px;}
 .menu-modal-price span{font-size:14px;font-weight:400;color:var(--sub);}
+.menu-modal-desc{font-size:14px;line-height:1.7;color:#444;margin-top:14px;padding-top:14px;border-top:1px solid #eee;white-space:pre-wrap;word-break:break-word;}
 /* ── 상세 페이지 ── */
 .detail-img{
   width:100%;max-height:240px;overflow:hidden;
@@ -779,7 +780,7 @@ function loadMenus(silent){
         allMenus.push({
           id:i,name:cols[0],cat:cols[1]||'기타',
           price:parseInt(cols[2])||0,stock:parseInt(cols[3])||0,
-          child:(cols[4]||'')==='Y',imgUrl:cols[5]||null
+          child:(cols[4]||'')==='Y',imgUrl:cols[5]||null,desc:cols[6]||''
         });
       }
       document.getElementById('dateBanner').textContent='📅 '+label+' 오늘의 메뉴';
@@ -947,6 +948,12 @@ function showMenuModal(id){
   body.appendChild(badges);
   body.appendChild(nameEl);
   body.appendChild(priceEl);
+  if(m.desc){
+    var descEl=document.createElement('div');
+    descEl.className='menu-modal-desc';
+    descEl.textContent=m.desc;
+    body.appendChild(descEl);
+  }
   modal.appendChild(imgWrap);
   modal.appendChild(closeBtn);
   modal.appendChild(body);

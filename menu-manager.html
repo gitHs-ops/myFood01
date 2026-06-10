@@ -415,7 +415,8 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
         <option value="김치">김치</option><option value="밀키트">밀키트</option><option value="기타">기타</option>
       </select>
     </div>
-    <label class="child-toggle" style="margin-bottom:14px;"><input type="checkbox" id="editMenuChild"> 어린이도 먹을 수 있는 메뉴</label>
+    <label class="child-toggle" style="margin-bottom:10px;"><input type="checkbox" id="editMenuChild"> 어린이도 먹을 수 있는 메뉴</label>
+    <div class="edit-field"><label class="edit-label">메뉴 설명 (선택)</label><textarea id="editMenuDesc" class="edit-input" rows="2" placeholder="고객 상세 팝업에 표시됩니다" style="resize:vertical;font-family:inherit;"></textarea></div>
     <button class="img-btn-cancel" onclick="saveMenuEditAll()" style="margin-top:2px;">메뉴 저장</button>
   </div>
 </div>
@@ -449,6 +450,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
 </div>
 <div class="dup-warn" id="dupWarn">&#9888; 이미 오늘 목록에 있는 메뉴예요!</div>
     <label class="child-toggle"><input type="checkbox" id="menuChild"> 어린이도 먹을 수 있는 메뉴</label>
+    <textarea id="menuDesc" placeholder="메뉴 설명 (선택) — 고객 상세 팝업에 표시됩니다" rows="2" style="width:100%;margin-bottom:10px;padding:8px 10px;border:1px solid #ddd;border-radius:8px;font-family:inherit;font-size:13px;resize:vertical;box-sizing:border-box;"></textarea>
     <button class="btn btn-add" onclick="addMenu()">추 가</button>
   </div>
   <div class="card">
@@ -659,7 +661,7 @@ function saveAllMenus(){localStorage.setItem('onban_all_menus',JSON.stringify(al
 function rebuildAllMenusFromHistory(){
   var h=JSON.parse(localStorage.getItem('menu_history')||'[]');
   var map={};var idx=Date.now();
-  h.forEach(function(e){if(!e.menus)return;e.menus.forEach(function(m){if(!m.name)return;if(!map[m.name])map[m.name]={id:idx++,name:m.name,cat:m.cat,price:m.price,stock:0,child:m.child,imgUrl:m.imgUrl||null,count:0,updatedAt:0};map[m.name].count++;map[m.name].price=m.price;if(m.imgUrl){map[m.name].imgUrl=m.imgUrl;map[m.name].updatedAt=m.updatedAt||0;}});});
+  h.forEach(function(e){if(!e.menus)return;e.menus.forEach(function(m){if(!m.name)return;if(!map[m.name])map[m.name]={id:idx++,name:m.name,cat:m.cat,price:m.price,stock:0,child:m.child,desc:m.desc||'',imgUrl:m.imgUrl||null,count:0,updatedAt:0};map[m.name].count++;map[m.name].price=m.price;if(m.desc)map[m.name].desc=m.desc;if(m.imgUrl){map[m.name].imgUrl=m.imgUrl;map[m.name].updatedAt=m.updatedAt||0;}});});
   allMenus=Object.values(map).sort(function(a,b){return b.count-a.count;});
   saveAllMenus();
 }
@@ -670,7 +672,7 @@ function mergeToAllMenus(){
   var changed=false;
   menus.forEach(function(m){
     if(!nameMap[m.name]){
-      allMenus.push({id:Date.now()+Math.random(),name:m.name,cat:m.cat,price:m.price,stock:0,child:m.child,imgUrl:m.imgUrl||null,count:1,updatedAt:m.updatedAt||Date.now()});
+      allMenus.push({id:Date.now()+Math.random(),name:m.name,cat:m.cat,price:m.price,stock:0,child:m.child,desc:m.desc||'',imgUrl:m.imgUrl||null,count:1,updatedAt:m.updatedAt||Date.now()});
       changed=true;
     }else{
       // 기존 항목: 타임스탬프 비교 후 더 최신이면 필드 갱신
@@ -679,6 +681,7 @@ function mergeToAllMenus(){
       var existTs=existing.updatedAt||0;
       if(localTs>existTs){
         existing.price=m.price;existing.cat=m.cat;existing.child=m.child;
+        existing.desc=m.desc||'';
         if(m.imgUrl)existing.imgUrl=m.imgUrl;
         existing.updatedAt=localTs;changed=true;
       }
@@ -709,7 +712,7 @@ function parseMenuCsv(csvText,defaultStock){
     var cat=VALID_CATS.indexOf(cols[1])>=0?cols[1]:'기타';
     var price=parseInt(cols[2]);if(isNaN(price)||price<0)price=0;
     var stock=parseInt(cols[3]);if(isNaN(stock)||stock<=0)stock=defaultStock;
-    imported.push({id:_csvId++,name:cols[0],cat:cat,price:price,stock:stock,child:(cols[4]||'')==='Y',imgUrl:(cols[5]&&cols[5]!=='')?cols[5]:null});
+    imported.push({id:_csvId++,name:cols[0],cat:cat,price:price,stock:stock,child:(cols[4]||'')==='Y',imgUrl:(cols[5]&&cols[5]!=='')?cols[5]:null,desc:cols[6]||''});
   }
   if(!imported.length)throw new Error('가져올 메뉴가 없습니다.');
   return imported;
@@ -887,19 +890,21 @@ function addMenu(){
   var stock=parseInt(document.getElementById('menuStock').value)||0;
   var cat=document.getElementById('menuCat').value;
   var child=document.getElementById('menuChild').checked;
+  var desc=document.getElementById('menuDesc').value.trim();
   if(!name){alert('메뉴명을 입력해주세요.');return;}
   if(!price){alert('금액을 입력해주세요.');return;}
   // 현재 목록 중복 확인
   if(menus.some(function(m){return m.name.trim()===name;})){
     if(!confirm('['+name+']이(가) 이미 목록에 있어요.\n그래도 추가할까요?'))return;
   }
-  menus.push({id:Date.now(),name:name,price:price,stock:stock,cat:cat,child:child,imgUrl:null,updatedAt:Date.now()});
+  menus.push({id:Date.now(),name:name,price:price,stock:stock,cat:cat,child:child,desc:desc,imgUrl:null,updatedAt:Date.now()});
   saveToDict([name]);
   save();
   document.getElementById('menuName').value='';
   document.getElementById('menuPrice').value='';
   document.getElementById('menuStock').value='0';
   document.getElementById('menuChild').checked=false;
+  document.getElementById('menuDesc').value='';
   document.getElementById('dupWarn').classList.remove('show');
   closeAcList();
   renderAll();
@@ -1003,6 +1008,7 @@ function openMenuEditPopup(id,ctx){
   document.getElementById('editMenuStock').value=m.stock||0;
   document.getElementById('editMenuCat').value=m.cat||'기타';
   document.getElementById('editMenuChild').checked=!!m.child;
+  document.getElementById('editMenuDesc').value=m.desc||'';
   setEditImgPreview(m.imgUrl||null);
   setEditImgStatus('',false);
   document.getElementById('editImgSaveBtn').disabled=true;
@@ -1101,6 +1107,7 @@ function saveMenuEditAll(){
   m.stock=parseInt(document.getElementById('editMenuStock').value)||0;
   m.cat=document.getElementById('editMenuCat').value;
   m.child=document.getElementById('editMenuChild').checked;
+  m.desc=document.getElementById('editMenuDesc').value.trim();
   touch(m);
   _save(editCtx);
   if(editCtx==='menus'){
@@ -1249,7 +1256,7 @@ function exportMenuToSheet(date,cb){
   if(!gasUrl){if(cb)cb(false);return;}
   var stored=localStorage.getItem('menus_'+date);
   var ms=stored?JSON.parse(stored):menus;
-  var slim=ms.map(function(m){return[date,m.name,m.cat,m.price,m.stock,m.child?1:0,m.imgUrl||''];});
+  var slim=ms.map(function(m){return[date,m.name,m.cat,m.price,m.stock,m.child?1:0,m.imgUrl||'',m.desc||''];});
   if(!slim.length){if(cb)cb(false);return;}
   gasFetchPost(gasUrl+'?action=export_menu',{data:slim},function(err,d){if(cb)cb(!err&&d&&d.success!==false);});
 }
@@ -1292,7 +1299,7 @@ function syncAllMenuToMenus(m, oldName){
   var changed=false;
   menus.forEach(function(dm){
     if(dm.name===key){
-      dm.name=m.name;dm.price=m.price;dm.cat=m.cat;dm.child=m.child;
+      dm.name=m.name;dm.price=m.price;dm.cat=m.cat;dm.child=m.child;dm.desc=m.desc||'';
       if(m.imgUrl)dm.imgUrl=m.imgUrl;
       dm.updatedAt=m.updatedAt||Date.now();
       changed=true;
@@ -2657,7 +2664,7 @@ function exportMenuSheet(){
 
   // slim 배열 변환
   var slim=rows.map(function(m){
-    return [m.date,m.name,m.cat,m.price,m.stock,m.child?1:0,m.imgUrl||''];
+    return [m.date,m.name,m.cat,m.price,m.stock,m.child?1:0,m.imgUrl||'',m.desc||''];
   });
   var url=gasUrl+'?action=export_menu&data='+encodeURIComponent(JSON.stringify(slim));
 

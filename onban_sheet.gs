@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════
-// onban_sheet.gs — 구글 시트 연동 2026 05 29 v1.56
+// onban_sheet.gs — 구글 시트 연동 2026 06 10 v1.57
 // ══════════════════════════════════════════════════════
 
 var SHEET_ID = '1_jAZK1zwob2zbiOwKRYzmpKkaswOAi4RUGC043ujiLo';
@@ -17,7 +17,7 @@ function exportMenu(e, dataOverride) {
     byDate[d].push(m);
   });
 
-  var headers = ['메뉴명', '카테고리', '금액(천원)', '재고', '어린이가능', '사진URL'];
+  var headers = ['메뉴명', '카테고리', '금액(천원)', '재고', '어린이가능', '사진URL', '설명'];
   var dates   = Object.keys(byDate).sort();
 
   dates.forEach(function(date) {
@@ -33,8 +33,8 @@ function exportMenu(e, dataOverride) {
           .setHorizontalAlignment('center');
     sheet.setFrozenRows(1);
     var rows = byDate[date].map(function(m) {
-      if (Array.isArray(m)) return [m[1], m[2], m[3], m[4], m[5] ? 'Y' : 'N', m[6] || ''];
-      return [m.name||'', m.cat||'', m.price||0, m.stock||0, m.child ? 'Y' : 'N', m.imgUrl||''];
+      if (Array.isArray(m)) return [m[1], m[2], m[3], m[4], m[5] ? 'Y' : 'N', m[6] || '', m[7] || ''];
+      return [m.name||'', m.cat||'', m.price||0, m.stock||0, m.child ? 'Y' : 'N', m.imgUrl||'', m.desc||''];
     });
     sheet.getRange(2, 1, rows.length, headers.length).setValues(rows);
     sheet.autoResizeColumns(1, headers.length);
@@ -75,7 +75,8 @@ function importMenu(e) {
       price:  Number(r[2]) || 0,
       stock:  Number(r[3]) || 0,
       child:  String(r[4]) === 'Y',
-      imgUrl: String(r[5] || '') || null
+      imgUrl: String(r[5] || '') || null,
+      desc:   String(r[6] || '')
     });
   }
   return json({ success: true, date: date, menus: menus });
@@ -89,12 +90,12 @@ function exportAllMenus(e, dataOverride) {
   var sheet = ss.getSheetByName(SNAME);
   if (!sheet) sheet = ss.insertSheet(SNAME);
   sheet.clearContents(); sheet.clearFormats();
-  var headers = ['메뉴명','카테고리','금액(천원)','재고','어린이가능','사진URL','등록횟수','수정시각(ms)'];
+  var headers = ['메뉴명','카테고리','금액(천원)','재고','어린이가능','사진URL','설명','등록횟수','수정시각(ms)'];
   sheet.appendRow(headers);
   sheet.getRange(1,1,1,headers.length).setFontWeight('bold').setBackground('#086266').setFontColor('#ffffff').setHorizontalAlignment('center');
   sheet.setFrozenRows(1);
   var rows = data.map(function(m){
-    return [m.name||'',m.cat||'기타',m.price||0,m.stock||0,m.child?'Y':'N',m.imgUrl||'',m.count||0,m.updatedAt||0];
+    return [m.name||'',m.cat||'기타',m.price||0,m.stock||0,m.child?'Y':'N',m.imgUrl||'',m.desc||'',m.count||0,m.updatedAt||0];
   });
   if (rows.length) sheet.getRange(2,1,rows.length,headers.length).setValues(rows);
   sheet.autoResizeColumns(1,headers.length);
@@ -113,7 +114,7 @@ function importAllMenus() {
     var r = rows[i]; if (!r[0]) continue;
     menus.push({ name:String(r[0]||''), cat:String(r[1]||'기타'), price:Number(r[2])||0,
       stock:Number(r[3])||0, child:String(r[4])==='Y', imgUrl:String(r[5]||'')||null,
-      count:Number(r[6])||0, updatedAt:Number(r[7])||0 });
+      desc:String(r[6]||''), count:Number(r[7])||0, updatedAt:Number(r[8])||0 });
   }
   return json({ success: true, menus: menus });
 }
