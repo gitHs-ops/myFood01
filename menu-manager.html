@@ -1170,7 +1170,7 @@ function renderKakao(){
   var lines=[dl+' 메뉴 안내',''];
   cats.forEach(function(cat){
     lines.push('['+cat+']');
-    menus.filter(function(m){return m.cat===cat;}).forEach(function(m){lines.push(m.name+(m.child?' 👧':'')+' '+(m.price||0).toLocaleString()+'천원 (재고 '+(m.stock||0)+'개)');});
+    menus.filter(function(m){return m.cat===cat;}).forEach(function(m){var sl=m.stock===-1?'(준비중)':((m.stock||0)===0?'(품절)':'(재고 '+(m.stock||0)+'개)');lines.push(m.name+(m.child?' 👧':'')+' '+(m.price||0).toLocaleString()+'천원 '+sl);});
     lines.push('');
   });
   lines.push('메뉴 주문 하시려면 아래 클릭 !');lines.push('https://giths-ops.github.io/myFood01/onban.html');
