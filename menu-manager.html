@@ -420,7 +420,10 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
     </div>
     <label class="child-toggle" style="margin-bottom:10px;"><input type="checkbox" id="editMenuChild"> 어린이도 먹을 수 있는 메뉴</label>
     <div class="edit-field"><label class="edit-label">메뉴 설명 (선택)</label><textarea id="editMenuDesc" class="edit-input" rows="2" placeholder="고객 상세 팝업에 표시됩니다" style="resize:vertical;font-family:inherit;"></textarea></div>
-    <button class="img-btn-cancel" onclick="saveMenuEditAll()" style="margin-top:2px;">메뉴 저장</button>
+    <div style="display:flex;gap:8px;margin-top:2px;">
+      <button class="img-btn-cancel" onclick="saveMenuEditAll()" style="flex:1;">메뉴 저장</button>
+      <button onclick="closeMenuEditPopup()" style="flex:1;background:#eee;color:#555;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">닫기</button>
+    </div>
   </div>
 </div>
 <div class="nav-tabs">
