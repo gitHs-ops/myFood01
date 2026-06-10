@@ -891,7 +891,6 @@ function renderMenuGrid(){
       stag.className='menu-soldout-tag';
       stag.textContent='품절';
       midCol.appendChild(nameWrap);
-      if(m.desc){var d1=document.createElement('div');d1.className='menu-desc-line';d1.textContent=m.desc;midCol.appendChild(d1);}
       card.appendChild(dot);
       card.appendChild(midCol);
       card.appendChild(stag);
@@ -903,7 +902,6 @@ function renderMenuGrid(){
       stockTag.textContent='재고 '+(m.stock||0);
       nameWrap.appendChild(stockTag);
       midCol.appendChild(nameWrap);
-      if(m.desc){var d2=document.createElement('div');d2.className='menu-desc-line';d2.textContent=m.desc;midCol.appendChild(d2);}
       var chk=document.createElement('div');
       chk.className='menu-chk'+(selectedMenuIds.has(String(m.id))?' checked':'');
       (function(mid,chkEl,cardEl){
