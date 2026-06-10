@@ -409,7 +409,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
     </div>
     <div style="display:flex;gap:8px;margin-bottom:10px;">
       <div style="flex:1;"><label class="edit-label">금액 (천원)</label><input type="number" id="editMenuPrice" class="edit-input" min="0"></div>
-      <div style="flex:1;"><label class="edit-label">재고 (개)</label><input type="number" id="editMenuStock" class="edit-input" min="0"></div>
+      <div style="flex:1;"><label class="edit-label">재고 (개)</label><input type="number" id="editMenuStock" class="edit-input" min="-1"></div>
     </div>
     <div class="edit-field">
       <label class="edit-label">카테고리</label>
@@ -452,7 +452,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
     </div>
   </div>
   <div class="num-field"><label for="menuPrice">금액(천원)</label><input type="number" id="menuPrice" min="1" style="width:72px;"></div>
-  <div class="num-field"><label for="menuStock">재고(수량)</label><input type="number" id="menuStock" min="0" value="0" style="width:72px;"></div>
+  <div class="num-field"><label for="menuStock">재고(수량)</label><input type="number" id="menuStock" min="-1" value="0" style="width:72px;"></div>
 </div>
 <div class="dup-warn" id="dupWarn">&#9888; 이미 오늘 목록에 있는 메뉴예요!</div>
     <label class="child-toggle"><input type="checkbox" id="menuChild"> 어린이도 먹을 수 있는 메뉴</label>
@@ -916,7 +916,7 @@ function addMenu(){
   renderAll();
 }
 function deleteMenu(id){if(!confirm('이 메뉴를 삭제할까요?'))return;menus=menus.filter(function(m){return m.id!==id;});save();renderAll();}
-function changeStock(id,d){var m=menus.find(function(x){return x.id===id;});if(!m)return;m.stock=Math.max(0,(m.stock||0)+d);touch(m);save();renderMenuList();renderStats();}
+function changeStock(id,d){var m=menus.find(function(x){return x.id===id;});if(!m)return;m.stock=Math.max(-1,(m.stock||0)+d);touch(m);save();renderMenuList();renderStats();}
 function startEditPrice(id){document.getElementById('pd_'+id).style.display='none';var inp=document.getElementById('pi_'+id);inp.style.display='inline-block';inp.focus();inp.select();}
 function commitPrice(id){var inp=document.getElementById('pi_'+id);var val=parseInt(inp.value)||0;var m=menus.find(function(x){return x.id===id;});if(m){m.price=val;touch(m);save();}var disp=document.getElementById('pd_'+id);if(disp){disp.textContent=val.toLocaleString()+'천원';disp.style.display='';}inp.style.display='none';renderKakao();}
 function cancelPrice(id){var m=menus.find(function(x){return x.id===id;});var inp=document.getElementById('pi_'+id);var disp=document.getElementById('pd_'+id);if(inp&&m)inp.value=m.price||0;if(disp)disp.style.display='';if(inp)inp.style.display='none';}
@@ -1317,7 +1317,7 @@ function syncAllMenuToMenus(m, oldName){
   });
   if(changed){save();renderAll();}
 }
-function changeAllStock(id,d){var m=allMenus.find(function(x){return x.id===id;});if(!m)return;m.stock=Math.max(0,(m.stock||0)+d);touch(m);saveAllMenus();syncAllMenuToMenus(m);renderAllMenus();}
+function changeAllStock(id,d){var m=allMenus.find(function(x){return x.id===id;});if(!m)return;m.stock=Math.max(-1,(m.stock||0)+d);touch(m);saveAllMenus();syncAllMenuToMenus(m);renderAllMenus();}
 function startEditAllPrice(id){document.getElementById('apd_'+id).style.display='none';var inp=document.getElementById('api_'+id);inp.style.display='inline-block';inp.focus();inp.select();}
 function commitAllPrice(id){var inp=document.getElementById('api_'+id);var val=parseInt(inp.value)||0;var m=allMenus.find(function(x){return x.id===id;});if(m){m.price=val;touch(m);saveAllMenus();syncAllMenuToMenus(m);}var disp=document.getElementById('apd_'+id);if(disp){disp.textContent=val.toLocaleString()+'천원';disp.style.display='';}inp.style.display='none';}
 function cancelAllPrice(id){var m=allMenus.find(function(x){return x.id===id;});var inp=document.getElementById('api_'+id);var disp=document.getElementById('apd_'+id);if(inp&&m)inp.value=m.price||0;if(disp)disp.style.display='';if(inp)inp.style.display='none';}

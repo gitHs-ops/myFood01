@@ -857,13 +857,15 @@ function renderMenuGrid(){
   noMenu.style.display='none';
   grid.innerHTML='';
   filtered.forEach(function(m){
-    var soldout=(m.stock||0)===0;
+    var prep=(m.stock===-1);              // 조리준비중
+    var soldout=(m.stock||0)===0;         // 품절
+    var unavailable=soldout||prep;
     var card=document.createElement('div');
-    card.className='menu-card'+(m.child&&!soldout?' child-ok':'')+(soldout?' soldout':'');
+    card.className='menu-card'+(m.child&&!unavailable?' child-ok':'')+(unavailable?' soldout':'');
     // 카테고리 점
     var dot=document.createElement('div');
     dot.className='menu-cat-dot';
-    dot.style.background=soldout?'#ccc':(CAT_COLOR[m.cat]||'#888');
+    dot.style.background=unavailable?'#ccc':(CAT_COLOR[m.cat]||'#888');
 
     // 중간 컬럼 — 메뉴명 줄 + 설명 줄
     var midCol=document.createElement('div');
@@ -877,19 +879,19 @@ function renderMenuGrid(){
     nameEl.textContent=m.name;
     (function(mid){nameEl.onclick=function(e){e.stopPropagation();showMenuModal(mid);};})(String(m.id));
     nameWrap.appendChild(nameEl);
-    if(m.child&&!soldout){
+    if(m.child&&!unavailable){
       var childTag=document.createElement('span');
       childTag.className='menu-child-tag';
       childTag.textContent='👧';
       nameWrap.appendChild(childTag);
     }
 
-    // 가격 또는 품절
+    // 가격 또는 품절/조리준비중
     var priceEl=document.createElement('div');
-    if(soldout){
+    if(unavailable){
       var stag=document.createElement('span');
       stag.className='menu-soldout-tag';
-      stag.textContent='품절';
+      stag.textContent=prep?'조리준비중':'품절';
       midCol.appendChild(nameWrap);
       card.appendChild(dot);
       card.appendChild(midCol);
@@ -953,7 +955,8 @@ function showMenuModal(id){
   catB.textContent=m.cat;
   badges.appendChild(catB);
   if(m.child){var cb2=document.createElement('span');cb2.className='badge badge-child';cb2.style.cssText='font-size:12px;padding:3px 10px;';cb2.textContent='어린이도 OK';badges.appendChild(cb2);}
-  if((m.stock||0)===0){var sob=document.createElement('span');sob.className='badge';sob.style.cssText='background:#f0f0f0;color:#999;';sob.textContent='품절';badges.appendChild(sob);}
+  if(m.stock===-1){var prb=document.createElement('span');prb.className='badge';prb.style.cssText='background:#fff3e0;color:#e08600;';prb.textContent='조리준비중';badges.appendChild(prb);}
+  else if((m.stock||0)===0){var sob=document.createElement('span');sob.className='badge';sob.style.cssText='background:#f0f0f0;color:#999;';sob.textContent='품절';badges.appendChild(sob);}
   var nameEl=document.createElement('div');
   nameEl.className='menu-modal-name';
   nameEl.textContent=m.name;
