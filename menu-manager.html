@@ -1126,7 +1126,15 @@ function saveMenuEditAll(){
   touch(m);
   _save(editCtx);
   if(editCtx==='menus'){
-    if(oldName!==m.name){removeFromDict(oldName);saveToDict([m.name]);}
+    if(oldName!==m.name){
+      removeFromDict(oldName);saveToDict([m.name]);
+      // 전체메뉴에서도 이름 변경 반영
+      var ai=allMenus.find(function(x){return x.name===oldName;});
+      if(ai){ai.name=m.name;}
+    }
+    mergeToAllMenus();            // 편집 내용을 전체메뉴(localStorage)에 반영
+    exportMenuToSheet(workDate);  // 날짜별 시트 동기화
+    _exportAllMenusSilent();      // 등록된 모든 메뉴 시트 동기화
     renderAll();
   }else{
     renderAllMenus();
@@ -1135,7 +1143,12 @@ function saveMenuEditAll(){
   }
   document.getElementById('menuEditOverlay').classList.remove('open');
   menuEditTargetId=null;editPendingImgUrl=null;
-  showToast('메뉴가 수정되었습니다.');
+  showToast('메뉴가 수정되었습니다. (시트 동기화 중...)');
+}
+function _exportAllMenusSilent(){
+  var gasUrl=ONBAN_SHEET_URL;
+  if(!gasUrl||!allMenus.length)return;
+  gasFetchPost(gasUrl+'?action=export_all_menus',{data:deduplicateByName(allMenus)},function(){});
 }
 
 function renderAll(){renderStats();renderFilterTabs();renderMenuList();renderKakao();}
