@@ -1461,7 +1461,7 @@ function renderAllMenus(){
       '<button class="all-page-btn" onclick="gotoAllPage('+pg+'+1)" '+(pg>=tp-1?'disabled':'')+'>▶</button>'+
       '<button class="all-page-btn" onclick="gotoAllPage('+(tp-1)+')" '+(pg>=tp-1?'disabled':'')+'>▶▶</button>'+
     '</div>'+
-    '<div class="all-page-jump">페이지 이동 <input type="number" min="1" max="'+tp+'" value="'+(pg+1)+'" id="allPageJumpInput" onkeydown="if(event.key===\'Enter\')jumpAllPage()"> / '+tp+' <button class="all-page-btn" onclick="jumpAllPage()" style="margin-left:6px;">Go</button></div>';
+    '<div class="all-page-jump">페이지 이동 <input type="number" min="1" max="'+tp+'" value="'+(pg+1)+'" id="allPageJumpInput" onkeydown="if(event.key===\'Enter\')jumpAllPage()"> / '+tp+' <button class="all-page-btn" onclick="jumpAllPage()" style="margin-left:6px;min-width:0;height:26px;padding:0 8px;font-size:12px;">Go</button></div>';
   }
 
   el.innerHTML=
