@@ -662,7 +662,15 @@ function _save(ctx){if(ctx==='all')saveAllMenus();else save();}
 function _render(ctx){if(ctx==='all')renderAllMenus();else renderMenuList();}
 // 수정 타임스탬프 찍기
 function touch(m){m.updatedAt=Date.now();return m;}
-function loadAllMenus(){var s=localStorage.getItem('onban_all_menus');if(s){allMenus=JSON.parse(s);return;}rebuildAllMenusFromHistory();}
+function loadAllMenus(){var s=localStorage.getItem('onban_all_menus');if(s){allMenus=JSON.parse(s);_sanitizeAllMenusDesc();return;}rebuildAllMenusFromHistory();}
+// 과거 버그로 desc에 숫자(등록횟수/타임스탬프)가 들어간 데이터 정리
+function _sanitizeAllMenusDesc(){
+  var changed=false;
+  allMenus.forEach(function(m){
+    if(m.desc!=null && /^\d+$/.test(String(m.desc).trim())){m.desc='';changed=true;}
+  });
+  if(changed)saveAllMenus();
+}
 function saveAllMenus(){localStorage.setItem('onban_all_menus',JSON.stringify(allMenus));}
 function rebuildAllMenusFromHistory(){
   var h=JSON.parse(localStorage.getItem('menu_history')||'[]');
@@ -1014,7 +1022,7 @@ function openMenuEditPopup(id,ctx){
   document.getElementById('editMenuStock').value=m.stock||0;
   document.getElementById('editMenuCat').value=m.cat||'기타';
   document.getElementById('editMenuChild').checked=!!m.child;
-  document.getElementById('editMenuDesc').value=m.desc||'';
+  document.getElementById('editMenuDesc').value=(m.desc!=null&&/^\d+$/.test(String(m.desc).trim()))?'':(m.desc||'');
   setEditImgPreview(m.imgUrl||null);
   setEditImgStatus('',false);
   document.getElementById('editImgSaveBtn').disabled=true;
