@@ -1519,7 +1519,7 @@ function searchAllMenuPage(){
   if(!inp)return;
   var kw=(inp.value||'').trim().toLowerCase();
   if(!kw){showToast('검색어를 입력해주세요.');return;}
-  var idx=_allFiltered.findIndex(function(m){return (m.name||'').toLowerCase().indexOf(kw)>=0;});
+  var idx=_allFiltered.findIndex(function(m){return (m.name||'').toLowerCase().indexOf(kw)===0;});
   if(idx<0){showToast('"'+inp.value.trim()+'" 메뉴를 찾을 수 없어요.');return;}
   var targetPage=Math.floor(idx/ALL_PAGE_SIZE);
   _allMenuPage=targetPage;
