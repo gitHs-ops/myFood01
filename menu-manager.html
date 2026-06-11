@@ -112,7 +112,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
 .all-page-btn:hover:not(:disabled){background:#e0f7f6;}
 .all-page-btn:disabled{opacity:.35;cursor:not-allowed;}
 .all-page-info{font-size:13px;color:#555;min-width:84px;text-align:center;}
-.all-page-jump{display:flex;align-items:center;justify-content:flex-end;gap:4px;font-size:12px;color:#888;}
+.all-page-jump{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;color:#888;flex-wrap:wrap;}
 .all-page-jump input{width:42px;padding:4px 6px;border:1.5px solid #cde8e7;border-radius:7px;font-size:13px;text-align:center;font-family:inherit;outline:none;}
 .all-page-jump input:focus{border-color:#086266;}
 .date-picker-wrap{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:20px;flex-wrap:wrap;}
@@ -1308,8 +1308,8 @@ function switchHistSubTab(tab){
     }
     var el=document.getElementById('allMenuList');
     el.style.display='';
-    loadAllMenus();  // localStorage만 사용 (GAS 호출 없음)
-    renderAllMenus();
+    el.innerHTML='<div style="text-align:center;padding:30px;color:#aaa;font-size:13px;">구글시트에서 불러오는 중...</div>';
+    importAllMenusFromSheet(function(){renderAllMenus();});  // 진입 시 시트에서 새로 가져오기
   }
 }
 // allMenus 수정 → menus(일일) 실시간 동기화
@@ -1464,9 +1464,13 @@ function renderAllMenus(){
       '<button class="all-page-btn" onclick="gotoAllPage('+(tp-1)+')" '+(pg>=tp-1?'disabled':'')+'>▶▶</button>'+
     '</div>'+
     '<div class="all-page-jump">'+
-      '<input type="text" id="allSearchInput" placeholder="메뉴 검색" onkeydown="if(event.key===\'Enter\')searchAllMenuPage()" style="width:90px;text-align:left;">'+
-      '<button class="all-page-btn" onclick="searchAllMenuPage()" style="margin-right:8px;min-width:0;height:26px;padding:0 8px;font-size:12px;">찾기</button>'+
-      '페이지 이동 <input type="number" min="1" max="'+tp+'" value="'+(pg+1)+'" id="allPageJumpInput" onkeydown="if(event.key===\'Enter\')jumpAllPage()"> / '+tp+' <button class="all-page-btn" onclick="jumpAllPage()" style="margin-left:6px;min-width:0;height:26px;padding:0 8px;font-size:12px;">Go</button>'+
+      '<span style="display:flex;align-items:center;gap:4px;">'+
+        '<input type="text" id="allSearchInput" placeholder="메뉴 검색" onkeydown="if(event.key===\'Enter\')searchAllMenuPage()" style="width:90px;text-align:left;">'+
+        '<button class="all-page-btn" onclick="searchAllMenuPage()" style="min-width:0;height:26px;padding:0 8px;font-size:12px;">찾기</button>'+
+      '</span>'+
+      '<span style="display:flex;align-items:center;gap:4px;">'+
+        '페이지 이동 <input type="number" min="1" max="'+tp+'" value="'+(pg+1)+'" id="allPageJumpInput" onkeydown="if(event.key===\'Enter\')jumpAllPage()"> / '+tp+' <button class="all-page-btn" onclick="jumpAllPage()" style="margin-left:6px;min-width:0;height:26px;padding:0 8px;font-size:12px;">Go</button>'+
+      '</span>'+
     '</div>';
   }
 
