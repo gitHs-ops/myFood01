@@ -2867,7 +2867,31 @@ window.onload=function(){
   // 주문 자동 폴링 시작
   startOrderPolling();
   requestNotifyPermission();
+  // 메뉴 창고(등록된 모든 메뉴) 실시간 리로딩 시작
+  _startWarehouseAutoRefresh();
 };
+// ── 메뉴 창고 자동 리로딩 (idle 15초마다 구글시트 재조회) ──
+var _warehouseActivity=Date.now();
+function _markWarehouseActivity(){_warehouseActivity=Date.now();}
+function _startWarehouseAutoRefresh(){
+  setInterval(function(){
+    var pageActive=document.querySelector('.page.active');
+    if(!pageActive||pageActive.id!=='page-history')return;   // 메뉴 창고 화면일 때만
+    if(_histSubTab!=='all')return;                            // '등록된 모든 메뉴' 탭일 때만
+    if(document.hidden)return;
+    var ov=document.getElementById('menuEditOverlay');
+    if(ov&&ov.classList.contains('open'))return;              // 편집 팝업 열림 → 스킵
+    var ae=document.activeElement;
+    if(ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'))return; // 입력 중 스킵
+    if(selectedAllIds.size>0)return;                          // 선택 중 스킵
+    if(Date.now()-_warehouseActivity<15000)return;            // 15초 무동작일 때만
+    importAllMenusFromSheet(function(){renderAllMenus();});
+    _warehouseActivity=Date.now();
+  },15000);
+}
+['click','scroll','keydown','touchstart'].forEach(function(ev){
+  document.addEventListener(ev,_markWarehouseActivity,{passive:true});
+});
 </script>
 </body>
 </html>
