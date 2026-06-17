@@ -2873,11 +2873,22 @@ window.onload=function(){
 // ── 메뉴 창고 자동 리로딩 (idle 15초마다 구글시트 재조회) ──
 var _warehouseActivity=Date.now();
 function _markWarehouseActivity(){_warehouseActivity=Date.now();}
+function _reloadHistoryDatesSilent(){
+  var gasUrl=ONBAN_SHEET_URL;if(!gasUrl)return;
+  gasFetch(gasUrl+'?action=list_dates',function(err,d){
+    if(err||!d||!d.dates)return;
+    var h=JSON.parse(localStorage.getItem('menu_history')||'[]');
+    var existing={};h.forEach(function(e){existing[e.date]=true;});
+    var added=false;
+    d.dates.forEach(function(date){if(!existing[date]){h.push({date:date,menus:null});added=true;}});
+    if(added){h.sort(function(a,b){return b.date.localeCompare(a.date);});localStorage.setItem('menu_history',JSON.stringify(h));}
+    if(_histSubTab==='dates')renderHistory();
+  });
+}
 function _startWarehouseAutoRefresh(){
   setInterval(function(){
     var pageActive=document.querySelector('.page.active');
     if(!pageActive||pageActive.id!=='page-history')return;   // 메뉴 창고 화면일 때만
-    if(_histSubTab!=='all')return;                            // '등록된 모든 메뉴' 탭일 때만
     if(document.hidden)return;
     var ov=document.getElementById('menuEditOverlay');
     if(ov&&ov.classList.contains('open'))return;              // 편집 팝업 열림 → 스킵
@@ -2885,7 +2896,8 @@ function _startWarehouseAutoRefresh(){
     if(ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'))return; // 입력 중 스킵
     if(selectedAllIds.size>0)return;                          // 선택 중 스킵
     if(Date.now()-_warehouseActivity<15000)return;            // 15초 무동작일 때만
-    importAllMenusFromSheet(function(){renderAllMenus();});
+    if(_histSubTab==='all'){importAllMenusFromSheet(function(){renderAllMenus();});}
+    else{_reloadHistoryDatesSilent();}                        // 날짜별 메뉴 묶음
     _warehouseActivity=Date.now();
   },15000);
 }

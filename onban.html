@@ -1754,6 +1754,21 @@ function renderOrder(){
 function renderPayment(){
   var total=lastOrderTotal||orderItems.reduce(function(s,c){return s+c.price*c.qty;},0);
   var wrap=document.getElementById('paymentContent');
+  wrap.innerHTML='<div style="text-align:center;padding:50px 20px;color:#aaa;font-size:14px;">계좌 정보 불러오는 중...</div>';
+  // 계좌번호는 항상 구글시트에서 최신 조회 (localStorage 무시)
+  fetch(GAS_URL+'?action=load_settings&_cb='+Date.now(),{cache:'no-store',redirect:'follow'})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d&&d.success&&d.data&&d.data.banks){
+        var banks=d.data.banks;
+        if(typeof banks==='string'){try{banks=JSON.parse(banks);}catch(e){banks=[];}}
+        if(banks&&banks.length){var p=banks.find(function(b){return b.primary;})||banks[0];BANK={name:p.name,holder:p.holder,account:p.account};}
+      }
+    })
+    .catch(function(){})
+    .then(function(){_renderPaymentBody(total,wrap);});
+}
+function _renderPaymentBody(total,wrap){
   wrap.innerHTML='';
 
   var pw=document.createElement('div');
