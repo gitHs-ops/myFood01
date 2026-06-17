@@ -589,7 +589,10 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
 
 <div id="page-history" class="page">
   <div class="card">
-    <div class="tabs" id="histSubTabs" style="margin-bottom:12px;"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;">
+      <div class="tabs" id="histSubTabs"></div>
+      <span id="warehouseCountdown" style="font-size:12px;font-weight:700;color:#fff;background:rgba(8,98,102,.6);border-radius:20px;padding:3px 10px;white-space:nowrap;min-width:46px;text-align:center;flex-shrink:0;">🔄 15</span>
+    </div>
     <div id="historyList"></div>
     <div id="allCatLegend" class="legend" style="display:none;margin-bottom:4px;"></div>
     <div id="allFilterTabs" class="tabs" style="display:none;margin-bottom:8px;"></div>
@@ -2871,23 +2874,29 @@ window.onload=function(){
   _startWarehouseAutoRefresh();
 };
 // ── 메뉴 창고 자동 리로딩 (idle 15초마다 구글시트 재조회) ──
-var _warehouseActivity=Date.now();
-function _markWarehouseActivity(){_warehouseActivity=Date.now();}
+var _warehouseSec=15;
+function _setWarehouseLabel(t){var el=document.getElementById('warehouseCountdown');if(el)el.textContent=t;}
+function _markWarehouseActivity(){_warehouseSec=15;}
 function _startWarehouseAutoRefresh(){
   setInterval(function(){
     var pageActive=document.querySelector('.page.active');
-    if(!pageActive||pageActive.id!=='page-history')return;   // 메뉴 창고 화면일 때만
-    if(document.hidden)return;
+    if(!pageActive||pageActive.id!=='page-history'){_warehouseSec=15;return;}  // 메뉴 창고 화면일 때만
+    if(document.hidden){_setWarehouseLabel('🔄 대기');return;}
     var ov=document.getElementById('menuEditOverlay');
-    if(ov&&ov.classList.contains('open'))return;              // 편집 팝업 열림 → 스킵
+    if(ov&&ov.classList.contains('open')){_setWarehouseLabel('🔄 대기');return;}     // 편집 팝업 열림 → 스킵
     var ae=document.activeElement;
-    if(ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'))return; // 입력 중 스킵
-    if(selectedAllIds.size>0)return;                          // 선택 중 스킵
-    if(Date.now()-_warehouseActivity<15000)return;            // 15초 무동작일 때만
-    if(_histSubTab==='all'){importAllMenusFromSheet(function(){renderAllMenus();});}
-    else{fetchHistoryFromSheet(true);}                        // 날짜별 메뉴 묶음 = 메뉴창고에서 가져오기(조용히)
-    _warehouseActivity=Date.now();
-  },15000);
+    if(ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA')){_setWarehouseLabel('🔄 대기');return;} // 입력 중 스킵
+    if(selectedAllIds.size>0){_setWarehouseLabel('🔄 대기');return;}                 // 선택 중 스킵
+    _warehouseSec--;
+    if(_warehouseSec<=0){
+      _setWarehouseLabel('🔄 갱신중');
+      if(_histSubTab==='all'){importAllMenusFromSheet(function(){renderAllMenus();});}
+      else{fetchHistoryFromSheet(true);}                       // 날짜별 메뉴 묶음 = 메뉴창고에서 가져오기(조용히)
+      _warehouseSec=15;
+    }else{
+      _setWarehouseLabel('🔄 '+_warehouseSec);
+    }
+  },1000);
 }
 ['click','scroll','keydown','touchstart'].forEach(function(ev){
   document.addEventListener(ev,_markWarehouseActivity,{passive:true});
