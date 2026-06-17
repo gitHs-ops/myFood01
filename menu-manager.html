@@ -1649,19 +1649,19 @@ function renderHistory(){
   el.innerHTML=syncBtn+filterTabs+(items||'<div class="empty">해당 월에 저장된 기록이 없어요.</div>');
 }
 function setHistYM(ym){_histYM=ym;renderHistory();}
-function fetchHistoryFromSheet(){
+function fetchHistoryFromSheet(silent){
   var gasUrl=ONBAN_SHEET_URL;
-  if(!gasUrl){showToast('GAS URL이 설정되지 않았어요.');return;}
-  showToast('메뉴 창고에서 목록 불러오는 중...');
+  if(!gasUrl){if(!silent)showToast('GAS URL이 설정되지 않았어요.');return;}
+  if(!silent)showToast('메뉴 창고에서 목록 불러오는 중...');
   gasFetch(gasUrl+'?action=list_dates',function(err,d){
-    if(err||!d||!d.dates||!d.dates.length){showToast(err?'목록 불러오기 실패. 재시도해주세요.':'메뉴 창고에 저장된 날짜가 없어요.');return;}
+    if(err||!d||!d.dates||!d.dates.length){if(!silent)showToast(err?'목록 불러오기 실패. 재시도해주세요.':'메뉴 창고에 저장된 날짜가 없어요.');return;}
     var h=JSON.parse(localStorage.getItem('menu_history')||'[]');
     var existing={};h.forEach(function(e){existing[e.date]=true;});
     d.dates.forEach(function(date){if(!existing[date])h.push({date:date,menus:null});});
     h.sort(function(a,b){return b.date.localeCompare(a.date);});
     localStorage.setItem('menu_history',JSON.stringify(h));
-    renderHistory();
-    showToast(d.dates.length+'개 날짜 갱신 완료!');
+    if(_histSubTab==='dates')renderHistory();
+    if(!silent)showToast(d.dates.length+'개 날짜 갱신 완료!');
   });
 }
 var _histPreviewDate = null;
@@ -2873,18 +2873,6 @@ window.onload=function(){
 // ── 메뉴 창고 자동 리로딩 (idle 15초마다 구글시트 재조회) ──
 var _warehouseActivity=Date.now();
 function _markWarehouseActivity(){_warehouseActivity=Date.now();}
-function _reloadHistoryDatesSilent(){
-  var gasUrl=ONBAN_SHEET_URL;if(!gasUrl)return;
-  gasFetch(gasUrl+'?action=list_dates',function(err,d){
-    if(err||!d||!d.dates)return;
-    var h=JSON.parse(localStorage.getItem('menu_history')||'[]');
-    var existing={};h.forEach(function(e){existing[e.date]=true;});
-    var added=false;
-    d.dates.forEach(function(date){if(!existing[date]){h.push({date:date,menus:null});added=true;}});
-    if(added){h.sort(function(a,b){return b.date.localeCompare(a.date);});localStorage.setItem('menu_history',JSON.stringify(h));}
-    if(_histSubTab==='dates')renderHistory();
-  });
-}
 function _startWarehouseAutoRefresh(){
   setInterval(function(){
     var pageActive=document.querySelector('.page.active');
@@ -2897,7 +2885,7 @@ function _startWarehouseAutoRefresh(){
     if(selectedAllIds.size>0)return;                          // 선택 중 스킵
     if(Date.now()-_warehouseActivity<15000)return;            // 15초 무동작일 때만
     if(_histSubTab==='all'){importAllMenusFromSheet(function(){renderAllMenus();});}
-    else{_reloadHistoryDatesSilent();}                        // 날짜별 메뉴 묶음
+    else{fetchHistoryFromSheet(true);}                        // 날짜별 메뉴 묶음 = 메뉴창고에서 가져오기(조용히)
     _warehouseActivity=Date.now();
   },15000);
 }
