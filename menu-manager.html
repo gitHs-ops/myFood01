@@ -665,23 +665,8 @@ function _save(ctx){if(ctx==='all')saveAllMenus();else save();}
 function _render(ctx){if(ctx==='all')renderAllMenus();else renderMenuList();}
 // 수정 타임스탬프 찍기
 function touch(m){m.updatedAt=Date.now();return m;}
-function loadAllMenus(){var s=localStorage.getItem('onban_all_menus');if(s){allMenus=JSON.parse(s);_sanitizeAllMenusDesc();return;}rebuildAllMenusFromHistory();}
-// 과거 버그로 desc에 숫자(등록횟수/타임스탬프)가 들어간 데이터 정리
-function _sanitizeAllMenusDesc(){
-  var changed=false;
-  allMenus.forEach(function(m){
-    if(m.desc!=null && /^\d+$/.test(String(m.desc).trim())){m.desc='';changed=true;}
-  });
-  if(changed)saveAllMenus();
-}
-function saveAllMenus(){localStorage.setItem('onban_all_menus',JSON.stringify(allMenus));}
-function rebuildAllMenusFromHistory(){
-  var h=JSON.parse(localStorage.getItem('menu_history')||'[]');
-  var map={};var idx=Date.now();
-  h.forEach(function(e){if(!e.menus)return;e.menus.forEach(function(m){if(!m.name)return;if(!map[m.name])map[m.name]={id:idx++,name:m.name,cat:m.cat,price:m.price,stock:0,child:m.child,desc:m.desc||'',imgUrl:m.imgUrl||null,count:0,updatedAt:0};map[m.name].count++;map[m.name].price=m.price;if(m.desc)map[m.name].desc=m.desc;if(m.imgUrl){map[m.name].imgUrl=m.imgUrl;map[m.name].updatedAt=m.updatedAt||0;}});});
-  allMenus=Object.values(map).sort(function(a,b){return b.count-a.count;});
-  saveAllMenus();
-}
+function loadAllMenus(){}
+function saveAllMenus(){}
 function mergeToAllMenus(){
   if(!allMenus.length)loadAllMenus();
   allMenus=deduplicateByName(allMenus); // 혹시 남아있는 중복 정리
@@ -771,7 +756,6 @@ function removeFromDict(name){
 // ▾ 버튼 — 전체 목록 토글
 // ── allMenus 기반으로 자동완성 사전 전체 재빌드 ──
 function syncDictFromAllMenus(){
-  loadAllMenus(); // localStorage 최신 반영
   var names=allMenus.map(function(m){return m.name;}).filter(Boolean).map(function(n){return n.trim();});
   menus.forEach(function(m){if(m.name&&names.indexOf(m.name.trim())<0)names.push(m.name.trim());});
   names.sort(function(a,b){return a.localeCompare(b,'ko',{numeric:true});});
@@ -863,10 +847,7 @@ function onMenuNameKey(e){
 
 function toISO(d){var kst=new Date(d.getTime()+9*60*60*1000);return kst.getUTCFullYear()+'-'+String(kst.getUTCMonth()+1).padStart(2,'0')+'-'+String(kst.getUTCDate()).padStart(2,'0');}
 function fmtDate(iso){var d=new Date(iso+'T00:00:00');var s=d.toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'short'});return iso===toISO(new Date())?s+' (오늘)':s;}
-function menuKey(iso){return 'menus_'+iso;}
 function loadMenus(iso){
-  var r=localStorage.getItem(menuKey(iso));
-  if(r){menus=JSON.parse(r);return;}
   menus=[];
   fetch(API_URL+'/api/menu/'+iso)
     .then(function(res){return res.ok?res.json():null;})
@@ -874,21 +855,13 @@ function loadMenus(iso){
       if(d&&d.menus&&d.menus.length){
         var idx=Date.now();
         menus=d.menus.map(function(m){return Object.assign({id:idx++,stock:m.stock||0},m);});
-        localStorage.setItem(menuKey(iso),JSON.stringify(menus));
         renderAll();
       }
     })
     .catch(function(){});
 }
 function saveMenus(iso){
-  localStorage.setItem(menuKey(iso),JSON.stringify(menus));
-  var h=JSON.parse(localStorage.getItem('menu_history')||'[]');
-  var idx=h.findIndex(function(x){return x.date===iso;});
-  var e={date:iso,menus:JSON.parse(JSON.stringify(menus))};
-  if(idx>=0)h[idx]=e;else h.unshift(e);
-  h.sort(function(a,b){return b.date.localeCompare(a.date);});
-  localStorage.setItem('menu_history',JSON.stringify(h));
-  exportMenuToSheet(iso,function(){});  // MySQL에도 동기화
+  exportMenuToSheet(iso,function(){});
   if(_datesCache.length&&_datesCache.indexOf(iso)<0){_datesCache.unshift(iso);_datesCache.sort(function(a,b){return b.localeCompare(a);});}
 }
 function save(){saveMenus(workDate);}
@@ -1150,7 +1123,7 @@ function saveMenuEditAll(){
       var ai=allMenus.find(function(x){return x.name===oldName;});
       if(ai){ai.name=m.name;}
     }
-    mergeToAllMenus();            // 편집 내용을 전체메뉴(localStorage)에 반영
+    mergeToAllMenus();
     exportMenuToSheet(workDate);  // 날짜별 시트 동기화
     _exportAllMenusSilent();      // 등록된 모든 메뉴 시트 동기화
     renderAll();
@@ -1301,9 +1274,7 @@ function saveToday(){
   renderHistory();
 }
 function exportMenuToSheet(date,cb){
-  var stored=localStorage.getItem('menus_'+date);
-  var ms=stored?JSON.parse(stored):menus;
-  var objs=ms.map(function(m){return{date:date,name:m.name,cat:m.cat,price:m.price,stock:m.stock,child:m.child?1:0,imgUrl:m.imgUrl||''};});
+  var objs=menus.map(function(m){return{date:date,name:m.name,cat:m.cat,price:m.price,stock:m.stock,child:m.child?1:0,imgUrl:m.imgUrl||''};});
   if(!objs.length){if(cb)cb(false);return;}
   apiPost('/api/menu/daily',objs,function(err,d){if(cb)cb(!err&&d&&d.success!==false);});
 }
@@ -1408,47 +1379,7 @@ function importAllMenusFromSheet(cb){
       var _idGen=Date.now();d.menus.forEach(function(m){if(!m.id)m.id=_idGen++;});
       apiMenus=deduplicateByName(d.menus);
     }
-    // ── 로컬 allMenus vs API: 타임스탬프 비교 머지 ──
-    var apiMap={}; // lowerName → index
-    apiMenus.forEach(function(m,i){apiMap[(m.name||'').trim().toLowerCase()]=i;});
-    var localAll=[];
-    try{localAll=JSON.parse(localStorage.getItem('onban_all_menus')||'[]');}catch(ex){}
-    localAll.forEach(function(lm){
-      if(!lm.name)return;
-      var k=lm.name.trim().toLowerCase();
-      var gi=apiMap[k];
-      if(gi!==undefined){
-        // 양쪽에 있음 → 타임스탬프 비교: 로컬이 더 최신이면 로컬 우선
-        var gasTs=Number(apiMenus[gi].updatedAt)||0;
-        var localTs=Number(lm.updatedAt)||0;
-        if(localTs>gasTs){
-          apiMenus[gi]=Object.assign({},apiMenus[gi],{
-            price:lm.price,stock:lm.stock,child:lm.child,
-            cat:lm.cat,imgUrl:lm.imgUrl||apiMenus[gi].imgUrl,
-            count:Math.max(apiMenus[gi].count||0,lm.count||0),
-            updatedAt:localTs
-          });
-        }
-      }else{
-        apiMap[k]=apiMenus.length;
-        apiMenus.push(lm); // 로컬에만 있음 → 추가
-      }
-    });
-    // 히스토리에도 없는 메뉴 추가
-    var h=JSON.parse(localStorage.getItem('menu_history')||'[]');
-    var idx=Date.now();
-    h.forEach(function(entry){
-      (entry.menus||[]).forEach(function(m){
-        if(!m.name)return;
-        var k=m.name.trim().toLowerCase();
-        if(!(k in apiMap)){
-          apiMap[k]=apiMenus.length;
-          apiMenus.push({id:idx++,name:m.name,cat:m.cat||'기타',price:m.price||0,
-            stock:0,child:m.child||false,imgUrl:m.imgUrl||null,count:1,updatedAt:m.updatedAt||0});
-        }
-      });
-    });
-    if(apiMenus.length){allMenus=deduplicateByName(apiMenus);saveAllMenus();}
+    if(apiMenus.length){allMenus=deduplicateByName(apiMenus);}
     if(cb)cb();
   });
 }
@@ -1667,13 +1598,6 @@ function openHistPreview(date){
   document.getElementById('histPreviewTitle').textContent=label+' 메뉴';
   document.getElementById('histPreviewOverlay').classList.add('open');
 
-  var h=JSON.parse(localStorage.getItem('menu_history')||'[]');
-  var entry=h.find(function(e){return e.date===date;});
-  if(entry&&entry.menus){
-    renderPreviewBody(entry.menus);
-    return;
-  }
-  // 메뉴 데이터 없으면 API에서 로드
   document.getElementById('histPreviewBody').innerHTML='<div style="text-align:center;padding:24px;color:#aaa;">메뉴 불러오는 중...</div>';
   fetch(API_URL+'/api/menu/'+date)
     .then(function(r){if(!r.ok)throw new Error('날짜 없음');return r.json();})
@@ -1849,16 +1773,11 @@ function updateAddReqBadge(orders){
   else{el.style.display='none';}
 }
 
-function getOrders(){return JSON.parse(localStorage.getItem('orders')||'[]');}
+function getOrders(){return Object.values(_ordersCache);}
 function _findOrder(orders,id){
-  var o=orders.find(function(o){return o.id===id;});
-  if(!o&&_ordersCache[id]){
-    o=JSON.parse(JSON.stringify(_ordersCache[id]));
-    orders.push(o);
-  }
-  return o;
+  return orders.find(function(o){return o.id===id;})||null;
 }
-function saveOrders(orders){localStorage.setItem('orders',JSON.stringify(orders));}
+function saveOrders(orders){}
 
 function renderOrders(){
   var today=workDate||toISO(new Date());
@@ -1867,41 +1786,21 @@ function renderOrders(){
   fetch(API_URL+'/api/orders?date='+encodeURIComponent(today))
     .then(function(r){return r.json();})
     .then(function(d){
-      var gasOrders=d.orders||[];
-      // localStorage 주문과 병합 (API 미등록 주문 포함)
-      var localAll=getOrders();
-      var localToday=localAll.filter(function(o){return o.date===today;});
-      var gasIds=gasOrders.map(function(o){return o.id;});
-      localToday.forEach(function(o){
-        if(gasIds.indexOf(o.id)<0)gasOrders.push(o);
-      });
+      var orders=d.orders||[];
       var oldCache=_ordersCache;
       _ordersCache={};
-      gasOrders.forEach(function(o){
-        // API가 빈 adminReply를 반환하면 로컬 캐시 값 보존
+      orders.forEach(function(o){
         if(!o.adminReply && oldCache[o.id] && oldCache[o.id].adminReply){
           o.adminReply=oldCache[o.id].adminReply;
           o.replyAt  =oldCache[o.id].replyAt||0;
         }
         _ordersCache[o.id]=o;
       });
-      _reconcileStock(gasOrders);
-      renderOrdersList(today,gasOrders);
+      _reconcileStock(orders);
+      renderOrdersList(today,orders);
     })
     .catch(function(){
-      // 네트워크 오류 시 localStorage만 사용
-      var all=getOrders();
-      var todayLocal=all.filter(function(o){return o.date===today;});
-      var oldCache=_ordersCache;
-      _ordersCache={};
-      todayLocal.forEach(function(o){
-        if(!o.adminReply && oldCache[o.id] && oldCache[o.id].adminReply){
-          o.adminReply=oldCache[o.id].adminReply;
-          o.replyAt  =oldCache[o.id].replyAt||0;
-        }
-        _ordersCache[o.id]=o;
-      });
-      renderOrdersList(today,todayLocal);
+      el.innerHTML='<div style="text-align:center;padding:30px;color:#f55;font-size:13px;">서버 연결 오류</div>';
     });
 }
 function renderOrdersList(today,todayOrders){
@@ -2233,15 +2132,7 @@ function _adjustStock(date,items,sign){
   if(!date||!items||!items.length)return;
   var deltas=items.filter(function(it){return it.qty;}).map(function(it){return{name:it.name,delta:sign*(it.qty||0)};});
   if(!deltas.length)return;
-  // MySQL 직접 차감
   fetch(API_URL+'/api/menu/'+date+'/stock-adjust',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:deltas})}).catch(function(){});
-  // localStorage 캐시도 갱신
-  var key='menus_'+date;
-  var dayMenus=JSON.parse(localStorage.getItem(key)||'[]');
-  if(dayMenus.length){
-    deltas.forEach(function(it){var m=dayMenus.find(function(x){return x.name===it.name;});if(m)m.stock=Math.max(0,(m.stock||0)+it.delta);});
-    localStorage.setItem(key,JSON.stringify(dayMenus));
-  }
 }
 function _reconcileStock(orders){
   if(!orders||!orders.length)return;
@@ -2345,8 +2236,6 @@ function cancelOrder(id){
 
 function deleteOrder(id){
   if(!confirm('이 주문을 삭제할까요?'))return;
-  // localStorage + 캐시에서 즉시 제거
-  saveOrders(getOrders().filter(function(o){return o.id!==id;}));
   delete _ordersCache[id];
   // DOM 카드 즉시 제거
   var card=document.getElementById('ocard_'+id);
@@ -2694,50 +2583,25 @@ function loadSettingsForm(){
   loadSettingsFromSheet(function(ok){if(ok)fillForm();});
 }
 
-/* ════ 구글 시트 내보내기 ════ */
-function collectMenuData(from,to){
-  var keys=[];
-  for(var i=0;i<localStorage.length;i++){
-    var k=localStorage.key(i);
-    if(k&&k.indexOf('menus_')===0){
-      var d=k.replace('menus_','');
-      if(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(d)){
-        if((!from||d>=from)&&(!to||d<=to))keys.push(d);
-      }
-    }
-  }
-  keys.sort();
-  var rows=[];
-  keys.forEach(function(d){
-    var ms=JSON.parse(localStorage.getItem('menus_'+d)||'[]');
-    ms.forEach(function(m){
-      rows.push({date:d,name:m.name||'',cat:m.cat||'',price:m.price||0,
-        stock:m.stock||0,child:m.child?true:false,imgUrl:m.imgUrl||''});
-    });
-  });
-  return rows;
-}
-
+/* ════ 메뉴 내보내기 (현재 날짜 메모리 → MySQL 재저장) ════ */
 function exportMenuSheet(){
   var from=document.getElementById('csvFrom').value;
   if(!from){showToast('날짜를 선택해주세요.');return;}
-  var rows=collectMenuData(from,from);
-  if(!rows.length){showToast(from+' 날짜의 데이터가 없어요.');return;}
-
   var btn=document.getElementById('btnExport');
-  var objs=rows.map(function(m){
-    return {date:m.date,name:m.name,cat:m.cat,price:m.price,stock:m.stock,child:m.child?1:0,imgUrl:m.imgUrl||''};
-  });
-
-  btn.disabled=true; btn.textContent='전송 중...';
-  apiPost('/api/menu/daily',objs,function(err,d){
-    if(!err&&d&&d.success!==false){
-      showToast(from+' '+rows.length+'개 메뉴 창고 내보내기 완료!');
-    } else {
-      showToast('오류: '+(d&&d.error||'실패'));
-    }
-    btn.disabled=false; btn.textContent='📊 메뉴 창고로 내보내기';
-  });
+  btn.disabled=true; btn.textContent='조회 중...';
+  fetch(API_URL+'/api/menu/'+from)
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var ms=d.menus||[];
+      if(!ms.length){showToast(from+' 날짜의 데이터가 없어요.');btn.disabled=false;btn.textContent='📊 메뉴 창고로 내보내기';return;}
+      var objs=ms.map(function(m){return{date:from,name:m.name,cat:m.cat,price:m.price,stock:m.stock,child:m.child?1:0,imgUrl:m.imgUrl||''};});
+      btn.textContent='전송 중...';
+      apiPost('/api/menu/daily',objs,function(err,res){
+        showToast(!err&&res&&res.success!==false?from+' '+ms.length+'개 내보내기 완료!':'오류: '+(res&&res.error||'실패'));
+        btn.disabled=false; btn.textContent='📊 메뉴 창고로 내보내기';
+      });
+    })
+    .catch(function(){showToast('조회 실패');btn.disabled=false;btn.textContent='📊 메뉴 창고로 내보내기';});
 }
 
 
@@ -2797,19 +2661,10 @@ window.onload=function(){
   workDate=toISO(new Date());loadMenus(workDate);
   document.getElementById('dateDisplayBtn').textContent=fmtDate(workDate);
   renderAll();renderHistory();
-  // 페이지 로드 시 1회 API → localStorage 동기화
   importAllMenusFromSheet(function(){
-    // 자동완성 사전도 갱신
     var names=allMenus.map(function(m){return m.name;}).filter(Boolean);
     if(names.length)saveToDict(names);
   });
-  // 기존 모든 히스토리 메뉴명을 사전에 동기화 (최초 실행 대비)
-  (function(){
-    var h=JSON.parse(localStorage.getItem('menu_history')||'[]');
-    var names=[];
-    h.forEach(function(e){if(e.menus)e.menus.forEach(function(m){if(m.name)names.push(m.name);});});
-    if(names.length)saveToDict(names);
-  })();
   var _s=getSettings();if(document.getElementById('menuStock'))document.getElementById('menuStock').value=_s.stock;
   document.getElementById('menuName').addEventListener('focus',function(){onMenuNameInput();});
   document.getElementById('menuName').addEventListener('blur',function(){setTimeout(closeAcList,150);});
