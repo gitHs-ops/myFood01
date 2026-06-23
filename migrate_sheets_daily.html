@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>구글시트 날짜별 메뉴 → MySQL 이행</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:monospace;background:#111;color:#eee;padding:24px;max-width:860px;margin:0 auto;}
+h2{color:#0cf;margin-bottom:8px;}
+p{color:#aaa;font-size:13px;margin-bottom:16px;line-height:1.7;}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;}
+button{background:#086266;color:#fff;border:none;padding:11px 22px;border-radius:8px;font-size:14px;cursor:pointer;}
+button:hover{background:#0a8a8f;}
+button:disabled{background:#333;color:#666;cursor:not-allowed;}
+.log{background:#1a1a1a;border-radius:8px;padding:10px 14px;margin:4px 0;font-size:13px;line-height:1.8;border-left:3px solid #333;}
+.log.ok{border-left-color:#0f9;color:#cfc;}
+.log.err{border-left-color:#f55;color:#fcc;}
+.log.warn{border-left-color:#fa0;color:#ffe0a0;}
+.log.head{border-left-color:#0cf;color:#0cf;font-weight:bold;}
+.log.info{border-left-color:#888;color:#ccc;}
+#result{margin-top:8px;}
+progress{width:100%;height:10px;border-radius:5px;margin:8px 0;}
+</style>
+</head>
+<body>
+<h2>구글시트 날짜별 메뉴 → MySQL 이행</h2>
+<p>구글시트의 날짜별 메뉴 탭을 모두 읽어 Railway MySQL <code>daily_menus</code> 테이블로 이행합니다.<br>
+반드시 <strong>myfood01-production.up.railway.app</strong> 도메인에서 실행하세요.</p>
+<div class="btns">
+  <button id="btnStart" onclick="run()">▶ 이행 시작</button>
+  <button onclick="location.href='menu-manager.html'">← 관리자로 돌아가기</button>
+</div>
+<progress id="prog" value="0" max="100" style="display:none;"></progress>
+<div id="result"></div>
+
+<script>
+var GAS_URL   = 'https://script.google.com/macros/s/AKfycbwtXJL4_lMynbG4U13PqbnPOiTp15evyw0BPPQ0A9aV5QYlI5dSQB4Ru-8BOqVR9RPq1w/exec';
+var SHEET_ID  = '1_jAZK1zwob2zbiOwKRYzmpKkaswOAi4RUGC043ujiLo';
+var API_URL   = 'https://myfood01-production.up.railway.app';
+
+function log(msg, cls){
+  var d=document.getElementById('result');
+  var row=document.createElement('div');
+  row.className='log'+(cls?' '+cls:'');
+  row.innerHTML=msg;
+  d.appendChild(row);
+  d.scrollTop=d.scrollHeight;
+}
+
+function parseCSV(text){
+  var lines=text.split(/\r?\n/);
+  var result=[];
+  for(var i=1;i<lines.length;i++){
+    var line=lines[i].trim();
+    if(!line)continue;
+    var cols=[];var cur='';var inQ=false;
+    for(var j=0;j<line.length;j++){
+      var ch=line[j];
+      if(ch==='"'){if(inQ&&line[j+1]==='"'){cur+='"';j++;}else{inQ=!inQ;}}
+      else if(ch===','&&!inQ){cols.push(cur);cur='';}
+      else{cur+=ch;}
+    }
+    cols.push(cur);
+    result.push(cols);
+  }
+  return result;
+}
+
+async function run(){
+  document.getElementById('btnStart').disabled=true;
+  document.getElementById('result').innerHTML='';
+  var prog=document.getElementById('prog');
+  prog.style.display='';prog.value=0;
+
+  // ── 1) GAS에서 날짜 목록 ────────────────────────────
+  log('[1] 구글시트 날짜 목록 조회 중...','head');
+  var dates=[];
+  try{
+    var r=await fetch(GAS_URL+'?action=list_dates',{redirect:'follow'});
+    var d=await r.json();
+    if(!d.success||!d.dates||!d.dates.length){log('  ❌ 날짜 없음 또는 GAS 오류: '+JSON.stringify(d),'err');done();return;}
+    dates=d.dates;
+    log('  ✅ '+dates.length+'개 날짜: '+dates[0]+' ~ '+dates[dates.length-1],'ok');
+  }catch(e){log('  ❌ GAS 호출 실패: '+e.message,'err');done();return;}
+
+  // ── 2) 날짜별 CSV 읽기 + MySQL 저장 ─────────────────
+  log('[2] 날짜별 메뉴 이행 중...','head');
+  var allObjs=[];var failDates=[];
+  for(var i=0;i<dates.length;i++){
+    var date=dates[i];
+    prog.value=Math.round((i/dates.length)*90);
+    var csvUrl='https://docs.google.com/spreadsheets/d/'+SHEET_ID
+              +'/gviz/tq?tqx=out:csv&sheet='+encodeURIComponent(date);
+    try{
+      var cr=await fetch(csvUrl,{redirect:'follow'});
+      if(!cr.ok)throw new Error('HTTP '+cr.status);
+      var csv=await cr.text();
+      var rows=parseCSV(csv);
+      var cnt=0;
+      rows.forEach(function(cols){
+        var name=(cols[0]||'').replace(/^"|"$/g,'').trim();
+        if(!name)return;
+        var price=parseFloat((cols[2]||'0').replace(/^"|"$/g,''))||0;
+        var stock=parseInt((cols[3]||'0').replace(/^"|"$/g,''))||0;
+        var child=(cols[4]||'').replace(/^"|"$/g,'').trim().toUpperCase()==='Y';
+        var imgUrl=(cols[5]||'').replace(/^"|"$/g,'').trim();
+        var cat=(cols[1]||'기타').replace(/^"|"$/g,'').trim()||'기타';
+        allObjs.push({date:date,name:name,cat:cat,price:price,stock:stock,child:child?1:0,imgUrl:imgUrl||''});
+        cnt++;
+      });
+      log('  '+date+' → '+cnt+'개','info');
+    }catch(e){log('  ⚠ '+date+' 실패: '+e.message,'warn');failDates.push(date);}
+    await new Promise(function(res){setTimeout(res,120);});  // 속도 제한 방지
+  }
+
+  // ── 3) MySQL에 일괄 저장 ─────────────────────────────
+  log('[3] MySQL에 저장 중 (총 '+allObjs.length+'개 항목)...','head');
+  prog.value=95;
+  try{
+    var pr=await fetch(API_URL+'/api/menu/daily',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({data:allObjs})
+    });
+    var pd=await pr.json();
+    if(pd.success!==false){
+      log('  ✅ 완료 — '+pd.sheets+'개 날짜 / '+pd.count+'개 항목 → daily_menus','ok');
+    }else{
+      log('  ❌ 저장 실패: '+JSON.stringify(pd),'err');
+    }
+  }catch(e){log('  ❌ API 오류: '+e.message,'err');}
+
+  if(failDates.length)log('  ⚠ 실패한 날짜 ('+failDates.length+'개): '+failDates.join(', '),'warn');
+
+  prog.value=100;
+  done();
+}
+
+function done(){document.getElementById('btnStart').disabled=false;}
+</script>
+</body>
+</html>
