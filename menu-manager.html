@@ -1149,9 +1149,8 @@ function saveMenuEditAll(){
   showToast('메뉴가 수정되었습니다. (시트 동기화 중...)');
 }
 function _exportAllMenusSilent(){
-  var gasUrl=ONBAN_SHEET_URL;
-  if(!gasUrl||!allMenus.length)return;
-  gasFetchPost(gasUrl+'?action=export_all_menus',{data:deduplicateByName(allMenus)},function(){});
+  if(!allMenus.length)return;
+  apiPost('/api/menu/all',deduplicateByName(allMenus),function(){});
 }
 
 function renderAll(){renderStats();renderFilterTabs();renderMenuList();renderKakao();}
@@ -1287,13 +1286,11 @@ function saveToday(){
   renderHistory();
 }
 function exportMenuToSheet(date,cb){
-  var gasUrl=ONBAN_SHEET_URL;
-  if(!gasUrl){if(cb)cb(false);return;}
   var stored=localStorage.getItem('menus_'+date);
   var ms=stored?JSON.parse(stored):menus;
-  var slim=ms.map(function(m){return[date,m.name,m.cat,m.price,m.stock,m.child?1:0,m.imgUrl||'',m.desc||''];});
-  if(!slim.length){if(cb)cb(false);return;}
-  gasFetchPost(gasUrl+'?action=export_menu',{data:slim},function(err,d){if(cb)cb(!err&&d&&d.success!==false);});
+  var objs=ms.map(function(m){return{date:date,name:m.name,cat:m.cat,price:m.price,stock:m.stock,child:m.child?1:0,imgUrl:m.imgUrl||''};});
+  if(!objs.length){if(cb)cb(false);return;}
+  apiPost('/api/menu/daily',objs,function(err,d){if(cb)cb(!err&&d&&d.success!==false);});
 }
 var _histYM='전체';
 function renderHistSubTabs(){
@@ -1349,7 +1346,6 @@ function cancelAllPrice(id){var m=allMenus.find(function(x){return x.id===id;});
 function deleteAllMenu(id){if(!confirm('이 메뉴를 삭제할까요?'))return;allMenus=allMenus.filter(function(x){return x.id!==id;});saveAllMenus();renderAllMenus();}
 
 function exportAllMenusToSheet(){
-  var gasUrl=ONBAN_SHEET_URL;if(!gasUrl){showToast('GAS URL 없음');return;}
   if(!allMenus.length){showToast('저장할 메뉴가 없어요.');return;}
   // 1) 전체 체크박스 선택 표시
   document.querySelectorAll('.menu-cb').forEach(function(cb){
@@ -1370,11 +1366,10 @@ function cancelSaveAll(){
 }
 function confirmSaveAll(){
   document.getElementById('saveAllOverlay').classList.remove('open');
-  var gasUrl=ONBAN_SHEET_URL;
   var deduped=deduplicateByName(allMenus);
   if(deduped.length<allMenus.length){allMenus=deduped;saveAllMenus();}
   showToast('메뉴 창고로 저장 중...');
-  gasFetchPost(gasUrl+'?action=export_all_menus',{data:allMenus},function(err,d){
+  apiPost('/api/menu/all',allMenus,function(err,d){
     showToast(err||!d||!d.success?'저장 실패':'전체 메뉴 '+allMenus.length+'개 저장 완료!');
     document.querySelectorAll('.menu-cb').forEach(function(cb){cb.checked=false;});
     selectedAllIds.clear();
@@ -1392,13 +1387,11 @@ function deduplicateByName(arr){
   });
 }
 function importAllMenusFromSheet(cb){
-  var gasUrl=ONBAN_SHEET_URL;
-  if(!gasUrl){rebuildAllMenusFromHistory();if(cb)cb();return;}
-  gasFetch(gasUrl+'?action=import_all_menus',function(err,d){
+  apiFetch('/api/menu/all',function(err,d){
     var gasMenus=[];
     if(!err&&d&&d.success&&d.menus&&d.menus.length){
       var _idGen=Date.now();d.menus.forEach(function(m){if(!m.id)m.id=_idGen++;});
-      gasMenus=deduplicateByName(d.menus); // GAS 시트 중복 제거
+      gasMenus=deduplicateByName(d.menus);
     }
     // ── 로컬 allMenus vs GAS: 타임스탬프 비교 머지 ──
     var gasMap={}; // lowerName → index
@@ -1653,10 +1646,8 @@ function renderHistory(){
 }
 function setHistYM(ym){_histYM=ym;renderHistory();}
 function fetchHistoryFromSheet(silent){
-  var gasUrl=ONBAN_SHEET_URL;
-  if(!gasUrl){if(!silent)showToast('GAS URL이 설정되지 않았어요.');return;}
   if(!silent)showToast('메뉴 창고에서 목록 불러오는 중...');
-  gasFetch(gasUrl+'?action=list_dates',function(err,d){
+  apiFetch('/api/dates',function(err,d){
     if(err||!d||!d.dates||!d.dates.length){if(!silent)showToast(err?'목록 불러오기 실패. 재시도해주세요.':'메뉴 창고에 저장된 날짜가 없어요.');return;}
     var h=JSON.parse(localStorage.getItem('menu_history')||'[]');
     var existing={};h.forEach(function(e){existing[e.date]=true;});
@@ -1680,23 +1671,15 @@ function openHistPreview(date){
     renderPreviewBody(entry.menus);
     return;
   }
-  // 메뉴 데이터 없으면 시트에서 로드
+  // 메뉴 데이터 없으면 API에서 로드
   document.getElementById('histPreviewBody').innerHTML='<div style="text-align:center;padding:24px;color:#aaa;">메뉴 불러오는 중...</div>';
-  var csvUrl='https://docs.google.com/spreadsheets/d/'+ONBAN_SHEET_ID+'/gviz/tq?tqx=out:csv&sheet='+encodeURIComponent(date);
-  fetch(csvUrl)
-    .then(function(r){if(!r.ok)throw new Error('시트 없음');return r.text();})
-    .then(function(csv){
-      var lines=csv.split('\n').filter(function(l){return l.trim();});
-      var menus=[];
-      for(var i=1;i<lines.length;i++){
-        var cols=parseCsvLine(lines[i]);
-        if(!cols[0])continue;
-        menus.push({name:cols[0],cat:cols[1]||'기타',price:Number(cols[2])||0,stock:Number(cols[3])||0,child:cols[4]==='Y',imgUrl:cols[5]||''});
-      }
-      renderPreviewBody(menus);
+  fetch(API_URL+'/api/menu/'+date)
+    .then(function(r){if(!r.ok)throw new Error('날짜 없음');return r.json();})
+    .then(function(d){
+      renderPreviewBody(d.menus||[]);
     })
     .catch(function(){
-      document.getElementById('histPreviewBody').innerHTML='<div style="text-align:center;padding:24px;color:#e05;">불러오기 실패. 시트 공유를 확인하세요.</div>';
+      document.getElementById('histPreviewBody').innerHTML='<div style="text-align:center;padding:24px;color:#e05;">불러오기 실패.</div>';
     });
 }
 function renderPreviewBody(menus){
@@ -1736,11 +1719,10 @@ function confirmHistLoad(mode){
 }
 function importFromSheetByDate(date,mode){
   showToast('메뉴 창고에서 불러오는 중...');
-  var csvUrl='https://docs.google.com/spreadsheets/d/'+ONBAN_SHEET_ID+'/gviz/tq?tqx=out:csv&sheet='+encodeURIComponent(date);
-  fetch(csvUrl)
-    .then(function(r){if(!r.ok)throw new Error(date+' 탭을 찾을 수 없습니다. (시트 공유 확인)');return r.text();})
-    .then(function(csv){
-      var imported=parseMenuCsv(csv,getSettings().stock);
+  fetch(API_URL+'/api/menu/'+date)
+    .then(function(r){if(!r.ok)throw new Error(date+' 날짜를 찾을 수 없습니다.');return r.json();})
+    .then(function(d){
+      var imported=(d.menus||[]).map(function(m){return Object.assign({id:Date.now()+Math.random(),stock:getSettings().stock||0},m);});
       var addedCount=applyImportedMenus(imported,mode);
       saveMenus(workDate);renderAll();filterCat='전체';
       showToast(date+' 메뉴 '+addedCount+'개 → '+fmtDate(workDate)+' 적용!');
@@ -1876,8 +1858,7 @@ function renderOrders(){
   var today=workDate||toISO(new Date());
   var el=document.getElementById('orderList');
   el.innerHTML='<div style="text-align:center;padding:30px;color:#aaa;font-size:13px;">불러오는 중...</div>';
-  var GAS=ONBAN_SHEET_URL;
-  fetch(GAS+'?action=get_orders&date='+encodeURIComponent(today),{redirect:'follow'})
+  fetch(API_URL+'/api/orders?date='+encodeURIComponent(today))
     .then(function(r){return r.json();})
     .then(function(d){
       var gasOrders=d.orders||[];
@@ -2165,7 +2146,7 @@ function sendAdminReply(orderId, phone){
   // textarea 내용 그대로 저장 (수정/덮어쓰기)
   var combined=text;
   // GAS에 합산 답변 저장
-  fetch(ONBAN_SHEET_URL+'?action=save_admin_reply&id='+encodeURIComponent(orderId)+'&text='+encodeURIComponent(combined),{redirect:'follow'}).catch(function(){});
+  fetch(API_URL+'/api/orders/'+encodeURIComponent(orderId)+'/reply',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:combined})}).catch(function(){});
   // 캐시 업데이트
   if(_ordersCache[orderId]){
     _ordersCache[orderId].adminReply=combined;
@@ -2289,7 +2270,7 @@ function confirmOrder(id){
   if(!o)return;
   o.status='confirmed';
   saveOrders(orders);
-  fetch(ONBAN_SHEET_URL+'?action=update_order&id='+encodeURIComponent(id)+'&status=confirmed',{redirect:'follow'}).catch(function(){});
+  fetch(API_URL+'/api/orders/'+encodeURIComponent(id)+'/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'confirmed'})}).catch(function(){});
   // 재고 차감은 주문 접수(pending) 시점에 _reconcileStock에서 처리됨
   // 고객에게 주문접수 알림톡 (실패시 SMS 대체)
   if(o.phone){
@@ -2327,7 +2308,7 @@ function deliverOrder(id){
   if(!o)return;
   o.status='delivered';
   saveOrders(orders);
-  fetch(ONBAN_SHEET_URL+'?action=update_order&id='+encodeURIComponent(id)+'&status=delivered',{redirect:'follow'}).catch(function(){});
+  fetch(API_URL+'/api/orders/'+encodeURIComponent(id)+'/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'delivered'})}).catch(function(){});
   if(o.phone){
     sendAlimtalk(o.phone,
       'KA01TP260522043333235AUBreysEIxj',
@@ -2345,7 +2326,7 @@ function cancelOrder(id){
   if(!o)return;
   o.status='cancelled';
   saveOrders(orders);
-  fetch(ONBAN_SHEET_URL+'?action=update_order&id='+encodeURIComponent(id)+'&status=cancelled',{redirect:'follow'}).catch(function(){});
+  fetch(API_URL+'/api/orders/'+encodeURIComponent(id)+'/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'cancelled'})}).catch(function(){});
   _reconcileStock([o]);  // 즉시 재고 복원
   if(o.phone){
     sendAlimtalk(o.phone,
@@ -2369,22 +2350,11 @@ function deleteOrder(id){
   var remaining=Object.values(_ordersCache);
   var today=workDate||toISO(new Date());
   renderOrdersList(today,remaining);
-  // GAS 시트에서 삭제
-  fetch(ONBAN_SHEET_URL+'?action=delete_order&id='+encodeURIComponent(id),{redirect:'follow'})
-    .then(function(r){return r.text();})
-    .then(function(t){
-      console.log('[deleteOrder] GAS raw:', t);
-      var d;
-      try{d=JSON.parse(t);}catch(e){d=null;}
-      if(d&&d.success){
-        showToast('🗑 시트 삭제 완료');
-      } else if(d&&!d.success){
-        showToast('⚠️ GAS: '+(d.error||d.message||JSON.stringify(d)));
-        renderOrders();
-      } else {
-        showToast('⚠️ GAS 응답: '+t.replace(/<[^>]*>/g,'').trim().slice(0,80));
-        renderOrders();
-      }
+  fetch(API_URL+'/api/orders/'+encodeURIComponent(id),{method:'DELETE'})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d&&d.success){showToast('🗑 삭제 완료');}
+      else{showToast('⚠️ 삭제 실패: '+(d&&d.error||''));renderOrders();}
     })
     .catch(function(err){
       showToast('⚠️ 연결 오류: '+String(err).slice(0,60));
@@ -2461,7 +2431,7 @@ function startOrderPolling(){
 
 function _pollFetch(cb){
   var today=workDate||toISO(new Date());
-  fetch(ONBAN_SHEET_URL+'?action=get_orders&date='+encodeURIComponent(today),{redirect:'follow'})
+  fetch(API_URL+'/api/orders?date='+encodeURIComponent(today))
     .then(function(r){return r.json();})
     .then(function(d){var orders=d.orders||[];_reconcileStock(orders);cb(orders);})
     .catch(function(){_pollSetUI(false,_pollCountdown);});
@@ -2498,9 +2468,8 @@ function requestNotifyPermission(){
 }
 
 /* ════ 설정 ════ */
-var ONBAN_SHEET_URL='https://script.google.com/macros/s/AKfycbwtXJL4_lMynbG4U13PqbnPOiTp15evyw0BPPQ0A9aV5QYlI5dSQB4Ru-8BOqVR9RPq1w/exec';
-var TPL_ADMIN_REPLY='KA01TP260529154902220c1zr7XODUTj'; // 관리자 답변 알림톡 템플릿 ID
-var ONBAN_SHEET_ID='1_jAZK1zwob2zbiOwKRYzmpKkaswOAi4RUGC043ujiLo';
+var API_URL='http://localhost:3000'; // TODO: Railway 배포 후 교체
+var TPL_ADMIN_REPLY='KA01TP260529154902220c1zr7XODUTj';
 var SETTINGS_KEY='onban_settings';
 var BANKS_KEY='onban_banks';
 
@@ -2510,25 +2479,24 @@ function getSettings(){
   return Object.assign(def,JSON.parse(localStorage.getItem(SETTINGS_KEY)||'{}'));
 }
 function getAdminInfo(){
-  var def={phone:'010-2698-9056',email:'',gasUrl:'https://script.google.com/macros/s/AKfycbwtXJL4_lMynbG4U13PqbnPOiTp15evyw0BPPQ0A9aV5QYlI5dSQB4Ru-8BOqVR9RPq1w/exec',deliveryPhone:''};
+  var def={phone:'010-2698-9056',email:'',deliveryPhone:''};
   return Object.assign(def,JSON.parse(localStorage.getItem(ADMIN_KEY)||'{}'));
 }
-// ── 설정 → 구글 시트 동기화 ──
-// ── GAS POST fetch 유틸 (대용량 데이터용) ──
-function gasFetchPost(url,body,cb){
+// ── API POST 유틸 (대용량 데이터용) ──
+function apiPost(path,data,cb){
   var ctrl=new AbortController();
   var timer=setTimeout(function(){ctrl.abort();},30000);
-  fetch(url,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(body),redirect:'follow',signal:ctrl.signal})
+  fetch(API_URL+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:data}),signal:ctrl.signal})
     .then(function(r){clearTimeout(timer);return r.json();})
     .then(function(d){cb(null,d);})
     .catch(function(e){clearTimeout(timer);cb(e,null);});
 }
-// ── GAS fetch 공통 유틸 (타임아웃 15초 + 1회 재시도) ──
-function gasFetch(url,cb){
+// ── API GET 유틸 (타임아웃 15초 + 1회 재시도) ──
+function apiFetch(path,cb){
   function attempt(retry){
     var ctrl=new AbortController();
     var timer=setTimeout(function(){ctrl.abort();},15000);
-    fetch(url,{redirect:'follow',signal:ctrl.signal})
+    fetch(API_URL+path,{signal:ctrl.signal})
       .then(function(r){clearTimeout(timer);return r.json();})
       .then(function(d){cb(null,d);})
       .catch(function(e){
@@ -2541,18 +2509,15 @@ function gasFetch(url,cb){
 }
 
 function syncSettingsToSheet(cb){
-  var gasUrl=ONBAN_SHEET_URL;if(!gasUrl){if(cb)cb(false);return;}
   var s=getSettings(),a=getAdminInfo(),b=getBanks();
   var data={stock:s.stock,smsEnabled:s.smsEnabled,alimtalkEnabled:s.alimtalkEnabled,
             phone:a.phone,email:a.email,deliveryPhone:a.deliveryPhone||'',banks:b};
-  gasFetchPost(gasUrl+'?action=save_settings',{data:data},function(err,d){
+  apiPost('/api/settings',data,function(err,d){
     if(cb)cb(!err&&d&&d.success!==false);
   });
 }
-// ── 구글 시트 → 설정 로드 ──
 function loadSettingsFromSheet(cb){
-  var gasUrl=ONBAN_SHEET_URL;if(!gasUrl){if(cb)cb(false);return;}
-  gasFetch(gasUrl+'?action=load_settings',function(err,d){
+  apiFetch('/api/settings',function(err,d){
     if(!err&&d&&d.success&&d.data){
       var data=d.data;
       var s={stock:Number(data.stock)||0,
@@ -2751,39 +2716,23 @@ function collectMenuData(from,to){
 function exportMenuSheet(){
   var from=document.getElementById('csvFrom').value;
   if(!from){showToast('날짜를 선택해주세요.');return;}
-  var gasUrl=ONBAN_SHEET_URL||document.getElementById('cfgExportUrl').value.trim()||getAdminInfo().gasUrl;
-  if(!gasUrl){showToast('GAS URL을 설정해주세요.');return;}
-
-  // 하루치만 수집
   var rows=collectMenuData(from,from);
   if(!rows.length){showToast(from+' 날짜의 데이터가 없어요.');return;}
 
   var btn=document.getElementById('btnExport');
-  var res=document.getElementById('exportResult');
-
-  // slim 배열 변환
-  var slim=rows.map(function(m){
-    return [m.date,m.name,m.cat,m.price,m.stock,m.child?1:0,m.imgUrl||'',m.desc||''];
+  var objs=rows.map(function(m){
+    return {date:m.date,name:m.name,cat:m.cat,price:m.price,stock:m.stock,child:m.child?1:0,imgUrl:m.imgUrl||''};
   });
-  var url=gasUrl+'?action=export_menu&data='+encodeURIComponent(JSON.stringify(slim));
 
-  // fetch 방식 (새 탭 없음)
   btn.disabled=true; btn.textContent='전송 중...';
-  fetch(url, {redirect:'follow'})
-    .then(function(r){return r.json();})
-    .then(function(d){
-      if(d.success!==false){
-        showToast(from+' '+rows.length+'개 메뉴 창고 내보내기 완료!');
-      } else {
-        showToast('오류: '+(d.error||'실패'));
-      }
-    })
-    .catch(function(){
-      showToast(from+' '+rows.length+'개 전송 완료!');
-    })
-    .finally(function(){
-      btn.disabled=false; btn.textContent='📊 메뉴 창고로 내보내기';
-    });
+  apiPost('/api/menu/daily',objs,function(err,d){
+    if(!err&&d&&d.success!==false){
+      showToast(from+' '+rows.length+'개 메뉴 창고 내보내기 완료!');
+    } else {
+      showToast('오류: '+(d&&d.error||'실패'));
+    }
+    btn.disabled=false; btn.textContent='📊 메뉴 창고로 내보내기';
+  });
 }
 
 
@@ -2797,16 +2746,13 @@ function importFromSheet(mode){
   res.style.color='#086266';
   res.textContent='불러오는 중...';
 
-  var csvUrl='https://docs.google.com/spreadsheets/d/'+ONBAN_SHEET_ID
-    +'/gviz/tq?tqx=out:csv&sheet='+encodeURIComponent(date);
-
-  fetch(csvUrl)
+  fetch(API_URL+'/api/menu/'+date)
     .then(function(r){
-      if(!r.ok)throw new Error(date+' 탭을 찾을 수 없습니다. (시트 공유 확인)');
-      return r.text();
+      if(!r.ok)throw new Error(date+' 날짜를 찾을 수 없습니다.');
+      return r.json();
     })
-    .then(function(csv){
-      var imported=parseMenuCsv(csv,getSettings().stock);
+    .then(function(d){
+      var imported=(d.menus||[]).map(function(m){return Object.assign({id:Date.now()+Math.random(),stock:getSettings().stock||0},m);});
       var confirmMsg;
       if(mode==='add'){
         var existNames={};menus.forEach(function(m){existNames[m.name.trim()]=true;});
@@ -2835,12 +2781,11 @@ function importFromSheet(mode){
 window.onload=function(){
   // 접속 로그
   (function(){
-    var ref=encodeURIComponent((document.referrer||'').slice(0,200));
+    var ref=(document.referrer||'').slice(0,200);
     fetch('https://api.ipify.org?format=json').then(function(r){return r.json();}).then(function(d){
-      var ip=encodeURIComponent(d.ip||'unknown');
-      fetch(ONBAN_SHEET_URL+'?action=log_access&page=manager&ip='+ip+'&ref='+ref,{redirect:'follow'}).catch(function(){});
+      fetch(API_URL+'/api/log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ip:d.ip||'',ref:ref,page:'manager'})}).catch(function(){});
     }).catch(function(){
-      fetch(ONBAN_SHEET_URL+'?action=log_access&page=manager&ip=unknown&ref='+ref,{redirect:'follow'}).catch(function(){});
+      fetch(API_URL+'/api/log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ip:'unknown',ref:ref,page:'manager'})}).catch(function(){});
     });
   })();
   var _goto=localStorage.getItem('mm_goto');if(_goto){localStorage.removeItem('mm_goto');setTimeout(function(){switchPage(_goto);},400);}

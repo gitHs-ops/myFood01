@@ -755,33 +755,23 @@ function addSelectedToCart(){
 }
 
 // ── 데이터 로드 ──
-var SHEET_ID='1_jAZK1zwob2zbiOwKRYzmpKkaswOAi4RUGC043ujiLo';
-var GAS_URL='https://script.google.com/macros/s/AKfycbwtXJL4_lMynbG4U13PqbnPOiTp15evyw0BPPQ0A9aV5QYlI5dSQB4Ru-8BOqVR9RPq1w/exec';
+var API_URL='http://localhost:3000'; // TODO: Railway 배포 후 교체
+var ALIMTALK_URL='https://script.google.com/macros/s/AKfycbwtXJL4_lMynbG4U13PqbnPOiTp15evyw0BPPQ0A9aV5QYlI5dSQB4Ru-8BOqVR9RPq1w/exec';
 function loadMenus(silent){
   var iso=toISO(new Date());
   menuDate=iso;
   var label=new Date(iso+'T00:00:00').toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'});
   if(!silent)document.getElementById('dateBannerText').textContent='📅 '+label+' 오늘의 메뉴 불러오는 중...';
 
-  var csvUrl='https://docs.google.com/spreadsheets/d/'+SHEET_ID
-    +'/gviz/tq?tqx=out:csv&sheet='+encodeURIComponent(iso)
-    +'&_cb='+Date.now();   // 캐시 버스터 (실시간 갱신용)
-
-  fetch(csvUrl,{cache:'no-store'})
-    .then(function(r){if(!r.ok)throw new Error('no sheet');return r.text();})
-    .then(function(csv){
-      var lines=csv.trim().split(/\r?\n/);
-      if(lines.length<2)throw new Error('empty');
+  fetch(API_URL+'/api/menu/'+iso,{cache:'no-store'})
+    .then(function(r){if(!r.ok)throw new Error('no menu');return r.json();})
+    .then(function(d){
       allMenus=[];
-      for(var i=1;i<lines.length;i++){
-        var cols=parseCsvLine(lines[i]);
-        if(!cols[0])continue;
-        allMenus.push({
-          id:i,name:cols[0],cat:cols[1]||'기타',
-          price:parseInt(cols[2])||0,stock:parseInt(cols[3])||0,
-          child:(cols[4]||'')==='Y',imgUrl:cols[5]||null,desc:cols[6]||''
-        });
-      }
+      (d.menus||[]).forEach(function(m,i){
+        allMenus.push({id:i+1,name:m.name,cat:m.cat||'기타',
+          price:Number(m.price)||0,stock:Number(m.stock)||0,
+          child:!!m.child,imgUrl:m.imgUrl||null,desc:''});
+      });
       document.getElementById('dateBannerText').textContent='📅 '+label+' 오늘의 메뉴';
       renderCatTabs();renderMenuGrid();
     })
@@ -1209,7 +1199,7 @@ function refreshStatusNow(){
   if(!myInfo||!myInfo.name||!myInfo.phone){showToast('주문자 정보가 없어요.');return;}
   var today=toISO(new Date());
   var phone=String(myInfo.phone||'').replace(/[^0-9]/g,'');
-  fetch(GAS_URL+'?action=get_orders&date='+encodeURIComponent(today)+'&phone='+encodeURIComponent(phone),{redirect:'follow'})
+  fetch(API_URL+'/api/orders?date='+encodeURIComponent(today)+'&phone='+encodeURIComponent(phone))
   .then(function(r){return r.json();})
   .then(function(data){
     if(!data.success||!Array.isArray(data.orders)){showToast('서버 오류');return;}
@@ -1238,7 +1228,7 @@ function refreshStatusNow(){
 function _fetchStatusFromGAS(myInfo, today, localOrders, forceRender){
   var phone=String(myInfo.phone||'').replace(/[^0-9]/g,'');
   if(!phone)return;
-  fetch(GAS_URL+'?action=get_orders&date='+encodeURIComponent(today)+'&phone='+encodeURIComponent(phone),{redirect:'follow'})
+  fetch(API_URL+'/api/orders?date='+encodeURIComponent(today)+'&phone='+encodeURIComponent(phone))
   .then(function(r){return r.json();})
   .then(function(data){
     if(!data.success||!Array.isArray(data.orders))return;
@@ -1317,7 +1307,7 @@ function saveExtraReq(id){
   if(!text){showToast('내용을 입력해주세요.');return;}
   var btn=wrap.querySelector('.extra-req-save');
   btn.disabled=true; btn.textContent='저장 중...';
-  fetch(GAS_URL+'?action=save_additional_request&id='+encodeURIComponent(id)+'&text='+encodeURIComponent(text),{redirect:'follow'})
+  fetch(API_URL+'/api/orders/'+encodeURIComponent(id)+'/request',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:text})})
   .then(function(r){return r.json();})
   .then(function(d){
     if(d&&d.success){
@@ -1593,18 +1583,11 @@ function closeAddrList(e){
 // ── 주문 직전 최신 재고 확인 (동시 주문 품절 방지) ──
 function verifyStock(onResult){
   var iso=toISO(new Date());
-  var csvUrl='https://docs.google.com/spreadsheets/d/'+SHEET_ID
-    +'/gviz/tq?tqx=out:csv&sheet='+encodeURIComponent(iso)+'&_cb='+Date.now();
-  fetch(csvUrl,{cache:'no-store'})
-    .then(function(r){if(!r.ok)throw new Error('no sheet');return r.text();})
-    .then(function(csv){
-      var lines=csv.trim().split(/\r?\n/);
+  fetch(API_URL+'/api/menu/'+iso,{cache:'no-store'})
+    .then(function(r){if(!r.ok)throw new Error('no menu');return r.json();})
+    .then(function(d){
       var stockMap={};
-      for(var i=1;i<lines.length;i++){
-        var c=parseCsvLine(lines[i]);
-        if(!c[0])continue;
-        stockMap[c[0]]=parseInt(c[3])||0;
-      }
+      (d.menus||[]).forEach(function(m){stockMap[m.name]=Number(m.stock)||0;});
       var short=[];
       orderItems.forEach(function(it){
         var avail=stockMap.hasOwnProperty(it.name)?stockMap[it.name]:0;
@@ -1612,7 +1595,7 @@ function verifyStock(onResult){
       });
       onResult(short.length===0,short);
     })
-    .catch(function(){onResult(true,[]);});  // 조회 실패 시 주문 진행(네트워크 오류로 막지 않음)
+    .catch(function(){onResult(true,[]);});
 }
 function _notifyOutOfStock(list){
   var msg=list.map(function(s){return '• '+s.name+' (남은 재고 '+s.have+'개 / 주문 '+s.want+'개)';}).join('\n');
@@ -1643,11 +1626,7 @@ function saveOrder(){
   localStorage.setItem('orders',JSON.stringify(orders));
   updateStatusBtn();
 
-  // GAS 시트에 주문 저장 (관리자 동기화)
-  (function(ord){
-    fetch(GAS_URL+'?action=save_order&data='+encodeURIComponent(JSON.stringify(ord)),
-      {redirect:'follow'}).catch(function(){});
-  })(order);
+  fetch(API_URL+'/api/orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:order})}).catch(function(){});
 
   // 고객에게 주문 접수 문자
     if(order.phone){
@@ -1663,8 +1642,7 @@ function saveOrder(){
   saveAddr(order.addr);
 
   // 고객정보 시트 저장
-  var cdata=encodeURIComponent(JSON.stringify([order.date,order.name,order.phone,order.addr,order.memo]));
-  fetch(GAS_URL+'?action=save_customer&data='+cdata,{redirect:'follow'}).catch(function(){});
+  fetch(API_URL+'/api/customers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:[order.date,order.name,order.phone,order.addr,order.memo]})}).catch(function(){});
 
   // 관리자에게 새 주문 알림
   var adminPhoneFixed='010-2698-9056';
@@ -1751,7 +1729,7 @@ function renderPayment(){
   var wrap=document.getElementById('paymentContent');
   wrap.innerHTML='<div style="text-align:center;padding:50px 20px;color:#aaa;font-size:14px;">계좌 정보 불러오는 중...</div>';
   // 계좌번호는 항상 구글시트에서 최신 조회 (localStorage 무시)
-  fetch(GAS_URL+'?action=load_settings&_cb='+Date.now(),{cache:'no-store',redirect:'follow'})
+  fetch(API_URL+'/api/settings',{cache:'no-store'})
     .then(function(r){return r.json();})
     .then(function(d){
       if(d&&d.success&&d.data&&d.data.banks){
@@ -2043,7 +2021,7 @@ function cancelHistOrder(orderId){
   o.status='cancelled';
   localStorage.setItem('orders',JSON.stringify(orders));
   // GAS 시트 상태 업데이트 (관리자 동기화)
-  fetch(GAS_URL+'?action=update_order&id='+encodeURIComponent(orderId)+'&status=cancelled',{redirect:'follow'}).catch(function(){});
+  fetch(API_URL+'/api/orders/'+encodeURIComponent(orderId)+'/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'cancelled'})}).catch(function(){});
   // 취소 알림톡
   if(o.phone){
     var menuList=o.items.map(function(i){return i.name+' '+i.qty+'개';}).join(', ');
@@ -2097,13 +2075,10 @@ function reorder(order){
   localStorage.setItem('onban_my_info',JSON.stringify({name:order.name,phone:order.phone}));
   updateStatusBtn();
 
-  // GAS 기존 주문 취소
-  fetch(GAS_URL+'?action=update_order&id='+encodeURIComponent(order.id)+'&status=cancelled',{redirect:'follow'}).catch(function(){});
-  // GAS 새 주문 저장
-  fetch(GAS_URL+'?action=save_order&data='+encodeURIComponent(JSON.stringify(newOrder)),{redirect:'follow'}).catch(function(){});
-  // GAS 추가요청 별도 저장 (additionalRequest 컬럼)
+  fetch(API_URL+'/api/orders/'+encodeURIComponent(order.id)+'/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'cancelled'})}).catch(function(){});
+  fetch(API_URL+'/api/orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:newOrder})}).catch(function(){});
   if(newOrder.additionalRequest){
-    fetch(GAS_URL+'?action=save_additional_request&id='+encodeURIComponent(newOrder.id)+'&text='+encodeURIComponent(newOrder.additionalRequest),{redirect:'follow'}).catch(function(){});
+    fetch(API_URL+'/api/orders/'+encodeURIComponent(newOrder.id)+'/request',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:newOrder.additionalRequest})}).catch(function(){});
   }
 
   // 재주문접수 알림톡
@@ -2139,7 +2114,7 @@ window.onload=function(){
   _startMenuAutoRefresh();
   updateStatusBtn();
   // 관리자 발송 설정을 GAS에서 로드하여 localStorage 갱신
-  fetch(GAS_URL+'?action=load_settings',{redirect:'follow'})
+  fetch(API_URL+'/api/settings')
     .then(function(r){return r.json();})
     .then(function(d){
       if(d&&d.success&&d.data){

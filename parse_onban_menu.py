@@ -24,7 +24,7 @@ def normalize_price(p):
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
 # ──────────────────────────────────────────────────────────────
-GAS_URL = 'https://script.google.com/macros/s/AKfycbwtXJL4_lMynbG4U13PqbnPOiTp15evyw0BPPQ0A9aV5QYlI5dSQB4Ru-8BOqVR9RPq1w/exec'
+API_URL = 'http://localhost:3000'   # 배포 후 Railway URL로 교체
 FILE    = r"C:\Users\user\Documents\522 금요일 메뉴입니다.txt"
 # ──────────────────────────────────────────────────────────────
 
@@ -178,42 +178,30 @@ for m in menus_list[:15]:
 print("=" * 60)
 
 
-# ── 공통 GAS 헬퍼 ─────────────────────────────────────────────
+# ── API 헬퍼 ──────────────────────────────────────────────────
 _session = requests.Session()
 
-def gas_get(action, params=''):
-    url = GAS_URL + f'?action={action}' + (('&' + params) if params else '')
-    resp = _session.get(url, allow_redirects=True)
-    try:
-        return resp.json()
-    except Exception:
-        return {'success': False, 'raw': resp.text[:200]}
-
-def gas_post(action, data_obj):
-    body = json.dumps({'data': data_obj}, ensure_ascii=False).encode('utf-8')
-    url  = GAS_URL + f'?action={action}'
-    resp = _session.post(url, data=body,
-                         headers={'Content-Type': 'application/json; charset=utf-8'},
-                         allow_redirects=False)
-    if resp.status_code in (301, 302, 303):
-        resp = _session.get(resp.headers.get('Location', ''), allow_redirects=True)
+def api_post(path, data_obj):
+    url  = API_URL + path
+    resp = _session.post(url, json={'data': data_obj},
+                         headers={'Content-Type': 'application/json'})
     try:
         return resp.json()
     except Exception:
         return {'success': False, 'raw': resp.text[:200]}
 
 
-# ── [1] 메뉴 창고(등록된모든메뉴) 업로드 ──────────────────────
+# ── [1] 메뉴 창고 업로드 ──────────────────────────────────────
 print("\n[1] 메뉴 창고 업로드 중...")
-r = gas_post('export_all_menus', menus_list)
+r = api_post('/api/menu/all', menus_list)
 if r.get('success'):
-    print(f"  ✅ 완료 — {r.get('count','?')}개 → [등록된모든메뉴] 시트")
+    print(f"  ✅ 완료 — {r.get('count','?')}개 → menus 테이블")
 else:
     print(f"  ❌ 실패: {r}")
 
 
 # ── [2] 날짜별 메뉴 묶음 업로드 ───────────────────────────────
-day_map = ddict(dict)   # "YYYY-MM-DD" → {name: menu_dict}
+day_map = ddict(dict)
 for (year, month, day_n), menus in target_sections:
     date_str = f"{year}-{month:02d}-{day_n:02d}"
     for m in menus:
@@ -239,9 +227,9 @@ dates_set = sorted(day_map.keys())
 print(f"\n[2] 날짜별 메뉴 묶음 업로드 중...")
 print(f"  날짜 {len(dates_set)}개 / 총 메뉴 항목 {len(all_daily)}개")
 
-r2 = gas_post('export_menu', all_daily)
+r2 = api_post('/api/menu/daily', all_daily)
 if r2.get('success'):
-    print(f"  ✅ 완료 — {r2.get('sheets','?')}개 탭 생성 ({r2.get('count','?')}개 항목)")
-    print(f"  생성된 시트 탭: {', '.join(dates_set)}")
+    print(f"  ✅ 완료 — {r2.get('sheets','?')}개 날짜 ({r2.get('count','?')}개 항목) → daily_menus 테이블")
+    print(f"  날짜 범위: {dates_set[0]} ~ {dates_set[-1]}")
 else:
     print(f"  ❌ 실패: {r2}")

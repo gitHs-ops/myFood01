@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════
-// onban_sheet.gs — 구글 시트 연동 2026 06 10 v1.59
+// onban_sheet.gs — 구글 시트 연동 2026 06 101 v1.591
 // ══════════════════════════════════════════════════════
 
 var SHEET_ID = '1_jAZK1zwob2zbiOwKRYzmpKkaswOAi4RUGC043ujiLo';
@@ -109,25 +109,12 @@ function importAllMenus() {
   if (!sheet) return json({ success: false, error: '시트 없음' });
   var rows = sheet.getDataRange().getValues();
   if (rows.length < 2) return json({ success: false, error: '데이터 없음' });
-  // 헤더명 기준 컬럼 매핑 (컬럼 순서/유무 변동 대응)
-  var H = rows[0];
-  var col = {};
-  for (var j = 0; j < H.length; j++) col[String(H[j])] = j;
-  function gv(r, name, idx) { var k = col.hasOwnProperty(name) ? col[name] : idx; return r[k]; }
   var menus = [];
   for (var i = 1; i < rows.length; i++) {
     var r = rows[i]; if (!r[0]) continue;
-    menus.push({
-      name:   String(gv(r,'메뉴명',0)||''),
-      cat:    String(gv(r,'카테고리',1)||'기타'),
-      price:  Number(gv(r,'금액(천원)',2))||0,
-      stock:  Number(gv(r,'재고',3))||0,
-      child:  String(gv(r,'어린이가능',4))==='Y',
-      imgUrl: String(gv(r,'사진URL',5)||'')||null,
-      desc:   col.hasOwnProperty('설명') ? String(gv(r,'설명')||'') : '',
-      count:  Number(gv(r,'등록횟수',6))||0,
-      updatedAt: Number(gv(r,'수정시각(ms)',7))||0
-    });
+    menus.push({ name:String(r[0]||''), cat:String(r[1]||'기타'), price:Number(r[2])||0,
+      stock:Number(r[3])||0, child:String(r[4])==='Y', imgUrl:String(r[5]||'')||null,
+      desc:String(r[6]||''), count:Number(r[7])||0, updatedAt:Number(r[8])||0 });
   }
   return json({ success: true, menus: menus });
 }
