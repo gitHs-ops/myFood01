@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>localStorage → MySQL 마이그레이션</title>
+<style>
+body{font-family:monospace;background:#111;color:#eee;padding:24px;max-width:800px;margin:0 auto;}
+h2{color:#0cf;}
+.ok{color:#0f9;}
+.err{color:#f55;}
+.warn{color:#fa0;}
+.log{background:#1a1a1a;padding:12px;border-radius:8px;margin:8px 0;font-size:13px;line-height:1.8;}
+button{background:#086266;color:#fff;border:none;padding:12px 28px;border-radius:8px;font-size:15px;cursor:pointer;margin:8px 4px;}
+button:hover{background:#0a8a8f;}
+button:disabled{background:#333;cursor:not-allowed;}
+#result{margin-top:16px;}
+</style>
+</head>
+<body>
+<h2>🚀 localStorage → MySQL 마이그레이션</h2>
+<p>이 페이지는 브라우저의 localStorage 데이터를 Railway MySQL로 1회 이전합니다.<br>
+<strong>menu-manager.html과 같은 도메인에서 열어야 localStorage 접근 가능합니다.</strong></p>
+
+<button id="btnStart" onclick="runMigration()">▶ 마이그레이션 시작</button>
+<button onclick="location.href='menu-manager.html'">← 관리자로 돌아가기</button>
+
+<div id="result"></div>
+
+<script>
+var API_URL = 'https://myfood01-production.up.railway.app';
+
+function log(msg, cls) {
+  var d = document.getElementById('result');
+  var row = document.createElement('div');
+  row.className = 'log' + (cls ? ' ' + cls : '');
+  row.innerHTML = msg;
+  d.appendChild(row);
+}
+
+async function post(path, data) {
+  var r = await fetch(API_URL + path, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({data: data})
+  });
+  return r.json();
+}
+
+async function runMigration() {
+  document.getElementById('btnStart').disabled = true;
+  document.getElementById('result').innerHTML = '';
+  log('마이그레이션 시작...', '');
+
+  // ── 1) 설정 (settings + admin + banks) ──────────────────
+  log('<b>[1] 설정 (계좌/전화/재고/SMS)</b>');
+  try {
+    var s = JSON.parse(localStorage.getItem('onban_settings') || '{}');
+    var a = JSON.parse(localStorage.getItem('onban_admin')    || '{}');
+    var b = JSON.parse(localStorage.getItem('onban_banks')    || '[]');
+    var merged = Object.assign({}, s, a, {banks: b});
+    if (Object.keys(merged).length > 1 || b.length) {
+      var d = await post('/api/settings', merged);
+      log('  ✅ 설정 저장: ' + JSON.stringify(merged).slice(0, 120), 'ok');
+    } else {
+      log('  ⚠ 설정 데이터 없음 (localStorage 비어있음)', 'warn');
+    }
+  } catch(e) { log('  ❌ ' + e.message, 'err'); }
+
+  // ── 2) 전체 메뉴 창고 (onban_all_menus) ─────────────────
+  log('<b>[2] 전체 메뉴 창고</b>');
+  try {
+    var allMenus = JSON.parse(localStorage.getItem('onban_all_menus') || '[]');
+    if (allMenus.length) {
+      var d = await post('/api/menu/all', allMenus);
+      log('  ✅ ' + allMenus.length + '개 → menus 테이블', 'ok');
+    } else {
+      log('  ⚠ 전체 메뉴 없음', 'warn');
+    }
+  } catch(e) { log('  ❌ ' + e.message, 'err'); }
+
+  // ── 3) 날짜별 메뉴 (menus_YYYY-MM-DD) ───────────────────
+  log('<b>[3] 날짜별 메뉴</b>');
+  try {
+    var dailyObjs = [];
+    var dateKeys = [];
+    for (var i = 0; i < localStorage.length; i++) {
+      var k = localStorage.key(i);
+      if (/^menus_\d{4}-\d{2}-\d{2}$/.test(k)) dateKeys.push(k);
+    }
+    dateKeys.forEach(function(k) {
+      var date = k.replace('menus_', '');
+      var ms = JSON.parse(localStorage.getItem(k) || '[]');
+      ms.forEach(function(m) {
+        dailyObjs.push({date:date, name:m.name, cat:m.cat||'기타',
+          price:m.price||0, stock:m.stock||0, child:m.child?1:0, imgUrl:m.imgUrl||''});
+      });
+    });
+    if (dailyObjs.length) {
+      var d = await post('/api/menu/daily', dailyObjs);
+      log('  ✅ ' + dateKeys.length + '개 날짜 / ' + dailyObjs.length + '개 항목 → daily_menus', 'ok');
+    } else {
+      log('  ⚠ 날짜별 메뉴 없음', 'warn');
+    }
+  } catch(e) { log('  ❌ ' + e.message, 'err'); }
+
+  // ── 4) 주문 (orders) ────────────────────────────────────
+  log('<b>[4] 주문 목록</b>');
+  try {
+    var orders = JSON.parse(localStorage.getItem('orders') || '[]');
+    var ok = 0, fail = 0;
+    for (var i = 0; i < orders.length; i++) {
+      try {
+        await post('/api/orders', orders[i]);
+        ok++;
+      } catch(e) { fail++; }
+    }
+    if (orders.length) {
+      log('  ✅ 총 ' + orders.length + '개 중 성공 ' + ok + '개' + (fail ? ' / 실패 ' + fail + '개' : ''), ok > 0 ? 'ok' : 'err');
+    } else {
+      log('  ⚠ 주문 없음', 'warn');
+    }
+  } catch(e) { log('  ❌ ' + e.message, 'err'); }
+
+  log('<b>✅ 마이그레이션 완료!</b>', 'ok');
+  document.getElementById('btnStart').disabled = false;
+}
+</script>
+</body>
+</html>
