@@ -865,7 +865,22 @@ function onMenuNameKey(e){
 function toISO(d){var kst=new Date(d.getTime()+9*60*60*1000);return kst.getUTCFullYear()+'-'+String(kst.getUTCMonth()+1).padStart(2,'0')+'-'+String(kst.getUTCDate()).padStart(2,'0');}
 function fmtDate(iso){var d=new Date(iso+'T00:00:00');var s=d.toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'short'});return iso===toISO(new Date())?s+' (오늘)':s;}
 function menuKey(iso){return 'menus_'+iso;}
-function loadMenus(iso){var r=localStorage.getItem(menuKey(iso));menus=r?JSON.parse(r):[];}
+function loadMenus(iso){
+  var r=localStorage.getItem(menuKey(iso));
+  if(r){menus=JSON.parse(r);return;}
+  menus=[];
+  fetch(API_URL+'/api/menu/'+iso)
+    .then(function(res){return res.ok?res.json():null;})
+    .then(function(d){
+      if(d&&d.menus&&d.menus.length){
+        var idx=Date.now();
+        menus=d.menus.map(function(m){return Object.assign({id:idx++,stock:m.stock||0},m);});
+        localStorage.setItem(menuKey(iso),JSON.stringify(menus));
+        renderAll();
+      }
+    })
+    .catch(function(){});
+}
 function saveMenus(iso){
   localStorage.setItem(menuKey(iso),JSON.stringify(menus));
   var h=JSON.parse(localStorage.getItem('menu_history')||'[]');
@@ -874,6 +889,7 @@ function saveMenus(iso){
   if(idx>=0)h[idx]=e;else h.unshift(e);
   h.sort(function(a,b){return b.date.localeCompare(a.date);});
   localStorage.setItem('menu_history',JSON.stringify(h));
+  exportMenuToSheet(iso,function(){});  // MySQL에도 동기화
 }
 function save(){saveMenus(workDate);}
 
