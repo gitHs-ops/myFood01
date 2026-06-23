@@ -1664,7 +1664,7 @@ function fetchHistoryFromSheet(silent){
   apiFetch('/api/dates',function(err,d){
     if(err||!d||!d.dates||!d.dates.length){
       if(!silent)showToast(err?'목록 불러오기 실패. 재시도해주세요.':'메뉴 창고에 저장된 날짜가 없어요.');
-      if(silent){var el=document.getElementById('historyList');if(el&&!el.textContent.trim())el.innerHTML='<div class="empty">저장된 날짜별 메뉴가 없어요.<br><small style="color:#aaa;">parse_onban_menu.py를 실행해 데이터를 채워주세요.</small></div>';}
+      if(silent){var el=document.getElementById('historyList');if(el&&!el.textContent.trim())el.innerHTML='<div class="empty">저장된 날짜별 메뉴가 없어요.</div>';}
       return;
     }
     var h=JSON.parse(localStorage.getItem('menu_history')||'[]');
