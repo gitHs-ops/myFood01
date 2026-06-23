@@ -468,7 +468,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
   <div class="card">
     <div class="card-title">날짜별 메뉴 묶음 저장</div>
     <p style="font-size:13px;color:#666;margin-bottom:14px;">저장하면 날짜별 메뉴 묶음에서 다시 불러볼 수 있어요.</p>
-    <button class="btn btn-add" onclick="saveToday()">메뉴 창고에 저장</button>
+    <button class="btn btn-add" onclick="saveToday()">저장</button>
   </div>
 </div>
 <div id="page-kakao" class="page">
@@ -489,7 +489,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
   <div class="card">
     <div class="card-title">날짜별 메뉴 묶음 저장</div>
     <p style="font-size:13px;color:#666;margin-bottom:14px;">저장하면 날짜별 메뉴 묶음에서 다시 불러볼 수 있어요.</p>
-    <button class="btn btn-add" onclick="saveToday()">메뉴 창고에 저장</button>
+    <button class="btn btn-add" onclick="saveToday()">저장</button>
   </div>
 </div>
 <div id="page-settings" class="page">
@@ -1340,7 +1340,7 @@ function exportAllMenusToSheet(){
   updateAllMenuBtns();
   // 2) 브라우저가 체크 렌더링 후 팝업 표시
   setTimeout(function(){
-    document.getElementById('saveAllMsg').textContent='등록된 모든 메뉴 '+allMenus.length+'개를 메뉴 창고에 저장할까요?';
+    document.getElementById('saveAllMsg').textContent='등록된 모든 메뉴 '+allMenus.length+'개를 저장할까요?';
     document.getElementById('saveAllOverlay').classList.add('open');
   },80);
 }
