@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors    = require('cors');
 const mysql   = require('mysql2/promise');
+const path    = require('path');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -9,6 +10,9 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// HTML 정적 파일 서빙 (repo 루트)
+app.use(express.static(path.join(__dirname, '..')));
 
 // ── DB 연결 풀 ──────────────────────────────────────────────
 const pool = mysql.createPool({
