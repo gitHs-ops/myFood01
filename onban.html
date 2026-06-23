@@ -1487,9 +1487,11 @@ function renderOrdererPage(){
     lastOrderTotal=orderItems.reduce(function(s,c){return s+c.price*c.qty;},0);
     verifyStock(function(ok,short){
       if(!ok){_notifyOutOfStock(short);return;}
-      saveOrder();
-      cart=[];orderItems=[];updateCartCount();
-      goPage('payment');
+      saveOrder(function(result){
+        if(!result.success){_notifyOutOfStock((result.soldOut||[]).map(function(s){return{name:s.name,have:s.available,want:'?'};}));return;}
+        cart=[];orderItems=[];updateCartCount();
+        goPage('payment');
+      });
     });
   };
   el.appendChild(btn);
@@ -1605,10 +1607,9 @@ function _notifyOutOfStock(list){
   goPage('list');
 }
 
-// ── 주문 저장 (localStorage) + SMS 발송 ──
-function saveOrder(){
+// ── 주문 저장 + SMS 발송 (서버 재고 차감 포함) ──
+function saveOrder(cb){
   var total=orderItems.reduce(function(s,c){return s+c.price*c.qty;},0);
-  var orders=JSON.parse(localStorage.getItem('orders')||'[]');
   var order={
     id:'ORD'+Date.now(),
     date:toISO(new Date()),
@@ -1621,11 +1622,19 @@ function saveOrder(){
     total:total,
     status:'pending'
   };
-  orders.unshift(order);
-  localStorage.setItem('orders',JSON.stringify(orders));
-  updateStatusBtn();
 
-  fetch(API_URL+'/api/orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:order})}).catch(function(){});
+  fetch(API_URL+'/api/orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:order})})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(!d.success&&d.soldOut){if(cb)cb({success:false,soldOut:d.soldOut});return;}
+      // 주문 성공 → localStorage에 기록 (고객 주문상태 조회용)
+      var orders=JSON.parse(localStorage.getItem('orders')||'[]');
+      orders.unshift(order);
+      localStorage.setItem('orders',JSON.stringify(orders));
+      updateStatusBtn();
+      if(cb)cb({success:true,order:order});
+    })
+    .catch(function(){if(cb)cb({success:false,soldOut:[]});});
 
   // 고객에게 주문 접수 문자
     if(order.phone){
@@ -1715,8 +1724,10 @@ function renderOrder(){
   btnCfm.onclick=function(){
     verifyStock(function(ok,short){
       if(!ok){_notifyOutOfStock(short);return;}
-      saveOrder();
-      goPage('payment');
+      saveOrder(function(result){
+        if(!result.success){_notifyOutOfStock((result.soldOut||[]).map(function(s){return{name:s.name,have:s.available,want:'?'};}));return;}
+        goPage('payment');
+      });
     });
   };
   el.appendChild(btnCfm);
@@ -2074,11 +2085,24 @@ function reorder(order){
   localStorage.setItem('onban_my_info',JSON.stringify({name:order.name,phone:order.phone}));
   updateStatusBtn();
 
-  fetch(API_URL+'/api/orders/'+encodeURIComponent(order.id)+'/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'cancelled'})}).catch(function(){});
-  fetch(API_URL+'/api/orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:newOrder})}).catch(function(){});
-  if(newOrder.additionalRequest){
-    fetch(API_URL+'/api/orders/'+encodeURIComponent(newOrder.id)+'/request',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:newOrder.additionalRequest})}).catch(function(){});
-  }
+  // 취소 → 신규 주문 순서 보장 (재고: 복원 후 차감)
+  fetch(API_URL+'/api/orders/'+encodeURIComponent(order.id)+'/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'cancelled'})})
+    .catch(function(){})
+    .then(function(){
+      return fetch(API_URL+'/api/orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:newOrder})});
+    })
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(!d.success&&d.soldOut){
+        var msg=d.soldOut.map(function(s){return s.name+' (남은 재고 '+s.available+'개)';}).join(', ');
+        showToast('재주문 실패 — 재고 부족: '+msg);
+        return;
+      }
+      if(newOrder.additionalRequest){
+        fetch(API_URL+'/api/orders/'+encodeURIComponent(newOrder.id)+'/request',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:newOrder.additionalRequest})}).catch(function(){});
+      }
+    })
+    .catch(function(){});
 
   // 재주문접수 알림톡
   if(order.phone){

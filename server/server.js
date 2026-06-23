@@ -187,37 +187,99 @@ app.get('/api/orders', async (req, res) => {
   } catch(e) { err(res, e.message); }
 });
 
-// 주문 저장/업데이트 (POST /api/orders)
+// 주문 저장/업데이트 (POST /api/orders) — 재고 차감 포함
 app.post('/api/orders', async (req, res) => {
   try {
     const order = req.body.data || req.body;
     if (!order.id) return err(res, '주문 ID 없음', 400);
+
+    // 이미 존재하는 주문이면 상태만 업데이트
     const [exist] = await pool.execute('SELECT id FROM orders WHERE id=?', [order.id]);
     if (exist.length) {
       if (order.status) await pool.execute('UPDATE orders SET status=? WHERE id=?', [order.status, order.id]);
       return ok(res, { action: 'updated' });
     }
-    await pool.execute(
-      'INSERT INTO orders (id,date,time,name,phone,addr,memo,items,total,status,is_reorder,additional_request) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
-      [
-        order.id, order.date, order.time||'',
-        order.name||'', order.phone||'', order.addr||'', order.memo||'',
-        JSON.stringify(order.items||[]), order.total||0,
-        order.status||'pending', order.isReorder?1:0,
-        order.additionalRequest||''
-      ]
-    );
-    ok(res, { action: 'inserted' });
+
+    const items  = order.items || [];
+    const date   = order.date;
+    const conn   = await pool.getConnection();
+    await conn.beginTransaction();
+    try {
+      // 재고 확인 (FOR UPDATE — 동시 주문 직렬화)
+      const soldOut = [];
+      for (const item of items) {
+        const [rows] = await conn.execute(
+          'SELECT stock FROM daily_menus WHERE date=? AND name=? FOR UPDATE',
+          [date, item.name]
+        );
+        const stock = rows.length ? rows[0].stock : 0;
+        if (stock < (item.qty || 1)) soldOut.push({ name: item.name, available: stock });
+      }
+      if (soldOut.length) {
+        await conn.rollback(); conn.release();
+        return res.json({ success: false, soldOut });
+      }
+
+      // 재고 차감
+      for (const item of items) {
+        await conn.execute(
+          'UPDATE daily_menus SET stock = stock - ? WHERE date=? AND name=?',
+          [item.qty || 1, date, item.name]
+        );
+      }
+
+      // 주문 저장
+      await conn.execute(
+        'INSERT INTO orders (id,date,time,name,phone,addr,memo,items,total,status,is_reorder,additional_request) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
+        [
+          order.id, date, order.time||'',
+          order.name||'', order.phone||'', order.addr||'', order.memo||'',
+          JSON.stringify(items), order.total||0,
+          order.status||'pending', order.isReorder?1:0,
+          order.additionalRequest||''
+        ]
+      );
+      await conn.commit(); conn.release();
+      ok(res, { action: 'inserted' });
+    } catch(e) { await conn.rollback(); conn.release(); throw e; }
   } catch(e) { err(res, e.message); }
 });
 
-// 주문 상태 변경 (PUT /api/orders/:id/status)
+// 주문 상태 변경 (PUT /api/orders/:id/status) — 취소 시 재고 복원
 app.put('/api/orders/:id/status', async (req, res) => {
   try {
     const { status } = req.body;
     if (!status) return err(res, '상태 없음', 400);
-    await pool.execute('UPDATE orders SET status=? WHERE id=?', [status, req.params.id]);
-    ok(res);
+
+    const conn = await pool.getConnection();
+    await conn.beginTransaction();
+    try {
+      const [rows] = await conn.execute(
+        'SELECT status, date, items FROM orders WHERE id=? FOR UPDATE', [req.params.id]
+      );
+      if (!rows.length) { await conn.rollback(); conn.release(); return err(res, '주문 없음', 404); }
+
+      const prev   = rows[0].status;
+      const date   = rows[0].date;
+      const items  = typeof rows[0].items === 'string' ? JSON.parse(rows[0].items) : (rows[0].items||[]);
+      const wasActive = ['pending','confirmed','delivered'].includes(prev);
+      const nowCancelled = status === 'cancelled';
+
+      await conn.execute('UPDATE orders SET status=? WHERE id=?', [status, req.params.id]);
+
+      // 취소 시 재고 복원
+      if (wasActive && nowCancelled) {
+        for (const item of items) {
+          await conn.execute(
+            'UPDATE daily_menus SET stock = stock + ? WHERE date=? AND name=?',
+            [item.qty || 1, date, item.name]
+          );
+        }
+      }
+
+      await conn.commit(); conn.release();
+      ok(res);
+    } catch(e) { await conn.rollback(); conn.release(); throw e; }
   } catch(e) { err(res, e.message); }
 });
 

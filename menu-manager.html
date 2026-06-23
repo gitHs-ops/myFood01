@@ -1796,7 +1796,6 @@ function renderOrders(){
         }
         _ordersCache[o.id]=o;
       });
-      _reconcileStock(orders);
       renderOrdersList(today,orders);
     })
     .catch(function(){
@@ -2125,40 +2124,7 @@ function sendAlimtalk(phone, tplId, vars, fallbackMsg){
   fetch('https://script.google.com/macros/s/AKfycbwtXJL4_lMynbG4U13PqbnPOiTp15evyw0BPPQ0A9aV5QYlI5dSQB4Ru-8BOqVR9RPq1w/exec?'+qs,{redirect:'follow'}).catch(function(){});
 }
 
-// ── 재고 동기화 (주문 접수 즉시 차감 / 취소 시 복원) ──
-function _getStockApplied(){try{return JSON.parse(localStorage.getItem('stock_applied_orders')||'[]');}catch(e){return [];}}
-function _setStockApplied(arr){localStorage.setItem('stock_applied_orders',JSON.stringify(arr));}
-function _adjustStock(date,items,sign){
-  if(!date||!items||!items.length)return;
-  var deltas=items.filter(function(it){return it.qty;}).map(function(it){return{name:it.name,delta:sign*(it.qty||0)};});
-  if(!deltas.length)return;
-  fetch(API_URL+'/api/menu/'+date+'/stock-adjust',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:deltas})}).catch(function(){});
-}
-function _reconcileStock(orders){
-  if(!orders||!orders.length)return;
-  var appliedSet={};_getStockApplied().forEach(function(id){appliedSet[id]=true;});
-  // 최초 1회: 기존 주문 전체를 이미 차감된 것으로 간주 (재차감 방지)
-  if(localStorage.getItem('stock_reconcile_init')!=='1'){
-    orders.forEach(function(o){if(o.status!=='cancelled')appliedSet[o.id]=true;});
-    _setStockApplied(Object.keys(appliedSet));
-    localStorage.setItem('stock_reconcile_init','1');
-  }
-  var changedApplied=false,refreshNeeded=false;
-  orders.forEach(function(o){
-    var consumes=(o.status==='pending'||o.status==='confirmed'||o.status==='delivered');
-    if(consumes&&!appliedSet[o.id]){
-      _adjustStock(o.date,o.items,-1);
-      appliedSet[o.id]=true;changedApplied=true;
-      if(o.date===workDate)refreshNeeded=true;
-    }else if(o.status==='cancelled'&&appliedSet[o.id]){
-      _adjustStock(o.date,o.items,1);
-      delete appliedSet[o.id];changedApplied=true;
-      if(o.date===workDate)refreshNeeded=true;
-    }
-  });
-  if(changedApplied)_setStockApplied(Object.keys(appliedSet));
-  if(refreshNeeded){loadMenus(workDate);renderAll();}
-}
+
 
 function confirmOrder(id){
   var orders=getOrders();
@@ -2167,7 +2133,6 @@ function confirmOrder(id){
   o.status='confirmed';
   saveOrders(orders);
   fetch(API_URL+'/api/orders/'+encodeURIComponent(id)+'/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'confirmed'})}).catch(function(){});
-  // 재고 차감은 주문 접수(pending) 시점에 _reconcileStock에서 처리됨
   // 고객에게 주문접수 알림톡 (실패시 SMS 대체)
   if(o.phone){
     var menuList=o.items.map(function(i){return i.name+' '+i.qty+'개';}).join(', ');
@@ -2222,8 +2187,9 @@ function cancelOrder(id){
   if(!o)return;
   o.status='cancelled';
   saveOrders(orders);
-  fetch(API_URL+'/api/orders/'+encodeURIComponent(id)+'/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'cancelled'})}).catch(function(){});
-  _reconcileStock([o]);  // 즉시 재고 복원
+  fetch(API_URL+'/api/orders/'+encodeURIComponent(id)+'/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'cancelled'})})
+    .then(function(){if(o.date===workDate){loadMenus(workDate);}})
+    .catch(function(){});
   if(o.phone){
     sendAlimtalk(o.phone,
       'KA01TP2605220434459714HrsH0pRr0l',
@@ -2327,7 +2293,7 @@ function _pollFetch(cb){
   var today=workDate||toISO(new Date());
   fetch(API_URL+'/api/orders?date='+encodeURIComponent(today))
     .then(function(r){return r.json();})
-    .then(function(d){var orders=d.orders||[];_reconcileStock(orders);cb(orders);})
+    .then(function(d){var orders=d.orders||[];cb(orders);})
     .catch(function(){_pollSetUI(false,_pollCountdown);});
 }
 
@@ -2670,8 +2636,7 @@ window.onload=function(){
   document.getElementById('menuName').addEventListener('blur',function(){setTimeout(closeAcList,150);});
   document.addEventListener('click',function(e){if(!e.target.closest('.menuname-wrap'))closeAcList();});
   // 구버전 localStorage 잔재 제거
-  localStorage.removeItem('onban_seen_addreq');
-  localStorage.removeItem('onban_last_orders_open');
+  ['onban_seen_addreq','onban_last_orders_open','stock_applied_orders','stock_reconcile_init'].forEach(function(k){localStorage.removeItem(k);});
   // 주문 자동 폴링 시작
   startOrderPolling();
   requestNotifyPermission();
