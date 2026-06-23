@@ -12,11 +12,11 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // ── DB 연결 풀 ──────────────────────────────────────────────
 const pool = mysql.createPool({
-  host:              process.env.MYSQL_HOST,
-  port:              Number(process.env.MYSQL_PORT) || 3306,
-  user:              process.env.MYSQL_USER,
-  password:          process.env.MYSQL_PASSWORD,
-  database:          process.env.MYSQL_DATABASE,
+  host:              process.env.MYSQLHOST     || process.env.MYSQL_HOST,
+  port:              Number(process.env.MYSQLPORT     || process.env.MYSQL_PORT) || 3306,
+  user:              process.env.MYSQLUSER     || process.env.MYSQL_USER,
+  password:          process.env.MYSQLPASSWORD || process.env.MYSQL_PASSWORD,
+  database:          process.env.MYSQLDATABASE || process.env.MYSQL_DATABASE,
   waitForConnections: true,
   connectionLimit:   10,
   timezone:          '+09:00'
