@@ -146,7 +146,7 @@ footer{
 
 <script>
 (function(){
-  var API_URL='http://localhost:3000'; // TODO: Railway 배포 후 교체
+  var API_URL='https://myfood01-production.up.railway.app';
   var ref=(document.referrer||'').slice(0,200);
   fetch('https://api.ipify.org?format=json').then(function(r){return r.json();}).then(function(d){
     fetch(API_URL+'/api/log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ip:d.ip||'',ref:ref,page:'index'})}).catch(function(){});

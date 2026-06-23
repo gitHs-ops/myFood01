@@ -24,7 +24,7 @@ def normalize_price(p):
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
 # ──────────────────────────────────────────────────────────────
-API_URL = 'http://localhost:3000'   # 배포 후 Railway URL로 교체
+API_URL = 'https://myfood01-production.up.railway.app'
 FILE    = r"C:\Users\user\Documents\522 금요일 메뉴입니다.txt"
 # ──────────────────────────────────────────────────────────────
 
