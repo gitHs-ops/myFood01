@@ -653,6 +653,7 @@ var IMGBB_KEY='b5a6e9481bb9cb4791108cf50761a459';
 var CAT_COLOR={'메인':'#1D9E75','반찬':'#378ADD','김치':'#D4537E','밀키트':'#E9A826','기타':'#888780'};
 var VALID_CATS=['메인','반찬','김치','밀키트','기타'];
 var menus=[],filterCat='전체',filterAllCat='전체',workDate='',calViewYear,calViewMonth,imgTargetId=null,parsedMenus=[],pendingImgUrl=null,menuEditTargetId=null,editPendingImgUrl=null;
+var _menuDirty=false;
 var imgCtx='menus',editCtx='menus';
 var allMenus=[];
 var _allMenuPage=0, ALL_PAGE_SIZE=10;
@@ -846,6 +847,7 @@ function onMenuNameKey(e){
 function toISO(d){var kst=new Date(d.getTime()+9*60*60*1000);return kst.getUTCFullYear()+'-'+String(kst.getUTCMonth()+1).padStart(2,'0')+'-'+String(kst.getUTCDate()).padStart(2,'0');}
 function fmtDate(iso){var d=new Date(iso+'T00:00:00');var s=d.toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'short'});return iso===toISO(new Date())?s+' (오늘)':s;}
 function loadMenus(iso){
+  _menuDirty=false;
   menus=[];
   fetch(API_URL+'/api/menu/'+iso)
     .then(function(res){return res.ok?res.json():null;})
@@ -862,7 +864,7 @@ function saveMenus(iso){
   exportMenuToSheet(iso,function(){});
   if(_datesCache.length&&_datesCache.indexOf(iso)<0){_datesCache.unshift(iso);_datesCache.sort(function(a,b){return b.localeCompare(a);});}
 }
-function save(){saveMenus(workDate);}
+function save(){_menuDirty=true;saveMenus(workDate);}
 
 function selectDate(iso){
   workDate=iso;
@@ -1264,6 +1266,7 @@ var _histLoadDate=null,_histSubTab='dates';
 function saveToday(){
   if(!menus.length){alert('저장할 메뉴가 없어요.');return;}
   if(!confirm(fmtDate(workDate)+'\n저장할까요?')){return;}
+  _menuDirty=false;
   saveMenus(workDate);
   mergeToAllMenus();
   exportMenuToSheet(workDate,function(ok){
@@ -1655,6 +1658,14 @@ function importFromSheetByDate(date,mode){
     .catch(function(e){showToast('❌ '+e.message);});
 }
 function switchPage(name){
+  if(name!=='manage'){
+    var nameInput=document.getElementById('menuName');
+    var formHasInput=nameInput&&nameInput.value.trim();
+    if(_menuDirty||formHasInput){
+      if(!confirm('편집한 내용을 저장하지 않았어요.\n그냥 이동할까요?'))return;
+      _menuDirty=false;
+    }
+  }
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
   document.querySelectorAll('.nav-tab').forEach(function(t){t.classList.remove('active');});
   document.getElementById('page-'+name).classList.add('active');
