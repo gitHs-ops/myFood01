@@ -311,6 +311,10 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
 .setting-input{flex:1;padding:10px 12px;border:1.5px solid #cde8e7;border-radius:8px;font-size:14px;font-family:inherit;outline:none;}
 .setting-input:focus{border-color:#086266;}
 .btn-setting-save{background:#086266;color:#fff;border:none;border-radius:8px;padding:11px 20px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;width:100%;margin-top:6px;}
+/* 플로팅 저장 버튼 */
+#floatSaveBtn{position:fixed;bottom:24px;right:20px;z-index:150;background:#086266;color:#fff;border:none;border-radius:50px;padding:13px 22px;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;box-shadow:0 4px 18px rgba(8,98,102,.35);display:none;transition:background .2s,box-shadow .2s;}
+#floatSaveBtn.dirty{background:#c0392b;box-shadow:0 4px 18px rgba(192,57,43,.45);animation:savePulse 1.8s ease-in-out infinite;}
+@keyframes savePulse{0%,100%{transform:scale(1);}50%{transform:scale(1.06);}}
 .setting-saved{color:#1D9E75;font-size:13px;font-weight:700;text-align:center;margin-top:8px;display:none;}
 /* 발송 ON/OFF 토글 */
 .send-toggle-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid #f0f5f5;}
@@ -433,6 +437,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
   <button class="nav-tab" onclick="switchPage('history')"><span class="ti">🗄</span><span class="tl">메뉴 창고</span></button>
   <button class="nav-tab" onclick="switchPage('settings')"><span class="ti">⚙</span><span class="tl">설정</span></button>
 </div>
+<button id="floatSaveBtn" onclick="saveToday()">💾 저장</button>
 <div id="page-manage" class="page active">
   <div class="card"><div class="stats-grid" id="statsGrid"></div></div>
   <div class="card">
@@ -465,10 +470,6 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
     <div class="tabs" id="filterTabs"></div>
     <div class="menu-list" id="menuList"></div>
   </div>
-  <div class="card">
-    <div class="card-title">날짜별 메뉴 묶음 저장</div>
-    <button class="btn btn-add" onclick="saveToday()">저장</button>
-  </div>
 </div>
 <div id="page-kakao" class="page">
   <div class="card">
@@ -484,10 +485,6 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
       <button class="copy-btn" id="copyBtn" onclick="copyKakao()" style="flex:1;">텍스트 복사하기</button>
       <button class="copy-btn" id="parseKakaoBtn" onclick="parseKakaoToMenu()" style="flex:1;background:#086266;color:#fff;">카카오 톡 내용으로 일일 메뉴 생성</button>
     </div>
-  </div>
-  <div class="card">
-    <div class="card-title">날짜별 메뉴 묶음 저장</div>
-    <button class="btn btn-add" onclick="saveToday()">저장</button>
   </div>
 </div>
 <div id="page-settings" class="page">
@@ -864,7 +861,14 @@ function saveMenus(iso){
   exportMenuToSheet(iso,function(){});
   if(_datesCache.length&&_datesCache.indexOf(iso)<0){_datesCache.unshift(iso);_datesCache.sort(function(a,b){return b.localeCompare(a);});}
 }
-function save(){_menuDirty=true;saveMenus(workDate);}
+function _updateSaveBtn(){
+  var btn=document.getElementById('floatSaveBtn');
+  if(!btn)return;
+  var onSavePage=document.getElementById('page-manage').classList.contains('active')||document.getElementById('page-kakao').classList.contains('active');
+  btn.style.display=onSavePage?'block':'none';
+  if(_menuDirty)btn.classList.add('dirty');else btn.classList.remove('dirty');
+}
+function save(){_menuDirty=true;saveMenus(workDate);_updateSaveBtn();}
 
 function selectDate(iso){
   workDate=iso;
@@ -1267,6 +1271,7 @@ function saveToday(){
   if(!menus.length){alert('저장할 메뉴가 없어요.');return;}
   if(!confirm(fmtDate(workDate)+'\n저장할까요?')){return;}
   _menuDirty=false;
+  _updateSaveBtn();
   saveMenus(workDate);
   mergeToAllMenus();
   exportMenuToSheet(workDate,function(ok){
@@ -1683,6 +1688,7 @@ function switchPage(name){
   }
   if(name==='orders')renderOrders();
   if(name==='settings')loadSettingsForm();
+  _updateSaveBtn();
 }
 function guessCategory(name){if(/밀키트/.test(name))return '밀키트';if(/김치|깍두기|깻잎|열무|소박이|겉절이|쪽파/.test(name))return '김치';if(/국|탕|찌개|전골|찜|구이|볶음밥|덮밥|스테이크|육전|수육|갈비|삼겹|닭|오리|아구|조개/.test(name))return '메인';if(/조림|무침|볶음|샐러드|나물|장조림|스프|뭇국|미역국/.test(name))return '반찬';return '기타';}
 function parseKakao(){
