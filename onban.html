@@ -1190,8 +1190,7 @@ function renderStatusPage(){
   document.getElementById('statusBtn').classList.remove('has-order');
   updateStatusBtn();
   setTimeout(function(){_ackAllReplies(sorted);},4000);
-  // GAS에서 최신 adminReply / status 갱신
-  _fetchStatusFromGAS(myInfo, today, sorted, false);
+  _fetchStatusFromAPI(myInfo, today, sorted, false);
 }
 function refreshStatusNow(){
   showToast('조회 중...');
@@ -1203,11 +1202,11 @@ function refreshStatusNow(){
   .then(function(r){return r.json();})
   .then(function(data){
     if(!data.success||!Array.isArray(data.orders)){showToast('서버 오류');return;}
-    var gasMap={};
-    data.orders.forEach(function(go){gasMap[go.id]=go;});
+    var apiMap={};
+    data.orders.forEach(function(go){apiMap[go.id]=go;});
     var allOrders=JSON.parse(localStorage.getItem('orders')||'[]');
     allOrders.forEach(function(o){
-      var go=gasMap[o.id];
+      var go=apiMap[o.id];
       if(!go)return;
       if(go.adminReply!==undefined)o.adminReply=go.adminReply;
       if(go.replyAt!==undefined)o.replyAt=go.replyAt;
@@ -1225,19 +1224,19 @@ function refreshStatusNow(){
   })
   .catch(function(){showToast('서버 연결 실패.');});
 }
-function _fetchStatusFromGAS(myInfo, today, localOrders, forceRender){
+function _fetchStatusFromAPI(myInfo, today, localOrders, forceRender){
   var phone=String(myInfo.phone||'').replace(/[^0-9]/g,'');
   if(!phone)return;
   fetch(API_URL+'/api/orders?date='+encodeURIComponent(today)+'&phone='+encodeURIComponent(phone))
   .then(function(r){return r.json();})
   .then(function(data){
     if(!data.success||!Array.isArray(data.orders))return;
-    var gasMap={};
-    data.orders.forEach(function(go){gasMap[go.id]=go;});
+    var apiMap={};
+    data.orders.forEach(function(go){apiMap[go.id]=go;});
     var allOrders=JSON.parse(localStorage.getItem('orders')||'[]');
     var changed=false;
     allOrders.forEach(function(o){
-      var go=gasMap[o.id];
+      var go=apiMap[o.id];
       if(!go)return;
       if(go.adminReply!==undefined && go.adminReply!==o.adminReply){o.adminReply=go.adminReply;changed=true;}
       if(go.replyAt  !==undefined && go.replyAt  !==o.replyAt) {o.replyAt =go.replyAt; changed=true;}
@@ -1502,7 +1501,7 @@ function getOnbanSettings(){
   try{return Object.assign(def,JSON.parse(localStorage.getItem('onban_settings')||'{}'));}catch(e){return def;}
 }
 
-// ── SMS 발송 (솔라피 GAS 프록시) ──
+// ── SMS 발송 (솔라피) ──
 function sendSMS(phone, msg){
   if(getOnbanSettings().smsEnabled===false)return;
   var qs='receiver='+encodeURIComponent(phone)+'&msg='+encodeURIComponent(msg);
@@ -2020,7 +2019,7 @@ function cancelHistOrder(orderId){
   if(!o)return;
   o.status='cancelled';
   localStorage.setItem('orders',JSON.stringify(orders));
-  // GAS 시트 상태 업데이트 (관리자 동기화)
+  // API 상태 업데이트 (관리자 동기화)
   fetch(API_URL+'/api/orders/'+encodeURIComponent(orderId)+'/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'cancelled'})}).catch(function(){});
   // 취소 알림톡
   if(o.phone){
@@ -2113,7 +2112,7 @@ window.onload=function(){
   loadMenus();
   _startMenuAutoRefresh();
   updateStatusBtn();
-  // 관리자 발송 설정을 GAS에서 로드하여 localStorage 갱신
+  // 발송 설정을 API에서 로드하여 localStorage 갱신
   fetch(API_URL+'/api/settings')
     .then(function(r){return r.json();})
     .then(function(d){

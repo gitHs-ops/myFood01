@@ -1388,35 +1388,35 @@ function deduplicateByName(arr){
 }
 function importAllMenusFromSheet(cb){
   apiFetch('/api/menu/all',function(err,d){
-    var gasMenus=[];
+    var apiMenus=[];
     if(!err&&d&&d.success&&d.menus&&d.menus.length){
       var _idGen=Date.now();d.menus.forEach(function(m){if(!m.id)m.id=_idGen++;});
-      gasMenus=deduplicateByName(d.menus);
+      apiMenus=deduplicateByName(d.menus);
     }
-    // ── 로컬 allMenus vs GAS: 타임스탬프 비교 머지 ──
-    var gasMap={}; // lowerName → index
-    gasMenus.forEach(function(m,i){gasMap[(m.name||'').trim().toLowerCase()]=i;});
+    // ── 로컬 allMenus vs API: 타임스탬프 비교 머지 ──
+    var apiMap={}; // lowerName → index
+    apiMenus.forEach(function(m,i){apiMap[(m.name||'').trim().toLowerCase()]=i;});
     var localAll=[];
     try{localAll=JSON.parse(localStorage.getItem('onban_all_menus')||'[]');}catch(ex){}
     localAll.forEach(function(lm){
       if(!lm.name)return;
       var k=lm.name.trim().toLowerCase();
-      var gi=gasMap[k];
+      var gi=apiMap[k];
       if(gi!==undefined){
         // 양쪽에 있음 → 타임스탬프 비교: 로컬이 더 최신이면 로컬 우선
-        var gasTs=Number(gasMenus[gi].updatedAt)||0;
+        var gasTs=Number(apiMenus[gi].updatedAt)||0;
         var localTs=Number(lm.updatedAt)||0;
         if(localTs>gasTs){
-          gasMenus[gi]=Object.assign({},gasMenus[gi],{
+          apiMenus[gi]=Object.assign({},apiMenus[gi],{
             price:lm.price,stock:lm.stock,child:lm.child,
-            cat:lm.cat,imgUrl:lm.imgUrl||gasMenus[gi].imgUrl,
-            count:Math.max(gasMenus[gi].count||0,lm.count||0),
+            cat:lm.cat,imgUrl:lm.imgUrl||apiMenus[gi].imgUrl,
+            count:Math.max(apiMenus[gi].count||0,lm.count||0),
             updatedAt:localTs
           });
         }
       }else{
-        gasMap[k]=gasMenus.length;
-        gasMenus.push(lm); // 로컬에만 있음 → 추가
+        apiMap[k]=apiMenus.length;
+        apiMenus.push(lm); // 로컬에만 있음 → 추가
       }
     });
     // 히스토리에도 없는 메뉴 추가
@@ -1426,14 +1426,14 @@ function importAllMenusFromSheet(cb){
       (entry.menus||[]).forEach(function(m){
         if(!m.name)return;
         var k=m.name.trim().toLowerCase();
-        if(!(k in gasMap)){
-          gasMap[k]=gasMenus.length;
-          gasMenus.push({id:idx++,name:m.name,cat:m.cat||'기타',price:m.price||0,
+        if(!(k in apiMap)){
+          apiMap[k]=apiMenus.length;
+          apiMenus.push({id:idx++,name:m.name,cat:m.cat||'기타',price:m.price||0,
             stock:0,child:m.child||false,imgUrl:m.imgUrl||null,count:1,updatedAt:m.updatedAt||0});
         }
       });
     });
-    if(gasMenus.length){allMenus=deduplicateByName(gasMenus);saveAllMenus();}
+    if(apiMenus.length){allMenus=deduplicateByName(apiMenus);saveAllMenus();}
     if(cb)cb();
   });
 }
@@ -1602,8 +1602,7 @@ function renderHistory(){
   if(_histSubTab==='all'){renderAllMenus();return;}
   var h=JSON.parse(localStorage.getItem('menu_history')||'[]');
   var el=document.getElementById('historyList');
-  var syncBtn='<button class="parse-btn" style="width:100%;margin-bottom:12px;" onclick="fetchHistoryFromSheet()">☁️ 메뉴 창고에서 불러오기</button>';
-  if(!h.length){el.innerHTML=syncBtn+'<div class="empty">저장된 기록이 없어요.<br>위 버튼으로 메뉴 창고에서 불러오세요.</div>';return;}
+  if(!h.length){el.innerHTML='<div class="empty">메뉴 창고에서 불러오는 중...</div>';fetchHistoryFromSheet(true);return;}
 
   // 년월 목록 추출
   var ymSet={};
@@ -1741,7 +1740,7 @@ function switchPage(name){
   if(name==='orders'){dateBtn.textContent=fmtDate(workDate);dateBtn.style.opacity='';}
   else{dateBtn.textContent=fmtDate(workDate);dateBtn.style.opacity='';}
   if(name==='kakao')renderKakao();
-  if(name==='history')renderHistory();
+  if(name==='history'){fetchHistoryFromSheet(true);renderHistory();}
   if(name==='orders')renderOrders();
   if(name==='settings')loadSettingsForm();
 }
@@ -1816,7 +1815,7 @@ function importParsed(){
 }
 /* ════ 주문 관리 ════ */
 var orderFilter='all';
-var _ordersCache={};  // GAS에서 불러온 주문 캐시 (id → order)
+var _ordersCache={};  // API에서 불러온 주문 캐시 (id → order)
 
 /* ── 추가요청 알림 — "확인" 버튼으로만 해제 ── */
 // 세션 내 인메모리: 관리자가 "확인" 버튼을 눌러야만 해제됨
@@ -1862,7 +1861,7 @@ function renderOrders(){
     .then(function(r){return r.json();})
     .then(function(d){
       var gasOrders=d.orders||[];
-      // localStorage 주문과 병합 (GAS 미등록 주문 포함)
+      // localStorage 주문과 병합 (API 미등록 주문 포함)
       var localAll=getOrders();
       var localToday=localAll.filter(function(o){return o.date===today;});
       var gasIds=gasOrders.map(function(o){return o.id;});
@@ -1872,7 +1871,7 @@ function renderOrders(){
       var oldCache=_ordersCache;
       _ordersCache={};
       gasOrders.forEach(function(o){
-        // GAS가 빈 adminReply를 반환하면 로컬 캐시 값 보존
+        // API가 빈 adminReply를 반환하면 로컬 캐시 값 보존
         if(!o.adminReply && oldCache[o.id] && oldCache[o.id].adminReply){
           o.adminReply=oldCache[o.id].adminReply;
           o.replyAt  =oldCache[o.id].replyAt||0;
@@ -2145,7 +2144,7 @@ function sendAdminReply(orderId, phone){
   }
   // textarea 내용 그대로 저장 (수정/덮어쓰기)
   var combined=text;
-  // GAS에 합산 답변 저장
+  // API에 합산 답변 저장
   fetch(API_URL+'/api/orders/'+encodeURIComponent(orderId)+'/reply',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:combined})}).catch(function(){});
   // 캐시 업데이트
   if(_ordersCache[orderId]){
@@ -2346,7 +2345,7 @@ function deleteOrder(id){
   // DOM 카드 즉시 제거
   var card=document.getElementById('ocard_'+id);
   if(card)card.remove();
-  // 통계/필터 탭 갱신 (GAS 재조회 없이 현재 캐시 기준)
+  // 통계/필터 탭 갱신 (현재 캐시 기준)
   var remaining=Object.values(_ordersCache);
   var today=workDate||toISO(new Date());
   renderOrdersList(today,remaining);
@@ -2792,7 +2791,7 @@ window.onload=function(){
   workDate=toISO(new Date());loadMenus(workDate);
   document.getElementById('dateDisplayBtn').textContent=fmtDate(workDate);
   renderAll();renderHistory();
-  // 페이지 로드 시 1회 GAS "등록된모든메뉴" 시트 → localStorage 동기화
+  // 페이지 로드 시 1회 API → localStorage 동기화
   importAllMenusFromSheet(function(){
     // 자동완성 사전도 갱신
     var names=allMenus.map(function(m){return m.name;}).filter(Boolean);
