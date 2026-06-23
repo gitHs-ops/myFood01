@@ -1337,7 +1337,7 @@ function switchHistSubTab(tab){
     }
     var el=document.getElementById('allMenuList');
     el.style.display='';
-    el.innerHTML='<div style="text-align:center;padding:30px;color:#aaa;font-size:13px;">구글시트에서 불러오는 중...</div>';
+    el.innerHTML='<div style="text-align:center;padding:30px;color:#aaa;font-size:13px;">메뉴 창고에서 불러오는 중...</div>';
     importAllMenusFromSheet(function(){renderAllMenus();});  // 진입 시 시트에서 새로 가져오기
   }
 }
@@ -1756,7 +1756,11 @@ function switchPage(name){
   if(name==='orders'){dateBtn.textContent=fmtDate(workDate);dateBtn.style.opacity='';}
   else{dateBtn.textContent=fmtDate(workDate);dateBtn.style.opacity='';}
   if(name==='kakao')renderKakao();
-  if(name==='history'){fetchHistoryFromSheet(true);renderHistory();}
+  if(name==='history'){
+    fetchHistoryFromSheet(true);
+    importAllMenusFromSheet(function(){renderAllMenus();});
+    renderHistory();
+  }
   if(name==='orders')renderOrders();
   if(name==='settings')loadSettingsForm();
 }
