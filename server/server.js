@@ -141,6 +141,25 @@ app.put('/api/menu/:date/stock', async (req, res) => {
   } catch(e) { err(res, e.message); }
 });
 
+// 재고 증감 (POST /api/menu/:date/stock-adjust)  delta = +N/-N
+app.post('/api/menu/:date/stock-adjust', async (req, res) => {
+  try {
+    const items = req.body.items || [];
+    if (!items.length) return ok(res);
+    const conn = await pool.getConnection();
+    await conn.beginTransaction();
+    for (const it of items) {
+      await conn.execute(
+        'UPDATE daily_menus SET stock = GREATEST(0, stock + ?) WHERE date=? AND name=?',
+        [it.delta, req.params.date, it.name]
+      );
+    }
+    await conn.commit();
+    conn.release();
+    ok(res);
+  } catch(e) { err(res, e.message); }
+});
+
 // ══════════════════════════════════════════════════════════════
 // 주문
 // ══════════════════════════════════════════════════════════════

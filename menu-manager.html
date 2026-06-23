@@ -2229,45 +2229,44 @@ function sendAlimtalk(phone, tplId, vars, fallbackMsg){
 // ── 재고 동기화 (주문 접수 즉시 차감 / 취소 시 복원) ──
 function _getStockApplied(){try{return JSON.parse(localStorage.getItem('stock_applied_orders')||'[]');}catch(e){return [];}}
 function _setStockApplied(arr){localStorage.setItem('stock_applied_orders',JSON.stringify(arr));}
-function _adjustLocalStock(date,items,sign){
-  if(!date||!items)return false;
+function _adjustStock(date,items,sign){
+  if(!date||!items||!items.length)return;
+  var deltas=items.filter(function(it){return it.qty;}).map(function(it){return{name:it.name,delta:sign*(it.qty||0)};});
+  if(!deltas.length)return;
+  // MySQL 직접 차감
+  fetch(API_URL+'/api/menu/'+date+'/stock-adjust',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:deltas})}).catch(function(){});
+  // localStorage 캐시도 갱신
   var key='menus_'+date;
   var dayMenus=JSON.parse(localStorage.getItem(key)||'[]');
-  if(!dayMenus.length)return false;
-  var changed=false;
-  items.forEach(function(it){
-    var m=dayMenus.find(function(x){return x.name===it.name;});
-    if(m){m.stock=Math.max(0,(m.stock||0)+sign*(it.qty||0));changed=true;}
-  });
-  if(changed)localStorage.setItem(key,JSON.stringify(dayMenus));
-  return changed;
+  if(dayMenus.length){
+    deltas.forEach(function(it){var m=dayMenus.find(function(x){return x.name===it.name;});if(m)m.stock=Math.max(0,(m.stock||0)+it.delta);});
+    localStorage.setItem(key,JSON.stringify(dayMenus));
+  }
 }
 function _reconcileStock(orders){
   if(!orders||!orders.length)return;
   var appliedSet={};_getStockApplied().forEach(function(id){appliedSet[id]=true;});
-  // 최초 1회: 기존 확정/배송 주문은 이미 차감된 것으로 간주 (재차감 방지)
+  // 최초 1회: 기존 주문 전체를 이미 차감된 것으로 간주 (재차감 방지)
   if(localStorage.getItem('stock_reconcile_init')!=='1'){
-    orders.forEach(function(o){if(o.status==='confirmed'||o.status==='delivered')appliedSet[o.id]=true;});
+    orders.forEach(function(o){if(o.status!=='cancelled')appliedSet[o.id]=true;});
     _setStockApplied(Object.keys(appliedSet));
     localStorage.setItem('stock_reconcile_init','1');
   }
-  var dirtyDates={},changedApplied=false;
+  var changedApplied=false,refreshNeeded=false;
   orders.forEach(function(o){
     var consumes=(o.status==='pending'||o.status==='confirmed'||o.status==='delivered');
     if(consumes&&!appliedSet[o.id]){
-      if(_adjustLocalStock(o.date,o.items,-1))dirtyDates[o.date]=true;
+      _adjustStock(o.date,o.items,-1);
       appliedSet[o.id]=true;changedApplied=true;
+      if(o.date===workDate)refreshNeeded=true;
     }else if(o.status==='cancelled'&&appliedSet[o.id]){
-      if(_adjustLocalStock(o.date,o.items,1))dirtyDates[o.date]=true;
+      _adjustStock(o.date,o.items,1);
       delete appliedSet[o.id];changedApplied=true;
+      if(o.date===workDate)refreshNeeded=true;
     }
   });
   if(changedApplied)_setStockApplied(Object.keys(appliedSet));
-  var dates=Object.keys(dirtyDates);
-  if(dates.length){
-    dates.forEach(function(d){exportMenuToSheet(d);});
-    if(dirtyDates[workDate]){loadMenus(workDate);renderAll();}
-  }
+  if(refreshNeeded){loadMenus(workDate);renderAll();}
 }
 
 function confirmOrder(id){
