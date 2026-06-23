@@ -1263,7 +1263,7 @@ function parseKakaoToMenu(){
 var _histLoadDate=null,_histSubTab='dates';
 function saveToday(){
   if(!menus.length){alert('저장할 메뉴가 없어요.');return;}
-  if(!confirm(fmtDate(workDate)+'\n메뉴 '+menus.length+'종을 창고에 저장할까요?')){return;}
+  if(!confirm(fmtDate(workDate)+'\n저장할까요?')){return;}
   saveMenus(workDate);
   mergeToAllMenus();
   exportMenuToSheet(workDate,function(ok){
