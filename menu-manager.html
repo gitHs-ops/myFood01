@@ -889,6 +889,7 @@ function saveMenus(iso){
   h.sort(function(a,b){return b.date.localeCompare(a.date);});
   localStorage.setItem('menu_history',JSON.stringify(h));
   exportMenuToSheet(iso,function(){});  // MySQL에도 동기화
+  if(_datesCache.length&&_datesCache.indexOf(iso)<0){_datesCache.unshift(iso);_datesCache.sort(function(a,b){return b.localeCompare(a);});}
 }
 function save(){saveMenus(workDate);}
 
@@ -906,8 +907,7 @@ function closeCal(e){if(e&&e.target!==document.getElementById('calOverlay'))retu
 function calMove(d){calViewMonth+=d;if(calViewMonth<0){calViewMonth=11;calViewYear--;}if(calViewMonth>11){calViewMonth=0;calViewYear++;}renderCal();}
 function renderCal(){
   var today=toISO(new Date());
-  var h=JSON.parse(localStorage.getItem('menu_history')||'[]');
-  var has={};h.forEach(function(x){has[x.date]=1;});
+  var has={};_datesCache.forEach(function(d){has[d]=1;});
   document.getElementById('calTitle').textContent=calViewYear+'년 '+(calViewMonth+1)+'월';
   var start=new Date(calViewYear,calViewMonth,1).getDay();
   var days=new Date(calViewYear,calViewMonth+1,0).getDate();
@@ -1612,70 +1612,54 @@ function confirmSendToToday(mode){
   selectedAllIds.clear();
   closeSendToTodayPopup();
 }
+var _datesCache=[];
 function renderHistory(){
   renderHistSubTabs();
   if(_histSubTab==='all'){renderAllMenus();return;}
-  var h=JSON.parse(localStorage.getItem('menu_history')||'[]');
   var el=document.getElementById('historyList');
-  if(!h.length){el.innerHTML='<div class="empty">메뉴 창고에서 불러오는 중...</div>';fetchHistoryFromSheet(true);return;}
-
-  // 년월 목록 추출
+  if(!_datesCache.length){
+    el.innerHTML='<div class="empty">불러오는 중...</div>';
+    apiFetch('/api/dates',function(err,d){
+      if(err||!d||!d.dates||!d.dates.length){el.innerHTML='<div class="empty">저장된 날짜별 메뉴가 없어요.</div>';return;}
+      _datesCache=d.dates;
+      _renderDateList(el);
+    });
+    return;
+  }
+  _renderDateList(el);
+}
+function _renderDateList(el){
   var ymSet={};
-  h.forEach(function(e){var ym=e.date.slice(0,7);ymSet[ym]=true;});
+  _datesCache.forEach(function(date){var ym=date.slice(0,7);ymSet[ym]=true;});
   var ymList=Object.keys(ymSet).sort().reverse();
   if(ymList.indexOf(_histYM)<0)_histYM='전체';
-
   var filterTabs='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">'
     +['전체'].concat(ymList).map(function(ym){
       var active=_histYM===ym;
       var label=ym==='전체'?'전체':(ym.slice(0,4)+'년 '+String(Number(ym.slice(5)))+'월');
       return '<button onclick="setHistYM(\''+ym+'\')" style="padding:5px 12px;border-radius:999px;font-size:12px;font-weight:600;border:none;cursor:pointer;font-family:inherit;'
-        +(active?'background:#086266;color:#fff;':'background:#e8f5f4;color:#086266;')
-        +'">'+label+'</button>';
-    }).join('')
-    +'</div>';
-
-  var filtered=_histYM==='전체'?h:h.filter(function(e){return e.date.slice(0,7)===_histYM;});
+        +(active?'background:#086266;color:#fff;':'background:#e8f5f4;color:#086266;')+'">'+label+'</button>';
+    }).join('')+'</div>';
+  var filtered=_histYM==='전체'?_datesCache:_datesCache.filter(function(d){return d.slice(0,7)===_histYM;});
   var today=toISO(new Date());
-  var items=filtered.map(function(e){
-    var isToday=e.date===today,isCur=e.date===workDate;
-    var label=new Date(e.date+'T00:00:00').toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'short'});
+  var items=filtered.map(function(date){
+    var isToday=date===today,isCur=date===workDate;
+    var label=new Date(date+'T00:00:00').toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'short'});
     var border=isCur?'border:2px solid #086266;':'';
-    var badge=isCur?' <span style="font-size:10px;background:#086266;color:#fff;padding:1px 6px;border-radius:999px;">지금 작업중</span>':(isToday?' <span style="font-size:10px;background:#e8f5f4;color:#086266;padding:1px 6px;border-radius:999px;">오늘</span>':'');
-    var meta,prev='';
-    if(e.menus){
-      var st=e.menus.reduce(function(s,m){return s+(m.stock||0);},0);
-      var cn=e.menus.filter(function(m){return m.child;}).length;
-      meta='메뉴 '+e.menus.length+'종 · 재고 '+st+'개 · 어린이 '+cn+'개';
-      prev='<div class="history-preview">'+e.menus.slice(0,5).map(function(m){return'<span class="tag-pill">'+m.name+'</span>';}).join('')+(e.menus.length>5?'<span class="tag-pill">+'+(e.menus.length-5)+'개</span>':'')+'</div>';
-    }else{meta='메뉴 창고에서 불러오기';}
+    var badge=isCur?' <span style="font-size:10px;background:#086266;color:#fff;padding:1px 6px;border-radius:999px;">지금 작업중</span>'
+             :(isToday?' <span style="font-size:10px;background:#e8f5f4;color:#086266;padding:1px 6px;border-radius:999px;">오늘</span>':'');
     var actBtns='<div class="hist-act-btns">'
-      +'<button class="hist-btn-preview" onclick="event.stopPropagation();openHistPreview(\''+e.date+'\')">🔍 미리보기</button>'
-      +'<button class="hist-btn-select" onclick="event.stopPropagation();openHistLoadModal(\''+e.date+'\')">선택 →</button>'
+      +'<button class="hist-btn-preview" onclick="event.stopPropagation();openHistPreview(\''+date+'\')">🔍 미리보기</button>'
+      +'<button class="hist-btn-select" onclick="event.stopPropagation();openHistLoadModal(\''+date+'\')">선택 →</button>'
       +'</div>';
-    return '<div class="history-item" style="'+border+'"><div class="history-item-header"><div><div class="history-date">'+label+badge+'</div><div class="history-meta">'+meta+'</div></div>'+actBtns+'</div>'+prev+'</div>';
+    return '<div class="history-item" style="'+border+'"><div class="history-item-header"><div>'
+      +'<div class="history-date">'+label+badge+'</div>'
+      +'</div>'+actBtns+'</div></div>';
   }).join('');
-
-  el.innerHTML=syncBtn+filterTabs+(items||'<div class="empty">해당 월에 저장된 기록이 없어요.</div>');
+  el.innerHTML=filterTabs+(items||'<div class="empty">해당 월에 저장된 기록이 없어요.</div>');
 }
-function setHistYM(ym){_histYM=ym;renderHistory();}
-function fetchHistoryFromSheet(silent){
-  if(!silent)showToast('메뉴 창고에서 목록 불러오는 중...');
-  apiFetch('/api/dates',function(err,d){
-    if(err||!d||!d.dates||!d.dates.length){
-      if(!silent)showToast(err?'목록 불러오기 실패. 재시도해주세요.':'메뉴 창고에 저장된 날짜가 없어요.');
-      if(silent){var el=document.getElementById('historyList');if(el&&!el.textContent.trim())el.innerHTML='<div class="empty">저장된 날짜별 메뉴가 없어요.</div>';}
-      return;
-    }
-    var h=JSON.parse(localStorage.getItem('menu_history')||'[]');
-    var existing={};h.forEach(function(e){existing[e.date]=true;});
-    d.dates.forEach(function(date){if(!existing[date])h.push({date:date,menus:null});});
-    h.sort(function(a,b){return b.date.localeCompare(a.date);});
-    localStorage.setItem('menu_history',JSON.stringify(h));
-    if(_histSubTab==='dates')renderHistory();
-    if(!silent)showToast(d.dates.length+'개 날짜 갱신 완료!');
-  });
-}
+function setHistYM(ym){_histYM=ym;_renderDateList(document.getElementById('historyList'));}
+function fetchHistoryFromSheet(){_datesCache=[];renderHistory();}
 var _histPreviewDate = null;
 function openHistPreview(date){
   _histPreviewDate = date;
@@ -1760,7 +1744,7 @@ function switchPage(name){
   else{dateBtn.textContent=fmtDate(workDate);dateBtn.style.opacity='';}
   if(name==='kakao')renderKakao();
   if(name==='history'){
-    fetchHistoryFromSheet(true);
+    _datesCache=[];
     importAllMenusFromSheet(function(){renderAllMenus();});
     renderHistory();
   }
