@@ -474,6 +474,13 @@ async function initDB() {
     for (const sql of sqls) await conn.execute(sql);
     // 기존 DB에 컬럼이 없을 경우 추가
     await conn.execute(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS addreq_acked TINYINT(1) DEFAULT 0`).catch(()=>{});
+    // 최초 1회: addreq_acked 컬럼 도입 전 기존 레코드 일괄 ack 처리
+    const [[migRow]] = await conn.execute(`SELECT v FROM settings WHERE k='addreq_acked_migrated_v1'`).catch(()=>[[null]]);
+    if(!migRow){
+      await conn.execute(`UPDATE orders SET addreq_acked=1 WHERE additional_request IS NOT NULL AND additional_request!=''`).catch(()=>{});
+      await conn.execute(`INSERT IGNORE INTO settings(k,v) VALUES('addreq_acked_migrated_v1','done')`).catch(()=>{});
+      console.log('addreq_acked 마이그레이션 완료');
+    }
     console.log('DB 테이블 초기화 완료');
   } finally {
     conn.release();
