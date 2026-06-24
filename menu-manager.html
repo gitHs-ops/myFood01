@@ -441,7 +441,10 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
 <div id="page-manage" class="page active">
   <div class="card"><div class="stats-grid" id="statsGrid"></div></div>
   <div class="card">
-    <div class="card-title">일일 메뉴 추가 등록</div>
+    <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+      <span>일일 메뉴 추가 등록</span>
+      <button class="btn" onclick="addMenu()" style="background:#e67e22;color:#fff;padding:7px 18px;font-size:13px;">+ 추 가</button>
+    </div>
     <div class="add-grid">
   <select id="menuCat">
     <option value="메인">메인</option><option value="반찬">반찬</option>
@@ -462,7 +465,6 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
 <div class="dup-warn" id="dupWarn">&#9888; 이미 오늘 목록에 있는 메뉴예요!</div>
     <label class="child-toggle"><input type="checkbox" id="menuChild"> 어린이도 먹을 수 있는 메뉴</label>
     <textarea id="menuDesc" placeholder="메뉴 설명 (선택) — 고객 상세 팝업에 표시됩니다" rows="2" style="width:100%;margin-bottom:10px;padding:8px 10px;border:1px solid #ddd;border-radius:8px;font-family:inherit;font-size:13px;resize:vertical;box-sizing:border-box;"></textarea>
-    <button class="btn btn-add" onclick="addMenu()">추 가</button>
   </div>
   <div class="card">
     <div class="card-title">오늘의 메뉴 목록</div>
