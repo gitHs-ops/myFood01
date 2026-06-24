@@ -167,12 +167,13 @@ app.post('/api/menu/:date/stock-adjust', async (req, res) => {
 // 주문 조회 (GET /api/orders?date=&phone=)
 app.get('/api/orders', async (req, res) => {
   try {
-    const { date, phone, name } = req.query;
+    const { date, phone, name, deviceId } = req.query;
     let sql = 'SELECT * FROM orders WHERE 1=1';
     const params = [];
-    if (date)  { sql += ' AND date=?';  params.push(date); }
-    if (phone) { sql += ' AND phone=?'; params.push(phone); }
-    else if (name) { sql += ' AND name=?'; params.push(name); }
+    if (date)     { sql += ' AND date=?';      params.push(date); }
+    if (deviceId) { sql += ' AND device_id=?'; params.push(deviceId); }
+    else if (phone) { sql += ' AND phone=?';   params.push(phone); }
+    else if (name)  { sql += ' AND name=?';    params.push(name); }
     sql += ' ORDER BY created_at DESC';
     const [rows] = await pool.execute(sql, params);
     // mysql2 timezone:'+09:00'로 DATE컬럼이 KST자정(=UTC 전날15시)으로 반환 → +9h 보정
@@ -237,13 +238,13 @@ app.post('/api/orders', async (req, res) => {
 
       // 주문 저장
       await conn.execute(
-        'INSERT INTO orders (id,date,time,name,phone,addr,memo,items,total,status,is_reorder,additional_request) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
+        'INSERT INTO orders (id,date,time,name,phone,addr,memo,items,total,status,is_reorder,additional_request,device_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
         [
           order.id, date, order.time||'',
           order.name||'', order.phone||'', order.addr||'', order.memo||'',
           JSON.stringify(items), order.total||0,
           order.status||'pending', order.isReorder?1:0,
-          order.additionalRequest||''
+          order.additionalRequest||'', order.deviceId||null
         ]
       );
       await conn.commit(); conn.release();
@@ -447,6 +448,7 @@ async function initDB() {
       additional_request TEXT,
       addreq_acked TINYINT(1) DEFAULT 0,
       is_reorder TINYINT(1) DEFAULT 0,
+      device_id VARCHAR(64),
       created_at DATETIME DEFAULT NOW()
     )`,
     `CREATE TABLE IF NOT EXISTS customers (
@@ -475,6 +477,7 @@ async function initDB() {
     for (const sql of sqls) await conn.execute(sql);
     // 기존 DB에 컬럼이 없을 경우 추가
     await conn.execute(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS addreq_acked TINYINT(1) DEFAULT 0`).catch(()=>{});
+    await conn.execute(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS device_id VARCHAR(64)`).catch(()=>{});
     // 최초 1회: addreq_acked 컬럼 도입 전 기존 레코드 일괄 ack 처리
     const [[migRow]] = await conn.execute(`SELECT v FROM settings WHERE k='addreq_acked_migrated_v1'`).catch(()=>[[null]]);
     if(!migRow){
