@@ -64,7 +64,7 @@ app.get('/api/menu/all', async (req, res) => {
     const [rows] = await pool.execute(
       'SELECT name,cat,price,stock,child,img_url AS imgUrl,count,updated_at AS updatedAt FROM menus ORDER BY count DESC, name'
     );
-    const menus = rows.map(r => ({ ...r, child: !!r.child }));
+    const menus = rows.map(r => ({ ...r, child: !!r.child, price: Number(r.price||0) }));
     ok(res, { menus });
   } catch(e) { err(res, e.message); }
 });
@@ -91,7 +91,7 @@ app.get('/api/menu/:date', async (req, res) => {
       [req.params.date]
     );
     if (!rows.length) return err(res, `${req.params.date} 메뉴 없음`, 404);
-    const menus = rows.map(r => ({ ...r, child: !!r.child }));
+    const menus = rows.map(r => ({ ...r, child: !!r.child, price: Number(r.price||0) }));
     ok(res, { date: req.params.date, menus });
   } catch(e) { err(res, e.message); }
 });
