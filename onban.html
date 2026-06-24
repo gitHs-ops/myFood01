@@ -1522,6 +1522,13 @@ function renderOrdererPage(){
     if(!phone){alert('연락처를 입력해주세요.');document.getElementById('ordererPhone').focus();return;}
     var memo=document.getElementById('ordererMemo').value;
     if(!memo){alert('요청사항을 선택해주세요.');document.getElementById('ordererMemo').focus();return;}
+    var _itemsTotal=orderItems.reduce(function(s,c){return s+c.price*c.qty;},0);
+    if(memo!=='매장픽업'&&_itemsTotal<20){
+      if(!document.getElementById('pickupRecommendBanner'))_showPickupRecommend();
+      showToast('2만원 미만 주문은 매장 픽업만 가능해요.');
+      document.getElementById('ordererMemo').focus();
+      return;
+    }
     var directReq=(document.getElementById('ordererDirectReq').value||'').trim();
     var fullMemo=memo+(directReq?' / '+directReq:'');
     ordererInfo={
@@ -1579,10 +1586,9 @@ function _showPickupRecommend(){
   var banner=document.createElement('div');
   banner.id='pickupRecommendBanner';
   banner.className='pickup-recommend-banner';
-  banner.innerHTML='<div>💡 2만원 미만 주문은 <strong>매장 픽업</strong>을 이용하시면 배달료가 없어요!</div>'
+  banner.innerHTML='<div>🚫 2만원 미만 주문은 <strong>매장 픽업</strong>만 가능해요!</div>'
     +'<div class="pickup-recommend-actions">'
     +'<button class="btn-pickup-yes" onclick="_pickPickup()">매장 픽업으로 변경</button>'
-    +'<button class="btn-pickup-no" onclick="document.getElementById(\'pickupRecommendBanner\').remove()">괜찮아요</button>'
     +'</div>';
   var target=document.getElementById('ordererOrderContent');
   if(target)target.insertBefore(banner,target.firstChild);
