@@ -873,20 +873,21 @@ function _updateSaveBtn(){
 }
 function save(){_menuDirty=true;saveMenus(workDate);_updateSaveBtn();}
 
-var _menuSSE=null;
+var _menuPollTimer=null;
 function _startMenuSSE(date){
-  if(_menuSSE){_menuSSE.close();_menuSSE=null;}
-  _menuSSE=new EventSource(API_URL+'/api/menu/stream?date='+encodeURIComponent(date));
-  _menuSSE.onmessage=function(e){
-    if(_menuDirty)return;
-    try{
-      var stocks=JSON.parse(e.data);
-      var map={};stocks.forEach(function(s){map[s.name]=s.stock;});
-      var changed=false;
-      menus.forEach(function(m){if(map[m.name]!==undefined&&m.stock!==map[m.name]){m.stock=map[m.name];changed=true;}});
-      if(changed)renderAll();
-    }catch(ex){}
-  };
+  if(_menuPollTimer){clearInterval(_menuPollTimer);_menuPollTimer=null;}
+  _menuPollTimer=setInterval(function(){
+    if(_menuDirty||!date)return;
+    fetch(API_URL+'/api/menu/'+date,{cache:'no-store'})
+      .then(function(r){return r.ok?r.json():null;})
+      .then(function(d){
+        if(!d||!d.menus||_menuDirty)return;
+        var map={};d.menus.forEach(function(m){map[m.name]=m.stock;});
+        var changed=false;
+        menus.forEach(function(m){if(map[m.name]!==undefined&&m.stock!==map[m.name]){m.stock=map[m.name];changed=true;}});
+        if(changed)renderAll();
+      }).catch(function(){});
+  },3000);
 }
 
 function selectDate(iso){
