@@ -1911,11 +1911,22 @@ function renderHistory(){
   .then(function(data){
     if(data.success&&Array.isArray(data.orders)){
       var all=JSON.parse(localStorage.getItem('orders')||'[]');
+      var dbIds={};
       data.orders.forEach(function(go){
+        dbIds[go.id]=true;
         var i=all.findIndex(function(o){return o.id===go.id;});
-        if(i>=0)all[i]=Object.assign({},all[i],go);
-        else all.push(go);
+        if(i>=0){
+          // items(수량) 유지 — status/replies만 DB 동기화
+          all[i].status=go.status;
+          if(go.adminReply!==undefined)all[i].adminReply=go.adminReply;
+          if(go.replyAt!==undefined)all[i].replyAt=go.replyAt;
+          if(go.additionalRequest!==undefined)all[i].additionalRequest=go.additionalRequest;
+        } else {
+          all.push(go);
+        }
       });
+      // 오늘자 phantom 주문 제거 (DB에 없는 localStorage 전용 항목)
+      all=all.filter(function(o){return o.date!==menuDate||dbIds[o.id];});
       localStorage.setItem('orders',JSON.stringify(all));
     }
     _doRenderHistory(el);
