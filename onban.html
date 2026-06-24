@@ -787,6 +787,13 @@ function loadMenus(silent){
 var _refreshSec=10;
 function _setRefreshLabel(txt){var el=document.getElementById('dateRefreshCountdown');if(el)el.textContent=txt;}
 function _markMenuActivity(){_refreshSec=10;}
+function _silentOrderRefresh(){
+  var myInfo=JSON.parse(localStorage.getItem('onban_my_info')||'null');
+  if(!myInfo||!myInfo.phone)return;
+  var today=toISO(new Date());
+  var localOrders=JSON.parse(localStorage.getItem('orders')||'[]');
+  _fetchStatusFromAPI(myInfo,today,localOrders,false);
+}
 function _startMenuAutoRefresh(){
   setInterval(function(){
     var listActive=document.getElementById('page-list')&&document.getElementById('page-list').classList.contains('active');
@@ -796,6 +803,7 @@ function _startMenuAutoRefresh(){
     if(_refreshSec<=0){
       _setRefreshLabel('🔄 갱신중');
       loadMenus(true);
+      _silentOrderRefresh();
       _refreshSec=10;
     }else{
       _setRefreshLabel('🔄 '+_refreshSec);
