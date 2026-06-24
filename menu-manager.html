@@ -2303,7 +2303,6 @@ function startOrderPolling(){
           if(active&&active.id==='page-orders'){
             renderOrders();
           }
-          _pollNotify(orders);
         }
       });
     } else {
@@ -2334,21 +2333,6 @@ function _pollSetUI(ok,sec){
   lbl.textContent='🔄 '+sec;
 }
 
-function _pollNotify(orders){
-  var pending=orders.filter(function(o){return o.status==='pending';}).length;
-  var msg='🔔 주문 변동 감지!'+(pending?' (대기 '+pending+'건)':'');
-  showToast(msg);
-  // 브라우저 알림 (허용된 경우)
-  if(window.Notification&&Notification.permission==='granted'){
-    new Notification('오늘의 반찬 주문 알림',{body:msg,icon:'favicon.ico'});
-  }
-}
-
-function requestNotifyPermission(){
-  if(window.Notification&&Notification.permission==='default'){
-    Notification.requestPermission();
-  }
-}
 
 /* ════ 설정 ════ */
 var API_URL='https://myfood01-production.up.railway.app';
