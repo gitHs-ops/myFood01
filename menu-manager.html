@@ -1815,10 +1815,10 @@ function ackAddReq(orderId){
 }
 function _isNewAddReq(o){return !!(o.additionalRequest&&!_ackedAddReqs.has(o.id));}
 function updateAddReqBadge(orders){
-  var unseen=(orders||[]).filter(_isNewAddReq).length;
+  var count=(orders||[]).filter(function(o){return o.status==='pending'||_isNewAddReq(o);}).length;
   var el=document.getElementById('addreqBadge');
   if(!el)return;
-  if(unseen>0){el.textContent=unseen;el.style.display='block';}
+  if(count>0){el.textContent=count;el.style.display='block';}
   else{el.style.display='none';}
 }
 
