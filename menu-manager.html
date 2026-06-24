@@ -1587,13 +1587,12 @@ function _renderDateList(el){
   _datesCache.forEach(function(date){var ym=date.slice(0,7);ymSet[ym]=true;});
   var ymList=Object.keys(ymSet).sort().reverse();
   if(ymList.indexOf(_histYM)<0)_histYM='전체';
-  var filterTabs='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">'
+  var filterTabs='<div style="margin-bottom:12px;">'
+    +'<select onchange="setHistYM(this.value)" style="padding:6px 12px;border-radius:8px;border:1.5px solid #086266;font-size:13px;font-weight:600;color:#086266;background:#e8f5f4;cursor:pointer;font-family:inherit;outline:none;">'
     +['전체'].concat(ymList).map(function(ym){
-      var active=_histYM===ym;
       var label=ym==='전체'?'전체':(ym.slice(0,4)+'년 '+String(Number(ym.slice(5)))+'월');
-      return '<button onclick="setHistYM(\''+ym+'\')" style="padding:5px 12px;border-radius:999px;font-size:12px;font-weight:600;border:none;cursor:pointer;font-family:inherit;'
-        +(active?'background:#086266;color:#fff;':'background:#e8f5f4;color:#086266;')+'">'+label+'</button>';
-    }).join('')+'</div>';
+      return '<option value="'+ym+'"'+(_histYM===ym?' selected':'')+'>'+label+'</option>';
+    }).join('')+'</select></div>';
   var filtered=_histYM==='전체'?_datesCache:_datesCache.filter(function(d){return d.slice(0,7)===_histYM;});
   var today=toISO(new Date());
   var items=filtered.map(function(date){
