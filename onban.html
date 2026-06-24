@@ -1589,6 +1589,7 @@ function _showPickupRecommend(){
   banner.innerHTML='<div>🚫 2만원 미만 주문은 <strong>매장 픽업</strong>만 가능해요!</div>'
     +'<div class="pickup-recommend-actions">'
     +'<button class="btn-pickup-yes" onclick="_pickPickup()">매장 픽업으로 변경</button>'
+    +'<button class="btn-pickup-no" onclick="document.getElementById(\'pickupRecommendBanner\').remove()">취소</button>'
     +'</div>';
   var target=document.getElementById('ordererOrderContent');
   if(target)target.insertBefore(banner,target.firstChild);
