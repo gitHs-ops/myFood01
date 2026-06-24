@@ -186,6 +186,7 @@ app.get('/api/orders', async (req, res) => {
       total: r.total, status: r.status,
       adminReply: r.admin_reply, replyAt: r.reply_at,
       additionalRequest: r.additional_request,
+      addreqAcked: !!r.addreq_acked,
       isReorder: !!r.is_reorder
     }));
     ok(res, { orders });
@@ -304,6 +305,14 @@ app.put('/api/orders/:id/request', async (req, res) => {
   try {
     const { text } = req.body;
     await pool.execute('UPDATE orders SET additional_request=? WHERE id=?', [text||'', req.params.id]);
+    ok(res);
+  } catch(e) { err(res, e.message); }
+});
+
+// 추가요청 확인 처리 (PUT /api/orders/:id/addreq-ack)
+app.put('/api/orders/:id/addreq-ack', async (req, res) => {
+  try {
+    await pool.execute('UPDATE orders SET addreq_acked=1 WHERE id=?', [req.params.id]);
     ok(res);
   } catch(e) { err(res, e.message); }
 });
@@ -435,6 +444,7 @@ async function initDB() {
       admin_reply TEXT,
       reply_at DATETIME,
       additional_request TEXT,
+      addreq_acked TINYINT(1) DEFAULT 0,
       is_reorder TINYINT(1) DEFAULT 0,
       created_at DATETIME DEFAULT NOW()
     )`,
@@ -462,6 +472,8 @@ async function initDB() {
   const conn = await pool.getConnection();
   try {
     for (const sql of sqls) await conn.execute(sql);
+    // 기존 DB에 컬럼이 없을 경우 추가
+    await conn.execute(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS addreq_acked TINYINT(1) DEFAULT 0`).catch(()=>{});
     console.log('DB 테이블 초기화 완료');
   } finally {
     conn.release();

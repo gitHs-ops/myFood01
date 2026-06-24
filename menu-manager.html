@@ -1807,20 +1807,21 @@ var _ackedMap=(function(){
   }catch(e){return {};}
 })();
 function ackAddReq(orderId){
+  // 낙관적 UI — 즉시 반영
+  if(_ordersCache[orderId])_ordersCache[orderId].addreqAcked=true;
   var card=document.getElementById('ocard_'+orderId);
-  _ackedMap[orderId]=(card?card.dataset.addreq:'');
-  try{localStorage.setItem(_ACKED_KEY,JSON.stringify(_ackedMap));}catch(e){}
-  // 카드 스타일 즉시 제거
   if(card){
     card.classList.remove('addreq-new');
     var badge=card.querySelector('.addreq-new-badge');
     if(badge)badge.remove();
   }
-  // 배지 재계산
-  var orders=Object.values(_ordersCache);
-  updateAddReqBadge(orders);
+  updateAddReqBadge(Object.values(_ordersCache));
+  // DB에 ack 저장
+  fetch(API_BASE+'/api/orders/'+encodeURIComponent(orderId)+'/addreq-ack',{
+    method:'PUT',headers:{'Content-Type':'application/json'}
+  }).catch(function(){});
 }
-function _isNewAddReq(o){return !!(o.additionalRequest&&_ackedMap[o.id]!==o.additionalRequest);}
+function _isNewAddReq(o){return !!(o.additionalRequest&&!o.addreqAcked);}
 function updateAddReqBadge(orders){
   var count=(orders||[]).filter(function(o){return o.status==='pending'||_isNewAddReq(o);}).length;
   var el=document.getElementById('addreqBadge');
