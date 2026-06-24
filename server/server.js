@@ -161,6 +161,43 @@ app.post('/api/menu/:date/stock-adjust', async (req, res) => {
 });
 
 // ══════════════════════════════════════════════════════════════
+// 메뉴 재고 실시간 SSE
+// ══════════════════════════════════════════════════════════════
+const sseClients = new Map(); // date -> Set<res>
+const sseSnapshots = {};      // date -> JSON string
+
+app.get('/api/menu/stream', (req, res) => {
+  const date = req.query.date;
+  if (!date) return res.status(400).end();
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders();
+  res.write(':\n\n'); // keep-alive ping
+  if (!sseClients.has(date)) sseClients.set(date, new Set());
+  sseClients.get(date).add(res);
+  req.on('close', () => { sseClients.get(date)?.delete(res); });
+});
+
+setInterval(async () => {
+  for (const [date, clients] of sseClients.entries()) {
+    if (!clients.size) continue;
+    try {
+      const [rows] = await pool.execute(
+        'SELECT name, stock FROM daily_menus WHERE date=? ORDER BY name', [date]
+      );
+      const snap = JSON.stringify(rows.map(r => ({ n: r.name, s: r.stock })));
+      if (sseSnapshots[date] !== snap) {
+        sseSnapshots[date] = snap;
+        const payload = `data: ${JSON.stringify(rows.map(r => ({ name: r.name, stock: r.stock })))}\n\n`;
+        for (const client of clients) { try { client.write(payload); } catch(e) {} }
+      }
+    } catch(e) {}
+  }
+}, 3000);
+
+// ══════════════════════════════════════════════════════════════
 // 주문
 // ══════════════════════════════════════════════════════════════
 

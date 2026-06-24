@@ -462,7 +462,10 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
     <textarea id="menuDesc" placeholder="메뉴 설명 (선택) — 고객 상세 팝업에 표시됩니다" rows="2" style="width:100%;margin-bottom:10px;padding:8px 10px;border:1px solid #ddd;border-radius:8px;font-family:inherit;font-size:13px;resize:vertical;box-sizing:border-box;"></textarea>
   </div>
   <div class="card">
-    <div class="card-title">오늘의 메뉴 목록</div>
+    <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+      <span>오늘의 메뉴 목록</span>
+      <button onclick="loadMenus(workDate)" style="background:#086266;color:#fff;border:none;border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">↻ 최신 정보 갱신</button>
+    </div>
     <div class="legend" id="catLegend"></div>
     <div class="tabs" id="filterTabs"></div>
     <div class="menu-list" id="menuList"></div>
@@ -870,10 +873,27 @@ function _updateSaveBtn(){
 }
 function save(){_menuDirty=true;saveMenus(workDate);_updateSaveBtn();}
 
+var _menuSSE=null;
+function _startMenuSSE(date){
+  if(_menuSSE){_menuSSE.close();_menuSSE=null;}
+  _menuSSE=new EventSource(API_URL+'/api/menu/stream?date='+encodeURIComponent(date));
+  _menuSSE.onmessage=function(e){
+    if(_menuDirty)return;
+    try{
+      var stocks=JSON.parse(e.data);
+      var map={};stocks.forEach(function(s){map[s.name]=s.stock;});
+      var changed=false;
+      menus.forEach(function(m){if(map[m.name]!==undefined&&m.stock!==map[m.name]){m.stock=map[m.name];changed=true;}});
+      if(changed)renderAll();
+    }catch(ex){}
+  };
+}
+
 function selectDate(iso){
   workDate=iso;
   document.getElementById('dateDisplayBtn').textContent=fmtDate(iso);
   loadMenus(iso);filterCat='전체';renderAll();renderHistory();
+  _startMenuSSE(iso);
   document.getElementById('calOverlay').classList.remove('open');
 }
 function moveDate(d){var dt=new Date(workDate+'T00:00:00');dt.setDate(dt.getDate()+d);selectDate(toISO(dt));}
@@ -2270,18 +2290,6 @@ function startOrderPolling(){
     _pollCountdown--;
     if(_pollCountdown<=0){
       _pollCountdown=15;
-      // 미저장 변경 없을 때만 메뉴 재고 조용히 갱신
-      if(!_menuDirty && workDate){
-        fetch(API_URL+'/api/menu/'+workDate,{cache:'no-store'})
-          .then(function(r){return r.ok?r.json():null;})
-          .then(function(d){
-            if(d&&d.menus&&d.menus.length){
-              var idx=Date.now();
-              menus=d.menus.map(function(m){return Object.assign({id:idx++,stock:m.stock||0},m);});
-              renderAll();
-            }
-          }).catch(function(){});
-      }
       _pollFetch(function(orders){
         var snap=_makeSnapshot(orders);
         var changed=(_pollSnapshot!==null && snap!==_pollSnapshot);
@@ -2641,7 +2649,7 @@ window.onload=function(){
   var _goto=localStorage.getItem('mm_goto');if(_goto){localStorage.removeItem('mm_goto');setTimeout(function(){switchPage(_goto);},400);}
   // 시작 시 서버에서 설정 동기화 (localStorage stale 방지)
   loadSettingsFromSheet(function(){});
-  workDate=toISO(new Date());loadMenus(workDate);
+  workDate=toISO(new Date());loadMenus(workDate);_startMenuSSE(workDate);
   _updateSaveBtn();
   document.getElementById('dateDisplayBtn').textContent=fmtDate(workDate);
   renderAll();renderHistory();
