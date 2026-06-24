@@ -2639,6 +2639,8 @@ window.onload=function(){
     });
   })();
   var _goto=localStorage.getItem('mm_goto');if(_goto){localStorage.removeItem('mm_goto');setTimeout(function(){switchPage(_goto);},400);}
+  // 시작 시 서버에서 설정 동기화 (localStorage stale 방지)
+  loadSettingsFromSheet(function(){});
   workDate=toISO(new Date());loadMenus(workDate);
   _updateSaveBtn();
   document.getElementById('dateDisplayBtn').textContent=fmtDate(workDate);
