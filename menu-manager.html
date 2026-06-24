@@ -2640,6 +2640,7 @@ window.onload=function(){
   })();
   var _goto=localStorage.getItem('mm_goto');if(_goto){localStorage.removeItem('mm_goto');setTimeout(function(){switchPage(_goto);},400);}
   workDate=toISO(new Date());loadMenus(workDate);
+  _updateSaveBtn();
   document.getElementById('dateDisplayBtn').textContent=fmtDate(workDate);
   renderAll();renderHistory();
   importAllMenusFromSheet(function(){
