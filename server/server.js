@@ -267,8 +267,10 @@ app.put('/api/orders/:id/status', async (req, res) => {
       const prev   = rows[0].status;
       const date   = rows[0].date;
       const items  = typeof rows[0].items === 'string' ? JSON.parse(rows[0].items) : (rows[0].items||[]);
-      const wasActive = ['pending','confirmed','delivered'].includes(prev);
+      const wasActive    = ['pending','confirmed','delivered'].includes(prev);
       const nowCancelled = status === 'cancelled';
+      const wasCancelled = prev === 'cancelled';
+      const nowActive    = ['pending','confirmed','delivered'].includes(status);
 
       await conn.execute('UPDATE orders SET status=? WHERE id=?', [status, req.params.id]);
 
@@ -277,6 +279,15 @@ app.put('/api/orders/:id/status', async (req, res) => {
         for (const item of items) {
           await conn.execute(
             'UPDATE daily_menus SET stock = stock + ? WHERE date=? AND name=?',
+            [item.qty || 1, date, item.name]
+          );
+        }
+      }
+      // 취소 해제(재주문 실패 롤백) 시 재고 재차감
+      if (wasCancelled && nowActive) {
+        for (const item of items) {
+          await conn.execute(
+            'UPDATE daily_menus SET stock = GREATEST(stock - ?, 0) WHERE date=? AND name=?',
             [item.qty || 1, date, item.name]
           );
         }
