@@ -1202,14 +1202,15 @@ function _buildStatusCardHtml(o){
 function renderStatusPage(){
   var el=document.getElementById('statusContent');
   var myInfo=JSON.parse(localStorage.getItem('onban_my_info')||'null');
-  if(!myInfo||!myInfo.name||!myInfo.phone){
+  if(!myInfo||!myInfo.name){
     el.innerHTML='<div class="hist-empty"><span>📭</span><p>주문 이력이 없어요.<br><small style="color:#aaa;font-size:12px;">주문 확정 후 조회할 수 있어요.</small></p></div>';
     return;
   }
   var today=toISO(new Date());
   el.innerHTML='<div style="text-align:center;padding:40px;color:#aaa;font-size:13px;">불러오는 중...</div>';
   var phone=String(myInfo.phone||'').replace(/[^0-9]/g,'');
-  fetch(API_URL+'/api/orders?date='+encodeURIComponent(today)+'&phone='+encodeURIComponent(phone),{cache:'no-store'})
+  var qs='date='+encodeURIComponent(today)+(phone?'&phone='+encodeURIComponent(phone):'&name='+encodeURIComponent(myInfo.name));
+  fetch(API_URL+'/api/orders?'+qs,{cache:'no-store'})
   .then(function(r){return r.json();})
   .then(function(data){
     if(!data.success||!Array.isArray(data.orders)){
@@ -1221,7 +1222,7 @@ function renderStatusPage(){
     if(!sorted.length){
       el.innerHTML='<div class="hist-empty"><span>📭</span>'
         +'<p>오늘 접수된 주문이 없어요.<br>'
-        +'<small style="color:#aaa;font-size:12px;">'+myInfo.name+' · '+myInfo.phone+'</small></p></div>';
+        +'<small style="color:#aaa;font-size:12px;">'+myInfo.name+(myInfo.phone?' · '+myInfo.phone:'')+'</small></p></div>';
       document.getElementById('statusBtn').classList.remove('has-order');
       updateStatusBtn();
       return;

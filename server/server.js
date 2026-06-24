@@ -167,11 +167,12 @@ app.post('/api/menu/:date/stock-adjust', async (req, res) => {
 // 주문 조회 (GET /api/orders?date=&phone=)
 app.get('/api/orders', async (req, res) => {
   try {
-    const { date, phone } = req.query;
+    const { date, phone, name } = req.query;
     let sql = 'SELECT * FROM orders WHERE 1=1';
     const params = [];
     if (date)  { sql += ' AND date=?';  params.push(date); }
     if (phone) { sql += ' AND phone=?'; params.push(phone); }
+    else if (name) { sql += ' AND name=?'; params.push(name); }
     sql += ' ORDER BY created_at DESC';
     const [rows] = await pool.execute(sql, params);
     // mysql2 timezone:'+09:00'로 DATE컬럼이 KST자정(=UTC 전날15시)으로 반환 → +9h 보정
