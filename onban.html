@@ -1721,6 +1721,7 @@ function saveOrder(cb){
     memo:ordererInfo.memo,
     items:orderItems.map(function(c){return {name:c.name,qty:c.qty,price:c.price};}),
     total:total,
+    deliveryFee:_deliveryFee,
     status:'pending'
   };
 
@@ -1945,11 +1946,14 @@ function _doRenderHistory(el){
   var statusMap={pending:'대기중',confirmed:'주문접수',delivered:'배송완료',cancelled:'취소됨'};
   var statusCls={pending:'pending',confirmed:'confirmed',delivered:'delivered',cancelled:'cancelled'};
   orders.forEach(function(o){
-    var total=o.items.reduce(function(s,i){return s+i.price*i.qty;},0);
+    var itemsSum=o.items.reduce(function(s,i){return s+i.price*i.qty;},0);
+    var deliveryFee=o.deliveryFee||0;
+    var total=itemsSum+deliveryFee;
     var isCancelled=(o.status==='cancelled');
     var card=document.createElement('div');
     card.className='hist-card';
     card.id='histcard-'+o.id;
+    card.dataset.deliveryFee=deliveryFee;
     // 헤더
     var head=document.createElement('div');
     head.className='hist-head';
@@ -1993,6 +1997,14 @@ function _doRenderHistory(el){
       body.appendChild(row);
     });
     card.appendChild(body);
+    // 배달료 (있을 때만 표시)
+    if(deliveryFee>0){
+      var feeRow=document.createElement('div');
+      feeRow.className='order-delivery-fee-row';
+      feeRow.style.display='flex';
+      feeRow.innerHTML='<span>🚚 배달료</span><span>+'+comma(deliveryFee)+'천원</span>';
+      card.appendChild(feeRow);
+    }
     // 합계
     var totRow=document.createElement('div');
     totRow.className='hist-total';
@@ -2051,7 +2063,8 @@ function histEditQty(orderId,itemName,d){
   var pEl=document.getElementById('histprice-'+orderId+'-'+key);
   if(qEl)qEl.textContent=item.qty;
   if(pEl)pEl.textContent=comma(item.price*item.qty)+'천원';
-  var total=o.items.reduce(function(s,i){return s+i.price*i.qty;},0);
+  var df=parseInt((document.getElementById('histcard-'+orderId)||{}).dataset&&document.getElementById('histcard-'+orderId).dataset.deliveryFee||0);
+  var total=o.items.reduce(function(s,i){return s+i.price*i.qty;},0)+df;
   var tEl=document.getElementById('histtotal-'+orderId);
   if(tEl)tEl.innerHTML='<span>합계</span><span class="hist-total-val">'+comma(total)+'천원</span>';
   localStorage.setItem('orders',JSON.stringify(orders));
@@ -2065,7 +2078,8 @@ function histDelItem(orderId,itemName){
   var key=itemName.replace(/\s/g,'_');
   var row=document.getElementById('histrow-'+orderId+'-'+key);
   if(row)row.remove();
-  var total=o.items.reduce(function(s,i){return s+i.price*i.qty;},0);
+  var df2=parseInt((document.getElementById('histcard-'+orderId)||{}).dataset&&document.getElementById('histcard-'+orderId).dataset.deliveryFee||0);
+  var total=o.items.reduce(function(s,i){return s+i.price*i.qty;},0)+df2;
   var tEl=document.getElementById('histtotal-'+orderId);
   if(tEl)tEl.innerHTML='<span>합계</span><span class="hist-total-val">'+comma(total)+'천원</span>';
   localStorage.setItem('orders',JSON.stringify(orders));
