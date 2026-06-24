@@ -333,6 +333,13 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
   white-space:nowrap;z-index:999;
 }
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.soldout-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:900;display:flex;align-items:center;justify-content:center;padding:24px;}
+.soldout-modal{background:#fff;border-radius:20px;width:100%;max-width:360px;padding:28px 24px 20px;text-align:center;animation:modalSlideUp .22s ease;}
+.soldout-icon{font-size:44px;margin-bottom:8px;}
+.soldout-title{font-size:17px;font-weight:800;color:#d32f2f;margin-bottom:14px;}
+.soldout-items{text-align:left;background:#fff5f5;border-radius:10px;padding:12px 14px;margin-bottom:18px;font-size:13px;color:#444;line-height:1.9;}
+.soldout-items span{font-weight:700;color:#d32f2f;}
+.soldout-ok{width:100%;padding:13px;background:#086266;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;}
 .no-menu{text-align:center;padding:60px 20px;color:var(--light);}
 .no-menu span{font-size:48px;display:block;margin-bottom:12px;}
 /* ── 주문자 정보 입력 ── */
@@ -679,6 +686,20 @@ function showToast(msg){
   t.textContent=msg;t.classList.add('show');
   clearTimeout(t._t);
   t._t=setTimeout(function(){t.classList.remove('show');},2000);
+}
+function showSoldOutModal(soldOut){
+  var overlay=document.createElement('div');
+  overlay.className='soldout-overlay';
+  var rows=soldOut.map(function(s){
+    return '<div>• '+s.name+' — 남은 재고 <span>'+s.available+'개</span></div>';
+  }).join('');
+  overlay.innerHTML='<div class="soldout-modal">'
+    +'<div class="soldout-icon">🚫</div>'
+    +'<div class="soldout-title">재주문 실패 — 재고 부족</div>'
+    +'<div class="soldout-items">'+rows+'</div>'
+    +'<button class="soldout-ok" onclick="this.closest(\'.soldout-overlay\').remove()">확인</button>'
+    +'</div>';
+  document.body.appendChild(overlay);
 }
 var _statusTimerHandle=null;
 function _startStatusTimer(){
@@ -2101,9 +2122,8 @@ function reorder(order){
     .then(function(r){return r.json();})
     .then(function(d){
       if(!d.success&&d.soldOut){
-        // 재고 부족 — localStorage 롤백 후 알림
-        var msg=d.soldOut.map(function(s){return s.name+' (남은 재고 '+s.available+'개)';}).join(', ');
-        showToast('재주문 실패 — 재고 부족: '+msg);
+        // 재고 부족 — localStorage 롤백 후 모달 표시
+        showSoldOutModal(d.soldOut);
         var ords=JSON.parse(localStorage.getItem('orders')||'[]');
         ords=ords.filter(function(o){return o.id!==newOrder.id;});
         var origOrd=ords.find(function(o){return o.id===order.id;});
