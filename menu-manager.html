@@ -878,15 +878,7 @@ function _startMenuSSE(date){
   if(_menuPollTimer){clearInterval(_menuPollTimer);_menuPollTimer=null;}
   _menuPollTimer=setInterval(function(){
     if(_menuDirty||!date)return;
-    fetch(API_URL+'/api/menu/'+date,{cache:'no-store'})
-      .then(function(r){return r.ok?r.json():null;})
-      .then(function(d){
-        if(!d||!d.menus||_menuDirty)return;
-        var map={};d.menus.forEach(function(m){map[m.name]=m.stock;});
-        var changed=false;
-        menus.forEach(function(m){if(map[m.name]!==undefined&&m.stock!==map[m.name]){m.stock=map[m.name];changed=true;}});
-        if(changed)renderAll();
-      }).catch(function(){});
+    loadMenus(date);
   },3000);
 }
 
