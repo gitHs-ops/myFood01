@@ -412,6 +412,11 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 .hist-actions{display:flex;gap:8px;padding:10px 14px 14px;}
 .order-memo-row{font-size:12px;color:#b8860b;background:#fff8e1;padding:6px 14px;line-height:1.5;}
 .order-addreq-row{color:#086266;background:#f0faf9;}
+.order-delivery-fee-row{display:none;justify-content:space-between;align-items:center;padding:8px 14px;font-size:13px;font-weight:600;color:#c2500a;border-top:1px dashed #f5cba7;}
+.pickup-recommend-banner{background:#fff7e6;border:1.5px solid #f59e0b;border-radius:10px;padding:14px 16px;margin-bottom:14px;color:#78350f;font-size:13px;line-height:1.6;}
+.pickup-recommend-actions{display:flex;gap:8px;margin-top:10px;}
+.btn-pickup-yes{background:#f59e0b;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;}
+.btn-pickup-no{background:transparent;color:#92400e;border:1.5px solid #f59e0b;border-radius:8px;padding:8px 14px;font-size:13px;cursor:pointer;}
 .hist-req-wrap{padding:4px 14px;}
 .hist-req-row{display:flex;align-items:flex-start;gap:8px;font-size:12px;line-height:1.5;padding:5px 0;}
 .hist-req-row span{flex:1;color:#555;}
@@ -567,7 +572,7 @@ select.orderer-input{appearance:none;-webkit-appearance:none;background:#fff url
       <input class="orderer-input" id="ordererAddr" type="text" placeholder="배송 주소 (선택)" maxlength="100">
       <button class="btn-addr-list" onclick="showAddrList()">📋 목록</button>
     </div>
-    <select class="orderer-input" id="ordererMemo" required>
+    <select class="orderer-input" id="ordererMemo" required onchange="_updateDeliveryFee()">
       <option value="">요청사항 선택 (필수)</option>
       <option value="경비원실">경비원실</option>
       <option value="문앞">문앞</option>
@@ -1494,11 +1499,17 @@ function renderOrdererPage(){
     row.appendChild(nm); row.appendChild(qty); row.appendChild(pr);
     box.appendChild(row);
   });
+  var feeRow=document.createElement('div');
+  feeRow.id='ordererDeliveryFeeRow';
+  feeRow.className='order-delivery-fee-row';
+  feeRow.innerHTML='<span>🚚 배달료</span><span>+1천원</span>';
+  box.appendChild(feeRow);
   var tot=document.createElement('div');
   tot.className='order-summary-total';
-  tot.innerHTML='<span class="order-summary-total-lbl">합계</span><span class="order-summary-total-amt">'+total.toLocaleString()+'천원</span>';
+  tot.innerHTML='<span class="order-summary-total-lbl">합계</span><span class="order-summary-total-amt" id="ordererSummaryTotal">'+total.toLocaleString()+'천원</span>';
   box.appendChild(tot);
   el.appendChild(box);
+  _updateDeliveryFee();
 
   // 확정 버튼
   var btn=document.createElement('button');
@@ -1521,7 +1532,7 @@ function renderOrdererPage(){
     };
     // 주문자 기억 (접수상태 조회용)
     localStorage.setItem('onban_my_info',JSON.stringify({name:ordererInfo.name,phone:ordererInfo.phone}));
-    lastOrderTotal=orderItems.reduce(function(s,c){return s+c.price*c.qty;},0);
+    lastOrderTotal=orderItems.reduce(function(s,c){return s+c.price*c.qty;},0)+_deliveryFee;
     verifyStock(function(ok,short){
       if(!ok){_notifyOutOfStock(short);return;}
       saveOrder(function(result){
@@ -1533,6 +1544,54 @@ function renderOrdererPage(){
     });
   };
   el.appendChild(btn);
+}
+
+// ── 배달료 ──
+var _deliveryFee=0;
+function _updateDeliveryFee(){
+  var memoEl=document.getElementById('ordererMemo');
+  if(!memoEl)return;
+  var memo=memoEl.value;
+  var itemsTotal=orderItems.reduce(function(s,c){return s+c.price*c.qty;},0);
+  var isPickup=(memo==='매장픽업');
+  var hasDelivery=(!isPickup&&!!memo);
+  _deliveryFee=0;
+  var feeRow=document.getElementById('ordererDeliveryFeeRow');
+  var totalEl=document.getElementById('ordererSummaryTotal');
+  var banner=document.getElementById('pickupRecommendBanner');
+  if(!hasDelivery||itemsTotal>=20){if(banner)banner.remove();}
+  if(!hasDelivery){
+    if(feeRow)feeRow.style.display='none';
+    if(totalEl)totalEl.textContent=itemsTotal.toLocaleString()+'천원';
+    return;
+  }
+  if(itemsTotal>=20){
+    _deliveryFee=1;
+    if(feeRow)feeRow.style.display='flex';
+    if(totalEl)totalEl.textContent=(itemsTotal+1).toLocaleString()+'천원';
+  } else {
+    if(feeRow)feeRow.style.display='none';
+    if(totalEl)totalEl.textContent=itemsTotal.toLocaleString()+'천원';
+    if(itemsTotal>0&&!document.getElementById('pickupRecommendBanner'))_showPickupRecommend();
+  }
+}
+function _showPickupRecommend(){
+  var banner=document.createElement('div');
+  banner.id='pickupRecommendBanner';
+  banner.className='pickup-recommend-banner';
+  banner.innerHTML='<div>💡 2만원 미만 주문은 <strong>매장 픽업</strong>을 이용하시면 배달료가 없어요!</div>'
+    +'<div class="pickup-recommend-actions">'
+    +'<button class="btn-pickup-yes" onclick="_pickPickup()">매장 픽업으로 변경</button>'
+    +'<button class="btn-pickup-no" onclick="document.getElementById(\'pickupRecommendBanner\').remove()">괜찮아요</button>'
+    +'</div>';
+  var target=document.getElementById('ordererOrderContent');
+  if(target)target.insertBefore(banner,target.firstChild);
+}
+function _pickPickup(){
+  var memoEl=document.getElementById('ordererMemo');
+  if(memoEl){memoEl.value='매장픽업';_updateDeliveryFee();}
+  var banner=document.getElementById('pickupRecommendBanner');
+  if(banner)banner.remove();
 }
 
 // ── 발송 설정: API에서 직접 로드 (localStorage 우회) ──
@@ -1644,7 +1703,7 @@ function _notifyOutOfStock(list){
 
 // ── 주문 저장 + SMS 발송 (서버 재고 차감 포함) ──
 function saveOrder(cb){
-  var total=orderItems.reduce(function(s,c){return s+c.price*c.qty;},0);
+  var total=orderItems.reduce(function(s,c){return s+c.price*c.qty;},0)+_deliveryFee;
   var order={
     id:'ORD'+Date.now(),
     date:toISO(new Date()),
