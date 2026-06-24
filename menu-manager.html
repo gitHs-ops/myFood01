@@ -2416,7 +2416,8 @@ function getPrimaryBank(){
 }
 
 function saveSettings(){
-  var s={stock:parseInt(document.getElementById('cfgStock').value)||0};
+  var s=getSettings();
+  s.stock=parseInt(document.getElementById('cfgStock').value)||0;
   localStorage.setItem(SETTINGS_KEY,JSON.stringify(s));
   syncSettingsToSheet(function(){
     var el=document.getElementById('settingSaved');el.style.display='block';
