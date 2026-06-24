@@ -1207,22 +1207,12 @@ function renderStatusPage(){
   fetch(API_URL+'/api/orders?date='+encodeURIComponent(today)+'&phone='+encodeURIComponent(phone),{cache:'no-store'})
   .then(function(r){return r.json();})
   .then(function(data){
-    var allOrders=JSON.parse(localStorage.getItem('orders')||'[]');
-    if(data.success&&Array.isArray(data.orders)){
-      var apiMap={};
-      data.orders.forEach(function(go){apiMap[go.id]=go;});
-      allOrders.forEach(function(o){
-        var go=apiMap[o.id];
-        if(!go)return;
-        if(go.adminReply!==undefined)o.adminReply=go.adminReply;
-        if(go.replyAt!==undefined)o.replyAt=go.replyAt;
-        if(go.status)o.status=go.status;
-      });
-      localStorage.setItem('orders',JSON.stringify(allOrders));
+    if(!data.success||!Array.isArray(data.orders)){
+      el.innerHTML='<div class="hist-empty"><span>⚠️</span><p>서버 오류가 발생했어요.</p></div>';
+      return;
     }
-    var sorted=allOrders.filter(function(o){
-      return o.date===today && o.name===myInfo.name && o.phone===myInfo.phone;
-    }).sort(function(a,b){return (b.id||'').localeCompare(a.id||'');});
+    // DB 데이터만 사용 — localStorage 무시
+    var sorted=data.orders.sort(function(a,b){return (b.id||'').localeCompare(a.id||'');});
     if(!sorted.length){
       el.innerHTML='<div class="hist-empty"><span>📭</span>'
         +'<p>오늘 접수된 주문이 없어요.<br>'
@@ -1234,18 +1224,9 @@ function renderStatusPage(){
     el.innerHTML=sorted.map(_buildStatusCardHtml).join('');
     document.getElementById('statusBtn').classList.remove('has-order');
     updateStatusBtn();
-    setTimeout(function(){_ackAllReplies(sorted);},4000);
   })
   .catch(function(){
-    // 네트워크 오류 시 localStorage 폴백
-    var allOrders=JSON.parse(localStorage.getItem('orders')||'[]');
-    var sorted=allOrders.filter(function(o){
-      return o.date===today && o.name===myInfo.name && o.phone===myInfo.phone;
-    }).sort(function(a,b){return (b.id||'').localeCompare(a.id||'');});
-    el.innerHTML=sorted.length
-      ? sorted.map(_buildStatusCardHtml).join('')
-      : '<div class="hist-empty"><span>⚠️</span><p>서버 연결 실패<br><small style="color:#aaa;font-size:12px;">잠시 후 다시 시도해주세요.</small></p></div>';
-    updateStatusBtn();
+    el.innerHTML='<div class="hist-empty"><span>⚠️</span><p>서버 연결 실패<br><small style="color:#aaa;font-size:12px;">잠시 후 다시 시도해주세요.</small></p></div>';
   });
 }
 function refreshStatusNow(){
