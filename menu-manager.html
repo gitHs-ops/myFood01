@@ -1840,7 +1840,7 @@ function renderOrders(){
   var today=workDate||toISO(new Date());
   var el=document.getElementById('orderList');
   el.innerHTML='<div style="text-align:center;padding:30px;color:#aaa;font-size:13px;">불러오는 중...</div>';
-  fetch(API_URL+'/api/orders?date='+encodeURIComponent(today))
+  fetch(API_URL+'/api/orders?date='+encodeURIComponent(today),{cache:'no-store'})
     .then(function(r){return r.json();})
     .then(function(d){
       var orders=d.orders||[];
@@ -2318,7 +2318,7 @@ function startOrderPolling(){
 
 function _pollFetch(cb){
   var today=workDate||toISO(new Date());
-  fetch(API_URL+'/api/orders?date='+encodeURIComponent(today))
+  fetch(API_URL+'/api/orders?date='+encodeURIComponent(today),{cache:'no-store'})
     .then(function(r){return r.json();})
     .then(function(d){var orders=d.orders||[];cb(orders);})
     .catch(function(){_pollSetUI(false,_pollCountdown);});
