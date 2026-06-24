@@ -1308,7 +1308,7 @@ function renderHistSubTabs(){
   var ymList=Object.keys(ymSet).sort().reverse();
   if(ymList.indexOf(_histYM)<0)_histYM='전체';
   var dropdown=(_histSubTab==='dates'&&ymList.length)
-    ?'<select onchange="setHistYM(this.value)" style="padding:5px 10px;border-radius:8px;border:1.5px solid #086266;font-size:12px;font-weight:600;color:#086266;background:#e8f5f4;cursor:pointer;font-family:inherit;outline:none;margin:0 6px;">'
+    ?'<select onchange="setHistYM(this.value)" style="width:110px;padding:4px 6px;border-radius:8px;border:1.5px solid #086266;font-size:12px;font-weight:600;color:#086266;background:#e8f5f4;cursor:pointer;font-family:inherit;outline:none;margin:0 6px;">'
       +['전체'].concat(ymList).map(function(ym){
         var label=ym==='전체'?'전체':(ym.slice(0,4)+'년 '+String(Number(ym.slice(5)))+'월');
         return '<option value="'+ym+'"'+(_histYM===ym?' selected':'')+'>'+label+'</option>';
