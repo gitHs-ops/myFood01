@@ -1219,7 +1219,7 @@ function renderStatusPage(){
   document.getElementById('statusBtn').classList.remove('has-order');
   updateStatusBtn();
   setTimeout(function(){_ackAllReplies(sorted);},4000);
-  _fetchStatusFromAPI(myInfo, today, sorted, false);
+  _fetchStatusFromAPI(myInfo, today, sorted, 'silent'); // 항상 DB 기준으로 갱신, 토스트 없음
 }
 function refreshStatusNow(){
   showToast('조회 중...');
@@ -1281,9 +1281,9 @@ function _fetchStatusFromAPI(myInfo, today, localOrders, forceRender){
       updateStatusBtn();
       setTimeout(function(){_ackAllReplies(updSorted);},4000);
     }
-    if(forceRender)showToast('최신 정보로 업데이트됐어요.');
+    if(forceRender===true)showToast('최신 정보로 업데이트됐어요.');
   })
-  .catch(function(){if(forceRender)showToast('서버 연결 실패.');});
+  .catch(function(){if(forceRender===true)showToast('서버 연결 실패.');});
 }
 function _extraSavedHtml(id,text,editable){
   var safe=String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
