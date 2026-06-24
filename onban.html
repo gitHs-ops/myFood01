@@ -2123,13 +2123,14 @@ function reorder(order){
     .then(function(d){
       if(!d.success&&d.soldOut){
         // 재고 부족 — localStorage 롤백 후 모달 표시
-        showSoldOutModal(d.soldOut);
         var ords=JSON.parse(localStorage.getItem('orders')||'[]');
         ords=ords.filter(function(o){return o.id!==newOrder.id;});
         var origOrd=ords.find(function(o){return o.id===order.id;});
         if(origOrd)origOrd.status=origStatus;
         localStorage.setItem('orders',JSON.stringify(ords));
         updateStatusBtn();
+        renderStatusPage();
+        showSoldOutModal(d.soldOut);
         return;
       }
       // 서버 승인 후 알림 발송
