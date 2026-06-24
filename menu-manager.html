@@ -2270,6 +2270,18 @@ function startOrderPolling(){
     _pollCountdown--;
     if(_pollCountdown<=0){
       _pollCountdown=15;
+      // 미저장 변경 없을 때만 메뉴 재고 조용히 갱신
+      if(!_menuDirty && workDate){
+        fetch(API_URL+'/api/menu/'+workDate,{cache:'no-store'})
+          .then(function(r){return r.ok?r.json():null;})
+          .then(function(d){
+            if(d&&d.menus&&d.menus.length){
+              var idx=Date.now();
+              menus=d.menus.map(function(m){return Object.assign({id:idx++,stock:m.stock||0},m);});
+              renderAll();
+            }
+          }).catch(function(){});
+      }
       _pollFetch(function(orders){
         var snap=_makeSnapshot(orders);
         var changed=(_pollSnapshot!==null && snap!==_pollSnapshot);
