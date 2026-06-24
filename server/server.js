@@ -174,7 +174,11 @@ app.get('/api/orders', async (req, res) => {
     if (phone) { sql += ' AND phone=?'; params.push(phone); }
     sql += ' ORDER BY created_at DESC';
     const [rows] = await pool.execute(sql, params);
-    const toDateStr = d => d instanceof Date ? d.toISOString().slice(0,10) : String(d||'').slice(0,10);
+    // mysql2 timezone:'+09:00'로 DATE컬럼이 KST자정(=UTC 전날15시)으로 반환 → +9h 보정
+    const toDateStr = d => {
+      if (d instanceof Date) { const kst=new Date(d.getTime()+9*60*60*1000); return kst.toISOString().slice(0,10); }
+      return String(d||'').slice(0,10);
+    };
     const orders = rows.map(r => ({
       id: r.id, date: toDateStr(r.date), time: r.time,
       name: r.name, phone: r.phone, addr: r.addr, memo: r.memo,
