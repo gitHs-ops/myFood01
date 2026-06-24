@@ -1821,7 +1821,7 @@ function ackAddReq(orderId){
     method:'PUT',headers:{'Content-Type':'application/json'}
   }).catch(function(){});
 }
-function _isNewAddReq(o){return !!(o.additionalRequest&&!o.addreqAcked);}
+function _isNewAddReq(o){return !!(o.additionalRequest&&!o.addreqAcked&&o.status==='pending');}
 function updateAddReqBadge(orders){
   var count=(orders||[]).filter(function(o){return o.status==='pending'||_isNewAddReq(o);}).length;
   var el=document.getElementById('addreqBadge');
