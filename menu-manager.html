@@ -2169,7 +2169,9 @@ function confirmOrder(id){
   if(!o)return;
   o.status='confirmed';
   saveOrders(orders);
-  fetch(API_URL+'/api/orders/'+encodeURIComponent(id)+'/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'confirmed'})}).catch(function(){});
+  _reRenderFromCache();
+  fetch(API_URL+'/api/orders/'+encodeURIComponent(id)+'/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'confirmed'})})
+    .then(function(){renderOrders();}).catch(function(){});
   // 고객에게 주문접수 알림톡 (실패시 SMS 대체)
   if(o.phone){
     var menuList=o.items.map(function(i){return i.name+' '+i.qty+'개';}).join(', ');
@@ -2190,7 +2192,6 @@ function confirmOrder(id){
       +(o.memo?' / 요청:'+o.memo:'');
     sendSMS(admin.deliveryPhone, delivMsg);
   }
-  renderOrders();
   copyConfirmMsg(id);
 }
 
@@ -2206,7 +2207,9 @@ function deliverOrder(id){
   if(!o)return;
   o.status='delivered';
   saveOrders(orders);
-  fetch(API_URL+'/api/orders/'+encodeURIComponent(id)+'/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'delivered'})}).catch(function(){});
+  _reRenderFromCache();
+  fetch(API_URL+'/api/orders/'+encodeURIComponent(id)+'/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'delivered'})})
+    .then(function(){renderOrders();}).catch(function(){});
   if(o.phone){
     sendAlimtalk(o.phone,
       'KA01TP260522043333235AUBreysEIxj',
@@ -2214,7 +2217,6 @@ function deliverOrder(id){
       '[오늘의 반찬] '+o.name+'님, 배송이 완료됐습니다! 맛있게 드세요 😊'
     );
   }
-  renderOrders();
 }
 
 function cancelOrder(id){
@@ -2224,8 +2226,9 @@ function cancelOrder(id){
   if(!o)return;
   o.status='cancelled';
   saveOrders(orders);
+  _reRenderFromCache();
   fetch(API_URL+'/api/orders/'+encodeURIComponent(id)+'/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'cancelled'})})
-    .then(function(){if(o.date===workDate){loadMenus(workDate);}})
+    .then(function(){if(o.date===workDate){loadMenus(workDate);}renderOrders();})
     .catch(function(){});
   if(o.phone){
     sendAlimtalk(o.phone,
@@ -2234,7 +2237,6 @@ function cancelOrder(id){
       '[오늘의 반찬] '+o.name+'님, 주문이 취소됐습니다.'
     );
   }
-  renderOrders();
 }
 
 function deleteOrder(id){
