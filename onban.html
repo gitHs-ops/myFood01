@@ -2155,13 +2155,11 @@ function reorder(order){
         fetch(API_URL+'/api/orders/'+encodeURIComponent(newOrder.id)+'/request',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:newOrder.additionalRequest})}).catch(function(){});
       }
       loadMenus(true);
+      lastOrderTotal=total;
+      cart=[];orderItems=[];updateCartCount();
+      goPage('payment');
     })
     .catch(function(){});
-
-  // 결제 페이지
-  lastOrderTotal=total;
-  cart=[];orderItems=[];updateCartCount();
-  goPage('payment');
 }
 
 window.onload=function(){
