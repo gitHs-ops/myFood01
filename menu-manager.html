@@ -483,8 +483,11 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
       <div class="kakao-header">메뉴 안내</div>
       <div class="kakao-body" id="kakaoText" contenteditable="false">메뉴를 먼저 입력해주세요.</div>
     </div>
-    <div style="display:flex;gap:8px;margin-top:0;">
+    <div style="display:flex;gap:8px;margin-top:0;margin-bottom:8px;">
+      <button class="copy-btn" onclick="loadTodayToKakao()" style="flex:1;background:#1D9E75;color:#fff;">오늘메뉴에서 가져오기</button>
       <button class="copy-btn" id="copyBtn" onclick="copyKakao()" style="flex:1;">텍스트 복사하기</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:0;">
       <button class="copy-btn" id="parseKakaoBtn" onclick="parseKakaoToMenu()" style="flex:1;background:#086266;color:#fff;">카카오 톡 내용으로 일일 메뉴 생성</button>
     </div>
   </div>
@@ -1192,6 +1195,12 @@ function renderKakao(){
   });
   lines.push('메뉴 주문 하시려면 아래 클릭 !');lines.push('https://giths-ops.github.io/myFood01/onban.html');
   el.textContent=lines.join('\n').trim();
+}
+function loadTodayToKakao(){
+  var el=document.getElementById('kakaoText');
+  el.contentEditable='false';
+  renderKakao();
+  showToast('오늘 메뉴를 가져왔습니다.');
 }
 function toggleKakaoEdit(){
   var el=document.getElementById('kakaoText');
