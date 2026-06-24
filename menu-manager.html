@@ -1256,14 +1256,14 @@ function parseKakaoToMenu(){
     // 헤더/링크 라인 제외
     if(line.match(/메뉴 안내$|메뉴 주문|https?:\/\//))return;
 
-    // 메뉴명 + 가격: 끝 숫자가 가격 (공백 구분)
-    var priceMatch=line.match(/^(.+?)\s+(\d+)(\s*천원)?(\s*👧)?$/);
+    // (재고 N개), (품절), (준비중) 등 괄호 제거
+    line=line.replace(/\s*\([^)]*\)\s*$/, '').trim();
+    // 이름 [👧] 가격천원  — 👧는 이름 뒤·가격 앞에 위치
+    var priceMatch=line.match(/^(.+?)\s*(👧)?\s*([\d,]+)\s*천원?$/);
     if(priceMatch){
-      var name=priceMatch[1].trim();
-      var price=Number(priceMatch[2]);
-      var child=!!(priceMatch[4]&&priceMatch[4].indexOf('👧')>=0)||line.indexOf('👧')>=0;
-      // 👧 이모지가 이름에 포함된 경우 제거
-      name=name.replace(/\s*👧\s*/g,'').trim();
+      var name=priceMatch[1].trim().replace(/\s*👧\s*/g,'').trim();
+      var child=!!priceMatch[2]||line.indexOf('👧')>=0;
+      var price=Number(String(priceMatch[3]).replace(/,/g,''));
       parsed.push({name:name,cat:currentCat,price:price,stock:defaultStock,child:child,imgUrl:null});
     }
   });

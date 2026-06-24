@@ -323,7 +323,7 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 
 /* ── 공통 ── */
 .section-title{font-size:15px;font-weight:700;padding:16px 16px 10px;color:#fff;display:flex;align-items:center;justify-content:space-between;}
-.status-refresh-btn{font-size:11px;font-weight:600;color:#9adcda;background:rgba(255,255,255,.08);border:1px solid rgba(154,220,218,.4);border-radius:20px;padding:4px 10px;cursor:pointer;white-space:nowrap;animation:status-blink 2s ease-in-out infinite;}
+.status-refresh-btn{font-size:11px;font-weight:700;color:#fff;background:#086266;border:none;border-radius:20px;padding:5px 12px;cursor:pointer;white-space:nowrap;animation:status-blink 2s ease-in-out infinite;}
 .status-countdown{font-size:12px;font-weight:700;color:#fff;background:rgba(8,98,102,.6);border-radius:20px;padding:3px 10px;white-space:nowrap;min-width:46px;text-align:center;}
 @keyframes status-blink{0%,100%{opacity:1;}50%{opacity:.5;}}
 .toast{
@@ -596,7 +596,7 @@ select.orderer-input{appearance:none;-webkit-appearance:none;background:#fff url
   <div class="section-title">
     <span>📬 접수상태</span>
     <div style="display:flex;align-items:center;gap:8px;">
-      <span class="status-refresh-btn" onclick="refreshStatusNow()">실시간 변경 확인  !</span>
+      <span class="status-refresh-btn" onclick="refreshStatusNow()">🔄 갱신</span>
       <span id="statusCountdown" class="status-countdown">🔄 15</span>
     </div>
   </div>
