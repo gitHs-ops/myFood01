@@ -1587,6 +1587,7 @@ function renderHistory(){
     apiFetch('/api/dates',function(err,d){
       if(err||!d||!d.dates||!d.dates.length){el.innerHTML='<div class="empty">저장된 날짜별 메뉴가 없어요.</div>';return;}
       _datesCache=d.dates;
+      renderHistSubTabs();
       _renderDateList(el);
     });
     return;
