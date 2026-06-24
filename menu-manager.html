@@ -1800,10 +1800,11 @@ var _ackedAddReqs=(function(){
   try{return new Set(JSON.parse(localStorage.getItem(_ACKED_KEY)||'[]'));}catch(e){return new Set();}
 })();
 function ackAddReq(orderId){
-  _ackedAddReqs.add(orderId);
+  var card=document.getElementById('ocard_'+orderId);
+  var addreq=card?card.dataset.addreq:'';
+  _ackedAddReqs.add(orderId+'::'+addreq);
   try{localStorage.setItem(_ACKED_KEY,JSON.stringify(Array.from(_ackedAddReqs)));}catch(e){}
   // 카드 스타일 즉시 제거
-  var card=document.getElementById('ocard_'+orderId);
   if(card){
     card.classList.remove('addreq-new');
     var badge=card.querySelector('.addreq-new-badge');
@@ -1813,7 +1814,7 @@ function ackAddReq(orderId){
   var orders=Object.values(_ordersCache);
   updateAddReqBadge(orders);
 }
-function _isNewAddReq(o){return !!(o.additionalRequest&&!_ackedAddReqs.has(o.id));}
+function _isNewAddReq(o){return !!(o.additionalRequest&&!_ackedAddReqs.has(o.id+'::'+o.additionalRequest));}
 function updateAddReqBadge(orders){
   var count=(orders||[]).filter(function(o){return o.status==='pending'||_isNewAddReq(o);}).length;
   var el=document.getElementById('addreqBadge');
@@ -1896,6 +1897,7 @@ function renderOrdersList(today,todayOrders){
     var card=document.createElement('div');
     card.className='order-card '+order.status+(isNewAddReq?' addreq-new':'');
     card.id='ocard_'+order.id;
+    card.dataset.addreq=order.additionalRequest||'';
 
     // 새 추가요청 배지 + 확인 버튼 (카드 상단)
     if(isNewAddReq){
