@@ -1803,9 +1803,13 @@ var _ordersCache={};  // API에서 불러온 주문 캐시 (id → order)
 
 /* ── 추가요청 알림 — "확인" 버튼으로만 해제 ── */
 // 세션 내 인메모리: 관리자가 "확인" 버튼을 눌러야만 해제됨
-var _ackedAddReqs=new Set();
+var _ACKED_KEY='mm_acked_addreqs';
+var _ackedAddReqs=(function(){
+  try{return new Set(JSON.parse(localStorage.getItem(_ACKED_KEY)||'[]'));}catch(e){return new Set();}
+})();
 function ackAddReq(orderId){
   _ackedAddReqs.add(orderId);
+  try{localStorage.setItem(_ACKED_KEY,JSON.stringify(Array.from(_ackedAddReqs)));}catch(e){}
   // 카드 스타일 즉시 제거
   var card=document.getElementById('ocard_'+orderId);
   if(card){
