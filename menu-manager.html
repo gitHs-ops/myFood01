@@ -866,7 +866,7 @@ function saveMenus(iso){
 function _updateSaveBtn(){
   var btn=document.getElementById('floatSaveBtn');
   if(!btn)return;
-  var onSavePage=document.getElementById('page-manage').classList.contains('active')||document.getElementById('page-kakao').classList.contains('active');
+  var onSavePage=document.getElementById('page-manage').classList.contains('active');
   btn.style.display=onSavePage?'block':'none';
   if(_menuDirty)btn.classList.add('dirty');else btn.classList.remove('dirty');
 }
@@ -1637,6 +1637,19 @@ function openHistLoadModal(date){
   _histLoadDate=date;
   var label=new Date(date+'T00:00:00').toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'});
   document.getElementById('histLoadTitle').textContent=label+' 메뉴';
+  var isSameDate=date===workDate;
+  var addBtn=document.querySelector('#histLoadOverlay .btn-add');
+  var replBtn=document.querySelector('#histLoadOverlay .btn:not(.btn-add)');
+  var desc=document.querySelector('#histLoadOverlay p');
+  if(isSameDate){
+    if(addBtn){addBtn.disabled=true;addBtn.style.opacity='.35';addBtn.style.cursor='not-allowed';}
+    if(replBtn){replBtn.disabled=true;replBtn.style.opacity='.35';replBtn.style.cursor='not-allowed';}
+    if(desc)desc.textContent='현재 작업 날짜와 동일합니다.';
+  }else{
+    if(addBtn){addBtn.disabled=false;addBtn.style.opacity='';addBtn.style.cursor='';}
+    if(replBtn){replBtn.disabled=false;replBtn.style.opacity='';replBtn.style.cursor='';}
+    if(desc)desc.textContent='현재 메뉴 목록에 어떻게 적용할까요?';
+  }
   document.getElementById('histLoadOverlay').classList.add('open');
 }
 function closeHistLoadModal(e){
