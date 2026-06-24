@@ -1499,6 +1499,7 @@ function renderOrdererPage(){
         if(!result.success){_notifyOutOfStock((result.soldOut||[]).map(function(s){return{name:s.name,have:s.available,want:'?'};}));return;}
         cart=[];orderItems=[];updateCartCount();
         goPage('payment');
+        loadMenus(true);
       });
     });
   };
@@ -2039,7 +2040,8 @@ function cancelHistOrder(orderId){
   o.status='cancelled';
   localStorage.setItem('orders',JSON.stringify(orders));
   // API 상태 업데이트 (관리자 동기화)
-  fetch(API_URL+'/api/orders/'+encodeURIComponent(orderId)+'/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'cancelled'})}).catch(function(){});
+  fetch(API_URL+'/api/orders/'+encodeURIComponent(orderId)+'/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'cancelled'})})
+    .then(function(){loadMenus(true);}).catch(function(){});
   // 취소 알림톡
   if(o.phone){
     var menuList=o.items.map(function(i){return i.name+' '+i.qty+'개';}).join(', ');
@@ -2109,6 +2111,7 @@ function reorder(order){
       if(newOrder.additionalRequest){
         fetch(API_URL+'/api/orders/'+encodeURIComponent(newOrder.id)+'/request',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:newOrder.additionalRequest})}).catch(function(){});
       }
+      loadMenus(true);
     })
     .catch(function(){});
 
