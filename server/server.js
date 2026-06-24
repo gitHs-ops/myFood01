@@ -174,8 +174,9 @@ app.get('/api/orders', async (req, res) => {
     if (phone) { sql += ' AND phone=?'; params.push(phone); }
     sql += ' ORDER BY created_at DESC';
     const [rows] = await pool.execute(sql, params);
+    const toDateStr = d => d instanceof Date ? d.toISOString().slice(0,10) : String(d||'').slice(0,10);
     const orders = rows.map(r => ({
-      id: r.id, date: r.date, time: r.time,
+      id: r.id, date: toDateStr(r.date), time: r.time,
       name: r.name, phone: r.phone, addr: r.addr, memo: r.memo,
       items: typeof r.items === 'string' ? JSON.parse(r.items) : (r.items||[]),
       total: r.total, status: r.status,

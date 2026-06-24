@@ -2104,7 +2104,7 @@ function _reRenderFromCache(){
   var allToday=[];
   Object.keys(_ordersCache).forEach(function(id){
     var o=_ordersCache[id];
-    if(o&&o.date===today)allToday.push(o);
+    if(o&&String(o.date).slice(0,10)===today)allToday.push(o);
   });
   renderOrdersList(today,allToday);
 }
