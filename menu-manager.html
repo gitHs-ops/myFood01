@@ -1121,26 +1121,25 @@ function saveMenuEditAll(){
   m.child=document.getElementById('editMenuChild').checked;
   m.desc=document.getElementById('editMenuDesc').value.trim();
   touch(m);
-  _save(editCtx);
   if(editCtx==='menus'){
     if(oldName!==m.name){
       removeFromDict(oldName);saveToDict([m.name]);
-      // 전체메뉴에서도 이름 변경 반영
       var ai=allMenus.find(function(x){return x.name===oldName;});
       if(ai){ai.name=m.name;}
     }
     mergeToAllMenus();
-    exportMenuToSheet(workDate);  // 날짜별 시트 동기화
-    _exportAllMenusSilent();      // 등록된 모든 메뉴 시트 동기화
+    saveMenus(workDate);
+    _exportAllMenusSilent();
     renderAll();
   }else{
+    _save(editCtx);
     renderAllMenus();
-    syncDictFromAllMenus(); // allMenus 전체 기준으로 dict 완전 재빌드
+    syncDictFromAllMenus();
     syncAllMenuToMenus(m,oldName);
   }
   document.getElementById('menuEditOverlay').classList.remove('open');
   menuEditTargetId=null;editPendingImgUrl=null;
-  showToast('메뉴가 수정되었습니다. (시트 동기화 중...)');
+  showToast('메뉴가 수정되었습니다.');
 }
 function _exportAllMenusSilent(){
   if(!allMenus.length)return;
@@ -1276,7 +1275,7 @@ function saveToday(){
   saveMenus(workDate);
   mergeToAllMenus();
   exportMenuToSheet(workDate,function(ok){
-    showToast(fmtDate(workDate)+' 저장'+(ok?' & 시트 동기화 완료!':'완료! (시트 동기화 실패)'));
+    showToast(fmtDate(workDate)+' 메뉴 저장 완료!');
   });
   renderHistory();
 }
