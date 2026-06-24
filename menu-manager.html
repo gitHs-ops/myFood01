@@ -664,7 +664,7 @@ function _render(ctx){if(ctx==='all')renderAllMenus();else renderMenuList();}
 // 수정 타임스탬프 찍기
 function touch(m){m.updatedAt=Date.now();return m;}
 function loadAllMenus(){}
-function saveAllMenus(){}
+function saveAllMenus(){if(!allMenus.length)return;apiPost('/api/menu/all',deduplicateByName(allMenus),function(){});}
 function mergeToAllMenus(){
   if(!allMenus.length)loadAllMenus();
   allMenus=deduplicateByName(allMenus); // 혹시 남아있는 중복 정리
