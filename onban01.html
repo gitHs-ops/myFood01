@@ -2183,6 +2183,10 @@ function histSaveExtra(id){
   ord.additionalRequest=text;
   localStorage.setItem('orders',JSON.stringify(ords));
   document.getElementById('histextra-'+id).innerHTML=_histExtraHtml(id,text);
+  fetch(API_URL+'/api/orders/'+encodeURIComponent(id)+'/request',{
+    method:'PUT',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({text:text})
+  }).catch(function(){});
 }
 function cancelHistOrder(orderId){
   if(!confirm('주문을 취소할까요?'))return;
