@@ -202,8 +202,8 @@ app.get('/api/orders', async (req, res) => {
       if (d instanceof Date) { const kst=new Date(d.getTime()+9*60*60*1000); return kst.toISOString().slice(0,10); }
       return String(d||'').slice(0,10);
     };
-    // DATETIME 컬럼 → Unix ms (클라이언트에서 new Date(ms)로 안전하게 파싱)
-    const toTS = d => d instanceof Date ? d.getTime() : (d ? new Date(String(d).replace(' ','T')).getTime()||null : null);
+    // DATETIME 컬럼 → Unix ms + 9h 보정 (timezone:'+09:00'로 Date가 9h 뒤로 밀림, toDateStr과 동일 처리)
+    const toTS = d => { if(!d)return null; const ms=d instanceof Date?d.getTime():new Date(String(d).replace(' ','T')).getTime(); return isNaN(ms)?null:ms+9*60*60*1000; };
     const orders = rows.map(r => ({
       id: r.id, date: toDateStr(r.date), time: r.time,
       name: r.name, phone: r.phone, addr: r.addr, memo: r.memo,

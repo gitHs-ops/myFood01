@@ -441,11 +441,10 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 .extra-req-edit-btn:hover{opacity:1;}
 /* ── 관리자 답변 채팅 버블 ── */
 .admin-reply-section{padding:0 14px 12px;}
+.admin-reply-header{font-size:11px;font-weight:700;color:#086266;margin-top:4px;margin-bottom:4px;}
 .admin-reply-bubble{
   display:flex;flex-direction:column;align-items:flex-end;
-  margin-top:6px;
 }
-.admin-reply-label{font-size:10px;color:#fff;font-weight:700;margin-right:6px;background:rgba(255,255,255,0.25);border-radius:999px;padding:1px 7px;white-space:nowrap;}
 .admin-reply-text{
   background:#086266;color:#fff;
   font-size:13px;line-height:1.6;
@@ -1785,8 +1784,9 @@ function _doRenderHistory(el){
       var safeR=String(o.adminReply).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/&lt;br&gt;/gi,'<br>');
       var tStr='';
       if(o.replyAt){try{var rd=new Date(o.replyAt);if(!isNaN(rd.getTime()))tStr=rd.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});}catch(e){}}
-      repDiv.innerHTML='<div class="admin-reply-bubble">'
-        +'<div class="admin-reply-text"><span class="admin-reply-label">💬 온반 답변</span> '+safeR+'</div>'
+      repDiv.innerHTML='<div class="admin-reply-header">💬 온반 답변</div>'
+        +'<div class="admin-reply-bubble">'
+        +'<div class="admin-reply-text">'+safeR+'</div>'
         +(tStr?'<div class="admin-reply-time">'+tStr+'</div>':'')
         +'</div>';
       card.appendChild(repDiv);
