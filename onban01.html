@@ -1692,7 +1692,8 @@ function _doRenderHistory(el){
   var statusCls={pending:'pending',confirmed:'confirmed',delivered:'delivered',cancelled:'cancelled'};
   orders.forEach(function(o){
     var itemsSum=o.items.reduce(function(s,i){return s+i.price*i.qty;},0);
-    var deliveryFee=o.deliveryFee||0;
+    var isPickupMemo=(o.memo||'').startsWith('매장픽업');
+    var deliveryFee=(!isPickupMemo&&itemsSum>=20)?1:0;
     var total=itemsSum+deliveryFee;
     var isFinished=(o.status==='cancelled'||o.status==='delivered');
     var card=document.createElement('div');
@@ -1783,7 +1784,7 @@ function _doRenderHistory(el){
       repDiv.className='admin-reply-section';
       var safeR=String(o.adminReply).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/&lt;br&gt;/gi,'<br>');
       var tStr='';
-      if(o.replyAt){try{tStr=new Date(Number(o.replyAt)).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});}catch(e){}}
+      if(o.replyAt){try{var rd=new Date(o.replyAt);if(!isNaN(rd.getTime()))tStr=rd.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});}catch(e){}}
       repDiv.innerHTML='<div class="admin-reply-bubble">'
         +'<div class="admin-reply-text"><span class="admin-reply-label">💬 온반 답변</span> '+safeR+'</div>'
         +(tStr?'<div class="admin-reply-time">'+tStr+'</div>':'')
@@ -1824,8 +1825,12 @@ function histEditQty(orderId,itemName,d){
   var pEl=document.getElementById('histprice-'+orderId+'-'+key);
   if(qEl)qEl.textContent=item.qty;
   if(pEl)pEl.textContent=comma(item.price*item.qty)+'천원';
-  var df=parseInt((document.getElementById('histcard-'+orderId)||{}).dataset&&document.getElementById('histcard-'+orderId).dataset.deliveryFee||0);
-  var total=o.items.reduce(function(s,i){return s+i.price*i.qty;},0)+df;
+  var isPickupEdit=(o.memo||'').startsWith('매장픽업');
+  var newSum=o.items.reduce(function(s,i){return s+i.price*i.qty;},0);
+  var df=(!isPickupEdit&&newSum>=20)?1:0;
+  var total=newSum+df;
+  var cardEl=document.getElementById('histcard-'+orderId);
+  if(cardEl)cardEl.dataset.deliveryFee=df;
   var tEl=document.getElementById('histtotal-'+orderId);
   if(tEl)tEl.innerHTML='<span>합계</span><span class="hist-total-val">'+comma(total)+'천원</span>';
   localStorage.setItem('orders',JSON.stringify(orders));
@@ -1844,8 +1849,12 @@ function histDelItem(orderId,itemName){
   var key=itemName.replace(/\s/g,'_');
   var row=document.getElementById('histrow-'+orderId+'-'+key);
   if(row)row.remove();
-  var df2=parseInt((document.getElementById('histcard-'+orderId)||{}).dataset&&document.getElementById('histcard-'+orderId).dataset.deliveryFee||0);
-  var total=o.items.reduce(function(s,i){return s+i.price*i.qty;},0)+df2;
+  var isPickupDel=(o.memo||'').startsWith('매장픽업');
+  var delSum=o.items.reduce(function(s,i){return s+i.price*i.qty;},0);
+  var df2=(!isPickupDel&&delSum>=20)?1:0;
+  var total=delSum+df2;
+  var cardEl2=document.getElementById('histcard-'+orderId);
+  if(cardEl2)cardEl2.dataset.deliveryFee=df2;
   var tEl=document.getElementById('histtotal-'+orderId);
   if(tEl)tEl.innerHTML='<span>합계</span><span class="hist-total-val">'+comma(total)+'천원</span>';
   localStorage.setItem('orders',JSON.stringify(orders));
@@ -1979,12 +1988,14 @@ function reorder(order){
     order=fresh;
   }
   if(!confirm('변경된 내용으로 다시 주문하시겠어요?'))return;
-  var total=order.items.reduce(function(s,i){return s+i.price*i.qty;},0);
+  var itemsTotal=order.items.reduce(function(s,i){return s+i.price*i.qty;},0);
   var isPickup=(order.memo||'').startsWith('매장픽업');
-  if(!isPickup&&total<20){
+  if(!isPickup&&itemsTotal<20){
     showToast('2만원 미만 주문은 매장 픽업만 가능해요. 재주문이 취소됩니다.');
     return;
   }
+  var deliveryFee=(!isPickup&&itemsTotal>=20)?1:0;
+  var total=itemsTotal+deliveryFee;
   var newOrder={
     id:'ORD'+Date.now(),
     date:toISO(new Date()),
@@ -1992,7 +2003,7 @@ function reorder(order){
     name:order.name,phone:order.phone,addr:order.addr,
     memo:order.memo||'',
     items:order.items.map(function(i){return {name:i.name,qty:i.qty,price:i.price};}),
-    total:total,status:'pending',isReorder:true,
+    total:total,deliveryFee:deliveryFee,status:'pending',isReorder:true,
     additionalRequest:order.additionalRequest||'',
     deviceId:getDeviceId()
   };

@@ -202,12 +202,14 @@ app.get('/api/orders', async (req, res) => {
       if (d instanceof Date) { const kst=new Date(d.getTime()+9*60*60*1000); return kst.toISOString().slice(0,10); }
       return String(d||'').slice(0,10);
     };
+    // DATETIME 컬럼 → Unix ms (클라이언트에서 new Date(ms)로 안전하게 파싱)
+    const toTS = d => d instanceof Date ? d.getTime() : (d ? new Date(String(d).replace(' ','T')).getTime()||null : null);
     const orders = rows.map(r => ({
       id: r.id, date: toDateStr(r.date), time: r.time,
       name: r.name, phone: r.phone, addr: r.addr, memo: r.memo,
       items: typeof r.items === 'string' ? JSON.parse(r.items) : (r.items||[]),
       total: r.total, status: r.status,
-      adminReply: r.admin_reply, replyAt: r.reply_at,
+      adminReply: r.admin_reply, replyAt: toTS(r.reply_at),
       additionalRequest: r.additional_request,
       addreqAcked: !!r.addreq_acked,
       isReorder: !!r.is_reorder
