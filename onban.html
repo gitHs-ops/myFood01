@@ -2036,7 +2036,10 @@ function _doRenderHistory(el){
     }
     var btnReorder=document.createElement('button');
     btnReorder.className='hist-btn-reorder';
+    btnReorder.id='btn-reorder-'+o.id;
     btnReorder.textContent='재주문';
+    btnReorder.disabled=true;
+    btnReorder.style.opacity='0.4';
     (function(ord){btnReorder.onclick=function(){reorder(ord);};})(o);
     acts.appendChild(btnReorder);
     card.appendChild(acts);
@@ -2060,6 +2063,11 @@ function histEditQty(orderId,itemName,d){
   var tEl=document.getElementById('histtotal-'+orderId);
   if(tEl)tEl.innerHTML='<span>합계</span><span class="hist-total-val">'+comma(total)+'천원</span>';
   localStorage.setItem('orders',JSON.stringify(orders));
+  _activateReorderBtn(orderId);
+}
+function _activateReorderBtn(id){
+  var btn=document.getElementById('btn-reorder-'+id);
+  if(btn){btn.disabled=false;btn.style.opacity='';}
 }
 function histDelItem(orderId,itemName){
   var orders=JSON.parse(localStorage.getItem('orders')||'[]');
@@ -2075,6 +2083,7 @@ function histDelItem(orderId,itemName){
   var tEl=document.getElementById('histtotal-'+orderId);
   if(tEl)tEl.innerHTML='<span>합계</span><span class="hist-total-val">'+comma(total)+'천원</span>';
   localStorage.setItem('orders',JSON.stringify(orders));
+  _activateReorderBtn(orderId);
 }
 /* ── 주문 내역 직접요청/추가요청 편집 ── */
 function _histMemoHtml(id,text){
@@ -2218,7 +2227,8 @@ function reorder(order){
     memo:order.memo||'',
     items:order.items.map(function(i){return {name:i.name,qty:i.qty,price:i.price};}),
     total:total,status:'pending',isReorder:true,
-    additionalRequest:order.additionalRequest||''
+    additionalRequest:order.additionalRequest||'',
+    deviceId:getDeviceId()
   };
   var orders=JSON.parse(localStorage.getItem('orders')||'[]');
   // 기존 주문 취소 처리 (원래 상태 기억 — 재고 부족 시 롤백용)
