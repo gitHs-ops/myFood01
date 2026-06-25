@@ -1823,7 +1823,7 @@ function ackAddReq(orderId){
   }
   updateAddReqBadge(Object.values(_ordersCache));
   // DB에 ack 저장
-  fetch(API_BASE+'/api/orders/'+encodeURIComponent(orderId)+'/addreq-ack',{
+  fetch(API_URL+'/api/orders/'+encodeURIComponent(orderId)+'/addreq-ack',{
     method:'PUT',headers:{'Content-Type':'application/json'}
   }).catch(function(){});
 }
