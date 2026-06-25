@@ -573,7 +573,7 @@ select.orderer-input{appearance:none;-webkit-appearance:none;background:#fff url
       <button class="btn-addr-list" onclick="showAddrList()">📋 목록</button>
     </div>
     <select class="orderer-input" id="ordererMemo" required onchange="_updateDeliveryFee()">
-      <option value="">요청사항 선택 (필수)</option>
+      <option value="" disabled>요청사항 선택 (필수)</option>
       <option value="경비원실">경비원실</option>
       <option value="문앞">문앞</option>
       <option value="택배함">택배함</option>
@@ -2096,7 +2096,7 @@ function histEditMemo(id){
   var prev=ord.memo||'';
   document.getElementById('histmemo-'+id).innerHTML=
     '<select class="hist-req-textarea" id="histmemosel-'+id+'" onchange="histMemoSelChange(\''+id+'\')">'
-    +'<option value="">선택하세요</option>'
+    +'<option value="" disabled>선택하세요</option>'
     +_MEMO_OPTS.map(function(v){return '<option value="'+v+'"'+(prev===v?' selected':'')+'>'+v+'</option>';}).join('')
     +'</select>'
     +'<div class="hist-req-actions">'
