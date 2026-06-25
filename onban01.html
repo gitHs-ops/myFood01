@@ -2177,11 +2177,6 @@ function histCancelExtra(id){
 function histSaveExtra(id){
   var ta=document.getElementById('histextrata-'+id);
   var text=ta?ta.value.trim():'';
-  var ords=JSON.parse(localStorage.getItem('orders')||'[]');
-  var ord=ords.find(function(o){return o.id===id;});
-  if(!ord)return;
-  ord.additionalRequest=text;
-  localStorage.setItem('orders',JSON.stringify(ords));
   document.getElementById('histextra-'+id).innerHTML=_histExtraHtml(id,text);
   fetch(API_URL+'/api/orders/'+encodeURIComponent(id)+'/request',{
     method:'PUT',headers:{'Content-Type':'application/json'},
