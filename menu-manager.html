@@ -2607,6 +2607,7 @@ window.onload=function(){
   _updateSaveBtn();
   document.getElementById('dateDisplayBtn').textContent=fmtDate(workDate);
   renderAll();renderHistory();
+  renderOrders();   // 진입 즉시 주문관리 탭 건수 배지 표시 (탭 비활성이면 배지만 갱신)
   importAllMenusFromSheet(function(){
     var names=allMenus.map(function(m){return m.name;}).filter(Boolean);
     if(names.length)saveToDict(names);
