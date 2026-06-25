@@ -1946,61 +1946,38 @@ function renderOrdersList(today,todayOrders){
     if(order.memo){
       var memo=document.createElement('div');
       memo.className='order-memo';
-      // 추가요청 없고 전화번호 있고 답변 없으면 → 버튼 인라인
-      var memoInlineBtn=(!order.additionalRequest && order.phone && !safeRep);
-      if(memoInlineBtn){
-        memo.style.cssText='display:flex;align-items:center;gap:8px;';
-        var memoSpan=document.createElement('span');
-        memoSpan.style.flex='1';
-        memoSpan.textContent='📝 '+order.memo;
-        memo.appendChild(memoSpan);
-        var memoBtn=document.createElement('button');
-        memoBtn.className='addreq-reply-btn';
-        memoBtn.setAttribute('onclick',"showReplyBox('"+order.id+"','"+ph+"')");
-        memoBtn.textContent='💬 답변';
-        memo.appendChild(memoBtn);
-      } else {
-        memo.textContent='📝 '+order.memo;
-      }
+      memo.textContent='📝 '+order.memo;
       card.appendChild(memo);
     }
-    if(order.additionalRequest || order.phone){
-      var addWrap=document.createElement('div');
-      addWrap.id='addreqwrap_'+order.id;
-      var innerHtml='';
-      if(order.additionalRequest){
-        var safeReq=order.additionalRequest.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-        var isNew=_isNewAddReq(order);
-        var dotHtml=isNew?'<span class="addreq-new-dot" style="background:#086266;margin-right:2px;"></span>':'';
-        if(!safeRep && order.phone){
-          // 답변 없음: 버튼을 요청 텍스트 행 우측 인라인
-          innerHtml='<div class="addreq-text-row" style="display:flex;align-items:center;gap:8px;border-radius:6px;">'
-            +'<span style="flex:1;word-break:break-all;overflow-wrap:anywhere;">'+dotHtml+'✅ '+safeReq+'</span>'
-            +'<button class="addreq-reply-btn" style="flex-shrink:0;" onclick="showReplyBox(\''+order.id+'\',\''+ph+'\')">💬 답변</button>'
-            +'</div>';
-        } else {
-          innerHtml='<div class="addreq-text-row">'+dotHtml+'✅ '+safeReq+'</div>';
-        }
-      }
-      if(safeRep){
-        var ar=order.additionalRequest?'':'border-radius:6px;';
-        innerHtml+='<div class="addreq-actions-row" style="'+ar+'">'
-          +'<div class="addreq-reply-preview" id="replypreview_'+order.id+'" style="flex:1;text-align:left;margin-right:8px;">'
-          +'<span class="addreq-admin-label">💬 온반 답변</span>'+safeRep
-          +'</div>'
-          +'<button class="addreq-reply-btn" onclick="showReplyBox(\''+order.id+'\',\''+ph+'\')">✏️ 수정</button>'
-          +'</div>';
-      } else if(!order.additionalRequest && order.phone && !order.memo){
-        // 메모도 없는 경우에만 별도 행에 버튼 표시 (메모 있으면 이미 위에서 인라인)
-        innerHtml+='<div class="addreq-actions-row" style="border-radius:6px;">'
-          +'<div id="replypreview_'+order.id+'" style="flex:1;"></div>'
-          +'<button class="addreq-reply-btn" onclick="showReplyBox(\''+order.id+'\',\''+ph+'\')">💬 답변</button>'
-          +'</div>';
-      }
-      if(innerHtml){addWrap.className='addreq-row-wrap';}
-      addWrap.innerHTML=innerHtml;
-      card.appendChild(addWrap);
+    // 추가요청 + 답변 영역 — 항상 표시
+    var addWrap=document.createElement('div');
+    addWrap.id='addreqwrap_'+order.id;
+    var innerHtml='';
+    if(order.additionalRequest){
+      var safeReq=order.additionalRequest.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      var isNew=_isNewAddReq(order);
+      var dotHtml=isNew?'<span class="addreq-new-dot" style="background:#086266;margin-right:2px;"></span>':'';
+      innerHtml='<div class="addreq-text-row" style="display:flex;align-items:center;gap:8px;border-radius:6px;">'
+        +'<span style="flex:1;word-break:break-all;overflow-wrap:anywhere;">'+dotHtml+'✅ '+safeReq+'</span>'
+        +(safeRep?'':'<button class="addreq-reply-btn" style="flex-shrink:0;" onclick="showReplyBox(\''+order.id+'\',\''+ph+'\')">💬 답변</button>')
+        +'</div>';
     }
+    if(safeRep){
+      innerHtml+='<div class="addreq-actions-row" style="border-radius:6px;">'
+        +'<div class="addreq-reply-preview" id="replypreview_'+order.id+'" style="flex:1;text-align:left;margin-right:8px;">'
+        +'<span class="addreq-admin-label">💬 온반 답변</span>'+safeRep
+        +'</div>'
+        +'<button class="addreq-reply-btn" onclick="showReplyBox(\''+order.id+'\',\''+ph+'\')">✏️ 수정</button>'
+        +'</div>';
+    } else {
+      innerHtml+='<div class="addreq-actions-row" style="border-radius:6px;">'
+        +'<div id="replypreview_'+order.id+'" style="flex:1;"></div>'
+        +'<button class="addreq-reply-btn" onclick="showReplyBox(\''+order.id+'\',\''+ph+'\')">💬 답변</button>'
+        +'</div>';
+    }
+    addWrap.className='addreq-row-wrap';
+    addWrap.innerHTML=innerHtml;
+    card.appendChild(addWrap);
 
     if(order.status==='pending'){
       var actions=document.createElement('div');
