@@ -337,6 +337,16 @@ app.put('/api/orders/:id/request', async (req, res) => {
   } catch(e) { err(res, e.message); }
 });
 
+// 배송방법(memo) 저장 (PUT /api/orders/:id/memo)
+app.put('/api/orders/:id/memo', async (req, res) => {
+  try {
+    const { memo } = req.body;
+    await pool.execute('UPDATE orders SET memo=? WHERE id=?', [memo||'', req.params.id]);
+    broadcast('order_memo', { orderId: req.params.id });
+    ok(res);
+  } catch(e) { err(res, e.message); }
+});
+
 // 추가요청 확인 처리 (PUT /api/orders/:id/addreq-ack)
 app.put('/api/orders/:id/addreq-ack', async (req, res) => {
   try {

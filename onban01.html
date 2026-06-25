@@ -1928,6 +1928,10 @@ function histSaveMemo(id){
   document.getElementById('histmemo-'+id).innerHTML=_histMemoHtml(id,text);
   _updateHistTotal(id);
   _activateReorderBtn(id);
+  fetch(API_URL+'/api/orders/'+encodeURIComponent(id)+'/memo',{
+    method:'PUT',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({memo:text})
+  }).catch(function(){});
 }
 function histEditExtra(id){
   var ords=JSON.parse(localStorage.getItem('orders')||'[]');
