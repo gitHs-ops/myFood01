@@ -1682,6 +1682,11 @@ function renderHistory(){
   });
 }
 function _doRenderHistory(el){
+  // SSE 재렌더 후에도 사용자가 이미 활성화한 재주문 버튼 상태 복원
+  var activeReorderIds=[];
+  el.querySelectorAll('[id^="btn-reorder-"]').forEach(function(btn){
+    if(!btn.disabled) activeReorderIds.push(btn.id.replace('btn-reorder-',''));
+  });
   el.innerHTML='';
   var all=JSON.parse(localStorage.getItem('orders')||'[]');
   var orders=all.filter(function(o){return o.date===menuDate;});
@@ -1822,6 +1827,7 @@ function _doRenderHistory(el){
     card.appendChild(acts);
     el.appendChild(card);
   });
+  activeReorderIds.forEach(function(id){ _activateReorderBtn(id); });
 }
 function _updateHistTotal(id){
   var ords=JSON.parse(localStorage.getItem('orders')||'[]');
@@ -2011,21 +2017,9 @@ function cancelHistOrder(orderId){
   renderHistory();
 }
 function reorder(order){
-  // 수량·메모·추가요청 수정이 반영된 최신 데이터를 localStorage에서 다시 읽음
+  // 항상 localStorage 최신 데이터 사용 (SSE 재렌더 후에도 정확한 수량·배송비 반영)
   var fresh=JSON.parse(localStorage.getItem('orders')||'[]').find(function(o){return o.id===order.id;});
   if(fresh){
-    // 아이템·memo·추가요청 모두 동일하면 재주문 불가
-    var origKey=JSON.stringify({
-      items:order.items.map(function(i){return {name:i.name,qty:i.qty};}),
-      memo:(order.memo||'').trim(),
-      addreq:(order.additionalRequest||'').trim()
-    });
-    var freshKey=JSON.stringify({
-      items:fresh.items.map(function(i){return {name:i.name,qty:i.qty};}),
-      memo:(fresh.memo||'').trim(),
-      addreq:(fresh.additionalRequest||'').trim()
-    });
-    if(origKey===freshKey){showToast('수량·요청사항을 변경한 후 재주문해 주세요.');return;}
     order=fresh;
   }
   if(!confirm('변경된 내용으로 다시 주문하시겠어요?'))return;
