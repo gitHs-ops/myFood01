@@ -2073,10 +2073,13 @@ function sendAdminReply(orderId, phone){
   var combined=text.replace(/\n/g,'<br>');
   // API에 합산 답변 저장
   fetch(API_URL+'/api/orders/'+encodeURIComponent(orderId)+'/reply',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:combined})}).catch(function(){});
+  // 답변 저장 시 "확인"과 동일하게 새 추가요청 알림도 해제
+  fetch(API_URL+'/api/orders/'+encodeURIComponent(orderId)+'/addreq-ack',{method:'PUT',headers:{'Content-Type':'application/json'}}).catch(function(){});
   // 캐시 업데이트
   if(_ordersCache[orderId]){
     _ordersCache[orderId].adminReply=combined;
     _ordersCache[orderId].replyAt=Date.now();
+    _ordersCache[orderId].addreqAcked=true;
   }
   var wrap=document.getElementById('addreqwrap_'+orderId);
   if(wrap){var box=wrap.querySelector('.addreq-reply-box');if(box)box.remove();}
