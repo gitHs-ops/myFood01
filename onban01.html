@@ -1843,8 +1843,6 @@ function _doRenderHistory(el){
       btnReorder.className='hist-btn-reorder';
       btnReorder.id='btn-reorder-'+o.id;
       btnReorder.textContent='재주문';
-      btnReorder.disabled=true;
-      btnReorder.style.opacity='0.4';
       (function(ord){btnReorder.onclick=function(){reorder(ord);};})(o);
       acts.appendChild(btnReorder);
     }
@@ -2060,7 +2058,7 @@ function reorder(order){
   if(fresh){
     order=fresh;
   }
-  if(!confirm('변경된 내용으로 다시 주문하시겠어요?'))return;
+  if(!confirm('이 내용으로 다시 주문하시겠어요?'))return;
   var itemsTotal=order.items.reduce(function(s,i){return s+i.price*i.qty;},0);
   var isPickup=(order.memo||'').startsWith('매장픽업');
   if(!isPickup&&itemsTotal<20){
