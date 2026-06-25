@@ -1850,6 +1850,7 @@ function histEditQty(orderId,itemName,d){
   if(!o)return;
   var item=o.items.find(function(i){return i.name===itemName;});
   if(!item)return;
+  _snapOrig(o);
   item.qty=Math.max(1,item.qty+d);
   var key=itemName.replace(/\s/g,'_');
   var qEl=document.getElementById('histqty-'+orderId+'-'+key);
@@ -1864,11 +1865,22 @@ function _activateReorderBtn(id){
   var btn=document.getElementById('btn-reorder-'+id);
   if(btn){btn.disabled=false;btn.style.opacity='';}
 }
+// 편집 시작 시 원본 값 1회 스냅샷 — 재주문 시 원본을 원래값으로 복원하기 위함
+function _snapOrig(ord){
+  if(ord&&!ord._snap){
+    ord._snap={
+      items:ord.items.map(function(i){return {name:i.name,qty:i.qty,price:i.price};}),
+      memo:ord.memo||'',
+      additionalRequest:ord.additionalRequest||''
+    };
+  }
+}
 function histDelItem(orderId,itemName){
   var orders=JSON.parse(localStorage.getItem('orders')||'[]');
   var o=orders.find(function(o){return o.id===orderId;});
   if(!o)return;
   if(o.items.length<=1){showToast('최소 1개 항목이 필요합니다.');return;}
+  _snapOrig(o);
   o.items=o.items.filter(function(i){return i.name!==itemName;});
   var key=itemName.replace(/\s/g,'_');
   var row=document.getElementById('histrow-'+orderId+'-'+key);
@@ -1949,6 +1961,7 @@ function histSaveMemo(id){
   if(text!=='매장픽업'&&itemsTotal<20){
     showToast('⚠️ 2만원 미만은 매장픽업만 가능해요.');return;
   }
+  _snapOrig(ord);
   ord.memo=text;
   localStorage.setItem('orders',JSON.stringify(ords));
   document.getElementById('histmemo-'+id).innerHTML=_histMemoHtml(id,text);
@@ -1979,6 +1992,9 @@ function histCancelExtra(id){
 function histSaveExtra(id){
   var ta=document.getElementById('histextrata-'+id);
   var text=ta?ta.value.trim():'';
+  var ords=JSON.parse(localStorage.getItem('orders')||'[]');
+  var ord=ords.find(function(o){return o.id===id;});
+  if(ord){_snapOrig(ord);ord.additionalRequest=text;localStorage.setItem('orders',JSON.stringify(ords));}
   document.getElementById('histextra-'+id).innerHTML=_histExtraHtml(id,text);
   fetch(API_URL+'/api/orders/'+encodeURIComponent(id)+'/request',{
     method:'PUT',headers:{'Content-Type':'application/json'},
@@ -2046,7 +2062,17 @@ function reorder(order){
   // 기존 주문 취소 처리 (원래 상태 기억 — 재고 부족 시 롤백용)
   var orig=orders.find(function(o){return o.id===order.id;});
   var origStatus=orig?orig.status:'pending';
-  if(orig)orig.status='cancelled';
+  var origSnap=orig?orig._snap:null;
+  if(orig){
+    // 편집 전 원본값으로 되돌린 뒤 취소 처리 (취소된 주문은 최초 주문 내용 유지)
+    if(origSnap){
+      orig.items=origSnap.items;
+      orig.memo=origSnap.memo;
+      orig.additionalRequest=origSnap.additionalRequest;
+      delete orig._snap;
+    }
+    orig.status='cancelled';
+  }
   orders.unshift(newOrder);
   localStorage.setItem('orders',JSON.stringify(orders));
 
@@ -2073,6 +2099,11 @@ function reorder(order){
           showSoldOutModal(d.soldOut);
         });
         return;
+      }
+      // 원본 주문 DB값 복원 — 편집 중 동기화된 memo·추가요청을 최초값으로 되돌림
+      if(origSnap){
+        fetch(API_URL+'/api/orders/'+encodeURIComponent(order.id)+'/memo',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({memo:origSnap.memo})}).catch(function(){});
+        fetch(API_URL+'/api/orders/'+encodeURIComponent(order.id)+'/request',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:origSnap.additionalRequest})}).catch(function(){});
       }
       // 서버 승인 후 알림 발송
       var menuList=order.items.map(function(i){return i.name+' '+i.qty+'개';}).join(', ');
