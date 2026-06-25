@@ -285,8 +285,9 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 
 /* ── 결제 페이지 ── */
 .payment-wrap{padding:24px 14px;}
-.payment-icon{text-align:center;font-size:38px;margin-bottom:10px;}
-.payment-title{text-align:center;font-size:15px;font-weight:900;margin-bottom:4px;}
+.payment-head{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:4px;}
+.payment-icon{font-size:24px;line-height:1;}
+.payment-title{font-size:15px;font-weight:900;}
 .payment-sub{text-align:center;font-size:11px;color:var(--sub);margin-bottom:18px;}
 .bank-card{
   background:linear-gradient(135deg,var(--teal),var(--teal2));
@@ -1614,8 +1615,7 @@ function _renderPaymentBody(total,wrap){
   var pw=document.createElement('div');
   pw.className='payment-wrap';
   pw.innerHTML=''
-    +'<div class="payment-icon">💰</div>'
-    +'<div class="payment-title">계좌이체 안내</div>'
+    +'<div class="payment-head"><span class="payment-icon">💰</span><span class="payment-title">계좌이체 안내</span></div>'
     +'<div class="payment-sub">아래 계좌로 금액을 입금해주세요</div>'
     +'<div class="bank-card">'
       +'<div class="bank-row"><span class="bank-label">은행</span><span class="bank-value">'+BANK.name+'</span></div>'
