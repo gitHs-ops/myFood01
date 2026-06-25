@@ -1949,33 +1949,21 @@ function renderOrdersList(today,todayOrders){
       memo.textContent='📝 '+order.memo;
       card.appendChild(memo);
     }
-    // 추가요청 + 답변 영역 — 항상 표시
+    // 추가요청 + 답변 텍스트박스 — 항상 고정 표시
     var addWrap=document.createElement('div');
     addWrap.id='addreqwrap_'+order.id;
+    addWrap.className='addreq-row-wrap';
     var innerHtml='';
     if(order.additionalRequest){
       var safeReq=order.additionalRequest.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
       var isNew=_isNewAddReq(order);
       var dotHtml=isNew?'<span class="addreq-new-dot" style="background:#086266;margin-right:2px;"></span>':'';
-      innerHtml='<div class="addreq-text-row" style="display:flex;align-items:center;gap:8px;border-radius:6px;">'
-        +'<span style="flex:1;word-break:break-all;overflow-wrap:anywhere;">'+dotHtml+'✅ '+safeReq+'</span>'
-        +(safeRep?'':'<button class="addreq-reply-btn" style="flex-shrink:0;" onclick="showReplyBox(\''+order.id+'\',\''+ph+'\')">💬 답변</button>')
-        +'</div>';
+      innerHtml='<div class="addreq-text-row">'+dotHtml+'✅ '+safeReq+'</div>';
     }
-    if(safeRep){
-      innerHtml+='<div class="addreq-actions-row" style="border-radius:6px;">'
-        +'<div class="addreq-reply-preview" id="replypreview_'+order.id+'" style="flex:1;text-align:left;margin-right:8px;">'
-        +'<span class="addreq-admin-label">💬 온반 답변</span>'+safeRep
-        +'</div>'
-        +'<button class="addreq-reply-btn" onclick="showReplyBox(\''+order.id+'\',\''+ph+'\')">✏️ 수정</button>'
-        +'</div>';
-    } else {
-      innerHtml+='<div class="addreq-actions-row" style="border-radius:6px;">'
-        +'<div id="replypreview_'+order.id+'" style="flex:1;"></div>'
-        +'<button class="addreq-reply-btn" onclick="showReplyBox(\''+order.id+'\',\''+ph+'\')">💬 답변</button>'
-        +'</div>';
-    }
-    addWrap.className='addreq-row-wrap';
+    innerHtml+='<div style="padding:6px 10px 8px;">'
+      +'<textarea id="replyta_'+order.id+'" class="addreq-reply-textarea" placeholder="답변을 입력하세요...">'+safeRep+'</textarea>'
+      +'<button class="addreq-reply-btn" style="margin-top:5px;width:100%;text-align:center;" onclick="sendAdminReply(\''+order.id+'\',\''+ph+'\')">💬 답변 저장</button>'
+      +'</div>';
     addWrap.innerHTML=innerHtml;
     card.appendChild(addWrap);
 
