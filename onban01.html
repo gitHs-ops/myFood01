@@ -1711,11 +1711,6 @@ function renderHistory(){
   });
 }
 function _doRenderHistory(el){
-  // SSE 재렌더 후에도 사용자가 이미 활성화한 재주문 버튼 상태 복원
-  var activeReorderIds=[];
-  el.querySelectorAll('[id^="btn-reorder-"]').forEach(function(btn){
-    if(!btn.disabled) activeReorderIds.push(btn.id.replace('btn-reorder-',''));
-  });
   el.innerHTML='';
   var all=JSON.parse(localStorage.getItem('orders')||'[]');
   var orders=all.filter(function(o){return o.date===menuDate;});
@@ -1866,7 +1861,12 @@ function _doRenderHistory(el){
     card.appendChild(acts);
     el.appendChild(card);
   });
-  activeReorderIds.forEach(function(id){ _activateReorderBtn(id); });
+  // 재렌더 후에도 사용자가 활성화한 재주문 버튼 상태 복원 (영구 셋 기반)
+  Object.keys(_reorderActiveIds).forEach(function(id){
+    var b=document.getElementById('btn-reorder-'+id);
+    if(b){b.disabled=false;b.style.opacity='';}
+    else delete _reorderActiveIds[id];   // 재주문 버튼이 없는 주문(취소/배송완료)은 정리
+  });
 }
 function _updateHistTotal(id){
   var ords=JSON.parse(localStorage.getItem('orders')||'[]');
@@ -1900,7 +1900,10 @@ function histEditQty(orderId,itemName,d){
   _updateHistTotal(orderId);
   _activateReorderBtn(orderId);
 }
+// 재주문 버튼 활성 상태 — SSE 재렌더(DOM 초기화)에도 유실되지 않도록 영구 보관
+var _reorderActiveIds={};
 function _activateReorderBtn(id){
+  _reorderActiveIds[id]=true;
   var btn=document.getElementById('btn-reorder-'+id);
   if(btn){btn.disabled=false;btn.style.opacity='';}
 }
