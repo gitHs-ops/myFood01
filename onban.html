@@ -1163,15 +1163,11 @@ function _buildStatusCardHtml(o){
       '<div class="hist-item-price">'+i.qty+'개 · '+(i.price*i.qty).toLocaleString()+'천원</div>'+
     '</div>';
   }).join('');
-  // 추가요청 + 관리자 답변 영역 (pending 상태만 편집 허용)
+  // 관리자 답변 영역
   var chatHtml='';
-  var isPending=(o.status==='pending');
   if(o.additionalRequest){
-    chatHtml+='<div class="extra-req-wrap" id="extra_'+o.id+'">'+_extraSavedHtml(o.id,o.additionalRequest,isPending)+'</div>';
-  } else if(isPending){
-    chatHtml+='<div class="extra-req-wrap" id="extra_'+o.id+'">'+
-      '<button class="extra-req-btn" onclick="toggleExtraReq(\''+o.id+'\')">✏️ 추가 요청</button>'+
-    '</div>';
+    var safeAdReq=String(o.additionalRequest).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    chatHtml+='<div class="extra-req-saved" style="margin:0 -14px;">✅ '+safeAdReq+'</div>';
   }
   if(o.adminReply){
     var safeRep=String(o.adminReply).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -2118,33 +2114,18 @@ function histSaveMemo(id){
   ord.memo=text;
   localStorage.setItem('orders',JSON.stringify(ords));
   document.getElementById('histmemo-'+id).innerHTML=_histMemoHtml(id,text);
-  showToast('저장됐어요. 재주문 시 반영됩니다.');
-}
-var EXTRA_OPTS=['경비원실','문앞','택배함','현관에서 직접 수령','매장 픽업','직접 입력'];
-function _extraSelectHtml(id, prev){
-  var isCustom=prev&&EXTRA_OPTS.slice(0,-1).indexOf(prev)<0;
-  var selVal=isCustom?'직접 입력':(prev||'');
-  return '<select class="hist-req-textarea" id="histextrasel-'+id+'" onchange="histExtraSelChange(\''+id+'\')">'
-    +'<option value="">선택하세요</option>'
-    +EXTRA_OPTS.map(function(o){return '<option value="'+o+'"'+(selVal===o?' selected':'')+'>'+o+'</option>';}).join('')
-    +'</select>'
-    +'<textarea class="hist-req-textarea" id="histextrata-'+id+'" placeholder="직접 입력하세요" style="display:'+(isCustom?'block':'none')+';">'+(isCustom?prev.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):'')+'</textarea>'
-    +'<div class="hist-req-actions">'
-      +'<button class="hist-req-cancel" onclick="histCancelExtra(\''+id+'\')">취소</button>'
-      +'<button class="hist-req-save" onclick="histSaveExtra(\''+id+'\')">저장</button>'
-    +'</div>';
 }
 function histEditExtra(id){
   var ords=JSON.parse(localStorage.getItem('orders')||'[]');
   var ord=ords.find(function(o){return o.id===id;})||{};
-  document.getElementById('histextra-'+id).innerHTML=_extraSelectHtml(id, ord.additionalRequest||'');
-}
-function histExtraSelChange(id){
-  var sel=document.getElementById('histextrasel-'+id);
-  var ta=document.getElementById('histextrata-'+id);
-  if(!sel||!ta)return;
-  if(sel.value==='직접 입력'){ta.style.display='block';ta.focus();}
-  else{ta.style.display='none';}
+  var prev=(ord.additionalRequest||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  document.getElementById('histextra-'+id).innerHTML=
+    '<textarea class="hist-req-textarea" id="histextrata-'+id+'" placeholder="추가 요청 사항 입력">'+prev+'</textarea>'
+    +'<div class="hist-req-actions">'
+      +'<button class="hist-req-cancel" onclick="histCancelExtra(\''+id+'\')">취소</button>'
+      +'<button class="hist-req-save" onclick="histSaveExtra(\''+id+'\')">저장</button>'
+    +'</div>';
+  document.getElementById('histextrata-'+id).focus();
 }
 function histCancelExtra(id){
   var ords=JSON.parse(localStorage.getItem('orders')||'[]');
@@ -2152,19 +2133,14 @@ function histCancelExtra(id){
   document.getElementById('histextra-'+id).innerHTML=_histExtraHtml(id,ord.additionalRequest||'');
 }
 function histSaveExtra(id){
-  var sel=document.getElementById('histextrasel-'+id);
   var ta=document.getElementById('histextrata-'+id);
-  var text='';
-  if(sel&&sel.value==='직접 입력'){text=ta?ta.value.trim():'';}
-  else if(sel){text=sel.value;}
-  if(!text){showToast('항목을 선택해주세요.');return;}
+  var text=ta?ta.value.trim():'';
   var ords=JSON.parse(localStorage.getItem('orders')||'[]');
   var ord=ords.find(function(o){return o.id===id;});
   if(!ord)return;
   ord.additionalRequest=text;
   localStorage.setItem('orders',JSON.stringify(ords));
   document.getElementById('histextra-'+id).innerHTML=_histExtraHtml(id,text);
-  showToast('저장됐어요. 재주문 시 반영됩니다.');
 }
 function cancelHistOrder(orderId){
   if(!confirm('주문을 취소할까요?'))return;
