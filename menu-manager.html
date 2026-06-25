@@ -2251,63 +2251,42 @@ function showToast(msg){
   },2500);
 }
 
-/* ════ 주문 자동 폴링 (15초) ════ */
-var _pollSnapshot=null;
-var _pollCountdown=15;
+/* ════ SSE 실시간 동기화 ════ */
+var _sse=null;
+var _sseReconnectTimer=null;
 
-function startOrderPolling(){
-  // 초기 스냅샷 확보
-  _pollFetch(function(orders){
-    _pollSnapshot=_makeSnapshot(orders);
-    _pollSetUI(true,15);
-    updateAddReqBadge(orders);  // 초기 배지 표시
-  });
-  // 1초마다: 카운트다운 UI + 15초마다 실제 폴링
-  setInterval(function(){
-    _pollCountdown--;
-    if(_pollCountdown<=0){
-      _pollCountdown=15;
-      _pollFetch(function(orders){
-        var snap=_makeSnapshot(orders);
-        var changed=(_pollSnapshot!==null && snap!==_pollSnapshot);
-        _pollSnapshot=snap;
-        _pollSetUI(true,15);
-        updateAddReqBadge(orders);  // 매 폴링마다 배지 갱신 (탭 위치 무관)
-        if(changed){
-          // orders 탭 활성 시 자동 갱신 (캐시 포함 전체 재로드)
-          var active=document.querySelector('.page.active');
-          if(active&&active.id==='page-orders'){
-            renderOrders();
-          }
-        }
-      });
-    } else {
-      _pollSetUI(null,_pollCountdown);
-    }
-  },1000);
-}
-
-function _pollFetch(cb){
-  var today=workDate||toISO(new Date());
-  fetch(API_URL+'/api/orders?date='+encodeURIComponent(today),{cache:'no-store'})
-    .then(function(r){return r.json();})
-    .then(function(d){var orders=d.orders||[];cb(orders);})
-    .catch(function(){_pollSetUI(false,_pollCountdown);});
-}
-
-function _makeSnapshot(orders){
-  return orders.map(function(o){return o.id+':'+o.status+':'+(o.addreqAt||0);}).sort().join('|');
-}
-
-function _pollSetUI(ok,sec){
+function _sseSetUI(state){
   var lbl=document.getElementById('pollLabel');
   if(!lbl)return;
-  if(ok===false){
-    lbl.textContent='⚠ 오류';
-    return;
-  }
-  lbl.textContent='🔄 '+sec;
+  if(state==='on')  lbl.textContent='🟢 실시간';
+  else if(state==='err') lbl.textContent='⚠ 재연결중';
+  else lbl.textContent='🔄 연결중';
 }
+
+function startSSE(){
+  if(_sse){_sse.close();_sse=null;}
+  if(_sseReconnectTimer){clearTimeout(_sseReconnectTimer);_sseReconnectTimer=null;}
+  _sseSetUI('connecting');
+  _sse=new EventSource(API_URL+'/api/events');
+  _sse.onopen=function(){
+    _sseSetUI('on');
+  };
+  _sse.onmessage=function(e){
+    try{
+      // renderOrders → renderOrdersList 내부에서 탭 활성 여부 판단:
+      // 활성이면 전체 재렌더, 비활성이면 배지만 갱신
+      renderOrders();
+    }catch(ex){}
+  };
+  _sse.onerror=function(){
+    _sseSetUI('err');
+    _sse.close();_sse=null;
+    // 5초 후 재연결
+    _sseReconnectTimer=setTimeout(startSSE,5000);
+  };
+}
+
+function startOrderPolling(){startSSE();}
 
 
 /* ════ 설정 ════ */

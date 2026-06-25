@@ -29,6 +29,27 @@ const pool = mysql.createPool({
 const ok  = (res, data={}) => res.json({ success: true,  ...data });
 const err = (res, msg, status=500) => res.status(status).json({ success: false, error: msg });
 
+// ── SSE 클라이언트 풀 ─────────────────────────────────────────
+const sseClients = new Set();
+function broadcast(type, payload={}) {
+  const msg = `data: ${JSON.stringify({ type, ...payload })}\n\n`;
+  for (const r of sseClients) { try { r.write(msg); } catch(e) { sseClients.delete(r); } }
+}
+
+// SSE 연결 (GET /api/events)
+app.get('/api/events', (req, res) => {
+  res.setHeader('Content-Type',  'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection',    'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders();
+  res.write(':connected\n\n');
+  sseClients.add(res);
+  // 25초 heartbeat (Railway 30분 타임아웃 대비)
+  const hb = setInterval(() => { try { res.write(':\n\n'); } catch(e) { clearInterval(hb); } }, 25000);
+  req.on('close', () => { clearInterval(hb); sseClients.delete(res); });
+});
+
 // ── 헬스체크 ────────────────────────────────────────────────
 app.get('/health', (req, res) => res.json({ ok: true }));
 
@@ -248,6 +269,7 @@ app.post('/api/orders', async (req, res) => {
         ]
       );
       await conn.commit(); conn.release();
+      broadcast('order_new', { orderId: order.id, date });
       ok(res, { action: 'inserted' });
     } catch(e) { await conn.rollback(); conn.release(); throw e; }
   } catch(e) { err(res, e.message); }
@@ -297,6 +319,7 @@ app.put('/api/orders/:id/status', async (req, res) => {
       }
 
       await conn.commit(); conn.release();
+      broadcast('order_status', { orderId: req.params.id, status, date });
       ok(res);
     } catch(e) { await conn.rollback(); conn.release(); throw e; }
   } catch(e) { err(res, e.message); }
@@ -307,6 +330,7 @@ app.put('/api/orders/:id/request', async (req, res) => {
   try {
     const { text } = req.body;
     await pool.execute('UPDATE orders SET additional_request=? WHERE id=?', [text||'', req.params.id]);
+    broadcast('order_request', { orderId: req.params.id });
     ok(res);
   } catch(e) { err(res, e.message); }
 });
@@ -315,6 +339,7 @@ app.put('/api/orders/:id/request', async (req, res) => {
 app.put('/api/orders/:id/addreq-ack', async (req, res) => {
   try {
     await pool.execute('UPDATE orders SET addreq_acked=1 WHERE id=?', [req.params.id]);
+    broadcast('order_ack', { orderId: req.params.id });
     ok(res);
   } catch(e) { err(res, e.message); }
 });
@@ -327,6 +352,7 @@ app.put('/api/orders/:id/reply', async (req, res) => {
       'UPDATE orders SET admin_reply=?, reply_at=NOW() WHERE id=?',
       [text||'', req.params.id]
     );
+    broadcast('order_reply', { orderId: req.params.id });
     ok(res);
   } catch(e) { err(res, e.message); }
 });
@@ -336,6 +362,7 @@ app.delete('/api/orders/:id', async (req, res) => {
   try {
     const [r] = await pool.execute('DELETE FROM orders WHERE id=?', [req.params.id]);
     if (r.affectedRows === 0) return err(res, '주문 없음', 404);
+    broadcast('order_delete', { orderId: req.params.id });
     ok(res);
   } catch(e) { err(res, e.message); }
 });

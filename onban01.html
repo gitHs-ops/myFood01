@@ -2058,9 +2058,31 @@ function reorder(order){
     .catch(function(){});
 }
 
+/* ── SSE 실시간 동기화 ── */
+var _sse=null;
+var _sseReconnTimer=null;
+function _startSSE(){
+  if(_sse){_sse.close();_sse=null;}
+  if(_sseReconnTimer){clearTimeout(_sseReconnTimer);_sseReconnTimer=null;}
+  _sse=new EventSource(API_URL+'/api/events');
+  _sse.onmessage=function(e){
+    try{
+      var d=JSON.parse(e.data);
+      var histActive=document.getElementById('page-history')&&
+                     document.getElementById('page-history').classList.contains('active');
+      if(histActive)renderHistory();
+    }catch(ex){}
+  };
+  _sse.onerror=function(){
+    _sse.close();_sse=null;
+    _sseReconnTimer=setTimeout(_startSSE,5000);
+  };
+}
+
 window.onload=function(){
   loadMenus();
   _startMenuAutoRefresh();
+  _startSSE();
   // 발송 설정을 API에서 직접 로드 → _sendSettings 갱신 (localStorage 의존 제거)
   fetch(API_URL+'/api/settings',{cache:'no-store'})
     .then(function(r){return r.json();})
