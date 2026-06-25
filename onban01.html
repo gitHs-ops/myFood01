@@ -1773,7 +1773,7 @@ function _doRenderHistory(el){
       if(o.adminReply){
         var repDiv=document.createElement('div');
         repDiv.className='admin-reply-section';
-        var safeR=String(o.adminReply).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        var safeR=String(o.adminReply).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/&lt;br&gt;/gi,'<br>');
         var tStr='';
         if(o.replyAt){try{tStr=new Date(Number(o.replyAt)).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});}catch(e){}}
         repDiv.innerHTML='<div class="admin-reply-bubble">'

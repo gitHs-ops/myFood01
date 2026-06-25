@@ -1942,7 +1942,7 @@ function renderOrdersList(today,todayOrders){
     card.appendChild(total);
 
     var ph=order.phone?(order.phone.replace(/'/g,'')):'';
-    var safeRep=order.adminReply?order.adminReply.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):'';
+    var safeRep=order.adminReply?order.adminReply.replace(/<br>/gi,'\n').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):'';
     if(order.memo){
       var memo=document.createElement('div');
       memo.className='order-memo';
@@ -2069,8 +2069,8 @@ function sendAdminReply(orderId, phone){
       sendSMS(phone, fallbackMsg);
     }
   }
-  // textarea 내용 그대로 저장 (수정/덮어쓰기)
-  var combined=text;
+  // 줄바꿈 → <br> 변환 후 저장
+  var combined=text.replace(/\n/g,'<br>');
   // API에 합산 답변 저장
   fetch(API_URL+'/api/orders/'+encodeURIComponent(orderId)+'/reply',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:combined})}).catch(function(){});
   // 캐시 업데이트
