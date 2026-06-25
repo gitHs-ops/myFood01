@@ -1955,7 +1955,7 @@ function renderOrdersList(today,todayOrders){
     addWrap.className='addreq-row-wrap';
     var innerHtml='';
     if(order.additionalRequest){
-      var safeReq=order.additionalRequest.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      var safeReq=order.additionalRequest.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
       var isNew=_isNewAddReq(order);
       var dotHtml=isNew?'<span class="addreq-new-dot" style="background:#086266;margin-right:2px;"></span>':'';
       innerHtml='<div class="addreq-text-row">'+dotHtml+'✅ '+safeReq+'</div>';
