@@ -425,6 +425,7 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 .hist-req-save{flex:1;padding:7px;border-radius:8px;border:none;background:#086266;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
 .hist-btn-cancel{flex:1;padding:10px;border-radius:9px;font-size:13px;font-weight:700;border:1.5px solid #f5c0c0;background:#fff;color:var(--red);cursor:pointer;}
 .hist-btn-reorder{flex:1;padding:10px;border-radius:9px;font-size:13px;font-weight:700;border:none;background:var(--teal);color:#fff;cursor:pointer;}
+.hist-btn-delete{flex:1;padding:10px;border-radius:9px;font-size:13px;font-weight:700;border:1.5px solid #ccc;background:#fff;color:#999;cursor:pointer;}
 /* ── 추가 요청 ── */
 .extra-req-wrap{padding:0 14px 12px;}
 .extra-req-btn{width:100%;padding:9px;border-radius:9px;font-size:13px;font-weight:700;border:1.5px dashed #cde8e7;background:#f9fffe;color:#086266;cursor:pointer;font-family:inherit;transition:background .15s;}
@@ -1799,14 +1800,22 @@ function _doRenderHistory(el){
       (function(oid){btnCancel.onclick=function(){cancelHistOrder(oid);};})(o.id);
       acts.appendChild(btnCancel);
     }
-    var btnReorder=document.createElement('button');
-    btnReorder.className='hist-btn-reorder';
-    btnReorder.id='btn-reorder-'+o.id;
-    btnReorder.textContent='재주문';
-    btnReorder.disabled=true;
-    btnReorder.style.opacity='0.4';
-    (function(ord){btnReorder.onclick=function(){reorder(ord);};})(o);
-    acts.appendChild(btnReorder);
+    if(o.status==='cancelled'){
+      var btnDel=document.createElement('button');
+      btnDel.className='hist-btn-delete';
+      btnDel.textContent='삭제';
+      (function(oid){btnDel.onclick=function(){deleteHistOrder(oid);};})(o.id);
+      acts.appendChild(btnDel);
+    } else {
+      var btnReorder=document.createElement('button');
+      btnReorder.className='hist-btn-reorder';
+      btnReorder.id='btn-reorder-'+o.id;
+      btnReorder.textContent='재주문';
+      btnReorder.disabled=true;
+      btnReorder.style.opacity='0.4';
+      (function(ord){btnReorder.onclick=function(){reorder(ord);};})(o);
+      acts.appendChild(btnReorder);
+    }
     card.appendChild(acts);
     el.appendChild(card);
   });
@@ -1943,6 +1952,14 @@ function histSaveExtra(id){
     method:'PUT',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({text:text})
   }).catch(function(){});
+}
+function deleteHistOrder(orderId){
+  if(!confirm('취소된 주문을 목록에서 삭제할까요?'))return;
+  var orders=JSON.parse(localStorage.getItem('orders')||'[]');
+  localStorage.setItem('orders',JSON.stringify(orders.filter(function(o){return o.id!==orderId;})));
+  fetch(API_URL+'/api/orders/'+encodeURIComponent(orderId),{method:'DELETE'}).catch(function(){});
+  var card=document.getElementById('histcard-'+orderId);
+  if(card)card.remove();
 }
 function cancelHistOrder(orderId){
   if(!confirm('주문을 취소할까요?'))return;
