@@ -1946,7 +1946,7 @@ function renderOrdersList(today,todayOrders){
     if(order.memo){
       var memo=document.createElement('div');
       memo.className='order-memo';
-      memo.textContent='📝 '+order.memo;
+      memo.textContent='🚚 '+(order.memo||'').split(' / ')[0].trim();
       card.appendChild(memo);
     }
     // 추가요청 + 답변 텍스트박스 — 항상 고정 표시
@@ -2165,7 +2165,8 @@ function confirmOrder(id){
       +(o.phone?' '+o.phone:'')
       +(o.addr?' / '+o.addr:'')
       +' / '+o.items.map(function(i){return i.name+' '+i.qty+'개';}).join(', ')
-      +(o.memo?' / 요청:'+o.memo:'');
+      +(o.memo?' / 배송:'+(o.memo||'').split(' / ')[0].trim():'')
+      +(o.additionalRequest?' / 요청:'+o.additionalRequest:'');
     sendSMS(admin.deliveryPhone, delivMsg);
   }
 }

@@ -571,7 +571,7 @@ select.orderer-input{appearance:none;-webkit-appearance:none;background:#fff url
       <option value="현관에서직접수령">현관에서 직접 수령</option>
       <option value="매장픽업">매장 픽업</option>
     </select>
-    <textarea class="orderer-input orderer-direct-req" id="ordererDirectReq" placeholder="✏️ 직접 요청 (선택) — 추가 요청 사항을 자유롭게 입력하세요" rows="3" maxlength="200"></textarea>
+    <textarea class="orderer-input orderer-direct-req" id="ordererDirectReq" placeholder="✏️ 추가요청사항 (선택) — 자유롭게 입력하세요" rows="3" maxlength="200"></textarea>
   </div>
   <div id="ordererOrderContent"></div>
 </div>
@@ -637,7 +637,7 @@ var detailMenu=null;
 var detailQty=1;
 var selectedMenuIds=new Set(); // 체크박스 선택 항목
 var orderItems=[];
-var ordererInfo={name:'',phone:'',addr:'',memo:''};
+var ordererInfo={name:'',phone:'',addr:'',memo:'',additionalRequest:''};
 var lastOrderTotal=0;
 var menuDate=toISO(new Date());
 
@@ -1292,12 +1292,12 @@ function renderOrdererPage(){
       return;
     }
     var directReq=(document.getElementById('ordererDirectReq').value||'').trim();
-    var fullMemo=memo+(directReq?' / '+directReq:'');
     ordererInfo={
       name:name,
       phone:document.getElementById('ordererPhone').value.trim(),
       addr:document.getElementById('ordererAddr').value.trim(),
-      memo:fullMemo
+      memo:memo,                       // 배송방법만 저장
+      additionalRequest:directReq      // 요청사항은 추가요청사항으로 통일
     };
     lastOrderTotal=orderItems.reduce(function(s,c){return s+c.price*c.qty;},0)+_deliveryFee;
     verifyStock(function(ok,short){
@@ -1471,6 +1471,7 @@ function saveOrder(cb){
     items:orderItems.map(function(c){return {name:c.name,qty:c.qty,price:c.price};}),
     total:total,
     deliveryFee:_deliveryFee,
+    additionalRequest:ordererInfo.additionalRequest||'',
     deviceId:getDeviceId(),
     status:'pending'
   };
@@ -1506,7 +1507,8 @@ function saveOrder(cb){
     +order.name+(order.phone?' ('+order.phone+')':'')
     +' '+order.items.map(function(i){return i.name+' '+i.qty+'개';}).join(', ')
     +' 합계: '+total.toLocaleString()+'천원'
-    +(order.memo?' 요청:'+order.memo:'');
+    +(order.memo?' 배송:'+order.memo:'')
+    +(order.additionalRequest?' 요청:'+order.additionalRequest:'');
   sendSMS(adminPhoneFixed, adminMsg);
   // 설정 페이지 관리자 연락처로도 발송 (다를 경우만)
   var adminInfo=JSON.parse(localStorage.getItem('onban_admin')||'{}');
@@ -1561,9 +1563,15 @@ function renderOrder(){
     el.appendChild(nameBox);
     if(ordererInfo.memo){
       var memoBox=document.createElement('div');
-      memoBox.style.cssText='background:#fff8e1;border-radius:10px;margin:0 14px 4px;padding:10px 16px;font-size:13px;color:#b8860b;';
-      memoBox.textContent='📝 '+ordererInfo.memo;
+      memoBox.style.cssText='background:#e8f5f4;border-radius:10px;margin:0 14px 4px;padding:10px 16px;font-size:13px;color:var(--teal);';
+      memoBox.textContent='🚚 '+ordererInfo.memo;
       el.appendChild(memoBox);
+    }
+    if(ordererInfo.additionalRequest){
+      var arBox=document.createElement('div');
+      arBox.style.cssText='background:#fff8e1;border-radius:10px;margin:0 14px 4px;padding:10px 16px;font-size:13px;color:#b8860b;white-space:pre-wrap;';
+      arBox.textContent='📝 '+ordererInfo.additionalRequest;
+      el.appendChild(arBox);
     }
   }
   var btnCfm=document.createElement('button');
@@ -1638,12 +1646,32 @@ function copyAccount(){
   navigator.clipboard.writeText(BANK.account).then(function(){showToast('계좌번호가 복사됐어요!');});
 }
 function goHome(){
-  cart=[];orderItems=[];ordererInfo={name:'',phone:'',memo:''};
+  cart=[];orderItems=[];ordererInfo={name:'',phone:'',memo:'',additionalRequest:''};
   updateCartCount();
   filterCat='전체';
   goPage('list');
   renderCatTabs();
   renderMenuGrid();
+}
+
+// 레거시 memo "배송방법 / 인라인노트" → memo는 배송방법만, 노트는 additionalRequest로 이관 (1회, DB 동기화)
+function _migrateLegacyMemo(all){
+  all.forEach(function(o){
+    if(o.date!==menuDate)return;
+    var idx=(o.memo||'').indexOf(' / ');
+    if(idx<0)return;
+    var method=o.memo.slice(0,idx).trim();
+    var note=o.memo.slice(idx+3).trim();
+    if(note){
+      var existing=(o.additionalRequest||'').trim();
+      o.additionalRequest=existing?(note+'\n'+existing):note;
+    }
+    o.memo=method;
+    fetch(API_URL+'/api/orders/'+encodeURIComponent(o.id)+'/memo',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({memo:method})}).catch(function(){});
+    if(o.additionalRequest){
+      fetch(API_URL+'/api/orders/'+encodeURIComponent(o.id)+'/request',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:o.additionalRequest})}).catch(function(){});
+    }
+  });
 }
 
 // ── 주문 내역 ──
@@ -1672,6 +1700,7 @@ function renderHistory(){
       });
       // 오늘자 phantom 주문 제거 (DB에 없는 localStorage 전용 항목)
       all=all.filter(function(o){return o.date!==menuDate||dbIds[o.id];});
+      _migrateLegacyMemo(all);   // 레거시 memo 인라인 노트 → additionalRequest 이관
       localStorage.setItem('orders',JSON.stringify(all));
     }
     _doRenderHistory(el);
@@ -1763,25 +1792,35 @@ function _doRenderHistory(el){
     totRow.id='histtotal-'+o.id;
     totRow.innerHTML='<span>합계</span><span class="hist-total-val">'+comma(total)+'천원</span>';
     card.appendChild(totRow);
-    // 직접 요청 (memo) — 편집 가능
+    // 배송방법 (memo) — 편집 가능
     if(!isFinished){
       var memoWrap=document.createElement('div');
       memoWrap.className='hist-req-wrap';
       memoWrap.id='histmemo-'+o.id;
       memoWrap.innerHTML=_histMemoHtml(o.id, o.memo||'');
       card.appendChild(memoWrap);
-      // 추가 요청 (additionalRequest) — 편집 가능
+      // 추가요청사항 (additionalRequest) — 편집 가능
       var extraWrap=document.createElement('div');
       extraWrap.className='hist-req-wrap';
       extraWrap.id='histextra-'+o.id;
       extraWrap.innerHTML=_histExtraHtml(o.id, o.additionalRequest||'');
       card.appendChild(extraWrap);
     } else {
-      if(o.memo){
+      var delivery=(o.memo||'').split(' / ')[0].trim();
+      if(delivery){
         var mr=document.createElement('div');
         mr.className='order-memo-row';
-        mr.textContent='📝 '+o.memo;
+        mr.textContent='🚚 '+delivery;
         card.appendChild(mr);
+      }
+      if(o.additionalRequest){
+        var ar=document.createElement('div');
+        ar.className='hist-req-wrap';
+        ar.innerHTML='<div class="hist-extra-card-section"><span class="hist-extra-label">추가요청사항</span>'
+          +'<div class="hist-extra-card-row"><div class="hist-extra-bubble">'
+          +o.additionalRequest.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')
+          +'</div></div></div>';
+        card.appendChild(ar);
       }
     }
     // 관리자 답변 — 모든 상태에서 표시
@@ -1889,23 +1928,13 @@ function histDelItem(orderId,itemName){
   _updateHistTotal(orderId);
   _activateReorderBtn(orderId);
 }
-/* ── 주문 내역 직접요청/추가요청 편집 ── */
+/* ── 주문 내역 배송방법/추가요청 편집 ── */
 function _histMemoHtml(id,text){
-  if(!text) return '<button class="hist-req-add-btn" onclick="histEditMemo(\''+id+'\')">📝 직접 요청 추가</button>';
-  var parts=(text||'').split(' / ');
-  var delivery=parts[0].trim();
-  var note=parts.slice(1).join(' / ').trim();
+  if(!text) return '<button class="hist-req-add-btn" onclick="histEditMemo(\''+id+'\')">📝 배송 방법 선택</button>';
+  var delivery=(text||'').split(' / ')[0].trim();   // 레거시 인라인 노트 제거, 배송방법만
   var safeD=delivery.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  var html='<div class="hist-req-row memo-row"><span>🚚 '+safeD+'</span>'
+  return '<div class="hist-req-row memo-row"><span>🚚 '+safeD+'</span>'
     +'<button class="hist-req-edit-btn" onclick="histEditMemo(\''+id+'\')" title="수정">✏️ 수정</button></div>';
-  if(note){
-    var safeN=note.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
-    html+='<div class="hist-extra-card-section">'
-      +'<span class="hist-extra-label">직접요청</span>'
-      +'<div class="hist-extra-card-row"><div class="hist-extra-bubble">'+safeN+'</div></div>'
-      +'</div>';
-  }
-  return html;
 }
 function _histExtraHtml(id,text){
   if(!text) return '<button class="hist-req-add-btn" onclick="histEditExtra(\''+id+'\')">✏️ 추가 요청 추가</button>';
