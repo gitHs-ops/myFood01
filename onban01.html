@@ -1806,7 +1806,7 @@ function _doRenderHistory(el){
       btnDel.textContent='삭제';
       (function(oid){btnDel.onclick=function(){deleteHistOrder(oid);};})(o.id);
       acts.appendChild(btnDel);
-    } else {
+    } else if(o.status!=='delivered'){
       var btnReorder=document.createElement('button');
       btnReorder.className='hist-btn-reorder';
       btnReorder.id='btn-reorder-'+o.id;
