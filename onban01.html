@@ -2061,16 +2061,31 @@ function reorder(order){
 /* ── SSE 실시간 동기화 ── */
 var _sse=null;
 var _sseReconnTimer=null;
+var _sseHistTimer=null;
+
+function _debouncedRenderHistory(){
+  if(_sseHistTimer)clearTimeout(_sseHistTimer);
+  _sseHistTimer=setTimeout(function(){
+    var histActive=document.getElementById('page-history')&&
+                   document.getElementById('page-history').classList.contains('active');
+    if(!histActive)return;
+    var ae=document.activeElement;
+    var isTyping=ae&&(ae.tagName==='TEXTAREA'||ae.tagName==='INPUT');
+    if(isTyping){
+      ae.addEventListener('blur',function(){renderHistory();},{once:true});
+    } else {
+      renderHistory();
+    }
+  },500);
+}
+
 function _startSSE(){
   if(_sse){_sse.close();_sse=null;}
   if(_sseReconnTimer){clearTimeout(_sseReconnTimer);_sseReconnTimer=null;}
   _sse=new EventSource(API_URL+'/api/events');
   _sse.onmessage=function(e){
     try{
-      var d=JSON.parse(e.data);
-      var histActive=document.getElementById('page-history')&&
-                     document.getElementById('page-history').classList.contains('active');
-      if(histActive)renderHistory();
+      _debouncedRenderHistory();
     }catch(ex){}
   };
   _sse.onerror=function(){

@@ -2254,6 +2254,21 @@ function showToast(msg){
 /* ════ SSE 실시간 동기화 ════ */
 var _sse=null;
 var _sseReconnectTimer=null;
+var _sseRenderTimer=null;
+
+function _debouncedRenderOrders(){
+  if(_sseRenderTimer)clearTimeout(_sseRenderTimer);
+  _sseRenderTimer=setTimeout(function(){
+    var ae=document.activeElement;
+    var isTyping=ae&&(ae.tagName==='TEXTAREA'||ae.tagName==='INPUT');
+    if(isTyping){
+      // 입력 중 — blur 후 렌더 (once 옵션으로 1회만)
+      ae.addEventListener('blur',function(){renderOrders();},{once:true});
+    } else {
+      renderOrders();
+    }
+  },500);
+}
 
 function _sseSetUI(state){
   var lbl=document.getElementById('pollLabel');
@@ -2273,9 +2288,7 @@ function startSSE(){
   };
   _sse.onmessage=function(e){
     try{
-      // renderOrders → renderOrdersList 내부에서 탭 활성 여부 판단:
-      // 활성이면 전체 재렌더, 비활성이면 배지만 갱신
-      renderOrders();
+      _debouncedRenderOrders();
     }catch(ex){}
   };
   _sse.onerror=function(){
