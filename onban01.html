@@ -1682,7 +1682,7 @@ function renderHistory(){
 function _doRenderHistory(el){
   el.innerHTML='';
   var all=JSON.parse(localStorage.getItem('orders')||'[]');
-  var orders=all.filter(function(o){return o.date===menuDate&&o.status!=='cancelled'&&o.status!=='delivered';});
+  var orders=all.filter(function(o){return o.date===menuDate;});
   if(!orders.length){
     var label=new Date(menuDate+'T00:00:00').toLocaleDateString('ko-KR',{month:'long',day:'numeric'});
     el.innerHTML='<div class="hist-empty"><span>📋</span><p>'+label+' 주문 내역이 없어요.</p></div>';
@@ -1694,7 +1694,7 @@ function _doRenderHistory(el){
     var itemsSum=o.items.reduce(function(s,i){return s+i.price*i.qty;},0);
     var deliveryFee=o.deliveryFee||0;
     var total=itemsSum+deliveryFee;
-    var isCancelled=(o.status==='cancelled');
+    var isFinished=(o.status==='cancelled'||o.status==='delivered');
     var card=document.createElement('div');
     card.className='hist-card';
     card.id='histcard-'+o.id;
@@ -1723,7 +1723,7 @@ function _doRenderHistory(el){
       pr.id='histprice-'+o.id+'-'+key;
       pr.textContent=comma(item.price*item.qty)+'천원';
       row.appendChild(nm);
-      if(!isCancelled){
+      if(!isFinished){
         var qtyCtrl=document.createElement('div');
         qtyCtrl.className='hist-item-qty-ctrl';
         var qm=document.createElement('button'); qm.textContent='-';
@@ -1757,7 +1757,7 @@ function _doRenderHistory(el){
     totRow.innerHTML='<span>합계</span><span class="hist-total-val">'+comma(total)+'천원</span>';
     card.appendChild(totRow);
     // 직접 요청 (memo) — 편집 가능
-    if(!isCancelled){
+    if(!isFinished){
       var memoWrap=document.createElement('div');
       memoWrap.className='hist-req-wrap';
       memoWrap.id='histmemo-'+o.id;
@@ -1769,19 +1769,6 @@ function _doRenderHistory(el){
       extraWrap.id='histextra-'+o.id;
       extraWrap.innerHTML=_histExtraHtml(o.id, o.additionalRequest||'');
       card.appendChild(extraWrap);
-      // 관리자 답변
-      if(o.adminReply){
-        var repDiv=document.createElement('div');
-        repDiv.className='admin-reply-section';
-        var safeR=String(o.adminReply).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/&lt;br&gt;/gi,'<br>');
-        var tStr='';
-        if(o.replyAt){try{tStr=new Date(Number(o.replyAt)).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});}catch(e){}}
-        repDiv.innerHTML='<div class="admin-reply-bubble">'
-          +'<div class="admin-reply-text"><span class="admin-reply-label">💬 온반 답변</span> '+safeR+'</div>'
-          +(tStr?'<div class="admin-reply-time">'+tStr+'</div>':'')
-          +'</div>';
-        card.appendChild(repDiv);
-      }
     } else {
       if(o.memo){
         var mr=document.createElement('div');
@@ -1790,10 +1777,23 @@ function _doRenderHistory(el){
         card.appendChild(mr);
       }
     }
+    // 관리자 답변 — 모든 상태에서 표시
+    if(o.adminReply){
+      var repDiv=document.createElement('div');
+      repDiv.className='admin-reply-section';
+      var safeR=String(o.adminReply).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/&lt;br&gt;/gi,'<br>');
+      var tStr='';
+      if(o.replyAt){try{tStr=new Date(Number(o.replyAt)).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});}catch(e){}}
+      repDiv.innerHTML='<div class="admin-reply-bubble">'
+        +'<div class="admin-reply-text"><span class="admin-reply-label">💬 온반 답변</span> '+safeR+'</div>'
+        +(tStr?'<div class="admin-reply-time">'+tStr+'</div>':'')
+        +'</div>';
+      card.appendChild(repDiv);
+    }
     // 액션 버튼
     var acts=document.createElement('div');
     acts.className='hist-actions';
-    if(!isCancelled){
+    if(o.status==='pending'){
       var btnCancel=document.createElement('button');
       btnCancel.className='hist-btn-cancel';
       btnCancel.textContent='주문취소';
