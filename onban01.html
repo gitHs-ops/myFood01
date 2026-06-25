@@ -323,9 +323,6 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 
 /* ── 공통 ── */
 .section-title{font-size:15px;font-weight:700;padding:16px 16px 10px;color:#fff;display:flex;align-items:center;justify-content:space-between;}
-.status-refresh-btn{font-size:11px;font-weight:700;color:#fff;background:#086266;border:none;border-radius:20px;padding:5px 12px;cursor:pointer;white-space:nowrap;animation:status-blink 2s ease-in-out infinite;}
-.status-countdown{font-size:12px;font-weight:700;color:#fff;background:rgba(8,98,102,.6);border-radius:20px;padding:3px 10px;white-space:nowrap;min-width:46px;text-align:center;}
-@keyframes status-blink{0%,100%{opacity:1;}50%{opacity:.5;}}
 .toast{
   position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);
   background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:999px;
@@ -378,10 +375,6 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 }
 .top-btn:hover{background:rgba(255,255,255,.30);}
 .top-btn svg{width:16px;height:16px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;}
-/* 주문접수 버튼 — 활성 주문 있을 때 강조 */
-.top-btn-status{background:rgba(233,168,38,.25);border-color:rgba(233,168,38,.6);}
-.top-btn-status.has-order{background:#E9A826;border-color:#E9A826;color:#3A1D1D;}
-.top-btn-status.has-order svg{stroke:#3A1D1D;}
 /* 기존 .history-btn 호환 (다른 곳 참조 없음) */
 .history-btn{display:none;}
 /* ── 주문 내역 페이지 ── */
@@ -518,10 +511,6 @@ select.orderer-input{appearance:none;-webkit-appearance:none;background:#fff url
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
       주문내역
     </button>
-    <button class="top-btn top-btn-status" id="statusBtn" onclick="goPage('status')">
-      <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-      <span id="statusBtnLabel">접수상태</span>
-    </button>
   </div>
 </div>
 
@@ -599,21 +588,6 @@ select.orderer-input{appearance:none;-webkit-appearance:none;background:#fff url
   <div id="paymentContent"></div>
 </div>
 
-<!-- ════ 페이지: 주문 접수 상태 ════ -->
-<div id="page-status" class="page">
-  <div class="back-bar" onclick="goPage('list')">
-    <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
-    메뉴 목록으로
-  </div>
-  <div class="section-title">
-    <span>📬 접수상태</span>
-    <div style="display:flex;align-items:center;gap:8px;">
-      <span class="status-refresh-btn" onclick="refreshStatusNow()">🔄 갱신</span>
-      <span id="statusCountdown" class="status-countdown">🔄 15</span>
-    </div>
-  </div>
-  <div id="statusContent"></div>
-</div>
 
 <!-- ════ 페이지: 주문 내역 ════ -->
 <div id="page-history" class="page">
@@ -706,37 +680,6 @@ function showSoldOutModal(soldOut){
     +'</div>';
   document.body.appendChild(overlay);
 }
-var _statusTimerHandle=null;
-function _startStatusTimer(){
-  _stopStatusTimer();
-  var sec=15;
-  var el=document.getElementById('statusCountdown');
-  if(el)el.textContent='🔄 '+sec;
-  _statusTimerHandle=setInterval(function(){
-    var active=document.activeElement;
-    var isTyping=active&&(active.tagName==='TEXTAREA'||active.tagName==='INPUT');
-    if(isTyping){
-      // 입력 중이면 15초로 리셋 — 타이핑 멈춘 후 충분한 시간 확보
-      sec=15;
-      var el=document.getElementById('statusCountdown');
-      if(el)el.textContent='🔄 '+sec;
-      return;
-    }
-    sec--;
-    var el=document.getElementById('statusCountdown');
-    if(el)el.textContent='🔄 '+sec;
-    if(sec<=0){
-      sec=15;
-      if(el)el.textContent='🔄 '+sec;
-      renderStatusPage();
-    }
-  },1000);
-}
-function _stopStatusTimer(){
-  if(_statusTimerHandle){clearInterval(_statusTimerHandle);_statusTimerHandle=null;}
-  var el=document.getElementById('statusCountdown');
-  if(el)el.textContent='🔄 15';
-}
 function goPage(name){
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
   document.getElementById('page-'+name).classList.add('active');
@@ -745,8 +688,6 @@ function goPage(name){
   if(name==='order')renderOrder();
   if(name==='payment')renderPayment();
   if(name==='history')renderHistory();
-  if(name==='status'){renderStatusPage();_startStatusTimer();}
-  else{_stopStatusTimer();}
   // list 이탈 시 플로팅 버튼 숨김
   if(name!=='list'){
     var fw=document.getElementById('floatCartWrap');
@@ -819,12 +760,6 @@ function loadMenus(silent){
 var _refreshSec=10;
 function _setRefreshLabel(txt){var el=document.getElementById('dateRefreshCountdown');if(el)el.textContent=txt;}
 function _markMenuActivity(){_refreshSec=10;}
-function _silentOrderRefresh(){
-  var today=toISO(new Date());
-  var localOrders=JSON.parse(localStorage.getItem('orders')||'[]');
-  if(!localOrders.some(function(o){return o.date===today;}))return;
-  _fetchStatusFromAPI(today,localOrders,false);
-}
 function _startMenuAutoRefresh(){
   setInterval(function(){
     var listActive=document.getElementById('page-list')&&document.getElementById('page-list').classList.contains('active');
@@ -834,7 +769,6 @@ function _startMenuAutoRefresh(){
     if(_refreshSec<=0){
       _setRefreshLabel('🔄 갱신중');
       loadMenus(true);
-      _silentOrderRefresh();
       _refreshSec=10;
     }else{
       _setRefreshLabel('🔄 '+_refreshSec);
@@ -1128,168 +1062,6 @@ function updateCartCount(){
 }
 
 // ── 주문 접수 상태 팝업 ──
-var STATUS_TEXT={pending:'⏳ 접수 대기',confirmed:'✅ 주문 접수',delivered:'🚚 배송 완료',cancelled:'❌ 취소됨'};
-var STATUS_COLOR={pending:'#856404',confirmed:'#0f5132',delivered:'#084298',cancelled:'#842029'};
-var STATUS_BG   ={pending:'#fff3cd',confirmed:'#d1e7dd',delivered:'#cfe2ff',cancelled:'#f8d7da'};
-
-function updateStatusBtn(){
-  var btn=document.getElementById('statusBtn');
-  var lbl=document.getElementById('statusBtnLabel');
-  if(!btn||!lbl)return;
-  var myInfo=JSON.parse(localStorage.getItem('onban_my_info')||'null');
-  if(!myInfo||!myInfo.name){
-    btn.classList.remove('has-order');
-    lbl.textContent='접수상태';
-    return;
-  }
-  var today=toISO(new Date());
-  var orders=JSON.parse(localStorage.getItem('orders')||'[]');
-  var active=orders.filter(function(o){return o.date===today;});
-  if(active.length){
-    btn.classList.add('has-order');
-    lbl.textContent='접수상태('+active.length+')';
-  }else{
-    btn.classList.remove('has-order');
-    lbl.textContent='접수상태';
-  }
-}
-function _buildStatusCardHtml(o){
-  var st=STATUS_TEXT[o.status]||o.status;
-  var col=STATUS_COLOR[o.status]||'#555';
-  var bg=STATUS_BG[o.status]||'#f5f5f5';
-  var itemRows=(o.items||[]).map(function(i){
-    return '<div class="hist-item-row">'+
-      '<div class="hist-item-name">'+i.name+'</div>'+
-      '<div class="hist-item-price">'+i.qty+'개 · '+(i.price*i.qty).toLocaleString()+'천원</div>'+
-    '</div>';
-  }).join('');
-  // 관리자 답변 영역
-  var chatHtml='';
-  if(o.additionalRequest){
-    var safeAdReq=String(o.additionalRequest).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    chatHtml+='<div class="extra-req-saved" style="margin:0 -14px;">✅ '+safeAdReq+'</div>';
-  }
-  if(o.adminReply){
-    var safeRep=String(o.adminReply).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    var timeStr='';
-    if(o.replyAt){try{timeStr=new Date(Number(o.replyAt)).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});}catch(e2){}}
-    chatHtml+='<div class="admin-reply-section">'+
-      '<div class="admin-reply-bubble">'+
-        '<div class="admin-reply-text"><span class="admin-reply-label">💬 온반 답변</span> '+safeRep+'</div>'+
-        (timeStr?'<div class="admin-reply-time">'+timeStr+'</div>':'')+
-      '</div>'+
-    '</div>';
-  }
-  return '<div class="hist-card'+(_isNewReply(o)?' reply-new':'')+'" id="stcard_'+o.id+'">'+
-    '<div class="hist-head">'+
-      '<div>'+
-        '<div style="font-size:14px;font-weight:700;color:#1a1a1a;">'+(o.name||'')+'</div>'+
-        '<div class="hist-date">'+fmtDT(o.date,o.time)+'</div>'+
-      '</div>'+
-      '<span style="display:inline-flex;align-items:center;gap:3px;">'+
-        '<span class="hist-status '+(o.status||'')+'" style="background:'+bg+';color:'+col+';">'+st+'</span>'+
-        (o.isReorder?'<span style="font-size:10px;font-weight:700;background:#e0d4f7;color:#5b21b6;border-radius:999px;padding:2px 7px;">재주문</span>':'')+
-      '</span>'+
-    '</div>'+
-    '<div class="hist-body">'+itemRows+'</div>'+
-    '<div class="hist-total"><span>합계</span><span class="hist-total-val">'+(o.total||0).toLocaleString()+'천원</span></div>'+
-    (o.memo?'<div class="order-memo-row">📝 '+String(o.memo).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</div>':'')+
-    chatHtml+
-  '</div>';
-}
-function renderStatusPage(){
-  var el=document.getElementById('statusContent');
-  var myInfo=JSON.parse(localStorage.getItem('onban_my_info')||'null');
-  if(!myInfo||!myInfo.name){
-    el.innerHTML='<div class="hist-empty"><span>📭</span><p>주문 이력이 없어요.<br><small style="color:#aaa;font-size:12px;">주문 확정 후 조회할 수 있어요.</small></p></div>';
-    return;
-  }
-  var today=toISO(new Date());
-  el.innerHTML='<div style="text-align:center;padding:40px;color:#aaa;font-size:13px;">불러오는 중...</div>';
-  fetch(API_URL+'/api/orders?date='+encodeURIComponent(today)+'&deviceId='+encodeURIComponent(getDeviceId()),{cache:'no-store'})
-  .then(function(r){return r.json();})
-  .then(function(data){
-    if(!data.success||!Array.isArray(data.orders)){
-      el.innerHTML='<div class="hist-empty"><span>⚠️</span><p>서버 오류가 발생했어요.</p></div>';
-      return;
-    }
-    // DB 데이터만 사용 — localStorage 무시
-    var sorted=data.orders.sort(function(a,b){return (b.id||'').localeCompare(a.id||'');});
-    if(!sorted.length){
-      el.innerHTML='<div class="hist-empty"><span>📭</span>'
-        +'<p>오늘 접수된 주문이 없어요.<br>'
-        +'<small style="color:#aaa;font-size:12px;">'+myInfo.name+(myInfo.phone?' · '+myInfo.phone:'')+'</small></p></div>';
-      document.getElementById('statusBtn').classList.remove('has-order');
-      updateStatusBtn();
-      return;
-    }
-    el.innerHTML=sorted.map(_buildStatusCardHtml).join('');
-    document.getElementById('statusBtn').classList.remove('has-order');
-    updateStatusBtn();
-  })
-  .catch(function(){
-    el.innerHTML='<div class="hist-empty"><span>⚠️</span><p>서버 연결 실패<br><small style="color:#aaa;font-size:12px;">잠시 후 다시 시도해주세요.</small></p></div>';
-  });
-}
-function refreshStatusNow(){
-  showToast('조회 중...');
-  var today=toISO(new Date());
-  fetch(API_URL+'/api/orders?date='+encodeURIComponent(today)+'&deviceId='+encodeURIComponent(getDeviceId()))
-  .then(function(r){return r.json();})
-  .then(function(data){
-    if(!data.success||!Array.isArray(data.orders)){showToast('서버 오류');return;}
-    var apiMap={};
-    data.orders.forEach(function(go){apiMap[go.id]=go;});
-    var allOrders=JSON.parse(localStorage.getItem('orders')||'[]');
-    allOrders.forEach(function(o){
-      var go=apiMap[o.id];
-      if(!go)return;
-      if(go.adminReply!==undefined)o.adminReply=go.adminReply;
-      if(go.replyAt!==undefined)o.replyAt=go.replyAt;
-      if(go.status)o.status=go.status;
-    });
-    localStorage.setItem('orders',JSON.stringify(allOrders));
-    var sorted=allOrders.filter(function(o){
-      return o.date===today;
-    }).sort(function(a,b){return (b.id||'').localeCompare(a.id||'');});
-    var el=document.getElementById('statusContent');
-    if(el)el.innerHTML=sorted.map(_buildStatusCardHtml).join('');
-    updateStatusBtn();
-    setTimeout(function(){_ackAllReplies(sorted);},4000);
-    showToast('최신 정보로 업데이트됐어요.');
-  })
-  .catch(function(){showToast('서버 연결 실패.');});
-}
-function _fetchStatusFromAPI(today, localOrders, forceRender){
-  fetch(API_URL+'/api/orders?date='+encodeURIComponent(today)+'&deviceId='+encodeURIComponent(getDeviceId()))
-  .then(function(r){return r.json();})
-  .then(function(data){
-    if(!data.success||!Array.isArray(data.orders))return;
-    var apiMap={};
-    data.orders.forEach(function(go){apiMap[go.id]=go;});
-    var allOrders=JSON.parse(localStorage.getItem('orders')||'[]');
-    var changed=false;
-    allOrders.forEach(function(o){
-      var go=apiMap[o.id];
-      if(!go)return;
-      if(go.adminReply!==undefined && go.adminReply!==o.adminReply){o.adminReply=go.adminReply;changed=true;}
-      if(go.replyAt  !==undefined && go.replyAt  !==o.replyAt) {o.replyAt =go.replyAt; changed=true;}
-      if(go.status   && go.status !==o.status)                  {o.status  =go.status;  changed=true;}
-    });
-    if(changed)localStorage.setItem('orders',JSON.stringify(allOrders));
-    if(changed||forceRender){
-      var updSorted=allOrders.filter(function(o){
-        return o.date===today;
-      }).sort(function(a,b){return (b.id||'').localeCompare(a.id||'');});
-      var el=document.getElementById('statusContent');
-      if(el)el.innerHTML=updSorted.map(_buildStatusCardHtml).join('');
-      updateStatusBtn();
-      setTimeout(function(){_ackAllReplies(updSorted);},4000);
-    }
-    if(forceRender===true)showToast('최신 정보로 업데이트됐어요.');
-  })
-  .catch(function(){if(forceRender===true)showToast('서버 연결 실패.');});
-}
 function _extraSavedHtml(id,text,editable){
   var safe=String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   return '<div class="extra-req-saved">'
@@ -1345,12 +1117,7 @@ function saveExtraReq(id){
   .then(function(d){
     if(d&&d.success){
       showToast('✅ 추가 요청이 저장됐어요.');
-      // localStorage 업데이트
-      var ords=JSON.parse(localStorage.getItem('orders')||'[]');
-      var ord=ords.find(function(o){return o.id===id;});
-      if(ord){ord.additionalRequest=text;localStorage.setItem('orders',JSON.stringify(ords));}
-      var isPending=ord&&ord.status==='pending';
-      wrap.innerHTML=_extraSavedHtml(id,text,isPending);
+      wrap.innerHTML=_extraSavedHtml(id,text,true);
     } else {
       showToast('⚠️ '+(d.error||d.message||'저장 실패'));
       btn.disabled=false; btn.textContent='저장';
@@ -1530,8 +1297,6 @@ function renderOrdererPage(){
       addr:document.getElementById('ordererAddr').value.trim(),
       memo:fullMemo
     };
-    // 주문자 기억 (접수상태 조회용)
-    localStorage.setItem('onban_my_info',JSON.stringify({name:ordererInfo.name,phone:ordererInfo.phone}));
     lastOrderTotal=orderItems.reduce(function(s,c){return s+c.price*c.qty;},0)+_deliveryFee;
     verifyStock(function(ok,short){
       if(!ok){_notifyOutOfStock(short);return;}
@@ -1617,17 +1382,6 @@ function sendAlimtalk(phone,tplId,vars,fallbackMsg){
 }
 
 // ── 배송 주소 목록 ──
-var ADDR_KEY='onban_addr_list';
-function getAddrList(){return JSON.parse(localStorage.getItem(ADDR_KEY)||'[]');}
-function saveAddr(addr){
-  if(!addr)return;
-  var list=getAddrList();
-  var idx=list.indexOf(addr);
-  if(idx>=0)list.splice(idx,1);
-  list.unshift(addr);
-  if(list.length>10)list=list.slice(0,10);
-  localStorage.setItem(ADDR_KEY,JSON.stringify(list));
-}
 function showAddrList(){
   var name=(document.getElementById('ordererName').value||'').trim();
   var phone=(document.getElementById('ordererPhone').value||'').replace(/[^0-9]/g,'');
@@ -1723,11 +1477,10 @@ function saveOrder(cb){
     .then(function(r){return r.json();})
     .then(function(d){
       if(!d.success&&d.soldOut){if(cb)cb({success:false,soldOut:d.soldOut});return;}
-      // 주문 성공 → localStorage에 기록 (고객 주문상태 조회용)
+      // 주문 성공 → localStorage에 기록
       var orders=JSON.parse(localStorage.getItem('orders')||'[]');
       orders.unshift(order);
       localStorage.setItem('orders',JSON.stringify(orders));
-      updateStatusBtn();
       if(cb)cb({success:true,order:order});
     })
     .catch(function(){if(cb)cb({success:false,soldOut:[]});});
@@ -1741,9 +1494,6 @@ function saveOrder(cb){
       '[오늘의 반찬] '+order.name+'님, 주문이 접수됐습니다! '+menuList+' 합계: '+total.toLocaleString()+'천원'
     );
   }
-
-  // 배송 주소 목록 저장
-  saveAddr(order.addr);
 
   // 고객정보 시트 저장
   fetch(API_URL+'/api/customers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:[order.date,order.name,order.phone,order.addr,order.memo]})}).catch(function(){});
@@ -1897,7 +1647,6 @@ function goHome(){
 // ── 주문 내역 ──
 function renderHistory(){
   var el=document.getElementById('historyContent');
-  var myInfo=JSON.parse(localStorage.getItem('onban_my_info')||'null');
   el.innerHTML='<div style="text-align:center;padding:40px;color:#aaa;font-size:13px;">불러오는 중...</div>';
   fetch(API_URL+'/api/orders?date='+encodeURIComponent(menuDate)+'&deviceId='+encodeURIComponent(getDeviceId()),{cache:'no-store'})
   .then(function(r){return r.json();})
@@ -2249,8 +1998,6 @@ function reorder(order){
   if(orig)orig.status='cancelled';
   orders.unshift(newOrder);
   localStorage.setItem('orders',JSON.stringify(orders));
-  localStorage.setItem('onban_my_info',JSON.stringify({name:order.name,phone:order.phone}));
-  updateStatusBtn();
 
   // 취소 → 신규 주문 순서 보장 (재고: 복원 후 차감)
   fetch(API_URL+'/api/orders/'+encodeURIComponent(order.id)+'/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'cancelled'})})
@@ -2268,13 +2015,12 @@ function reorder(order){
         var origOrd=ords.find(function(o){return o.id===order.id;});
         if(origOrd)origOrd.status=origStatus;
         localStorage.setItem('orders',JSON.stringify(ords));
-        updateStatusBtn();
         // 서버 원래 주문 상태 복원 → 완료 후 화면 갱신 (API 동기화 전에 복원 확정)
         fetch(API_URL+'/api/orders/'+encodeURIComponent(order.id)+'/status',{
           method:'PUT',headers:{'Content-Type':'application/json'},
           body:JSON.stringify({status:origStatus})
         }).catch(function(){}).then(function(){
-          renderStatusPage();
+          renderHistory();
           showSoldOutModal(d.soldOut);
         });
         return;
@@ -2312,7 +2058,6 @@ function reorder(order){
 window.onload=function(){
   loadMenus();
   _startMenuAutoRefresh();
-  updateStatusBtn();
   // 발송 설정을 API에서 직접 로드 → _sendSettings 갱신 (localStorage 의존 제거)
   fetch(API_URL+'/api/settings',{cache:'no-store'})
     .then(function(r){return r.json();})
