@@ -1869,10 +1869,18 @@ function histDelItem(orderId,itemName){
 }
 /* ── 주문 내역 직접요청/추가요청 편집 ── */
 function _histMemoHtml(id,text){
-  var safe=(text||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  if(text) return '<div class="hist-req-row memo-row"><span>📝 '+safe+'</span>'
+  if(!text) return '<button class="hist-req-add-btn" onclick="histEditMemo(\''+id+'\')">📝 직접 요청 추가</button>';
+  var parts=(text||'').split(' / ');
+  var delivery=parts[0].trim();
+  var note=parts.slice(1).join(' / ').trim();
+  var safeD=delivery.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  var html='<div class="hist-req-row memo-row"><span>🚚 '+safeD+'</span>'
     +'<button class="hist-req-edit-btn" onclick="histEditMemo(\''+id+'\')" title="수정">✏️ 수정</button></div>';
-  return '<button class="hist-req-add-btn" onclick="histEditMemo(\''+id+'\')">📝 직접 요청 추가</button>';
+  if(note){
+    var safeN=note.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+    html+='<div class="hist-req-row extra-row"><span>📝 '+safeN+'</span></div>';
+  }
+  return html;
 }
 function _histExtraHtml(id,text){
   var safe=(text||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
