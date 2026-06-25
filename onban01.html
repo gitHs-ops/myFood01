@@ -1673,7 +1673,10 @@ function renderHistory(){
     }
     _doRenderHistory(el);
   })
-  .catch(function(){_doRenderHistory(el);});
+  .catch(function(){
+    el.innerHTML='<div class="hist-empty"><span>📶</span><p>네트워크 오류가 발생했어요.<br>'
+      +'<button onclick="renderHistory()" style="margin-top:10px;padding:7px 20px;border-radius:20px;border:none;background:#086266;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">다시 시도</button></p></div>';
+  });
 }
 function _doRenderHistory(el){
   el.innerHTML='';
@@ -2008,14 +2011,12 @@ function reorder(order){
     .then(function(r){return r.json();})
     .then(function(d){
       if(!d.success&&d.soldOut){
-        // 재고 부족 — localStorage 롤백 후 모달 표시
-        // localStorage 롤백
+        // 재고 부족 — localStorage에서 newOrder·원본 주문 모두 제거
+        // (renderHistory가 DB에서 원본 items 포함 복원)
         var ords=JSON.parse(localStorage.getItem('orders')||'[]');
-        ords=ords.filter(function(o){return o.id!==newOrder.id;});
-        var origOrd=ords.find(function(o){return o.id===order.id;});
-        if(origOrd)origOrd.status=origStatus;
+        ords=ords.filter(function(o){return o.id!==newOrder.id&&o.id!==order.id;});
         localStorage.setItem('orders',JSON.stringify(ords));
-        // 서버 원래 주문 상태 복원 → 완료 후 화면 갱신 (API 동기화 전에 복원 확정)
+        // 서버 원래 주문 상태 복원 → 완료 후 화면 갱신
         fetch(API_URL+'/api/orders/'+encodeURIComponent(order.id)+'/status',{
           method:'PUT',headers:{'Content-Type':'application/json'},
           body:JSON.stringify({status:origStatus})
