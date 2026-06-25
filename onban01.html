@@ -418,6 +418,9 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 .hist-req-edit-btn{flex-shrink:0;background:none;border:1.5px solid #9adcda;border-radius:8px;font-size:12px;font-weight:700;color:#086266;cursor:pointer;padding:4px 8px;opacity:.85;font-family:inherit;}
 .hist-req-edit-btn:hover{opacity:1;}
 .hist-req-add-btn{width:100%;padding:6px;border:1.5px dashed #cde8e7;border-radius:8px;background:#f9fffe;color:#086266;font-size:12px;cursor:pointer;font-family:inherit;}
+.hist-extra-card-section{display:flex;align-items:center;gap:8px;padding:4px 0;}
+.hist-extra-label{font-size:11px;font-weight:700;color:#b85c00;white-space:nowrap;flex-shrink:0;}
+.hist-extra-bubble{flex:1;background:#fff8e1;border:1.5px solid #E9A826;border-radius:12px;padding:8px 12px;font-size:13px;line-height:1.6;color:#5a3e00;word-break:break-word;overflow-wrap:break-word;}
 .hist-req-textarea{width:100%;border:1.5px solid #cde8e7;border-radius:8px;padding:8px 10px;font-size:12px;font-family:inherit;resize:vertical;min-height:60px;outline:none;box-sizing:border-box;margin:2px 0;}
 .hist-req-textarea:focus{border-color:#086266;}
 .hist-req-actions{display:flex;gap:6px;margin-top:4px;}
@@ -1878,15 +1881,21 @@ function _histMemoHtml(id,text){
     +'<button class="hist-req-edit-btn" onclick="histEditMemo(\''+id+'\')" title="수정">✏️ 수정</button></div>';
   if(note){
     var safeN=note.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
-    html+='<div class="hist-req-row extra-row"><span>📝 '+safeN+'</span></div>';
+    html+='<div class="hist-extra-card-section">'
+      +'<span class="hist-extra-label">직접요청</span>'
+      +'<div class="hist-extra-bubble">'+safeN+'</div>'
+      +'</div>';
   }
   return html;
 }
 function _histExtraHtml(id,text){
+  if(!text) return '<button class="hist-req-add-btn" onclick="histEditExtra(\''+id+'\')">✏️ 추가 요청 추가</button>';
   var safe=(text||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
-  if(text) return '<div class="hist-req-row extra-row"><span>✅ '+safe+'</span>'
-    +'<button class="hist-req-edit-btn" onclick="histEditExtra(\''+id+'\')" title="수정">✏️ 수정</button></div>';
-  return '<button class="hist-req-add-btn" onclick="histEditExtra(\''+id+'\')">✏️ 추가 요청 추가</button>';
+  return '<div class="hist-extra-card-section">'
+    +'<span class="hist-extra-label">추가요청사항</span>'
+    +'<div class="hist-extra-bubble">'+safe+'</div>'
+    +'<button class="hist-req-edit-btn" onclick="histEditExtra(\''+id+'\')" title="수정">✏️ 수정</button>'
+    +'</div>';
 }
 var _MEMO_OPTS=['경비원실','문앞','택배함','현관에서 직접 수령','매장픽업'];
 function histEditMemo(id){
