@@ -293,9 +293,10 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
   border-radius:20px;padding:18px;color:#fff;margin-bottom:16px;
   box-shadow:0 6px 24px rgba(8,98,102,.3);
 }
-.bank-label{font-size:10px;opacity:.75;margin-bottom:3px;}
-.bank-value{font-size:14px;font-weight:900;letter-spacing:.5px;margin-bottom:12px;}
-.bank-account{font-size:16px;font-weight:900;letter-spacing:.5px;}
+.bank-row{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:10px;}
+.bank-label{font-size:11px;opacity:.75;flex-shrink:0;}
+.bank-value{font-size:14px;font-weight:900;letter-spacing:.5px;text-align:right;}
+.bank-account{font-size:16px;font-weight:900;letter-spacing:.5px;text-align:right;}
 .copy-row{display:flex;gap:8px;margin-bottom:14px;}
 .btn-copy{
   flex:1;padding:10px;border-radius:10px;font-size:12px;font-weight:700;
@@ -1617,12 +1618,9 @@ function _renderPaymentBody(total,wrap){
     +'<div class="payment-title">계좌이체 안내</div>'
     +'<div class="payment-sub">아래 계좌로 금액을 입금해주세요</div>'
     +'<div class="bank-card">'
-      +'<div class="bank-label">은행</div>'
-      +'<div class="bank-value">'+BANK.name+'</div>'
-      +'<div class="bank-label">예금주</div>'
-      +'<div class="bank-value">'+BANK.holder+'</div>'
-      +'<div class="bank-label">계좌번호</div>'
-      +'<div class="bank-account">'+BANK.account+'</div>'
+      +'<div class="bank-row"><span class="bank-label">은행</span><span class="bank-value">'+BANK.name+'</span></div>'
+      +'<div class="bank-row"><span class="bank-label">예금주</span><span class="bank-value">'+BANK.holder+'</span></div>'
+      +'<div class="bank-row"><span class="bank-label">계좌번호</span><span class="bank-account">'+BANK.account+'</span></div>'
       +'<div class="copy-row" style="margin-top:16px;">'
         +'<button class="btn-copy" onclick="copyAccount()">📋 계좌번호 복사</button>'
       +'</div>'
