@@ -1741,14 +1741,13 @@ function _doRenderHistory(el){
       body.appendChild(row);
     });
     card.appendChild(body);
-    // 배달료 (있을 때만 표시)
-    if(deliveryFee>0){
-      var feeRow=document.createElement('div');
-      feeRow.className='order-delivery-fee-row';
-      feeRow.style.display='flex';
-      feeRow.innerHTML='<span>🚚 배달료</span><span>+'+comma(deliveryFee)+'천원</span>';
-      card.appendChild(feeRow);
-    }
+    // 배달료 (항상 렌더 — _updateHistTotal로 show/hide)
+    var feeRow=document.createElement('div');
+    feeRow.id='histfee-'+o.id;
+    feeRow.className='order-delivery-fee-row';
+    feeRow.style.display=deliveryFee>0?'flex':'none';
+    feeRow.innerHTML='<span>🚚 배달료</span><span>+1천원</span>';
+    card.appendChild(feeRow);
     // 합계
     var totRow=document.createElement('div');
     totRow.className='hist-total';
@@ -1820,6 +1819,21 @@ function _doRenderHistory(el){
     el.appendChild(card);
   });
 }
+function _updateHistTotal(id){
+  var ords=JSON.parse(localStorage.getItem('orders')||'[]');
+  var o=ords.find(function(o){return o.id===id;});
+  if(!o)return;
+  var isPickup=(o.memo||'').startsWith('매장픽업');
+  var itemsSum=o.items.reduce(function(s,i){return s+i.price*i.qty;},0);
+  var df=(!isPickup&&itemsSum>=20)?1:0;
+  var total=itemsSum+df;
+  var cardEl=document.getElementById('histcard-'+id);
+  if(cardEl)cardEl.dataset.deliveryFee=df;
+  var feeEl=document.getElementById('histfee-'+id);
+  if(feeEl)feeEl.style.display=df?'flex':'none';
+  var tEl=document.getElementById('histtotal-'+id);
+  if(tEl)tEl.innerHTML='<span>합계</span><span class="hist-total-val">'+comma(total)+'천원</span>';
+}
 function histEditQty(orderId,itemName,d){
   var orders=JSON.parse(localStorage.getItem('orders')||'[]');
   var o=orders.find(function(o){return o.id===orderId;});
@@ -1832,15 +1846,8 @@ function histEditQty(orderId,itemName,d){
   var pEl=document.getElementById('histprice-'+orderId+'-'+key);
   if(qEl)qEl.textContent=item.qty;
   if(pEl)pEl.textContent=comma(item.price*item.qty)+'천원';
-  var isPickupEdit=(o.memo||'').startsWith('매장픽업');
-  var newSum=o.items.reduce(function(s,i){return s+i.price*i.qty;},0);
-  var df=(!isPickupEdit&&newSum>=20)?1:0;
-  var total=newSum+df;
-  var cardEl=document.getElementById('histcard-'+orderId);
-  if(cardEl)cardEl.dataset.deliveryFee=df;
-  var tEl=document.getElementById('histtotal-'+orderId);
-  if(tEl)tEl.innerHTML='<span>합계</span><span class="hist-total-val">'+comma(total)+'천원</span>';
   localStorage.setItem('orders',JSON.stringify(orders));
+  _updateHistTotal(orderId);
   _activateReorderBtn(orderId);
 }
 function _activateReorderBtn(id){
@@ -1856,15 +1863,8 @@ function histDelItem(orderId,itemName){
   var key=itemName.replace(/\s/g,'_');
   var row=document.getElementById('histrow-'+orderId+'-'+key);
   if(row)row.remove();
-  var isPickupDel=(o.memo||'').startsWith('매장픽업');
-  var delSum=o.items.reduce(function(s,i){return s+i.price*i.qty;},0);
-  var df2=(!isPickupDel&&delSum>=20)?1:0;
-  var total=delSum+df2;
-  var cardEl2=document.getElementById('histcard-'+orderId);
-  if(cardEl2)cardEl2.dataset.deliveryFee=df2;
-  var tEl=document.getElementById('histtotal-'+orderId);
-  if(tEl)tEl.innerHTML='<span>합계</span><span class="hist-total-val">'+comma(total)+'천원</span>';
   localStorage.setItem('orders',JSON.stringify(orders));
+  _updateHistTotal(orderId);
   _activateReorderBtn(orderId);
 }
 /* ── 주문 내역 직접요청/추가요청 편집 ── */
@@ -1926,6 +1926,8 @@ function histSaveMemo(id){
   ord.memo=text;
   localStorage.setItem('orders',JSON.stringify(ords));
   document.getElementById('histmemo-'+id).innerHTML=_histMemoHtml(id,text);
+  _updateHistTotal(id);
+  _activateReorderBtn(id);
 }
 function histEditExtra(id){
   var ords=JSON.parse(localStorage.getItem('orders')||'[]');
