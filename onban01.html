@@ -383,8 +383,6 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 .hist-empty{text-align:center;padding:60px 20px;color:var(--light);}
 .hist-empty span{font-size:48px;display:block;margin-bottom:12px;}
 .hist-card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);margin:0 14px 12px;overflow:hidden;}
-@keyframes reply-pulse{0%{box-shadow:0 0 0 0 rgba(229,57,53,.8);}70%{box-shadow:0 0 0 12px rgba(229,57,53,0);}100%{box-shadow:0 0 0 0 rgba(229,57,53,0);}}
-.reply-new{border:2px solid #e53935!important;animation:reply-pulse 1.4s ease-out infinite;background:#fff8f8!important;}
 .hist-head{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:#f4fafa;border-bottom:1px solid #e8f5f4;}
 .hist-date{font-size:12px;color:var(--sub);}
 .hist-status{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;}
@@ -611,18 +609,6 @@ function parseCsvLine(line){
   }
   result.push(cur.trim());
   return result;
-}
-var _ackedReplies=new Set(JSON.parse(localStorage.getItem('onban_acked_replies')||'[]'));
-function _isNewReply(o){return !!(o.adminReply&&!_ackedReplies.has(o.id+'_'+(o.replyAt||'0')));}
-function _ackAllReplies(orders){
-  var changed=false;
-  (orders||[]).forEach(function(o){
-    if(o.adminReply){var k=o.id+'_'+(o.replyAt||'0');if(!_ackedReplies.has(k)){_ackedReplies.add(k);changed=true;}}
-  });
-  if(changed){
-    localStorage.setItem('onban_acked_replies',JSON.stringify(Array.from(_ackedReplies)));
-    document.querySelectorAll('.reply-new').forEach(function(el){el.classList.remove('reply-new');});
-  }
 }
 var allMenus=[];
 var filterCat='전체';
