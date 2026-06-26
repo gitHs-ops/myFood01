@@ -65,16 +65,24 @@ app.post('/api/menu/all', async (req, res) => {
     const conn = await pool.getConnection();
     await conn.beginTransaction();
     try {
-      // upsert — menus.id를 보존해 daily_menus.menu_id 참조 안정성 유지 (TRUNCATE 금지)
+      // menuId 있으면 id 기준 UPDATE(이름 변경=rename 포함), 없으면 신규 INSERT
+      // → menus.id가 진짜 키. 이름을 바꿔도 같은 행을 갱신(중복 생성 방지)
       for (const m of list) {
-        await conn.execute(
-          `INSERT INTO menus (name,cat,price,stock,child,img_url,\`desc\`,count,updated_at)
-           VALUES (?,?,?,?,?,?,?,?,?)
-           ON DUPLICATE KEY UPDATE cat=VALUES(cat),price=VALUES(price),stock=VALUES(stock),
-             child=VALUES(child),img_url=VALUES(img_url),\`desc\`=VALUES(\`desc\`),
-             count=VALUES(count),updated_at=VALUES(updated_at)`,
-          [m.name, m.cat||'기타', m.price||0, m.stock||0, m.child?1:0, m.imgUrl||'', m.desc||'', m.count||0, m.updatedAt||0]
-        );
+        if (m.menuId) {
+          await conn.execute(
+            `UPDATE menus SET name=?,cat=?,price=?,stock=?,child=?,img_url=?,\`desc\`=?,count=?,updated_at=? WHERE id=?`,
+            [m.name, m.cat||'기타', m.price||0, m.stock||0, m.child?1:0, m.imgUrl||'', m.desc||'', m.count||0, m.updatedAt||0, m.menuId]
+          );
+        } else {
+          await conn.execute(
+            `INSERT INTO menus (name,cat,price,stock,child,img_url,\`desc\`,count,updated_at)
+             VALUES (?,?,?,?,?,?,?,?,?)
+             ON DUPLICATE KEY UPDATE cat=VALUES(cat),price=VALUES(price),stock=VALUES(stock),
+               child=VALUES(child),img_url=VALUES(img_url),\`desc\`=VALUES(\`desc\`),
+               count=VALUES(count),updated_at=VALUES(updated_at)`,
+            [m.name, m.cat||'기타', m.price||0, m.stock||0, m.child?1:0, m.imgUrl||'', m.desc||'', m.count||0, m.updatedAt||0]
+          );
+        }
       }
       // 전송 목록에 없고 일자별 메뉴가 참조하지 않는 마스터는 삭제 (창고 전체 동기화)
       const names = list.map(m => m.name);
@@ -157,16 +165,24 @@ app.post('/api/menu/daily', async (req, res) => {
     for (const date of dates) {
       await conn.execute('DELETE FROM daily_menus WHERE date=?', [date]);
       for (const m of byDate[date]) {
-        // 마스터 upsert → menu_id 확보 (정적 속성은 마스터에 단일 보관)
-        await conn.execute(
-          `INSERT INTO menus (name,cat,price,child,img_url,\`desc\`,updated_at)
-           VALUES (?,?,?,?,?,?,?)
-           ON DUPLICATE KEY UPDATE cat=VALUES(cat),price=VALUES(price),child=VALUES(child),
-             img_url=VALUES(img_url),\`desc\`=VALUES(\`desc\`),updated_at=VALUES(updated_at)`,
-          [m.name, m.cat||'기타', m.price||0, m.child?1:0, m.imgUrl||'', m.desc||'', m.updatedAt||Date.now()]
-        );
-        const [[mrow]] = await conn.execute('SELECT id FROM menus WHERE name=?', [m.name]);
-        const menuId = mrow ? mrow.id : null;
+        // 마스터 갱신 → menu_id 확보. menuId 있으면 id 기준 UPDATE(rename 포함), 없으면 신규 INSERT
+        let menuId = m.menuId || null;
+        if (menuId) {
+          await conn.execute(
+            `UPDATE menus SET name=?,cat=?,price=?,child=?,img_url=?,\`desc\`=?,updated_at=? WHERE id=?`,
+            [m.name, m.cat||'기타', m.price||0, m.child?1:0, m.imgUrl||'', m.desc||'', m.updatedAt||Date.now(), menuId]
+          );
+        } else {
+          await conn.execute(
+            `INSERT INTO menus (name,cat,price,child,img_url,\`desc\`,updated_at)
+             VALUES (?,?,?,?,?,?,?)
+             ON DUPLICATE KEY UPDATE cat=VALUES(cat),price=VALUES(price),child=VALUES(child),
+               img_url=VALUES(img_url),\`desc\`=VALUES(\`desc\`),updated_at=VALUES(updated_at)`,
+            [m.name, m.cat||'기타', m.price||0, m.child?1:0, m.imgUrl||'', m.desc||'', m.updatedAt||Date.now()]
+          );
+          const [[mrow]] = await conn.execute('SELECT id FROM menus WHERE name=?', [m.name]);
+          menuId = mrow ? mrow.id : null;
+        }
         // 일자별: menu_id + 폴백용 기존 컬럼 동시 저장
         await conn.execute(
           'INSERT INTO daily_menus (date,menu_id,name,cat,price,stock,child,img_url) VALUES (?,?,?,?,?,?,?,?)',
