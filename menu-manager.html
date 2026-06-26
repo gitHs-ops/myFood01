@@ -801,11 +801,9 @@ function _clearAddForm(){
   var editBtn=document.getElementById('addMasterEditBtn');if(editBtn)editBtn.style.display='none';
 }
 function _setAddMenuNew(){
-  _addMenuMode='new';_addMenuMasterId=null;
-  var editBtn=document.getElementById('addMasterEditBtn');
-  if(editBtn)editBtn.style.display='none';
-  var box=document.getElementById('addMenuImgPreview');
-  if(box)box.textContent='사진';
+  _clearAddForm();
+  _addMenuMode='new';
+  document.getElementById('menuName').focus();
 }
 function openAddMasterEdit(){
   if(!_addMenuMasterId)return;
