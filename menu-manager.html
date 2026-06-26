@@ -868,8 +868,17 @@ function _updateSaveBtn(){
   var btn=document.getElementById('floatSaveBtn');
   if(!btn)return;
   var onSavePage=document.getElementById('page-manage').classList.contains('active');
-  btn.style.display=onSavePage?'block':'none';
+  // 팝업/오버레이가 열려 있으면 플로팅 저장 버튼 숨김 (모달과 겹침 방지)
+  var anyOverlayOpen=document.querySelector('.cal-overlay.open, .img-overlay.open, .menu-edit-overlay.open')!=null;
+  btn.style.display=(onSavePage&&!anyOverlayOpen)?'block':'none';
   if(_menuDirty)btn.classList.add('dirty');else btn.classList.remove('dirty');
+}
+// 오버레이(.open) 변화 감지 → 플로팅 저장 버튼 가시성 동기화
+function _watchOverlaysForSaveBtn(){
+  var overlays=document.querySelectorAll('.cal-overlay, .img-overlay, .menu-edit-overlay');
+  if(!overlays.length||!window.MutationObserver)return;
+  var obs=new MutationObserver(function(){_updateSaveBtn();});
+  overlays.forEach(function(o){obs.observe(o,{attributes:true,attributeFilter:['class']});});
 }
 function save(){_menuDirty=true;saveMenus(workDate);_updateSaveBtn();}
 
@@ -2608,6 +2617,7 @@ window.onload=function(){
   loadSettingsFromSheet(function(){});
   workDate=toISO(new Date());loadMenus(workDate);_startMenuSSE(workDate);
   _updateSaveBtn();
+  _watchOverlaysForSaveBtn();
   document.getElementById('dateDisplayBtn').textContent=fmtDate(workDate);
   renderAll();renderHistory();
   renderOrders();   // 진입 즉시 주문관리 탭 건수 배지 표시 (탭 비활성이면 배지만 갱신)
