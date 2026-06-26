@@ -596,6 +596,36 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
   </div>
 </div>
 
+<!-- 신 메뉴 등록 팝업 -->
+<div class="menu-edit-overlay" id="newMenuOverlay" onclick="closeNewMenuPopup(event)">
+  <div class="menu-edit-popup" onclick="event.stopPropagation()">
+    <div class="img-popup-header">
+      <div class="img-popup-title">✨ 신 메뉴 등록</div>
+      <button class="img-popup-close" onclick="closeNewMenuPopup()" title="닫기">✕</button>
+    </div>
+    <div class="edit-field">
+      <label class="edit-label">메뉴명 *</label>
+      <input type="text" id="newMenuName" class="edit-input" placeholder="메뉴명 입력">
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <div style="flex:1;"><label class="edit-label">금액 (천원)</label><input type="number" id="newMenuPrice" class="edit-input" min="0"></div>
+      <div style="flex:1;"><label class="edit-label">재고 (개)</label><input type="number" id="newMenuStock" class="edit-input" min="-1" value="0"></div>
+    </div>
+    <div class="edit-field">
+      <label class="edit-label">카테고리</label>
+      <select id="newMenuCat" class="edit-input">
+        <option value="메인">메인</option><option value="반찬">반찬</option>
+        <option value="김치">김치</option><option value="밀키트">밀키트</option><option value="기타">기타</option>
+      </select>
+    </div>
+    <label class="child-toggle" style="margin-bottom:10px;"><input type="checkbox" id="newMenuChild"> 어린이도 먹을 수 있는 메뉴</label>
+    <div class="edit-field"><label class="edit-label">메뉴 설명 (선택)</label><textarea id="newMenuDesc" class="edit-input" rows="2" placeholder="고객 상세 팝업에 표시됩니다" style="resize:vertical;font-family:inherit;"></textarea></div>
+    <div style="display:flex;gap:8px;margin-top:10px;">
+      <button onclick="saveNewMasterMenu()" style="flex:2;background:#086266;color:#fff;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">💾 저장 + 오늘 메뉴 추가</button>
+      <button onclick="closeNewMenuPopup()" style="flex:1;background:#eee;color:#555;border:none;border-radius:10px;padding:11px;font-size:14px;cursor:pointer;font-family:inherit;">취소</button>
+    </div>
+  </div>
+</div>
 <!-- 일일메뉴 전송 팝업 -->
 <div class="cal-overlay" id="sendToTodayOverlay" onclick="if(event.target===this)closeSendToTodayPopup()">
   <div style="background:#fff;border-radius:16px;padding:22px;width:320px;max-width:93vw;max-height:80vh;display:flex;flex-direction:column;" onclick="event.stopPropagation()">
@@ -801,9 +831,44 @@ function _clearAddForm(){
   var editBtn=document.getElementById('addMasterEditBtn');if(editBtn)editBtn.style.display='none';
 }
 function _setAddMenuNew(){
-  _clearAddForm();
-  _addMenuMode='new';
-  document.getElementById('menuName').focus();
+  var s=getSettings();
+  document.getElementById('newMenuName').value='';
+  document.getElementById('newMenuPrice').value='';
+  document.getElementById('newMenuStock').value=s.stock||0;
+  document.getElementById('newMenuCat').value='메인';
+  document.getElementById('newMenuChild').checked=false;
+  document.getElementById('newMenuDesc').value='';
+  document.getElementById('newMenuOverlay').classList.add('open');
+  setTimeout(function(){document.getElementById('newMenuName').focus();},80);
+}
+function closeNewMenuPopup(e){
+  if(e&&e.target!==document.getElementById('newMenuOverlay'))return;
+  document.getElementById('newMenuOverlay').classList.remove('open');
+}
+function saveNewMasterMenu(){
+  var name=document.getElementById('newMenuName').value.trim();
+  var price=parseInt(document.getElementById('newMenuPrice').value)||0;
+  var stock=parseInt(document.getElementById('newMenuStock').value)||0;
+  var cat=document.getElementById('newMenuCat').value;
+  var child=document.getElementById('newMenuChild').checked;
+  var desc=document.getElementById('newMenuDesc').value.trim();
+  if(!name){alert('메뉴명을 입력해주세요.');return;}
+  if(!price){alert('금액을 입력해주세요.');return;}
+  if(allMenus.some(function(m){return (m.name||'').trim()===name;})){
+    if(!confirm('['+name+'] 이(가) 이미 메뉴 창고에 있어요.\n그래도 추가할까요?'))return;
+  }
+  var ts=Date.now();
+  var newMaster={id:ts,menuId:null,name:name,cat:cat,price:price,stock:0,child:child,desc:desc,imgUrl:null,count:0,updatedAt:ts};
+  allMenus.push(newMaster);
+  saveAllMenus();
+  if(menus.some(function(m){return m.name.trim()===name;})){
+    showToast('['+name+'] 마스터 등록 완료! (오늘 목록에 이미 있음)');
+  }else{
+    menus.push({id:ts+1,menuId:null,name:name,price:price,stock:stock,cat:cat,child:child,desc:desc,imgUrl:null,updatedAt:ts});
+    save();renderAll();
+    showToast('['+name+'] 마스터 등록 + 오늘 메뉴에 추가 완료!');
+  }
+  document.getElementById('newMenuOverlay').classList.remove('open');
 }
 function openAddMasterEdit(){
   if(!_addMenuMasterId)return;
