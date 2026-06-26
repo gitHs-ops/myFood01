@@ -178,6 +178,8 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
 .ac-item:last-child{border-bottom:none;}
 .ac-item:hover,.ac-item.active{background:#e8f5f4;color:#086266;}
 .ac-item em{color:#086266;font-style:normal;font-weight:700;}
+.ac-item-new{background:#e8f5f4;color:#086266;font-weight:700;border-bottom:2px solid #cde8e7;}
+.ac-item-new:hover{background:#d0efed;}
 .nav-tabs{display:flex;margin-bottom:20px;background:rgba(255,255,255,.15);border-radius:12px;padding:4px;gap:2px;}
 .nav-tab{
   flex:1;padding:9px 4px;border-radius:9px;font-size:13px;font-weight:500;
@@ -438,10 +440,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
 <div id="page-manage" class="page active">
   <div class="card"><div class="stats-grid" id="statsGrid"></div></div>
   <div class="card">
-    <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
-      <span>일일 메뉴 추가 등록</span>
-      <button class="btn" onclick="addMenu()" style="background:#e67e22;color:#fff;padding:7px 18px;font-size:13px;">+ 추 가</button>
-    </div>
+    <div class="card-title">일일 메뉴 추가 등록</div>
     <div class="add-grid">
   <select id="menuCat">
     <option value="메인">메인</option><option value="반찬">반찬</option>
@@ -457,11 +456,12 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
     </div>
   </div>
   <div class="num-field"><label for="menuPrice">금액(천원)</label><input type="number" id="menuPrice" min="1" style="width:72px;"></div>
-  <div class="num-field"><label for="menuStock">재고(수량)</label><input type="number" id="menuStock" min="-1" value="0" style="width:72px;"><div id="addMenuImgPreview" class="add-img-preview" title="선택된 메뉴 사진">사진</div></div>
+  <div class="num-field"><label for="menuStock">재고(수량)</label><input type="number" id="menuStock" min="-1" value="0" style="width:72px;"><div style="display:flex;align-items:center;gap:4px;"><div id="addMenuImgPreview" class="add-img-preview" title="선택된 메뉴 사진">사진</div><button type="button" id="addMasterEditBtn" onclick="openAddMasterEdit()" title="마스터 정보 편집" style="display:none;width:28px;height:28px;border-radius:6px;border:1.5px solid #086266;background:#e8f5f4;color:#086266;font-size:14px;cursor:pointer;flex-shrink:0;align-items:center;justify-content:center;padding:0;">✏️</button></div></div>
 </div>
 <div class="dup-warn" id="dupWarn">&#9888; 이미 오늘 목록에 있는 메뉴예요!</div>
     <label class="child-toggle"><input type="checkbox" id="menuChild"> 어린이도 먹을 수 있는 메뉴</label>
     <textarea id="menuDesc" placeholder="메뉴 설명 (선택) — 고객 상세 팝업에 표시됩니다" rows="2" style="width:100%;margin-bottom:10px;padding:8px 10px;border:1px solid #ddd;border-radius:8px;font-family:inherit;font-size:13px;resize:vertical;box-sizing:border-box;"></textarea>
+    <button class="btn btn-add" onclick="addMenu()" style="font-size:14px;">+ 오늘의 메뉴에 추가</button>
   </div>
   <div class="card">
     <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
@@ -646,6 +646,8 @@ var menus=[],filterCat='전체',filterAllCat='전체',workDate='',calViewYear,ca
 var _menuDirty=false;
 var imgCtx='menus',editCtx='menus';
 var allMenus=[];
+var _addMenuMode='select';  // 'select' | 'new'
+var _addMenuMasterId=null;
 var _allMenuPage=0, ALL_PAGE_SIZE=10;
 var selectedAllIds=new Set();
 var _allFiltered=[];
@@ -742,9 +744,10 @@ function toggleAcAll(e){
   if(list.classList.contains('open')){closeAcList();return;}
   var names=acNames(false);
   acIndex=-1;
-  list.innerHTML=names.map(function(n){
-    return '<div class="ac-item" data-val="'+n.replace(/"/g,'&quot;')+'" onmousedown="pickAc(this)">'+n+'</div>';
-  }).join('');
+  list.innerHTML='<div class="ac-item ac-item-new" data-val="__NEW__" onmousedown="pickAc(this)">✨ 신 메뉴 입력</div>'+
+    names.map(function(n){
+      return '<div class="ac-item" data-val="'+n.replace(/"/g,'&quot;')+'" onmousedown="pickAc(this)">'+n+'</div>';
+    }).join('');
   list.classList.add('open');
 }
 var acIndex=-1;
@@ -766,28 +769,49 @@ function renderAcList(){
 }
 function pickAc(el){
   var val=el.getAttribute('data-val');
-  document.getElementById('menuName').value=val;
   document.getElementById('acList').classList.remove('open');
   acIndex=-1;
+  if(val==='__NEW__'){
+    document.getElementById('menuName').value='';
+    document.getElementById('menuName').focus();
+    _setAddMenuNew();
+    return;
+  }
+  document.getElementById('menuName').value=val;
   checkDup(val);
-  // 메뉴창고 데이터 자동 반영 (가격·카테고리·어린이)
   var ref=allMenus.find(function(m){return m.name.trim()===val.trim();});
   if(ref){
     if(ref.price)document.getElementById('menuPrice').value=ref.price;
     if(ref.cat)document.getElementById('menuCat').value=ref.cat;
     document.getElementById('menuChild').checked=!!ref.child;
+    document.getElementById('menuDesc').value=(ref.desc!=null&&!/^\d+$/.test(String(ref.desc).trim()))?ref.desc||'':'';
   }
   _updateAddMenuImg();
   document.getElementById('menuPrice').focus();
 }
+function _setAddMenuNew(){
+  _addMenuMode='new';_addMenuMasterId=null;
+  var editBtn=document.getElementById('addMasterEditBtn');
+  if(editBtn)editBtn.style.display='none';
+  var box=document.getElementById('addMenuImgPreview');
+  if(box)box.textContent='사진';
+}
+function openAddMasterEdit(){
+  if(!_addMenuMasterId)return;
+  openMenuEditPopup(_addMenuMasterId,'all');
+}
 // 선택/입력된 메뉴명에 해당하는 마스터 사진을 미리보기로 표시
 function _updateAddMenuImg(){
   var box=document.getElementById('addMenuImgPreview');
+  var editBtn=document.getElementById('addMasterEditBtn');
   if(!box)return;
   var name=(document.getElementById('menuName').value||'').trim();
   var ref=name?allMenus.find(function(m){return (m.name||'').trim()===name;}):null;
+  _addMenuMasterId=ref?ref.id:null;
+  if(_addMenuMode!=='new')_addMenuMode=ref?'select':'new';
   if(ref&&ref.imgUrl){box.innerHTML='<img src="'+String(ref.imgUrl).replace(/"/g,'&quot;')+'" alt="">';}
   else{box.textContent='사진';}
+  if(editBtn)editBtn.style.display=ref?'flex':'none';
 }
 function closeAcList(){document.getElementById('acList').classList.remove('open');acIndex=-1;}
 function checkDup(name){
@@ -907,6 +931,11 @@ function addMenu(){
     if(!confirm('['+name+']이(가) 이미 목록에 있어요.\n그래도 추가할까요?'))return;
   }
   var _ref=allMenus.find(function(m){return (m.name||'').trim()===name;});
+  if(_addMenuMode==='new'&&!_ref){
+    var _newM={id:Date.now(),menuId:null,name:name,cat:cat,price:price,stock:0,child:child,desc:desc,imgUrl:null,count:0,updatedAt:Date.now()};
+    allMenus.push(_newM);_ref=_newM;
+    saveAllMenus();
+  }
   menus.push({id:Date.now(),menuId:_ref?_ref.menuId:null,name:name,price:price,stock:stock,cat:cat,child:child,desc:desc,imgUrl:(_ref&&_ref.imgUrl)?_ref.imgUrl:null,updatedAt:Date.now()});
   save();
   document.getElementById('menuName').value='';
@@ -915,6 +944,7 @@ function addMenu(){
   document.getElementById('menuChild').checked=false;
   document.getElementById('menuDesc').value='';
   document.getElementById('dupWarn').classList.remove('show');
+  _addMenuMode='select';_addMenuMasterId=null;
   _updateAddMenuImg();
   closeAcList();
   renderAll();
@@ -1135,6 +1165,7 @@ function saveMenuEditAll(){
   }
   document.getElementById('menuEditOverlay').classList.remove('open');
   menuEditTargetId=null;editPendingImgUrl=null;
+  _updateAddMenuImg();
   showToast('메뉴가 수정되었습니다.');
 }
 function _exportAllMenusSilent(){
