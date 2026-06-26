@@ -599,18 +599,6 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
   </div>
 </div>
 
-<!-- 메뉴 창고 저장 확인 팝업 -->
-<div class="cal-overlay" id="saveAllOverlay">
-  <div style="background:#fff;border-radius:16px;padding:24px;width:290px;max-width:92vw;text-align:center;" onclick="event.stopPropagation()">
-    <div style="font-size:32px;margin-bottom:10px;">🗄</div>
-    <div style="font-size:15px;font-weight:700;color:#1a1a1a;margin-bottom:8px;">메뉴 창고로 저장</div>
-    <p id="saveAllMsg" style="font-size:13px;color:#666;margin-bottom:20px;"></p>
-    <div style="display:flex;gap:10px;">
-      <button class="btn btn-add" style="flex:1;" onclick="confirmSaveAll()">저장</button>
-      <button style="flex:1;background:#eee;color:#555;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;" onclick="cancelSaveAll()">취소</button>
-    </div>
-  </div>
-</div>
 <!-- 일일메뉴 전송 팝업 -->
 <div class="cal-overlay" id="sendToTodayOverlay" onclick="if(event.target===this)closeSendToTodayPopup()">
   <div style="background:#fff;border-radius:16px;padding:22px;width:320px;max-width:93vw;max-height:80vh;display:flex;flex-direction:column;" onclick="event.stopPropagation()">
@@ -1362,37 +1350,6 @@ function commitAllPrice(id){var inp=document.getElementById('api_'+id);var val=p
 function cancelAllPrice(id){var m=allMenus.find(function(x){return x.id===id;});var inp=document.getElementById('api_'+id);var disp=document.getElementById('apd_'+id);if(inp&&m)inp.value=m.price||0;if(disp)disp.style.display='';if(inp)inp.style.display='none';}
 function deleteAllMenu(id){if(!confirm('이 메뉴를 삭제할까요?'))return;allMenus=allMenus.filter(function(x){return x.id!==id;});saveAllMenus();renderAllMenus();}
 
-function exportAllMenusToSheet(){
-  if(!allMenus.length){showToast('저장할 메뉴가 없어요.');return;}
-  // 1) 전체 체크박스 선택 표시
-  document.querySelectorAll('.menu-cb').forEach(function(cb){
-    cb.checked=true;selectedAllIds.add(Number(cb.value));
-  });
-  updateAllMenuBtns();
-  // 2) 브라우저가 체크 렌더링 후 팝업 표시
-  setTimeout(function(){
-    document.getElementById('saveAllMsg').textContent='등록된 모든 메뉴 '+allMenus.length+'개를 저장할까요?';
-    document.getElementById('saveAllOverlay').classList.add('open');
-  },80);
-}
-function cancelSaveAll(){
-  document.querySelectorAll('.menu-cb').forEach(function(cb){cb.checked=false;});
-  selectedAllIds.clear();
-  updateAllMenuBtns();
-  document.getElementById('saveAllOverlay').classList.remove('open');
-}
-function confirmSaveAll(){
-  document.getElementById('saveAllOverlay').classList.remove('open');
-  var deduped=deduplicateByName(allMenus);
-  if(deduped.length<allMenus.length){allMenus=deduped;saveAllMenus();}
-  showToast('메뉴 창고로 저장 중...');
-  apiPost('/api/menu/all',allMenus,function(err,d){
-    showToast(err||!d||!d.success?'저장 실패':'전체 메뉴 '+allMenus.length+'개 저장 완료!');
-    document.querySelectorAll('.menu-cb').forEach(function(cb){cb.checked=false;});
-    selectedAllIds.clear();
-    updateAllMenuBtns();
-  });
-}
 function deduplicateByName(arr){
   var seen={};
   return arr.filter(function(m){
@@ -1484,7 +1441,6 @@ function renderAllMenus(){
     pageCtrlHtml()+
     '<div style="margin-top:12px;display:flex;gap:8px;">'+
     '<button id="sendToTodayBtn" class="btn btn-add" style="flex:1;background:#1D9E75;font-size:13px;padding:11px 6px;display:flex;align-items:center;justify-content:center;gap:5px;opacity:.35;cursor:not-allowed;" disabled onclick="openSendToTodayPopup()"><span style="font-size:16px;">📤</span>선택항목을 오늘의 메뉴로 보내기</button>'+
-    '<button id="exportAllMenusBtn" class="btn btn-add" style="flex:1;font-size:13px;padding:11px 6px;display:flex;align-items:center;justify-content:center;gap:5px;" onclick="exportAllMenusToSheet()"><span style="font-size:16px;">🗄</span>메뉴 창고로 저장</button>'+
     '</div>';
 }
 function gotoAllPage(p){
@@ -1523,16 +1479,11 @@ function toggleAllSel(cb){
 function updateAllMenuBtns(){
   var has=selectedAllIds.size>0;
   var sendBtn=document.getElementById('sendToTodayBtn');
-  var saveBtn=document.getElementById('exportAllMenusBtn');
-  if(!sendBtn||!saveBtn)return;
+  if(!sendBtn)return;
   // 보내기: 선택 있을 때만 활성
   sendBtn.disabled=!has;
   sendBtn.style.opacity=has?'':'0.35';
   sendBtn.style.cursor=has?'pointer':'not-allowed';
-  // 저장: 항상 활성 (클릭 시 전체 선택 후 확인)
-  saveBtn.disabled=false;
-  saveBtn.style.opacity='';
-  saveBtn.style.cursor='pointer';
 }
 function openSendToTodayPopup(){
   if(!selectedAllIds.size){showToast('메뉴를 선택해주세요.');return;}
