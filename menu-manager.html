@@ -786,6 +786,20 @@ function pickAc(el){
   _updateAddMenuImg();
   document.getElementById('menuPrice').focus();
 }
+function _clearAddForm(){
+  var s=getSettings();
+  document.getElementById('menuName').value='';
+  document.getElementById('menuPrice').value='';
+  document.getElementById('menuStock').value=s.stock||0;
+  document.getElementById('menuCat').value='메인';
+  document.getElementById('menuChild').checked=false;
+  document.getElementById('menuDesc').value='';
+  document.getElementById('dupWarn').classList.remove('show');
+  _addMenuMode='select';_addMenuMasterId=null;
+  closeAcList();
+  var box=document.getElementById('addMenuImgPreview');if(box)box.textContent='사진';
+  var editBtn=document.getElementById('addMasterEditBtn');if(editBtn)editBtn.style.display='none';
+}
 function _setAddMenuNew(){
   _addMenuMode='new';_addMenuMasterId=null;
   var editBtn=document.getElementById('addMasterEditBtn');
@@ -1692,6 +1706,7 @@ function switchPage(name){
   if(name==='orders'){dateBtn.textContent=fmtDate(workDate);dateBtn.style.opacity='';}
   else{dateBtn.textContent=fmtDate(workDate);dateBtn.style.opacity='';}
   if(name==='manage'){
+    _clearAddForm();
     // 진입 시 완전 리프레시 — 서버에서 마스터(자동완성·사진)와 일자별 메뉴 최신 로드
     importAllMenusFromSheet(function(){ loadMenus(workDate); });
   }
