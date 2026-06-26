@@ -307,7 +307,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
 .setting-input:focus{border-color:#086266;}
 .btn-setting-save{background:#086266;color:#fff;border:none;border-radius:8px;padding:11px 20px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;width:100%;margin-top:6px;}
 /* 플로팅 저장 버튼 */
-#floatSaveBtn{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9999;background:#086266;color:#fff;border:none;border-radius:50px;padding:13px 22px;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;box-shadow:0 4px 18px rgba(8,98,102,.35);transition:background .2s,box-shadow .2s;}
+#floatSaveBtn{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:90;background:#086266;color:#fff;border:none;border-radius:50px;padding:13px 22px;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;box-shadow:0 4px 18px rgba(8,98,102,.35);transition:background .2s,box-shadow .2s;}
 #floatSaveBtn.dirty{background:#c0392b;box-shadow:0 4px 18px rgba(192,57,43,.45);animation:savePulse 1.8s ease-in-out infinite;}
 @keyframes savePulse{0%,100%{transform:scale(1);}50%{transform:scale(1.06);}}
 .setting-saved{color:#1D9E75;font-size:13px;font-weight:700;text-align:center;margin-top:8px;display:none;}
@@ -420,7 +420,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
     <label class="child-toggle" style="margin-bottom:10px;"><input type="checkbox" id="editMenuChild"> 어린이도 먹을 수 있는 메뉴</label>
     <div class="edit-field"><label class="edit-label">메뉴 설명 (선택)</label><textarea id="editMenuDesc" class="edit-input" rows="2" placeholder="고객 상세 팝업에 표시됩니다" style="resize:vertical;font-family:inherit;"></textarea></div>
     <div style="display:flex;gap:8px;margin-top:2px;">
-      <button class="img-btn-cancel" onclick="saveMenuEditAll()" style="flex:1;">메뉴 저장</button>
+      <button class="img-btn-cancel" onclick="saveMenuEditAll()" style="flex:1;">저장</button>
       <button onclick="closeMenuEditPopup()" style="flex:1;background:#eee;color:#555;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">닫기</button>
     </div>
   </div>
