@@ -1663,6 +1663,10 @@ function switchPage(name){
   var dateBtn=document.getElementById('dateDisplayBtn');
   if(name==='orders'){dateBtn.textContent=fmtDate(workDate);dateBtn.style.opacity='';}
   else{dateBtn.textContent=fmtDate(workDate);dateBtn.style.opacity='';}
+  if(name==='manage'){
+    // 진입 시 완전 리프레시 — 서버에서 마스터(자동완성·사진)와 일자별 메뉴 최신 로드
+    importAllMenusFromSheet(function(){ loadMenus(workDate); });
+  }
   if(name==='kakao')renderKakao();
   if(name==='history'){
     _datesCache=[];
