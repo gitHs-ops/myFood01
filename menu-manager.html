@@ -39,6 +39,8 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 .num-field label{font-size:13px;color:#555;white-space:nowrap;font-weight:600;}
 .num-field input[type="number"]{width:56px;padding:10px 6px;text-align:center;border:1.5px solid #cde8e7;border-radius:10px;font-size:14px;font-family:inherit;outline:none;}
 .num-field input[type="number"]:focus{border-color:#086266;}
+.add-img-preview{width:48px;height:48px;border-radius:8px;border:1.5px solid #cde8e7;background:#f7fafa;display:flex;align-items:center;justify-content:center;color:#bbb;font-size:11px;overflow:hidden;flex-shrink:0;margin-left:10px;}
+.add-img-preview img{width:100%;height:100%;object-fit:cover;}
 select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px;font-size:14px;font-family:inherit;outline:none;color:#333;}
 .child-toggle{display:flex;align-items:center;gap:6px;font-size:13px;color:#555;margin-bottom:12px;cursor:pointer;user-select:none;}
 .child-toggle input{accent-color:#f9a826;width:16px;height:16px;}
@@ -455,7 +457,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
     </div>
   </div>
   <div class="num-field"><label for="menuPrice">금액(천원)</label><input type="number" id="menuPrice" min="1" style="width:72px;"></div>
-  <div class="num-field"><label for="menuStock">재고(수량)</label><input type="number" id="menuStock" min="-1" value="0" style="width:72px;"></div>
+  <div class="num-field"><label for="menuStock">재고(수량)</label><input type="number" id="menuStock" min="-1" value="0" style="width:72px;"><div id="addMenuImgPreview" class="add-img-preview" title="선택된 메뉴 사진">사진</div></div>
 </div>
 <div class="dup-warn" id="dupWarn">&#9888; 이미 오늘 목록에 있는 메뉴예요!</div>
     <label class="child-toggle"><input type="checkbox" id="menuChild"> 어린이도 먹을 수 있는 메뉴</label>
@@ -787,7 +789,17 @@ function pickAc(el){
     if(ref.cat)document.getElementById('menuCat').value=ref.cat;
     document.getElementById('menuChild').checked=!!ref.child;
   }
+  _updateAddMenuImg();
   document.getElementById('menuPrice').focus();
+}
+// 선택/입력된 메뉴명에 해당하는 마스터 사진을 미리보기로 표시
+function _updateAddMenuImg(){
+  var box=document.getElementById('addMenuImgPreview');
+  if(!box)return;
+  var name=(document.getElementById('menuName').value||'').trim();
+  var ref=name?allMenus.find(function(m){return (m.name||'').trim()===name;}):null;
+  if(ref&&ref.imgUrl){box.innerHTML='<img src="'+String(ref.imgUrl).replace(/"/g,'&quot;')+'" alt="">';}
+  else{box.textContent='사진';}
 }
 function closeAcList(){document.getElementById('acList').classList.remove('open');acIndex=-1;}
 function checkDup(name){
@@ -798,6 +810,7 @@ function checkDup(name){
 function onMenuNameInput(){
   var name=document.getElementById('menuName').value.trim();
   checkDup(name);
+  _updateAddMenuImg();
   renderAcList();
 }
 function onMenuNameKey(e){
@@ -905,7 +918,8 @@ function addMenu(){
   if(menus.some(function(m){return m.name.trim()===name;})){
     if(!confirm('['+name+']이(가) 이미 목록에 있어요.\n그래도 추가할까요?'))return;
   }
-  menus.push({id:Date.now(),name:name,price:price,stock:stock,cat:cat,child:child,desc:desc,imgUrl:null,updatedAt:Date.now()});
+  var _ref=allMenus.find(function(m){return (m.name||'').trim()===name;});
+  menus.push({id:Date.now(),menuId:_ref?_ref.menuId:null,name:name,price:price,stock:stock,cat:cat,child:child,desc:desc,imgUrl:(_ref&&_ref.imgUrl)?_ref.imgUrl:null,updatedAt:Date.now()});
   save();
   document.getElementById('menuName').value='';
   document.getElementById('menuPrice').value='';
@@ -913,6 +927,7 @@ function addMenu(){
   document.getElementById('menuChild').checked=false;
   document.getElementById('menuDesc').value='';
   document.getElementById('dupWarn').classList.remove('show');
+  _updateAddMenuImg();
   closeAcList();
   renderAll();
 }
