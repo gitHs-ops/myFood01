@@ -64,18 +64,29 @@ app.post('/api/menu/all', async (req, res) => {
     if (!Array.isArray(list) || !list.length) return err(res, '데이터 없음', 400);
     const conn = await pool.getConnection();
     await conn.beginTransaction();
-    await conn.execute('TRUNCATE TABLE menus');
-    const rows = list.map(m => [
-      m.name, m.cat||'기타', m.price||0, m.stock||0,
-      m.child?1:0, m.imgUrl||'', m.count||0, m.updatedAt||0
-    ]);
-    await conn.query(
-      'INSERT INTO menus (name,cat,price,stock,child,img_url,count,updated_at) VALUES ?',
-      [rows]
-    );
-    await conn.commit();
-    conn.release();
-    ok(res, { count: rows.length });
+    try {
+      // upsert — menus.id를 보존해 daily_menus.menu_id 참조 안정성 유지 (TRUNCATE 금지)
+      for (const m of list) {
+        await conn.execute(
+          `INSERT INTO menus (name,cat,price,stock,child,img_url,\`desc\`,count,updated_at)
+           VALUES (?,?,?,?,?,?,?,?,?)
+           ON DUPLICATE KEY UPDATE cat=VALUES(cat),price=VALUES(price),stock=VALUES(stock),
+             child=VALUES(child),img_url=VALUES(img_url),\`desc\`=VALUES(\`desc\`),
+             count=VALUES(count),updated_at=VALUES(updated_at)`,
+          [m.name, m.cat||'기타', m.price||0, m.stock||0, m.child?1:0, m.imgUrl||'', m.desc||'', m.count||0, m.updatedAt||0]
+        );
+      }
+      // 전송 목록에 없고 일자별 메뉴가 참조하지 않는 마스터는 삭제 (창고 전체 동기화)
+      const names = list.map(m => m.name);
+      const ph = names.map(()=>'?').join(',');
+      await conn.execute(
+        `DELETE FROM menus WHERE name NOT IN (${ph})
+         AND id NOT IN (SELECT mid FROM (SELECT DISTINCT menu_id AS mid FROM daily_menus WHERE menu_id IS NOT NULL) t)`,
+        names
+      );
+      await conn.commit(); conn.release();
+      ok(res, { count: list.length });
+    } catch(e) { await conn.rollback(); conn.release(); throw e; }
   } catch(e) { err(res, e.message); }
 });
 
@@ -83,7 +94,7 @@ app.post('/api/menu/all', async (req, res) => {
 app.get('/api/menu/all', async (req, res) => {
   try {
     const [rows] = await pool.execute(
-      'SELECT name,cat,price,stock,child,img_url AS imgUrl,count,updated_at AS updatedAt FROM menus ORDER BY count DESC, name'
+      'SELECT id AS menuId,name,cat,price,stock,child,img_url AS imgUrl,`desc` AS `desc`,count,updated_at AS updatedAt FROM menus ORDER BY count DESC, name'
     );
     const menus = rows.map(r => ({ ...r, child: !!r.child, price: Number(r.price||0) }));
     ok(res, { menus });
@@ -107,8 +118,18 @@ app.get('/api/dates', async (req, res) => {
 // 특정 날짜 메뉴 조회 (GET /api/menu/:date)
 app.get('/api/menu/:date', async (req, res) => {
   try {
+    // 정적 속성(이름·카테고리·사진·설명)은 마스터(menus)에서 가져옴. menu_id 없는 레거시 행은 daily 값으로 폴백
     const [rows] = await pool.execute(
-      'SELECT name,cat,price,stock,child,img_url AS imgUrl FROM daily_menus WHERE date=? ORDER BY id',
+      `SELECT d.menu_id AS menuId,
+         COALESCE(m.name,d.name) AS name,
+         COALESCE(m.cat,d.cat) AS cat,
+         COALESCE(m.price,d.price) AS price,
+         d.stock,
+         COALESCE(m.child,d.child) AS child,
+         COALESCE(m.img_url,d.img_url) AS imgUrl,
+         m.\`desc\` AS \`desc\`
+       FROM daily_menus d LEFT JOIN menus m ON d.menu_id=m.id
+       WHERE d.date=? ORDER BY d.id`,
       [req.params.date]
     );
     if (!rows.length) return err(res, `${req.params.date} 메뉴 없음`, 404);
@@ -135,14 +156,23 @@ app.post('/api/menu/daily', async (req, res) => {
     const dates = Object.keys(byDate);
     for (const date of dates) {
       await conn.execute('DELETE FROM daily_menus WHERE date=?', [date]);
-      const rows = byDate[date].map(m => [
-        date, m.name, m.cat||'기타', m.price||0, m.stock||0,
-        m.child?1:0, m.imgUrl||''
-      ]);
-      await conn.query(
-        'INSERT INTO daily_menus (date,name,cat,price,stock,child,img_url) VALUES ?',
-        [rows]
-      );
+      for (const m of byDate[date]) {
+        // 마스터 upsert → menu_id 확보 (정적 속성은 마스터에 단일 보관)
+        await conn.execute(
+          `INSERT INTO menus (name,cat,price,child,img_url,\`desc\`,updated_at)
+           VALUES (?,?,?,?,?,?,?)
+           ON DUPLICATE KEY UPDATE cat=VALUES(cat),price=VALUES(price),child=VALUES(child),
+             img_url=VALUES(img_url),\`desc\`=VALUES(\`desc\`),updated_at=VALUES(updated_at)`,
+          [m.name, m.cat||'기타', m.price||0, m.child?1:0, m.imgUrl||'', m.desc||'', m.updatedAt||Date.now()]
+        );
+        const [[mrow]] = await conn.execute('SELECT id FROM menus WHERE name=?', [m.name]);
+        const menuId = mrow ? mrow.id : null;
+        // 일자별: menu_id + 폴백용 기존 컬럼 동시 저장
+        await conn.execute(
+          'INSERT INTO daily_menus (date,menu_id,name,cat,price,stock,child,img_url) VALUES (?,?,?,?,?,?,?,?)',
+          [date, menuId, m.name, m.cat||'기타', m.price||0, m.stock||0, m.child?1:0, m.imgUrl||'']
+        );
+      }
     }
     await conn.commit();
     conn.release();
@@ -452,13 +482,15 @@ async function initDB() {
     `CREATE TABLE IF NOT EXISTS daily_menus (
       id INT AUTO_INCREMENT PRIMARY KEY,
       date DATE NOT NULL,
+      menu_id INT,
       name VARCHAR(200) NOT NULL,
       cat VARCHAR(50) DEFAULT '기타',
       price DECIMAL(6,1) DEFAULT 0,
       stock INT DEFAULT 0,
       child TINYINT(1) DEFAULT 0,
       img_url VARCHAR(1000) DEFAULT '',
-      INDEX idx_date (date)
+      INDEX idx_date (date),
+      INDEX idx_menu (menu_id)
     )`,
     `CREATE TABLE IF NOT EXISTS menus (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -468,6 +500,7 @@ async function initDB() {
       stock INT DEFAULT 0,
       child TINYINT(1) DEFAULT 0,
       img_url VARCHAR(1000) DEFAULT '',
+      \`desc\` TEXT,
       count INT DEFAULT 0,
       updated_at BIGINT DEFAULT 0
     )`,
@@ -517,6 +550,18 @@ async function initDB() {
     // 기존 DB에 컬럼이 없을 경우 추가
     await conn.execute(`ALTER TABLE orders ADD COLUMN addreq_acked TINYINT(1) DEFAULT 0`).catch(()=>{});
     await conn.execute(`ALTER TABLE orders ADD COLUMN device_id VARCHAR(64)`).catch(()=>{});
+    // ── 메뉴 정규화: daily_menus.menu_id(→menus.id) + menus.desc ──
+    await conn.execute(`ALTER TABLE daily_menus ADD COLUMN menu_id INT`).catch(()=>{});
+    await conn.execute(`ALTER TABLE daily_menus ADD INDEX idx_menu (menu_id)`).catch(()=>{});
+    await conn.execute(`ALTER TABLE menus ADD COLUMN \`desc\` TEXT`).catch(()=>{});
+    // 최초 1회: 기존 일자별 메뉴를 마스터에 등록 후 menu_id 연결
+    const [[migMenu]] = await conn.execute(`SELECT v FROM settings WHERE k='menu_id_migrated_v1'`).catch(()=>[[null]]);
+    if(!migMenu){
+      await conn.execute(`INSERT IGNORE INTO menus(name,cat,price,child,img_url) SELECT name,MAX(cat),MAX(price),MAX(child),MAX(img_url) FROM daily_menus WHERE name IS NOT NULL AND name<>'' GROUP BY name`).catch(()=>{});
+      await conn.execute(`UPDATE daily_menus d JOIN menus m ON d.name=m.name SET d.menu_id=m.id WHERE d.menu_id IS NULL`).catch(()=>{});
+      await conn.execute(`INSERT IGNORE INTO settings(k,v) VALUES('menu_id_migrated_v1','done')`).catch(()=>{});
+      console.log('menu_id 마이그레이션 완료');
+    }
     // 최초 1회: addreq_acked 컬럼 도입 전 기존 레코드 일괄 ack 처리
     const [[migRow]] = await conn.execute(`SELECT v FROM settings WHERE k='addreq_acked_migrated_v1'`).catch(()=>[[null]]);
     if(!migRow){
