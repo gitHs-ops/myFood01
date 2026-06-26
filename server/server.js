@@ -84,14 +84,11 @@ app.post('/api/menu/all', async (req, res) => {
           );
         }
       }
-      // 전송 목록에 없고 일자별 메뉴가 참조하지 않는 마스터는 삭제 (창고 전체 동기화)
+      // 전송 목록(메뉴 창고 전체)에 없는 마스터는 삭제 (창고 전체 동기화)
+      // 일자별 메뉴가 참조 중이어도 삭제 허용 — 조회는 name 폴백(LEFT JOIN+COALESCE)으로 안전
       const names = list.map(m => m.name);
       const ph = names.map(()=>'?').join(',');
-      await conn.execute(
-        `DELETE FROM menus WHERE name NOT IN (${ph})
-         AND id NOT IN (SELECT mid FROM (SELECT DISTINCT menu_id AS mid FROM daily_menus WHERE menu_id IS NOT NULL) t)`,
-        names
-      );
+      await conn.execute(`DELETE FROM menus WHERE name NOT IN (${ph})`, names);
       await conn.commit(); conn.release();
       ok(res, { count: list.length });
     } catch(e) { await conn.rollback(); conn.release(); throw e; }
