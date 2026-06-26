@@ -1310,7 +1310,7 @@ function saveToday(){
   renderHistory();
 }
 function exportMenuToSheet(date,cb){
-  var objs=menus.map(function(m){return{date:date,menuId:m.menuId||null,name:m.name,cat:m.cat,price:m.price,stock:m.stock,child:m.child?1:0,imgUrl:m.imgUrl||''};});
+  var objs=menus.map(function(m){return{date:date,menuId:m.menuId||null,name:m.name,cat:m.cat,price:m.price,stock:m.stock,child:m.child?1:0,imgUrl:m.imgUrl||'',desc:m.desc||''};});
   if(!objs.length){if(cb)cb(false);return;}
   apiPost('/api/menu/daily',objs,function(err,d){if(cb)cb(!err&&d&&d.success!==false);});
 }
