@@ -2817,16 +2817,20 @@ function migrateHanPrefix(){
     /* ── STEP 1: 한우/한돈 접두사 제거 ── */
     var nameMap={};allMenus.forEach(function(m){nameMap[m.name]=m;});
     var renameCount=0;
+    var mergePairs=[];
     allMenus.forEach(function(m){
       var prefix=/^한우/.test(m.name)?'한우':/^한돈/.test(m.name)?'한돈':null;
       if(!prefix)return;
       var newName=m.name.replace(new RegExp('^'+prefix+'\\s*'),'');
       if(!newName)return;
       if(nameMap[newName]&&nameMap[newName]!==m){
+        // 이름 충돌 → 기존 메뉴 cat만 갱신하고 이 메뉴는 병합 대상으로 처리
         nameMap[newName].cat=prefix;touch(nameMap[newName]);
+        mergePairs.push({targetId:nameMap[newName].menuId||0,targetName:newName,sourceId:m.menuId||0,sourceName:m.name});
+        return;
       }
       m.name=newName;m.cat=prefix;touch(m);
-      if(!nameMap[newName])nameMap[newName]=m;
+      nameMap[newName]=m;
       renameCount++;
     });
     /* ── STEP 2: 공백 제거 시 동일한 이름 쌍 검출 ── */
@@ -2837,7 +2841,6 @@ function migrateHanPrefix(){
       if(!normMap[norm])normMap[norm]=[];
       normMap[norm].push(m);
     });
-    var mergePairs=[];
     Object.keys(normMap).forEach(function(norm){
       var grp=normMap[norm];if(grp.length<2)return;
       grp.sort(function(a,b){return (a.name.match(/\s/g)||[]).length-(b.name.match(/\s/g)||[]).length;});
