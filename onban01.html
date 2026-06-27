@@ -692,9 +692,9 @@ function addSelectedToCart(){
   selectedMenuIds.forEach(function(mid){
     var m=allMenus.find(function(x){return String(x.id)===mid;});
     if(!m||(m.stock||0)===0)return;
-    var ex=cart.find(function(c){return String(c.menuId)===mid;});
+    var ex=cart.find(function(c){return c.name===m.name;});
     if(ex){ex.qty++;}
-    else{cart.push({menuId:m.id,name:m.name,price:m.price,qty:1,imgUrl:m.imgUrl||null,child:m.child,checked:true});}
+    else{cart.push({menuId:(m.menuId!=null?m.menuId:null),name:m.name,price:m.price,qty:1,imgUrl:m.imgUrl||null,child:m.child,checked:true});}
   });
   selectedMenuIds.clear();
   updateCartCount();
@@ -723,7 +723,7 @@ function loadMenus(silent){
     .then(function(d){
       allMenus=[];
       (d.menus||[]).forEach(function(m,i){
-        allMenus.push({id:i+1,name:m.name,cat:m.cat||'기타',
+        allMenus.push({id:i+1,menuId:(m.menuId!=null?m.menuId:null),name:m.name,cat:m.cat||'기타',
           price:Number(m.price)||0,stock:Number(m.stock)||0,
           child:!!m.child,imgUrl:m.imgUrl||null,desc:''});
       });
@@ -1019,9 +1019,9 @@ function changeDetailQty(d){
 }
 function addToCart(){
   var m=detailMenu;
-  var existing=cart.find(function(c){return c.menuId===m.id;});
+  var existing=cart.find(function(c){return c.name===m.name;});
   if(existing){existing.qty+=detailQty;}
-  else{cart.push({menuId:m.id,name:m.name,price:m.price,qty:detailQty,imgUrl:m.imgUrl||null,child:m.child,checked:true});}
+  else{cart.push({menuId:(m.menuId!=null?m.menuId:null),name:m.name,price:m.price,qty:detailQty,imgUrl:m.imgUrl||null,child:m.child,checked:true});}
   updateCartCount();
   showToast('장바구니에 담았어요!');
 }
@@ -1417,11 +1417,16 @@ function verifyStock(onResult){
   fetch(API_URL+'/api/menu/'+iso,{cache:'no-store'})
     .then(function(r){if(!r.ok)throw new Error('no menu');return r.json();})
     .then(function(d){
-      var stockMap={};
-      (d.menus||[]).forEach(function(m){stockMap[m.name]=Number(m.stock)||0;});
+      var stockByName={},stockById={};
+      (d.menus||[]).forEach(function(m){
+        stockByName[m.name]=Number(m.stock)||0;
+        if(m.menuId!=null)stockById[m.menuId]=Number(m.stock)||0;
+      });
       var short=[];
       orderItems.forEach(function(it){
-        var avail=stockMap.hasOwnProperty(it.name)?stockMap[it.name]:0;
+        var avail;
+        if(it.menuId!=null&&stockById.hasOwnProperty(it.menuId))avail=stockById[it.menuId];
+        else avail=stockByName.hasOwnProperty(it.name)?stockByName[it.name]:0;
         if(avail<it.qty)short.push({name:it.name,want:it.qty,have:avail});
       });
       onResult(short.length===0,short);
@@ -1448,7 +1453,7 @@ function saveOrder(cb){
     phone:ordererInfo.phone,
     addr:ordererInfo.addr,
     memo:ordererInfo.memo,
-    items:orderItems.map(function(c){return {name:c.name,qty:c.qty,price:c.price};}),
+    items:orderItems.map(function(c){return {menuId:(c.menuId!=null?c.menuId:null),name:c.name,qty:c.qty,price:c.price};}),
     total:total,
     deliveryFee:_deliveryFee,
     additionalRequest:ordererInfo.additionalRequest||'',
@@ -1885,7 +1890,7 @@ function _activateReorderBtn(id){
 function _snapOrig(ord){
   if(ord&&!ord._snap){
     ord._snap={
-      items:ord.items.map(function(i){return {name:i.name,qty:i.qty,price:i.price};}),
+      items:ord.items.map(function(i){return {menuId:(i.menuId!=null?i.menuId:null),name:i.name,qty:i.qty,price:i.price};}),
       memo:ord.memo||'',
       additionalRequest:ord.additionalRequest||''
     };
@@ -2059,7 +2064,7 @@ function reorder(order){
     time:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),
     name:order.name,phone:order.phone,addr:order.addr,
     memo:order.memo||'',
-    items:order.items.map(function(i){return {name:i.name,qty:i.qty,price:i.price};}),
+    items:order.items.map(function(i){return {menuId:(i.menuId!=null?i.menuId:null),name:i.name,qty:i.qty,price:i.price};}),
     total:total,deliveryFee:deliveryFee,status:'pending',isReorder:true,
     additionalRequest:order.additionalRequest||'',
     deviceId:getDeviceId()

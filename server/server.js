@@ -217,10 +217,12 @@ app.post('/api/menu/daily', async (req, res) => {
 // 특정 날짜 재고 업데이트 (PUT /api/menu/:date/stock)
 app.put('/api/menu/:date/stock', async (req, res) => {
   try {
-    const { name, stock } = req.body;
+    const { name, stock, menuId } = req.body;
+    const byId = menuId != null;
     await pool.execute(
-      'UPDATE daily_menus SET stock=? WHERE date=? AND name=?',
-      [stock, req.params.date, name]
+      byId ? 'UPDATE daily_menus SET stock=? WHERE date=? AND menu_id=?'
+           : 'UPDATE daily_menus SET stock=? WHERE date=? AND name=?',
+      [stock, req.params.date, byId ? menuId : name]
     );
     ok(res);
   } catch(e) { err(res, e.message); }
@@ -234,9 +236,11 @@ app.post('/api/menu/:date/stock-adjust', async (req, res) => {
     const conn = await pool.getConnection();
     await conn.beginTransaction();
     for (const it of items) {
+      const byId = it.menuId != null;
       await conn.execute(
-        'UPDATE daily_menus SET stock = GREATEST(0, stock + ?) WHERE date=? AND name=?',
-        [it.delta, req.params.date, it.name]
+        byId ? 'UPDATE daily_menus SET stock = GREATEST(0, stock + ?) WHERE date=? AND menu_id=?'
+             : 'UPDATE daily_menus SET stock = GREATEST(0, stock + ?) WHERE date=? AND name=?',
+        [it.delta, req.params.date, byId ? it.menuId : it.name]
       );
     }
     await conn.commit();
@@ -301,11 +305,14 @@ app.post('/api/orders', async (req, res) => {
     await conn.beginTransaction();
     try {
       // 재고 확인 (FOR UPDATE — 동시 주문 직렬화)
+      // menu_id 있으면 id 기준(rename 안전), 없으면(레거시 주문) name 폴백
       const soldOut = [];
       for (const item of items) {
+        const byId = item.menuId != null;
         const [rows] = await conn.execute(
-          'SELECT stock FROM daily_menus WHERE date=? AND name=? FOR UPDATE',
-          [date, item.name]
+          byId ? 'SELECT stock FROM daily_menus WHERE date=? AND menu_id=? FOR UPDATE'
+               : 'SELECT stock FROM daily_menus WHERE date=? AND name=? FOR UPDATE',
+          [date, byId ? item.menuId : item.name]
         );
         const stock = rows.length ? rows[0].stock : 0;
         if (stock < (item.qty || 1)) soldOut.push({ name: item.name, available: stock });
@@ -317,9 +324,11 @@ app.post('/api/orders', async (req, res) => {
 
       // 재고 차감
       for (const item of items) {
+        const byId = item.menuId != null;
         await conn.execute(
-          'UPDATE daily_menus SET stock = stock - ? WHERE date=? AND name=?',
-          [item.qty || 1, date, item.name]
+          byId ? 'UPDATE daily_menus SET stock = stock - ? WHERE date=? AND menu_id=?'
+               : 'UPDATE daily_menus SET stock = stock - ? WHERE date=? AND name=?',
+          [item.qty || 1, date, byId ? item.menuId : item.name]
         );
       }
 
@@ -365,21 +374,25 @@ app.put('/api/orders/:id/status', async (req, res) => {
 
       await conn.execute('UPDATE orders SET status=? WHERE id=?', [status, req.params.id]);
 
-      // 취소 시 재고 복원
+      // 취소 시 재고 복원 (menu_id 우선, 없으면 name 폴백)
       if (wasActive && nowCancelled) {
         for (const item of items) {
+          const byId = item.menuId != null;
           await conn.execute(
-            'UPDATE daily_menus SET stock = stock + ? WHERE date=? AND name=?',
-            [item.qty || 1, date, item.name]
+            byId ? 'UPDATE daily_menus SET stock = stock + ? WHERE date=? AND menu_id=?'
+                 : 'UPDATE daily_menus SET stock = stock + ? WHERE date=? AND name=?',
+            [item.qty || 1, date, byId ? item.menuId : item.name]
           );
         }
       }
-      // 취소 해제(재주문 실패 롤백) 시 재고 재차감
+      // 취소 해제(재주문 실패 롤백) 시 재고 재차감 (menu_id 우선, 없으면 name 폴백)
       if (wasCancelled && nowActive) {
         for (const item of items) {
+          const byId = item.menuId != null;
           await conn.execute(
-            'UPDATE daily_menus SET stock = GREATEST(stock - ?, 0) WHERE date=? AND name=?',
-            [item.qty || 1, date, item.name]
+            byId ? 'UPDATE daily_menus SET stock = GREATEST(stock - ?, 0) WHERE date=? AND menu_id=?'
+                 : 'UPDATE daily_menus SET stock = GREATEST(stock - ?, 0) WHERE date=? AND name=?',
+            [item.qty || 1, date, byId ? item.menuId : item.name]
           );
         }
       }
