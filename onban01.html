@@ -155,6 +155,9 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 .menu-modal-price{font-size:26px;font-weight:900;color:var(--teal);margin-bottom:4px;}
 .menu-modal-price span{font-size:14px;font-weight:400;color:var(--sub);}
 .menu-modal-desc{font-size:14px;line-height:1.7;color:#444;margin-top:14px;padding-top:14px;border-top:1px solid #eee;white-space:pre-wrap;word-break:break-word;}
+.menu-modal-img{position:relative;}
+.detail-img{position:relative;}
+.tmp-img-badge{position:absolute;bottom:8px;left:10px;background:rgba(0,0,0,.45);color:#fff;font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;letter-spacing:.3px;pointer-events:none;}
 .menu-modal-actions{padding:0 20px 22px;}
 .menu-modal-cart-btn{width:100%;background:var(--teal);color:#fff;border:none;border-radius:14px;padding:14px;font-size:16px;font-weight:800;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity .15s;}
 .menu-modal-cart-btn:active{opacity:.8;}
@@ -630,6 +633,7 @@ var _MENU_KW=[['삼계탕','🐓'],['찜닭','🐔'],['닭강정','🍗'],['닭�
 function getMenuEmoji(name,cat){var n=(name||'').toLowerCase();for(var i=0;i<_MENU_KW.length;i++){if(n.indexOf(_MENU_KW[i][0])>=0)return _MENU_KW[i][1];}return CAT_EMOJI[cat]||'🍽';}
 function menuDisplayName(name,cat){return (name||'')+(cat==='한우'||cat==='한돈'?'('+cat+')':'');}
 function _validUrl(u){return(u&&u!=='ERROR'&&u.startsWith('http'))?u:null;}
+function _isPexels(u){return!!(u&&u.startsWith('https://images.pexels.com/photos'));}
 function _itemCat(name){var m=allMenus.find(function(x){return x.name===name;});return m?m.cat:'';}
 (function(){try{var s=localStorage.getItem('onban_categories');if(s){JSON.parse(s).forEach(function(c){CAT_COLOR[c.name]=c.color;});}}catch(e){}})();
 // 계좌 정보는 localStorage를 쓰지 않고 항상 구글시트에서 조회 (결제화면 진입 시 갱신).
@@ -924,7 +928,7 @@ function showMenuModal(id){
   var imgWrap=document.createElement('div');
   imgWrap.className='menu-modal-img';
   var _modalImg=_validUrl(m.imgUrl)||_validUrl(m.icon);
-  if(_modalImg){var img=document.createElement('img');img.src=_modalImg;img.alt=m.name;img.onerror=function(){imgWrap.textContent=getMenuEmoji(m.name,m.cat);};imgWrap.appendChild(img);}
+  if(_modalImg){var img=document.createElement('img');img.src=_modalImg;img.alt=m.name;img.onerror=function(){imgWrap.textContent=getMenuEmoji(m.name,m.cat);};imgWrap.appendChild(img);if(_isPexels(_modalImg)){var _b=document.createElement('span');_b.className='tmp-img-badge';_b.textContent='임시 이미지';imgWrap.appendChild(_b);}}
   else{imgWrap.textContent=getMenuEmoji(m.name,m.cat);}
   // 닫기 버튼
   var closeBtn=document.createElement('button');
@@ -1005,6 +1009,7 @@ function renderDetail(){
     var img=document.createElement('img');
     img.src=_detImg; img.alt=m.name;
     imgWrap.appendChild(img);
+    if(_isPexels(_detImg)){var _b2=document.createElement('span');_b2.className='tmp-img-badge';_b2.textContent='임시 이미지';imgWrap.appendChild(_b2);}
   } else {
     imgWrap.textContent=getMenuEmoji(m.name,m.cat);
   }
