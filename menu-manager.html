@@ -1248,7 +1248,11 @@ function closeMenuEditPopup(e){
 function setEditImgPreview(url){
   var w=document.getElementById('editImgPreviewWrap');
   if(url){w.classList.remove('no-img');var img=document.createElement('img');img.src=url;img.alt='미리보기';img.onerror=function(){w.innerHTML='<div class="img-placeholder"><span>&#9888;</span>불러올 수 없어요</div>';};w.innerHTML='';w.appendChild(img);}
-  else{w.classList.add('no-img');w.innerHTML='<div class="img-placeholder" style="font-size:11px;color:#bbb;">이미지 없음</div>';}
+  else{
+    var em='🍽';
+    if(menuEditTargetId!==null){var _m=_arr(editCtx||'menus').find(function(x){return x.id===menuEditTargetId;});if(_m)em=getMenuEmoji(_m.name,_m.cat);}
+    w.classList.remove('no-img');w.innerHTML='<div class="img-placeholder"><span>'+em+'</span>이미지 없음</div>';
+  }
 }
 function setEditImgStatus(msg,loading){
   var el=document.getElementById('editImgStatus');var btn=document.getElementById('editImgUploadBtn');
