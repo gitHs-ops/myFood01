@@ -439,7 +439,10 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
 <div id="page-manage" class="page active">
   <div class="card"><div class="stats-grid" id="statsGrid"></div></div>
   <div class="card">
-    <div class="card-title">일일 메뉴 추가 등록</div>
+    <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+      <span>일일 메뉴 추가 등록</span>
+      <button onclick="_setAddMenuNew()" style="background:#1D9E75;color:#fff;border:none;border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">+신 메뉴</button>
+    </div>
     <div class="add-grid">
   <select id="menuCat">
     <option value="메인">메인</option><option value="반찬">반찬</option>
@@ -620,7 +623,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
     <label class="child-toggle" style="margin-bottom:10px;"><input type="checkbox" id="newMenuChild"> 어린이도 먹을 수 있는 메뉴</label>
     <div class="edit-field"><label class="edit-label">메뉴 설명 (선택)</label><textarea id="newMenuDesc" class="edit-input" rows="2" placeholder="고객 상세 팝업에 표시됩니다" style="resize:vertical;font-family:inherit;"></textarea></div>
     <div style="display:flex;gap:8px;margin-top:10px;">
-      <button onclick="saveNewMasterMenu()" style="flex:2;background:#086266;color:#fff;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">💾 저장 + 오늘 메뉴 추가</button>
+      <button onclick="saveNewMasterMenu()" style="flex:2;background:#086266;color:#fff;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">💾 마스터 저장</button>
       <button onclick="closeNewMenuPopup()" style="flex:1;background:#eee;color:#555;border:none;border-radius:10px;padding:11px;font-size:14px;cursor:pointer;font-family:inherit;">취소</button>
     </div>
   </div>
@@ -860,14 +863,22 @@ function saveNewMasterMenu(){
   var newMaster={id:ts,menuId:null,name:name,cat:cat,price:price,stock:0,child:child,desc:desc,imgUrl:null,count:0,updatedAt:ts};
   allMenus.push(newMaster);
   saveAllMenus();
-  if(menus.some(function(m){return m.name.trim()===name;})){
-    showToast('['+name+'] 마스터 등록 완료! (오늘 목록에 이미 있음)');
-  }else{
-    menus.push({id:ts+1,menuId:null,name:name,price:price,stock:stock,cat:cat,child:child,desc:desc,imgUrl:null,updatedAt:ts});
-    save();renderAll();
-    showToast('['+name+'] 마스터 등록 + 오늘 메뉴에 추가 완료!');
-  }
   document.getElementById('newMenuOverlay').classList.remove('open');
+  // 추가 폼에 신 메뉴 정보 자동 반영 (오늘 메뉴 추가는 사용자가 직접)
+  document.getElementById('menuName').value=name;
+  document.getElementById('menuPrice').value=price;
+  document.getElementById('menuStock').value=stock;
+  document.getElementById('menuCat').value=cat;
+  document.getElementById('menuChild').checked=child;
+  document.getElementById('menuDesc').value=desc;
+  _addMenuMode='select';
+  _addMenuMasterId=newMaster.id;
+  var editBtn=document.getElementById('addMasterEditBtn');
+  if(editBtn)editBtn.style.display='flex';
+  var box=document.getElementById('addMenuImgPreview');
+  if(box)box.textContent='사진';
+  checkDup(name);
+  showToast('['+name+'] 마스터 등록 완료! 재고 확인 후 오늘 메뉴에 추가하세요.');
 }
 function openAddMasterEdit(){
   if(!_addMenuMasterId)return;
