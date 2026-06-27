@@ -147,7 +147,7 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 @keyframes overlayFadeIn{from{opacity:0;}to{opacity:1;}}
 .menu-modal{position:relative;background:#fff;border-radius:22px;width:100%;max-width:440px;max-height:85vh;overflow-y:auto;animation:modalSlideUp .25s ease;}
 @keyframes modalSlideUp{from{transform:translateY(30px);opacity:0;}to{transform:translateY(0);opacity:1;}}
-.menu-modal-img{width:100%;height:200px;background:linear-gradient(135deg,#e8f5f4,#c8ebe9);display:flex;align-items:center;justify-content:center;font-size:68px;border-radius:22px 22px 0 0;overflow:hidden;flex-shrink:0;}
+.menu-modal-img{width:calc(100% - 28px);height:200px;background:linear-gradient(135deg,#e8f5f4,#c8ebe9);display:flex;align-items:center;justify-content:center;font-size:68px;border-radius:16px;overflow:hidden;flex-shrink:0;margin:14px 14px 0;border:3px solid #e0e0e0;box-sizing:border-box;}
 .menu-modal-img img{width:100%;height:100%;object-fit:cover;}
 .menu-modal-close{position:absolute;top:12px;right:14px;background:rgba(0,0,0,.28);border:none;border-radius:50%;width:30px;height:30px;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;z-index:1;}
 .menu-modal-body{padding:18px 20px 32px;}
@@ -158,7 +158,7 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 .menu-modal-img{position:relative;}
 .detail-img{position:relative;}
 .tmp-img-badge{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.82);color:#fff;font-size:13px;font-weight:900;padding:5px 18px;border-radius:20px;letter-spacing:.5px;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.4);white-space:nowrap;}
-.menu-modal-actions{padding:0 20px 22px;}
+.menu-modal-actions{padding:10px 14px 18px;display:flex;gap:10px;align-items:center;}
 .menu-modal-cart-btn{width:100%;background:var(--teal);color:#fff;border:none;border-radius:14px;padding:14px;font-size:16px;font-weight:800;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity .15s;}
 .menu-modal-cart-btn:active{opacity:.8;}
 .menu-modal-cart-btn.sold-out{background:#ccc;cursor:not-allowed;}
