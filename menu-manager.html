@@ -2753,47 +2753,67 @@ function saveCatSettings(){
 }
 function migrateHanPrefix(){
   var btn=document.querySelector('[onclick="migrateHanPrefix()"]');
-  if(btn){btn.disabled=true;btn.textContent='불러오는 중...';}
+  function _btnState(loading){if(btn){btn.disabled=loading;btn.textContent=loading?'처리중...':'🐄 한우/한돈 카테고리 일괄 적용';}}
+  _btnState(true);
   importAllMenusFromSheet(function(){
-    // 이름 → 메뉴 맵 (중복 감지용)
+    /* ── STEP 1: 한우/한돈 접두사 제거 ── */
     var nameMap={};allMenus.forEach(function(m){nameMap[m.name]=m;});
-    var count=0,skipped=[];
+    var renameCount=0;
     allMenus.forEach(function(m){
-      var prefix=null,newCat=null;
-      if(/^한우/.test(m.name)){prefix='한우';newCat='한우';}
-      else if(/^한돈/.test(m.name)){prefix='한돈';newCat='한돈';}
+      var prefix=/^한우/.test(m.name)?'한우':/^한돈/.test(m.name)?'한돈':null;
       if(!prefix)return;
       var newName=m.name.replace(new RegExp('^'+prefix+'\\s*'),'');
-      if(!newName){skipped.push(m.name+' (이름 없음)');return;}
-      // 이름 충돌: 접두사 없는 버전이 이미 별도 메뉴로 존재하면 카테고리만 변경
+      if(!newName)return;
       if(nameMap[newName]&&nameMap[newName]!==m){
-        // 기존 메뉴의 카테고리를 업데이트하고 이 메뉴는 표시 메뉴로 사용
-        nameMap[newName].cat=newCat;touch(nameMap[newName]);
-        // 접두사 버전은 삭제 목록에서 제외하기 위해 이름을 새 이름으로 맞춤
-        m.name=newName;m.cat=newCat;touch(m);
-        count++;
-      }else{
-        m.name=newName;m.cat=newCat;touch(m);
-        nameMap[newName]=m;
-        count++;
+        nameMap[newName].cat=prefix;touch(nameMap[newName]);
+      }
+      m.name=newName;m.cat=prefix;touch(m);
+      if(!nameMap[newName])nameMap[newName]=m;
+      renameCount++;
+    });
+    /* ── STEP 2: 공백 제거 시 동일한 이름 쌍 검출 ── */
+    var deduped=deduplicateByName(allMenus);
+    var normMap={};
+    deduped.forEach(function(m){
+      var norm=m.name.replace(/\s+/g,'');
+      if(!normMap[norm])normMap[norm]=[];
+      normMap[norm].push(m);
+    });
+    var mergePairs=[];
+    Object.keys(normMap).forEach(function(norm){
+      var grp=normMap[norm];if(grp.length<2)return;
+      grp.sort(function(a,b){return (a.name.match(/\s/g)||[]).length-(b.name.match(/\s/g)||[]).length;});
+      var winner=grp[0];
+      for(var i=1;i<grp.length;i++){
+        mergePairs.push({targetId:winner.menuId||0,targetName:winner.name,sourceId:grp[i].menuId||0,sourceName:grp[i].name});
       }
     });
-    if(!count){
-      if(btn){btn.disabled=false;btn.textContent='🐄 한우/한돈 카테고리 일괄 적용';}
-      alert('한우/한돈 접두사 메뉴 없음 (마스터 메뉴 수: '+allMenus.length+')');
-      return;
-    }
-    var deduped=deduplicateByName(allMenus);
-    apiPost('/api/menu/all',deduped,function(err,d){
-      if(btn){btn.disabled=false;btn.textContent='🐄 한우/한돈 카테고리 일괄 적용';}
-      if(err||(d&&!d.success)){
-        alert('저장 실패: '+(err?err.message:(d&&d.error)||'서버 오류'));
-        return;
+    /* ── STEP 3: 마스터 저장 (rename 반영) ── */
+    function _step4(mergeStart){
+      /* ── STEP 4: 공백 중복 병합 ── */
+      if(!mergePairs.length){_finish(mergeStart,0);return;}
+      var mc=0,idx=0;
+      function _next(){
+        if(idx>=mergePairs.length){_finish(mergeStart,mc);return;}
+        var p=mergePairs[idx++];
+        fetch(API_URL+'/api/menu/master/merge',{method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({data:{targetId:p.targetId,targetName:p.targetName,sourceId:p.sourceId,sourceName:p.sourceName}})
+        }).then(function(r){return r.json();}).then(function(d){if(d&&d.success)mc++;_next();}).catch(function(){_next();});
       }
-      loadMenus(workDate);renderAllMenus();
-      var msg=count+'개 메뉴 갱신 완료';
-      if(skipped.length)msg+='\n건너뜀: '+skipped.join(', ');
-      alert(msg);
+      _next();
+    }
+    function _finish(rc,mc){
+      loadMenus(workDate);renderAllMenus();_btnState(false);
+      var msg=[];
+      if(rc)msg.push('한우/한돈 정리 '+rc+'개');
+      if(mc)msg.push('공백 중복 병합 '+mc+'개');
+      alert(msg.length?msg.join(' / ')+'  완료':'변경할 메뉴가 없습니다.');
+    }
+    if(!renameCount&&!mergePairs.length){_btnState(false);alert('변경할 메뉴 없음 (마스터: '+allMenus.length+'개)');return;}
+    if(!renameCount){_step4(0);return;}
+    apiPost('/api/menu/all',deduped,function(err,d){
+      if(err||(d&&!d.success)){_btnState(false);alert('저장 실패: '+(err?err.message:(d&&d.error)||'서버 오류'));return;}
+      _step4(renameCount);
     });
   });
 }
