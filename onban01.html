@@ -666,7 +666,7 @@ function goPage(name){
   // 주문내역에서 항목(수량·삭제)을 편집한 뒤 재주문 미처리로 이탈 시 경고 + 원복
   var onHistory=document.getElementById('page-history').classList.contains('active');
   if(onHistory&&name!=='history'&&name!=='payment'&&_hasPendingItemEdits()){
-    if(!confirm('편집한 주문 항목이 있어요.\n\n재주문(다시 주문) 처리를 하지 않으면 삭제·수량 변경이 반영되지 않고 취소됩니다.\n그래도 이동하시겠어요?')){
+    if(!confirm('편집한 주문 항목이 있어요.\n\n재주문(다시 주문) 처리를 하지 않으면 삭제·수량 변경이 무시되고 원래 상태로 됩니다.\n그래도 이동하시겠어요?')){
       return;   // 머무름
     }
     _revertPendingItemEdits();   // 이동 강행 시 항목 원복(물리적 반영 아님)
