@@ -154,7 +154,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
 .img-popup-title{font-size:15px;font-weight:700;color:#1a1a1a;}
 .img-popup-close{background:none;border:none;font-size:20px;color:#aaa;cursor:pointer;padding:2px 6px;border-radius:6px;line-height:1;font-family:inherit;}
 .img-popup-close:hover{background:#f0f0f0;color:#333;}
-.img-preview-wrap{width:100%;aspect-ratio:4/3;border-radius:12px;overflow:hidden;background:#f0faf9;border:1.5px dashed #cde8e7;display:flex;align-items:center;justify-content:center;margin-bottom:14px;}
+.img-preview-wrap{width:100%;aspect-ratio:4/3;border-radius:12px;overflow:hidden;background:#f0faf9;border:1.5px dashed #cde8e7;display:flex;align-items:center;justify-content:center;margin-bottom:14px;}.img-preview-wrap.no-img{aspect-ratio:unset;height:40px;}
 .img-preview-wrap img{width:100%;height:100%;object-fit:cover;}
 .img-placeholder{text-align:center;color:#aaa;font-size:13px;}
 .img-placeholder span{font-size:32px;display:block;margin-bottom:6px;}
@@ -1132,6 +1132,7 @@ function openMenuEditPopup(id,ctx){
   editCtx=ctx||'menus';
   var m=_arr(editCtx).find(function(x){return x.id===id;});
   if(!m)return;
+  if(_menuPollTimer){clearInterval(_menuPollTimer);_menuPollTimer=null;}  // 폴링 중단 — 팝업 열린 동안 menus[] id 재생성 방지
   menuEditTargetId=id;
   editPendingImgUrl=null;
   document.getElementById('menuEditTitle').textContent='메뉴 편집 — '+m.name;
@@ -1153,11 +1154,12 @@ function closeMenuEditPopup(e){
   editPendingImgUrl=null;
   document.getElementById('menuEditOverlay').classList.remove('open');
   menuEditTargetId=null;
+  _startMenuSSE(workDate);
 }
 function setEditImgPreview(url){
   var w=document.getElementById('editImgPreviewWrap');
-  if(url){var img=document.createElement('img');img.src=url;img.alt='미리보기';img.onerror=function(){w.innerHTML='<div class="img-placeholder"><span>&#9888;</span>불러올 수 없어요</div>';};w.innerHTML='';w.appendChild(img);}
-  else{w.innerHTML='<div class="img-placeholder"><span>&#128444;</span>이미지 없음</div>';}
+  if(url){w.classList.remove('no-img');var img=document.createElement('img');img.src=url;img.alt='미리보기';img.onerror=function(){w.innerHTML='<div class="img-placeholder"><span>&#9888;</span>불러올 수 없어요</div>';};w.innerHTML='';w.appendChild(img);}
+  else{w.classList.add('no-img');w.innerHTML='<div class="img-placeholder" style="font-size:11px;color:#bbb;">이미지 없음</div>';}
 }
 function setEditImgStatus(msg,loading){
   var el=document.getElementById('editImgStatus');var btn=document.getElementById('editImgUploadBtn');
@@ -1254,6 +1256,7 @@ function saveMenuEditAll(){
   }
   document.getElementById('menuEditOverlay').classList.remove('open');
   menuEditTargetId=null;editPendingImgUrl=null;
+  _startMenuSSE(workDate);
   _updateAddMenuImg();
   // 추가 폼이 이 마스터를 참조 중이면 폼 필드 동기화
   if(m.id===_addMenuMasterId){
