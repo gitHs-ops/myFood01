@@ -1308,7 +1308,7 @@ function renderOrdererPage(){
     var _itemsTotal=orderItems.reduce(function(s,c){return s+c.price*c.qty;},0);
     if(memo!=='매장픽업'&&_itemsTotal<20){
       if(!document.getElementById('pickupRecommendBanner'))_showPickupRecommend();
-      showToast('2만원 미만 주문은 매장 픽업만 가능해요.');
+      alert('2만원 미만 주문은 매장 픽업만 가능해요.\n배송방법을 매장픽업으로 변경해주세요.');
       document.getElementById('ordererMemo').focus();
       return;
     }
@@ -1966,7 +1966,7 @@ function _updateHistTotal(id){
     isPickup=true;
     var memoWrap=document.getElementById('histmemo-'+id);
     if(memoWrap)memoWrap.innerHTML=_histMemoHtml(id,'매장픽업');
-    showToast('⚠️ 2만원 미만 — 매장픽업으로 자동 변경됐어요.');
+    alert('⚠️ 2만원 미만 — 매장픽업으로 자동 변경됐어요.');
   }
   var df=(!isPickup&&itemsSum>=20)?1:0;
   var total=itemsSum+df;
