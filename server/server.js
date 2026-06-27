@@ -155,6 +155,18 @@ app.post('/api/menu/master/delete', async (req, res) => {
   } catch(e) { err(res, e.message); }
 });
 
+// 임시: +/& 제거 시 중복 메뉴 추출 (사용 후 제거)
+app.get('/api/admin/dup-menus', async (req, res) => {
+  try {
+    const [rows] = await pool.execute('SELECT id, name, cat, price, stock, child, img_url, icon, menu_desc, count FROM menus ORDER BY name');
+    const norm = s => s.replace(/\s*[+&]\s*/g,' ').replace(/\s+/g,' ').trim();
+    const groups = {};
+    rows.forEach(r => { const k=norm(r.name); if(!groups[k])groups[k]=[]; groups[k].push(r); });
+    const dups = Object.entries(groups).filter(([,v])=>v.length>1).map(([k,v])=>({key:k,items:v}));
+    ok(res, { count: dups.length, dups });
+  } catch(e) { err(res, e.message); }
+});
+
 // 전체 메뉴 조회 (GET /api/menu/all)
 app.get('/api/menu/all', async (req, res) => {
   try {
