@@ -2752,14 +2752,29 @@ function saveCatSettings(){
   setTimeout(function(){el.style.display='none';},2000);
 }
 function migrateHanPrefix(){
-  var count=0;
-  allMenus.forEach(function(m){
-    if(/^한우/.test(m.name)){m.cat='한우';m.name=m.name.replace(/^한우\s*/,'');touch(m);count++;}
-    else if(/^한돈/.test(m.name)){m.cat='한돈';m.name=m.name.replace(/^한돈\s*/,'');touch(m);count++;}
+  var btn=document.querySelector('[onclick="migrateHanPrefix()"]');
+  if(btn){btn.disabled=true;btn.textContent='불러오는 중...';}
+  // 서버에서 최신 마스터 로드 후 마이그레이션
+  importAllMenusFromSheet(function(){
+    var count=0;
+    allMenus.forEach(function(m){
+      if(/^한우/.test(m.name)){m.cat='한우';m.name=m.name.replace(/^한우\s*/,'');touch(m);count++;}
+      else if(/^한돈/.test(m.name)){m.cat='한돈';m.name=m.name.replace(/^한돈\s*/,'');touch(m);count++;}
+    });
+    if(!count){
+      alert('한우/한돈 접두사 메뉴가 없습니다.\n(현재 마스터 메뉴 수: '+allMenus.length+')');
+      if(btn){btn.disabled=false;btn.textContent='🐄 한우/한돈 카테고리 일괄 적용';}
+      return;
+    }
+    // 마스터 저장 (서버에서 daily_menus.name도 전파)
+    apiPost('/api/menu/all',deduplicateByName(allMenus),function(){
+      // 저장 완료 후 일일 메뉴도 서버에서 리로드
+      loadMenus(workDate);
+      renderAllMenus();
+      if(btn){btn.disabled=false;btn.textContent='🐄 한우/한돈 카테고리 일괄 적용';}
+      alert(count+'개 메뉴 갱신 완료\n(이름 앞의 한우/한돈 제거 + 카테고리 자동 설정)');
+    });
   });
-  if(!count){alert('한우/한돈 접두사 메뉴가 없습니다.');return;}
-  saveAllMenus();renderAllMenus();renderMenuList();
-  alert(count+'개 메뉴 갱신 완료 (이름 정리 + 카테고리 설정)');
 }
 function loadSettingsForm(){
   function fillForm(){
