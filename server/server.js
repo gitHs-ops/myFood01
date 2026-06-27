@@ -146,15 +146,19 @@ app.get('/api/menu/:date', async (req, res) => {
   try {
     // 정적 속성(이름·카테고리·사진·설명)은 마스터(menus)에서 가져옴. menu_id 없는 레거시 행은 daily 값으로 폴백
     const [rows] = await pool.execute(
+      // m: menu_id 링크, m2: name 링크(폴백). desc/정적속성은 둘 중 먼저 매칭되는 master값 사용.
+      // menuId는 재고연산 정합성 위해 daily에 저장된 d.menu_id를 그대로 반환.
       `SELECT d.menu_id AS menuId,
-         COALESCE(m.name,d.name) AS name,
-         COALESCE(m.cat,d.cat) AS cat,
-         COALESCE(m.price,d.price) AS price,
+         COALESCE(m.name,m2.name,d.name) AS name,
+         COALESCE(m.cat,m2.cat,d.cat) AS cat,
+         COALESCE(m.price,m2.price,d.price) AS price,
          d.stock,
-         COALESCE(m.child,d.child) AS child,
-         COALESCE(m.img_url,d.img_url) AS imgUrl,
-         m.menu_desc AS \`desc\`
-       FROM daily_menus d LEFT JOIN menus m ON d.menu_id=m.id
+         COALESCE(m.child,m2.child,d.child) AS child,
+         COALESCE(m.img_url,m2.img_url,d.img_url) AS imgUrl,
+         COALESCE(m.menu_desc,m2.menu_desc) AS \`desc\`
+       FROM daily_menus d
+       LEFT JOIN menus m  ON m.id=d.menu_id
+       LEFT JOIN menus m2 ON m2.name=d.name
        WHERE d.date=? ORDER BY d.id`,
       [req.params.date]
     );
@@ -186,16 +190,18 @@ app.post('/api/menu/daily', async (req, res) => {
         // 마스터 갱신 → menu_id 확보. menuId 있으면 id 기준 UPDATE(rename 포함), 없으면 신규 INSERT
         let menuId = m.menuId || null;
         if (menuId) {
+          // menu_desc는 master 전용 — 일일 저장이 덮어쓰지 않음(정합성 보호)
           await conn.execute(
-            `UPDATE menus SET name=?,cat=?,price=?,child=?,img_url=?,menu_desc=?,updated_at=? WHERE id=?`,
-            [m.name, m.cat||'기타', m.price||0, m.child?1:0, m.imgUrl||'', m.desc||'', m.updatedAt||Date.now(), menuId]
+            `UPDATE menus SET name=?,cat=?,price=?,child=?,img_url=?,updated_at=? WHERE id=?`,
+            [m.name, m.cat||'기타', m.price||0, m.child?1:0, m.imgUrl||'', m.updatedAt||Date.now(), menuId]
           );
         } else {
+          // 신규행만 desc 초기값 적용. 기존행(중복키) menu_desc는 보호(덮어쓰지 않음)
           await conn.execute(
             `INSERT INTO menus (name,cat,price,child,img_url,menu_desc,updated_at)
              VALUES (?,?,?,?,?,?,?)
              ON DUPLICATE KEY UPDATE cat=VALUES(cat),price=VALUES(price),child=VALUES(child),
-               img_url=VALUES(img_url),menu_desc=VALUES(menu_desc),updated_at=VALUES(updated_at)`,
+               img_url=VALUES(img_url),updated_at=VALUES(updated_at)`,
             [m.name, m.cat||'기타', m.price||0, m.child?1:0, m.imgUrl||'', m.desc||'', m.updatedAt||Date.now()]
           );
           const [[mrow]] = await conn.execute('SELECT id FROM menus WHERE name=?', [m.name]);
