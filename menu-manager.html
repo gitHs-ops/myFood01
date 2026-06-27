@@ -1535,6 +1535,9 @@ function renderHistSubTabs(){
         var label=ym==='전체'?'전체':(ym.slice(0,4)+'년 '+String(Number(ym.slice(5)))+'월');
         return '<option value="'+ym+'"'+(_histYM===ym?' selected':'')+'>'+label+'</option>';
       }).join('')+'</select>'
+    :(_histSubTab==='all')
+    ?'<select onchange="setAllFilter(this.value)" style="width:90px;padding:4px 6px;border-radius:8px;border:1.5px solid #086266;font-size:12px;font-weight:600;color:#086266;background:#e8f5f4;cursor:pointer;font-family:inherit;outline:none;margin:0 6px;">'
+      +['전체'].concat(VALID_CATS).map(function(c){return '<option value="'+c+'"'+(filterAllCat===c?' selected':'')+'>'+c+'</option>';}).join('')+'</select>'
     :'';
   document.getElementById('histSubTabs').innerHTML=
     '<button class="tab'+(_histSubTab==='dates'?' active':'')+'" onclick="switchHistSubTab(\'dates\')">날짜별 메뉴 묶음</button>'
@@ -1626,13 +1629,15 @@ function importAllMenusFromSheet(cb){
   });
 }
 function renderAllFilterTabs(){
-  var present=['전체'].concat(VALID_CATS);
   var el=document.getElementById('allCatLegend');
   if(!el)return;
-  el.innerHTML=present.map(function(c){return _legendItemHtml(c,filterAllCat===c,"setAllFilter('"+c+"')");}).join('');
+  // 범례만 표시 — 클릭 없음, 필터는 드롭다운에서
+  el.innerHTML=VALID_CATS.map(function(c){
+    return '<div class="legend-item"><div class="legend-dot" style="background:'+(CAT_COLOR[c]||'#888')+'"></div>'+c+'</div>';
+  }).join('');
   var ft=document.getElementById('allFilterTabs');if(ft)ft.style.display='none';
 }
-function setAllFilter(cat){filterAllCat=cat;_allMenuPage=0;renderAllFilterTabs();renderAllMenus();}
+function setAllFilter(cat){filterAllCat=cat;_allMenuPage=0;renderHistSubTabs();renderAllMenus();}
 function renderAllMenus(){
   renderAllFilterTabs();
   var el=document.getElementById('allMenuList');
