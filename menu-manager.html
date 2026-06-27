@@ -459,7 +459,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
     </div>
   </div>
   <div class="num-field"><label for="menuPrice">금액(천원)</label><input type="number" id="menuPrice" min="1" style="width:72px;"></div>
-  <div class="num-field"><label for="menuStock">재고(수량)</label><input type="number" id="menuStock" min="-1" value="0" style="width:72px;"><div style="display:flex;align-items:center;gap:4px;"><div id="addMenuImgPreview" class="add-img-preview" title="선택된 메뉴 사진">사진</div><button type="button" id="addMasterEditBtn" onclick="openAddMasterEdit()" title="마스터 정보 편집" style="display:none;width:28px;height:28px;border-radius:6px;border:1.5px solid #086266;background:#e8f5f4;color:#086266;font-size:14px;cursor:pointer;flex-shrink:0;align-items:center;justify-content:center;padding:0;">✏️</button></div></div>
+  <div class="num-field"><label for="menuStock">재고(수량)</label><input type="number" id="menuStock" min="-1" value="0" style="width:72px;"><div style="display:flex;align-items:center;gap:12px;width:100%;"><div id="addMenuImgPreview" class="add-img-preview" title="선택된 메뉴 사진">사진</div><button type="button" id="addMasterEditBtn" onclick="openAddMasterEdit()" title="마스터 정보 편집" style="display:none;margin-left:auto;align-items:center;gap:4px;height:32px;border-radius:8px;border:1.5px solid #086266;background:#e8f5f4;color:#086266;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0;padding:0 10px;font-family:inherit;">✏️ 수정</button></div></div>
 </div>
 <div class="dup-warn" id="dupWarn">&#9888; 이미 오늘 목록에 있는 메뉴예요!</div>
     <label class="child-toggle"><input type="checkbox" id="menuChild"> 어린이도 먹을 수 있는 메뉴</label>
@@ -1295,8 +1295,7 @@ function renderMenuList(){
     return '<div class="menu-item ml-2line">'+
       '<div class="mi-row1">'+
         '<div class="cat-dot" style="background:'+(CAT_COLOR[m.cat]||'#888')+'"></div>'+imgEl+
-        '<div class="name">'+m.name+chEl+'</div>'+
-        '<button class="mi-edit-btn" onclick="openMenuEditPopup('+m.id+')">✏️ 수정</button>'+
+        '<div class="name"><span class="name-edit" onclick="openMenuEditPopup('+m.id+')">'+m.name+chEl+' <span class="edit-pen">✏️</span></span></div>'+
       '</div>'+
       '<div class="mi-row2">'+
         '<div class="price-wrap"><span class="price-display" id="pd_'+m.id+'" onclick="startEditPrice('+m.id+')">'+(m.price||0).toLocaleString()+'천원</span><input class="price-input" id="pi_'+m.id+'" type="number" min="1" value="'+(m.price||0)+'" onblur="commitPrice('+m.id+')" onkeydown="if(event.key===\'Enter\')commitPrice('+m.id+');if(event.key===\'Escape\')cancelPrice('+m.id+');"></div>'+
