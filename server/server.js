@@ -103,6 +103,23 @@ app.post('/api/menu/all', async (req, res) => {
   } catch(e) { err(res, e.message); }
 });
 
+// ── 임시 진단 (GET /api/debug/menu-search?q=톳) ──
+// 이름에 q가 포함된 menus·daily_menus 행을 HEX·길이와 함께 반환 (인코딩/링크 점검)
+app.get('/api/debug/menu-search', async (req, res) => {
+  try {
+    const q = '%' + (req.query.q || '') + '%';
+    const [masters] = await pool.execute(
+      'SELECT id, name, CHAR_LENGTH(name) AS len, HEX(name) AS hex FROM menus WHERE name LIKE ? ORDER BY id',
+      [q]
+    );
+    const [dailies] = await pool.execute(
+      "SELECT id, menu_id, DATE_FORMAT(date,'%Y-%m-%d') AS date, name, CHAR_LENGTH(name) AS len, HEX(name) AS hex FROM daily_menus WHERE name LIKE ? ORDER BY date DESC, id",
+      [q]
+    );
+    ok(res, { masters, dailies });
+  } catch(e) { err(res, e.message); }
+});
+
 // 마스터 단건 삭제 (POST /api/menu/master/delete)
 // 일자별 목록(daily_menus)이 참조 중이면 삭제 차단하고 등록된 날짜 반환
 app.post('/api/menu/master/delete', async (req, res) => {
