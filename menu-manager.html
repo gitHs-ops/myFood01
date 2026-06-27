@@ -51,9 +51,14 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
 .tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;}
 .tab{padding:5px 12px;border-radius:999px;font-size:12px;font-weight:500;cursor:pointer;border:none;background:#086266;color:#fff;font-family:inherit;}
 .tab.active{box-shadow:0 0 0 3px #fff,0 0 0 5px #086266;font-weight:700;}
-.legend{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;}
-.legend-item{display:flex;align-items:center;gap:5px;font-size:12px;color:#555;}
-.legend-dot{width:10px;height:10px;border-radius:50%;}
+.legend{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:12px;color:#555;cursor:pointer;border-radius:20px;padding:4px 10px;border:1.5px solid transparent;transition:background .12s,border-color .12s;}
+.legend-item:hover{background:#e8f5f4;}
+.legend-item.active{background:#086266;color:#fff;border-color:#086266;}
+.legend-item.active .legend-dot{background:#fff!important;}
+.legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.legend-square{width:10px;height:10px;border-radius:2px;flex-shrink:0;background:#555;}
+.legend-item.active .legend-square{background:#fff!important;}
 .menu-list{display:flex;flex-direction:column;gap:8px;}
 .menu-item{display:flex;align-items:center;background:#f8fffe;border:1px solid #d6efee;border-radius:10px;padding:10px 12px;gap:8px;}
 .menu-item.ml-2line{flex-direction:column;align-items:stretch;gap:8px;}
@@ -441,7 +446,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
       <button onclick="_setAddMenuNew()" style="background:#1D9E75;color:#fff;border:none;border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">+신 메뉴</button>
     </div>
     <div class="add-grid">
-  <select id="menuCat"></select>
+  <select id="menuCat" onchange="onMenuCatChange()"></select>
   <div class="num-field">
     <label for="menuName">메뉴명</label>
     <div class="menuname-wrap">
@@ -950,6 +955,15 @@ function checkDup(name){
   var isDup=name&&menus.some(function(m){return m.name.trim()===name.trim();});
   if(isDup)warn.classList.add('show');else warn.classList.remove('show');
 }
+function onMenuCatChange(){
+  var list=document.getElementById('acList');
+  var names=acNames(true);
+  acIndex=-1;
+  list.innerHTML='<div class="ac-item ac-item-new" data-val="__NEW__" onmousedown="pickAc(this)">✨ 신 메뉴 입력</div>'+
+    names.map(function(n){return '<div class="ac-item" data-val="'+n+'" onmousedown="pickAc(this)">'+n+'</div>';}).join('');
+  if(names.length)list.classList.add('open');
+  document.getElementById('menuName').value='';
+}
 function onMenuNameInput(){
   var name=document.getElementById('menuName').value.trim();
   checkDup(name);
@@ -1318,10 +1332,14 @@ function renderStats(){
   var t=menus.length,s=menus.reduce(function(a,m){return a+(m.stock||0);},0),c=menus.filter(function(m){return m.child;}).length;
   document.getElementById('statsGrid').innerHTML='<div class="stat"><div class="stat-num">'+t+'</div><div class="stat-lbl">메뉴 수</div></div><div class="stat"><div class="stat-num">'+s+'</div><div class="stat-lbl">총 재고</div></div><div class="stat"><div class="stat-num">'+c+'</div><div class="stat-lbl">어린이 가능</div></div>';
 }
+function _legendItemHtml(c,isActive,onClick){
+  var icon=c==='전체'?'<div class="legend-square"></div>':'<div class="legend-dot" style="background:'+(CAT_COLOR[c]||'#888')+'"></div>';
+  return '<div class="legend-item'+(isActive?' active':'')+'" onclick="'+onClick+'">'+icon+c+'</div>';
+}
 function renderFilterTabs(){
-  var cats=['전체'];Object.keys(CAT_COLOR).forEach(function(c){if(menus.some(function(m){return m.cat===c;}))cats.push(c);});
-  document.getElementById('catLegend').innerHTML=Object.entries(CAT_COLOR).filter(function(e){return menus.some(function(m){return m.cat===e[0];});}).map(function(e){return '<div class="legend-item"><div class="legend-dot" style="background:'+e[1]+'"></div>'+e[0]+'</div>';}).join('');
-  document.getElementById('filterTabs').innerHTML=cats.map(function(c){return '<button class="tab'+(filterCat===c?' active':'')+'" onclick="setFilter(\''+c+'\')">'+c+'</button>';}).join('');
+  var present=['전체'].concat(VALID_CATS.filter(function(c){return menus.some(function(m){return m.cat===c;});}));
+  document.getElementById('catLegend').innerHTML=present.map(function(c){return _legendItemHtml(c,filterCat===c,"setFilter('"+c+"')");}).join('');
+  document.getElementById('filterTabs').innerHTML='';
 }
 function setFilter(cat){filterCat=cat;renderFilterTabs();renderMenuList();}
 function renderMenuList(){
@@ -1484,13 +1502,8 @@ function switchHistSubTab(tab){
     renderHistory();
   }else{
     document.getElementById('historyList').style.display='none';
-    if(ft)ft.style.display='';
-    if(lg){
-      lg.style.display='';
-      lg.innerHTML=Object.entries(CAT_COLOR).map(function(e){
-        return '<div class="legend-item"><div class="legend-dot" style="background:'+e[1]+'"></div>'+e[0]+'</div>';
-      }).join('');
-    }
+    if(ft)ft.style.display='none';
+    if(lg)lg.style.display='';
     var el=document.getElementById('allMenuList');
     el.style.display='';
     el.innerHTML='<div style="text-align:center;padding:30px;color:#aaa;font-size:13px;">메뉴 창고에서 불러오는 중...</div>';
@@ -1553,12 +1566,11 @@ function importAllMenusFromSheet(cb){
   });
 }
 function renderAllFilterTabs(){
-  var cats=['전체','메인','반찬','김치','기타'];
-  var el=document.getElementById('allFilterTabs');
+  var present=['전체'].concat(VALID_CATS.filter(function(c){return allMenus.some(function(m){return m.cat===c;});}));
+  var el=document.getElementById('allCatLegend');
   if(!el)return;
-  el.innerHTML=cats.map(function(c){
-    return '<button class="tab'+(filterAllCat===c?' active':'')+'" onclick="setAllFilter(\''+c+'\')">'+c+'</button>';
-  }).join('');
+  el.innerHTML=present.map(function(c){return _legendItemHtml(c,filterAllCat===c,"setAllFilter('"+c+"')");}).join('');
+  var ft=document.getElementById('allFilterTabs');if(ft)ft.style.display='none';
 }
 function setAllFilter(cat){filterAllCat=cat;_allMenuPage=0;renderAllFilterTabs();renderAllMenus();}
 function renderAllMenus(){
