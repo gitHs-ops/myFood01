@@ -155,14 +155,6 @@ app.post('/api/menu/master/delete', async (req, res) => {
   } catch(e) { err(res, e.message); }
 });
 
-// 임시: ERROR img_url 메뉴 추출 (사용 후 제거)
-app.get('/api/admin/error-menus', async (req, res) => {
-  try {
-    const [rows] = await pool.execute("SELECT name FROM menus WHERE img_url='ERROR' ORDER BY name");
-    ok(res, { names: rows.map(r => r.name) });
-  } catch(e) { err(res, e.message); }
-});
-
 // 전체 메뉴 조회 (GET /api/menu/all)
 app.get('/api/menu/all', async (req, res) => {
   try {
