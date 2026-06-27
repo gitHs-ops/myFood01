@@ -811,12 +811,12 @@ function acNames(useCat){
   names.sort(function(a,b){return a.localeCompare(b,'ko',{numeric:true});});
   return names;
 }
-// ▾ 버튼: 카테고리 무관 전체 표시 → 수정된 메뉴 어떤 카테고리든 항상 보임
+// ▾ 버튼: 선택된 카테고리 기준 목록 표시
 function toggleAcAll(e){
   if(e)e.preventDefault();
   var list=document.getElementById('acList');
   if(list.classList.contains('open')){closeAcList();return;}
-  var names=acNames(false);
+  var names=acNames(true);
   acIndex=-1;
   list.innerHTML='<div class="ac-item ac-item-new" data-val="__NEW__" onmousedown="pickAc(this)">✨ 신 메뉴 입력</div>'+
     names.map(function(n){
@@ -961,7 +961,7 @@ function onMenuCatChange(){
   acIndex=-1;
   list.innerHTML='<div class="ac-item ac-item-new" data-val="__NEW__" onmousedown="pickAc(this)">✨ 신 메뉴 입력</div>'+
     names.map(function(n){return '<div class="ac-item" data-val="'+n+'" onmousedown="pickAc(this)">'+n+'</div>';}).join('');
-  if(names.length)list.classList.add('open');
+  list.classList.add('open');
   document.getElementById('menuName').value='';
 }
 function onMenuNameInput(){
@@ -1337,7 +1337,7 @@ function _legendItemHtml(c,isActive,onClick){
   return '<div class="legend-item'+(isActive?' active':'')+'" onclick="'+onClick+'">'+icon+c+'</div>';
 }
 function renderFilterTabs(){
-  var present=['전체'].concat(VALID_CATS.filter(function(c){return menus.some(function(m){return m.cat===c;});}));
+  var present=['전체'].concat(VALID_CATS);
   document.getElementById('catLegend').innerHTML=present.map(function(c){return _legendItemHtml(c,filterCat===c,"setFilter('"+c+"')");}).join('');
   document.getElementById('filterTabs').innerHTML='';
 }
@@ -1566,7 +1566,7 @@ function importAllMenusFromSheet(cb){
   });
 }
 function renderAllFilterTabs(){
-  var present=['전체'].concat(VALID_CATS.filter(function(c){return allMenus.some(function(m){return m.cat===c;});}));
+  var present=['전체'].concat(VALID_CATS);
   var el=document.getElementById('allCatLegend');
   if(!el)return;
   el.innerHTML=present.map(function(c){return _legendItemHtml(c,filterAllCat===c,"setAllFilter('"+c+"')");}).join('');
