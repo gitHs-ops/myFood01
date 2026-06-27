@@ -155,18 +155,6 @@ app.post('/api/menu/master/delete', async (req, res) => {
   } catch(e) { err(res, e.message); }
 });
 
-// 임시: +/& 제거 시 중복 메뉴 추출 (사용 후 제거)
-app.get('/api/admin/dup-menus', async (req, res) => {
-  try {
-    const [rows] = await pool.execute('SELECT id, name, cat, price, stock, child, img_url, icon, menu_desc, count FROM menus ORDER BY name');
-    const norm = s => s.replace(/\s*[+&]\s*/g,' ').replace(/\s+/g,' ').trim();
-    const groups = {};
-    rows.forEach(r => { const k=norm(r.name); if(!groups[k])groups[k]=[]; groups[k].push(r); });
-    const dups = Object.entries(groups).filter(([,v])=>v.length>1).map(([k,v])=>({key:k,items:v}));
-    ok(res, { count: dups.length, dups });
-  } catch(e) { err(res, e.message); }
-});
-
 // 전체 메뉴 조회 (GET /api/menu/all)
 app.get('/api/menu/all', async (req, res) => {
   try {
@@ -792,6 +780,37 @@ async function initDB() {
         console.log(`retry CSV v3 img_url 갱신: ${updated}건`);
       } catch(e){ console.warn('retry CSV v3 읽기 실패:', e.message); }
       await conn.execute(`INSERT IGNORE INTO settings(k,v) VALUES('retry_img_v3','done')`).catch(()=>{});
+    }
+    // +/& 중복 메뉴 병합 (count 높은 쪽 유지, daily_menus 참조 이전 후 삭제)
+    const [[dupMig]] = await conn.execute(`SELECT v FROM settings WHERE k='merge_dup_v1'`).catch(()=>[[null]]);
+    if(!dupMig){
+      const [allMenus] = await conn.execute('SELECT id, name, cat, price, stock, child, img_url, icon, menu_desc, count FROM menus');
+      const norm = s => s.replace(/\s*[+&]\s*/g,' ').replace(/\s+/g,' ').trim();
+      const groups = {};
+      allMenus.forEach(r => { const k=norm(r.name); if(!groups[k])groups[k]=[]; groups[k].push(r); });
+      let merged=0;
+      for(const [,items] of Object.entries(groups)){
+        if(items.length<2) continue;
+        // count 내림차순, 같으면 id 오름차순으로 정렬 → 첫번째가 master
+        items.sort((a,b)=>(b.count-a.count)||a.id-b.id);
+        const master=items[0];
+        for(let i=1;i<items.length;i++){
+          const dup=items[i];
+          // count 합산, img_url/icon 없으면 dup 것 사용
+          const newCount=(master.count||0)+(dup.count||0);
+          const newImg=master.img_url||dup.img_url||'';
+          const newIcon=master.icon||dup.icon||'';
+          await conn.execute('UPDATE menus SET count=?, img_url=?, icon=? WHERE id=?',[newCount,newImg,newIcon,master.id]);
+          // daily_menus 참조 이전
+          await conn.execute('UPDATE daily_menus SET menu_id=?, name=? WHERE menu_id=?',[master.id,master.name,dup.id]).catch(()=>{});
+          // 중복 삭제
+          await conn.execute('DELETE FROM menus WHERE id=?',[dup.id]);
+          console.log(`병합: "${dup.name}"(id=${dup.id}) → "${master.name}"(id=${master.id})`);
+          merged++;
+        }
+      }
+      await conn.execute(`INSERT IGNORE INTO settings(k,v) VALUES('merge_dup_v1','done')`).catch(()=>{});
+      console.log(`+/& 중복 병합 완료: ${merged}건`);
     }
     console.log('DB 테이블 초기화 완료');
   } finally {
