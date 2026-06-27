@@ -1476,7 +1476,21 @@ function changeAllStock(id,d){var m=allMenus.find(function(x){return x.id===id;}
 function startEditAllPrice(id){document.getElementById('apd_'+id).style.display='none';var inp=document.getElementById('api_'+id);inp.style.display='inline-block';inp.focus();inp.select();}
 function commitAllPrice(id){var inp=document.getElementById('api_'+id);var val=parseInt(inp.value)||0;var m=allMenus.find(function(x){return x.id===id;});if(m){m.price=val;touch(m);saveAllMenus();syncAllMenuToMenus(m);}var disp=document.getElementById('apd_'+id);if(disp){disp.textContent=val.toLocaleString()+'천원';disp.style.display='';}inp.style.display='none';}
 function cancelAllPrice(id){var m=allMenus.find(function(x){return x.id===id;});var inp=document.getElementById('api_'+id);var disp=document.getElementById('apd_'+id);if(inp&&m)inp.value=m.price||0;if(disp)disp.style.display='';if(inp)inp.style.display='none';}
-function deleteAllMenu(id){if(!confirm('이 메뉴를 삭제할까요?'))return;allMenus=allMenus.filter(function(x){return x.id!==id;});saveAllMenus();renderAllMenus();}
+function deleteAllMenu(id){
+  var m=allMenus.find(function(x){return x.id===id;});
+  if(!m)return;
+  if(!confirm('['+m.name+'] 메뉴를 삭제할까요?'))return;
+  apiPost('/api/menu/master/delete',{id:m.menuId||0,name:m.name},function(e,d){
+    if(e){showToast('⚠️ 삭제 실패: 서버 오류');return;}
+    if(d&&d.blocked){
+      alert('['+m.name+'] 은(는) 등록된 메뉴 목록에 있어 삭제할 수 없어요.\n먼저 해당 날짜 목록에서 제거하세요.'+((d.dates&&d.dates.length)?'\n\n등록된 날짜: '+d.dates.join(', '):''));
+      return;
+    }
+    allMenus=allMenus.filter(function(x){return x.id!==id;});
+    renderAllMenus();
+    showToast('['+m.name+'] 삭제되었습니다.');
+  });
+}
 
 function deduplicateByName(arr){
   var seen={};

@@ -85,13 +85,34 @@ app.post('/api/menu/all', async (req, res) => {
         }
       }
       // 전송 목록(메뉴 창고 전체)에 없는 마스터는 삭제 (창고 전체 동기화)
-      // 일자별 메뉴가 참조 중이어도 삭제 허용 — 조회는 name 폴백(LEFT JOIN+COALESCE)으로 안전
+      // 단, 일자별 목록(daily_menus)이 참조 중인 메뉴는 보존 — 삭제 차단 정책
       const names = list.map(m => m.name);
       const ph = names.map(()=>'?').join(',');
-      await conn.execute(`DELETE FROM menus WHERE name NOT IN (${ph})`, names);
+      await conn.execute(
+        `DELETE FROM menus WHERE name NOT IN (${ph}) AND name NOT IN (SELECT DISTINCT name FROM daily_menus)`,
+        names
+      );
       await conn.commit(); conn.release();
       ok(res, { count: list.length });
     } catch(e) { await conn.rollback(); conn.release(); throw e; }
+  } catch(e) { err(res, e.message); }
+});
+
+// 마스터 단건 삭제 (POST /api/menu/master/delete)
+// 일자별 목록(daily_menus)이 참조 중이면 삭제 차단하고 등록된 날짜 반환
+app.post('/api/menu/master/delete', async (req, res) => {
+  try {
+    const body = req.body.data || req.body;
+    const id = body.id || 0, name = body.name || '';
+    const [dates] = await pool.execute(
+      "SELECT DISTINCT DATE_FORMAT(date,'%Y-%m-%d') AS d FROM daily_menus WHERE menu_id=? OR name=? ORDER BY d DESC",
+      [id, name]
+    );
+    if (dates.length) {
+      return res.json({ success: false, blocked: true, dates: dates.map(r => r.d) });
+    }
+    await pool.execute('DELETE FROM menus WHERE id=? OR name=?', [id, name]);
+    ok(res, { deleted: true });
   } catch(e) { err(res, e.message); }
 });
 
