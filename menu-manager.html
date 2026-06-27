@@ -57,7 +57,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
 .menu-list{display:flex;flex-direction:column;gap:8px;}
 .menu-item{display:flex;align-items:center;background:#f8fffe;border:1px solid #d6efee;border-radius:10px;padding:10px 12px;gap:8px;}
 .menu-item.ml-2line{flex-direction:column;align-items:stretch;gap:8px;}
-.menu-item.ml-2line .mi-row1{display:flex;align-items:center;gap:8px;}
+.menu-item.ml-2line .mi-row1{display:flex;align-items:center;gap:8px;}.mi-edit-btn{margin-left:auto;display:flex;align-items:center;gap:4px;background:none;border:1.5px solid #9adcda;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:700;color:#086266;cursor:pointer;white-space:nowrap;flex-shrink:0;}
 .menu-item.ml-2line .mi-row2{display:flex;align-items:center;gap:8px;justify-content:flex-end;}
 .menu-item .cat-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
 .menu-item .name{flex:1;font-size:14px;color:#1a1a1a;}
@@ -1292,7 +1292,8 @@ function renderMenuList(){
     return '<div class="menu-item ml-2line">'+
       '<div class="mi-row1">'+
         '<div class="cat-dot" style="background:'+(CAT_COLOR[m.cat]||'#888')+'"></div>'+imgEl+
-        '<div class="name"><span class="name-edit" onclick="openMenuEditPopup('+m.id+')">'+m.name+chEl+' <span class="edit-pen">✏️</span></span></div>'+
+        '<div class="name">'+m.name+chEl+'</div>'+
+        '<button class="mi-edit-btn" onclick="openMenuEditPopup('+m.id+')">✏️ 수정</button>'+
       '</div>'+
       '<div class="mi-row2">'+
         '<div class="price-wrap"><span class="price-display" id="pd_'+m.id+'" onclick="startEditPrice('+m.id+')">'+(m.price||0).toLocaleString()+'천원</span><input class="price-input" id="pi_'+m.id+'" type="number" min="1" value="'+(m.price||0)+'" onblur="commitPrice('+m.id+')" onkeydown="if(event.key===\'Enter\')commitPrice('+m.id+');if(event.key===\'Escape\')cancelPrice('+m.id+');"></div>'+
