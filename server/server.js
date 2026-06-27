@@ -846,6 +846,14 @@ async function initDB() {
       await conn.execute(`INSERT IGNORE INTO settings(k,v) VALUES('icon_emoji_v2','done')`).catch(()=>{});
       console.log(`icon URL→이모지 교체: ${updated2}건`);
     }
+    // 특정 기본 Pexels URL → 빈값으로 초기화
+    const [[clearUrlMig]] = await conn.execute(`SELECT v FROM settings WHERE k='clear_default_url_v1'`).catch(()=>[[null]]);
+    if(!clearUrlMig){
+      const DEFAULT_URL='https://images.pexels.com/photos/2781540/pexels-photo-2781540.jpeg?auto=compress&cs=tinysrgb&h=650&w=940';
+      const [r]=await conn.execute('UPDATE menus SET img_url=? WHERE img_url=?',['' ,DEFAULT_URL]);
+      await conn.execute(`INSERT IGNORE INTO settings(k,v) VALUES('clear_default_url_v1','done')`).catch(()=>{});
+      console.log(`기본 URL 초기화: ${r.affectedRows}건`);
+    }
     console.log('DB 테이블 초기화 완료');
   } finally {
     conn.release();
