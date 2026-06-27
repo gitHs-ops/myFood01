@@ -771,7 +771,7 @@ function mergeToAllMenus(){
   var changed=false;
   menus.forEach(function(m){
     if(!nameMap[m.name]){
-      allMenus.push({id:Date.now()+Math.random(),name:m.name,cat:m.cat,price:m.price,stock:0,child:m.child,desc:m.desc||'',imgUrl:m.imgUrl||null,count:1,updatedAt:m.updatedAt||Date.now()});
+      allMenus.push({id:Date.now()+Math.random(),name:m.name,cat:m.cat,price:m.price,stock:0,child:m.child,desc:m.desc||'',imgUrl:m.imgUrl||null,icon:m.icon||null,count:1,updatedAt:m.updatedAt||Date.now()});
       changed=true;
     }else{
       // 기존 항목: 타임스탬프 비교 후 더 최신이면 필드 갱신
@@ -782,6 +782,7 @@ function mergeToAllMenus(){
         existing.price=m.price;existing.cat=m.cat;existing.child=m.child;
         existing.desc=m.desc||'';
         if(m.imgUrl)existing.imgUrl=m.imgUrl;
+        if(m.icon)existing.icon=m.icon;
         existing.updatedAt=localTs;changed=true;
       }
       existing.count=(existing.count||0)+1;changed=true;
@@ -983,8 +984,9 @@ function _updateAddMenuImg(){
   var ref=name?allMenus.find(function(m){return (m.name||'').trim()===name;}):null;
   _addMenuMasterId=ref?ref.id:null;
   if(_addMenuMode!=='new')_addMenuMode=ref?'select':'new';
-  if(ref&&ref.imgUrl){box.innerHTML='<img src="'+String(ref.imgUrl).replace(/"/g,'&quot;')+'" alt="">';}
-  else{var _n=document.getElementById('menuName');box.textContent=ref?getMenuEmoji(ref.name,ref.cat||''):'📷';}
+  var _refImg=ref?(ref.icon||ref.imgUrl):null;
+  if(ref&&_refImg){box.innerHTML='<img src="'+String(_refImg).replace(/"/g,'&quot;')+'" alt="">';}
+  else{box.textContent=ref?getMenuEmoji(ref.name,ref.cat||''):'📷';}
   if(editBtn)editBtn.style.display=ref?'flex':'none';
 }
 function closeAcList(){document.getElementById('acList').classList.remove('open');acIndex=-1;}
@@ -1116,11 +1118,11 @@ function addMenu(){
   }
   var _ref=allMenus.find(function(m){return (m.name||'').trim()===name;});
   if(_addMenuMode==='new'&&!_ref){
-    var _newM={id:Date.now(),menuId:null,name:name,cat:cat,price:price,stock:0,child:child,desc:desc,imgUrl:null,count:0,updatedAt:Date.now()};
+    var _newM={id:Date.now(),menuId:null,name:name,cat:cat,price:price,stock:0,child:child,desc:desc,imgUrl:null,icon:null,count:0,updatedAt:Date.now()};
     allMenus.push(_newM);_ref=_newM;
     saveAllMenus();
   }
-  menus.push({id:Date.now(),menuId:_ref?_ref.menuId:null,name:name,price:price,stock:stock,cat:cat,child:child,desc:desc,imgUrl:(_ref&&_ref.imgUrl)?_ref.imgUrl:null,updatedAt:Date.now()});
+  menus.push({id:Date.now(),menuId:_ref?_ref.menuId:null,name:name,price:price,stock:stock,cat:cat,child:child,desc:desc,imgUrl:(_ref&&_ref.imgUrl)?_ref.imgUrl:null,icon:(_ref&&_ref.icon)?_ref.icon:null,updatedAt:Date.now()});
   save();
   document.getElementById('menuName').value='';
   document.getElementById('menuPrice').value='';
@@ -1144,19 +1146,19 @@ function openImgPopup(id,ctx){
   imgTargetId=id;pendingImgUrl=null;
   var m=_arr(imgCtx).find(function(x){return x.id===id;});if(!m)return;
   document.getElementById('imgPopupTitle').textContent=m.name+' - 이미지 관리';
-  document.getElementById('imgDeleteBtn').style.display=m.imgUrl?'':'none';
-  document.getElementById('imgUploadBtn').textContent=m.imgUrl?'📁 사진 변경':'📁 사진 선택';
+  document.getElementById('imgDeleteBtn').style.display=m.icon?'':'none';
+  document.getElementById('imgUploadBtn').textContent=m.icon?'📁 사진 변경':'📁 사진 선택';
   document.getElementById('imgSaveBtn').disabled=true;
   document.getElementById('imgStatus').style.display='none';
   document.getElementById('imgFileInput').value='';
-  setImgPreview(m.imgUrl||'');
+  setImgPreview(m.icon||'');
   document.getElementById('imgOverlay').classList.add('open');
 }
 function closeImgPopup(e){if(e&&e.target!==document.getElementById('imgOverlay'))return;document.getElementById('imgOverlay').classList.remove('open');imgTargetId=null;pendingImgUrl=null;}
 function saveImg(){
   if(!pendingImgUrl||imgTargetId===null)return;
   var m=_arr(imgCtx).find(function(x){return x.id===imgTargetId;});
-  if(m){m.imgUrl=pendingImgUrl;touch(m);_save(imgCtx);_render(imgCtx);if(imgCtx==='all')syncAllMenuToMenus(m);}
+  if(m){m.icon=pendingImgUrl;touch(m);_save(imgCtx);_render(imgCtx);if(imgCtx==='all')syncAllMenuToMenus(m);}
   pendingImgUrl=null;
   document.getElementById('imgSaveBtn').disabled=true;
   document.getElementById('imgUploadBtn').textContent='📁 사진 변경';
@@ -1217,7 +1219,7 @@ function uploadToImgBB(b64){
   xhr.timeout=30000;
   xhr.send(form);
 }
-function deleteImg(){if(imgTargetId===null)return;if(!confirm('이미지를 삭제할까요?'))return;var m=_arr(imgCtx).find(function(x){return x.id===imgTargetId;});if(m){m.imgUrl=null;_save(imgCtx);_render(imgCtx);}document.getElementById('imgOverlay').classList.remove('open');imgTargetId=null;}
+function deleteImg(){if(imgTargetId===null)return;if(!confirm('이미지를 삭제할까요?'))return;var m=_arr(imgCtx).find(function(x){return x.id===imgTargetId;});if(m){m.icon=null;_save(imgCtx);_render(imgCtx);}document.getElementById('imgOverlay').classList.remove('open');imgTargetId=null;}
 
 // ── 메뉴 편집 팝업 ──
 function openMenuEditPopup(id,ctx){
@@ -1234,10 +1236,10 @@ function openMenuEditPopup(id,ctx){
   populateCatSelect('editMenuCat',m.cat||'기타');
   document.getElementById('editMenuChild').checked=!!m.child;
   document.getElementById('editMenuDesc').value=m.desc||'';
-  setEditImgPreview(m.imgUrl||null);
+  setEditImgPreview(m.icon||null);
   setEditImgStatus('',false);
-  document.getElementById('editImgUploadBtn').textContent=m.imgUrl?'📁 사진 변경':'📁 사진 선택';
-  document.getElementById('editImgDeleteBtn').style.display=m.imgUrl?'':'none';
+  document.getElementById('editImgUploadBtn').textContent=m.icon?'📁 사진 변경':'📁 사진 선택';
+  document.getElementById('editImgDeleteBtn').style.display=m.icon?'':'none';
   document.getElementById('editImgFileInput').value='';
   document.getElementById('menuEditOverlay').classList.add('open');
 }
@@ -1304,7 +1306,7 @@ function uploadEditImgBB(b64){
 function saveEditImg(){
   if(!editPendingImgUrl||menuEditTargetId===null)return;
   var m=_arr(editCtx).find(function(x){return x.id===menuEditTargetId;});
-  if(m){m.imgUrl=editPendingImgUrl;_save(editCtx);_render(editCtx);}
+  if(m){m.icon=editPendingImgUrl;_save(editCtx);_render(editCtx);}
   editPendingImgUrl=null;
   document.getElementById('editImgUploadBtn').textContent='📁 사진 변경';
   document.getElementById('editImgDeleteBtn').style.display='';
@@ -1314,7 +1316,7 @@ function deleteEditImg(){
   if(menuEditTargetId===null)return;
   if(!confirm('이미지를 삭제할까요?'))return;
   var m=_arr(editCtx).find(function(x){return x.id===menuEditTargetId;});
-  if(m){m.imgUrl=null;_save(editCtx);_render(editCtx);}
+  if(m){m.icon=null;_save(editCtx);_render(editCtx);}
   editPendingImgUrl=null;
   setEditImgPreview(null);
   document.getElementById('editImgUploadBtn').textContent='📁 사진 선택';
@@ -1391,7 +1393,8 @@ function renderMenuList(){
   if(!filtered.length){list.innerHTML='<div class="empty">메뉴가 없어요. 위에서 추가해주세요.</div>';return;}
   list.innerHTML=filtered.map(function(m){
     var _em=getMenuEmoji(m.name,m.cat);
-    var imgEl=m.imgUrl?'<img class="menu-thumb" src="'+m.imgUrl+'" alt="'+m.name+'" onclick="openImgPopup('+m.id+')" onerror="this.style.display=\'none\';this.insertAdjacentHTML(\'afterend\',\'<div class=\\\'img-btn\\\' onclick=\\\'openImgPopup('+m.id+')\\\' style=\\\'font-size:18px;\\\'>'+_em+'</div>\')">':'<div class="img-btn" onclick="openImgPopup('+m.id+')" title="이미지 등록" style="font-size:18px;">'+_em+'</div>';
+    var _ic=m.icon||m.imgUrl;
+    var imgEl=_ic?'<img class="menu-thumb" src="'+_ic+'" alt="'+m.name+'" onclick="openImgPopup('+m.id+')" onerror="this.style.display=\'none\';this.insertAdjacentHTML(\'afterend\',\'<div class=\\\'img-btn\\\' onclick=\\\'openImgPopup('+m.id+')\\\' style=\\\'font-size:18px;\\\'>'+_em+'</div>\')">':'<div class="img-btn" onclick="openImgPopup('+m.id+')" title="이미지 등록" style="font-size:18px;">'+_em+'</div>';
     var chEl=m.child?' <span style="font-size:13px;">&#128103;</span>':'';
     return '<div class="menu-item">'+
       '<div class="cat-dot" style="background:'+(CAT_COLOR[m.cat]||'#888')+'"></div>'+imgEl+
@@ -1562,6 +1565,7 @@ function syncAllMenuToMenus(m, oldName){
     if(dm.name===key){
       dm.name=m.name;dm.price=m.price;dm.cat=m.cat;dm.child=m.child;dm.desc=m.desc||'';
       if(m.imgUrl)dm.imgUrl=m.imgUrl;
+      if(m.icon)dm.icon=m.icon;
       dm.updatedAt=m.updatedAt||Date.now();
       changed=true;
     }
@@ -1665,7 +1669,8 @@ function renderAllMenus(){
     '<div class="menu-list" style="margin-top:8px;">'+
     pageItems.map(function(m,i){
       var _em=getMenuEmoji(m.name,m.cat);
-      var imgEl=m.imgUrl?'<img class="menu-thumb" src="'+m.imgUrl+'" alt="'+m.name+'" onclick="openImgPopup('+m.id+',\'all\')" onerror="this.style.display=\'none\';this.insertAdjacentHTML(\'afterend\',\'<div class=\\\'img-btn\\\' onclick=\\\'openImgPopup('+m.id+',\\\\\'all\\\\\')\\\' style=\\\'font-size:18px;\\\'>'+_em+'</div>\')">':'<div class="img-btn" onclick="openImgPopup('+m.id+',\'all\')" title="이미지 등록" style="font-size:18px;">'+_em+'</div>';
+      var _ic=m.icon||m.imgUrl;
+      var imgEl=_ic?'<img class="menu-thumb" src="'+_ic+'" alt="'+m.name+'" onclick="openImgPopup('+m.id+',\'all\')" onerror="this.style.display=\'none\';this.insertAdjacentHTML(\'afterend\',\'<div class=\\\'img-btn\\\' onclick=\\\'openImgPopup('+m.id+',\\\\\'all\\\\\')\\\' style=\\\'font-size:18px;\\\'>'+_em+'</div>\')">':'<div class="img-btn" onclick="openImgPopup('+m.id+',\'all\')" title="이미지 등록" style="font-size:18px;">'+_em+'</div>';
       var chEl=m.child?' <span style="font-size:13px;">&#128103;</span>':'';
       var chk=selectedAllIds.has(m.id)?' checked':'';
       var num='<span style="font-size:11px;color:#bbb;min-width:22px;text-align:right;flex-shrink:0;">'+(startNo+i)+'</span>';

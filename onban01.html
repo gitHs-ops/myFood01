@@ -764,7 +764,7 @@ function loadMenus(silent){
       (d.menus||[]).forEach(function(m,i){
         allMenus.push({id:i+1,menuId:(m.menuId!=null?m.menuId:null),name:m.name,cat:m.cat||'기타',
           price:Number(m.price)||0,stock:Number(m.stock)||0,
-          child:!!m.child,imgUrl:m.imgUrl||null,desc:''});
+          child:!!m.child,imgUrl:m.imgUrl||null,icon:m.icon||null,desc:''});
       });
       document.getElementById('dateBannerText').textContent='📅 '+label+' 오늘의 메뉴';
       renderCatTabs();renderMenuGrid();
@@ -844,7 +844,8 @@ function renderMenuGrid(){
     // 썸네일 (이미지 or 이모지)
     var dot=document.createElement('div');
     dot.className='menu-thumb';
-    if(m.imgUrl){var ti=document.createElement('img');ti.src=m.imgUrl;ti.alt=m.name;dot.appendChild(ti);}
+    var _ic=m.icon||m.imgUrl;
+    if(_ic){var ti=document.createElement('img');ti.src=_ic;ti.alt=m.name;dot.appendChild(ti);}
     else{dot.textContent=getMenuEmoji(m.name,m.cat);}
     if(unavailable)dot.style.opacity='.45';
 
@@ -917,7 +918,8 @@ function showMenuModal(id){
   // 이미지
   var imgWrap=document.createElement('div');
   imgWrap.className='menu-modal-img';
-  if(m.imgUrl){var img=document.createElement('img');img.src=m.imgUrl;img.alt=m.name;imgWrap.appendChild(img);}
+  var _modalImg=m.imgUrl||m.icon;
+  if(_modalImg){var img=document.createElement('img');img.src=_modalImg;img.alt=m.name;imgWrap.appendChild(img);}
   else{imgWrap.textContent=getMenuEmoji(m.name,m.cat);}
   // 닫기 버튼
   var closeBtn=document.createElement('button');
@@ -975,9 +977,10 @@ function renderDetail(){
 
   var imgWrap=document.createElement('div');
   imgWrap.className='detail-img';
-  if(m.imgUrl){
+  var _detImg=m.imgUrl||m.icon;
+  if(_detImg){
     var img=document.createElement('img');
-    img.src=m.imgUrl; img.alt=m.name;
+    img.src=_detImg; img.alt=m.name;
     imgWrap.appendChild(img);
   } else {
     imgWrap.textContent=getMenuEmoji(m.name,m.cat);

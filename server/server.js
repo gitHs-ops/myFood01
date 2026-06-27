@@ -70,8 +70,8 @@ app.post('/api/menu/all', async (req, res) => {
       for (const m of list) {
         if (m.menuId) {
           await conn.execute(
-            `UPDATE menus SET name=?,cat=?,price=?,stock=?,child=?,img_url=?,menu_desc=?,count=?,updated_at=? WHERE id=?`,
-            [m.name, m.cat||'기타', m.price||0, m.stock||0, m.child?1:0, m.imgUrl||'', m.desc||'', m.count||0, m.updatedAt||0, m.menuId]
+            `UPDATE menus SET name=?,cat=?,price=?,stock=?,child=?,img_url=?,icon=?,menu_desc=?,count=?,updated_at=? WHERE id=?`,
+            [m.name, m.cat||'기타', m.price||0, m.stock||0, m.child?1:0, m.imgUrl||'', m.icon||'', m.desc||'', m.count||0, m.updatedAt||0, m.menuId]
           );
           // rename 전파: 연결된 daily_menus의 비정규화 name도 갱신(옛 이름 잔존·중복 방지)
           await conn.execute(
@@ -80,12 +80,12 @@ app.post('/api/menu/all', async (req, res) => {
           );
         } else {
           await conn.execute(
-            `INSERT INTO menus (name,cat,price,stock,child,img_url,menu_desc,count,updated_at)
-             VALUES (?,?,?,?,?,?,?,?,?)
+            `INSERT INTO menus (name,cat,price,stock,child,img_url,icon,menu_desc,count,updated_at)
+             VALUES (?,?,?,?,?,?,?,?,?,?)
              ON DUPLICATE KEY UPDATE cat=VALUES(cat),price=VALUES(price),stock=VALUES(stock),
-               child=VALUES(child),img_url=VALUES(img_url),menu_desc=VALUES(menu_desc),
+               child=VALUES(child),img_url=VALUES(img_url),icon=VALUES(icon),menu_desc=VALUES(menu_desc),
                count=VALUES(count),updated_at=VALUES(updated_at)`,
-            [m.name, m.cat||'기타', m.price||0, m.stock||0, m.child?1:0, m.imgUrl||'', m.desc||'', m.count||0, m.updatedAt||0]
+            [m.name, m.cat||'기타', m.price||0, m.stock||0, m.child?1:0, m.imgUrl||'', m.icon||'', m.desc||'', m.count||0, m.updatedAt||0]
           );
         }
       }
@@ -159,7 +159,7 @@ app.post('/api/menu/master/delete', async (req, res) => {
 app.get('/api/menu/all', async (req, res) => {
   try {
     const [rows] = await pool.execute(
-      'SELECT id AS menuId,name,cat,price,stock,child,img_url AS imgUrl,menu_desc AS `desc`,count,updated_at AS updatedAt FROM menus ORDER BY count DESC, name'
+      'SELECT id AS menuId,name,cat,price,stock,child,img_url AS imgUrl,icon,menu_desc AS `desc`,count,updated_at AS updatedAt FROM menus ORDER BY count DESC, name'
     );
     const menus = rows.map(r => ({ ...r, child: !!r.child, price: Number(r.price||0) }));
     ok(res, { menus });
@@ -592,6 +592,7 @@ async function initDB() {
       stock INT DEFAULT 0,
       child TINYINT(1) DEFAULT 0,
       img_url VARCHAR(1000) DEFAULT '',
+      icon VARCHAR(1000) DEFAULT '',
       menu_desc TEXT,
       count INT DEFAULT 0,
       updated_at BIGINT DEFAULT 0
@@ -662,6 +663,35 @@ async function initDB() {
       await conn.execute(`UPDATE orders SET addreq_acked=1 WHERE additional_request IS NOT NULL AND additional_request!=''`).catch(()=>{});
       await conn.execute(`INSERT IGNORE INTO settings(k,v) VALUES('addreq_acked_migrated_v1','done')`).catch(()=>{});
       console.log('addreq_acked 마이그레이션 완료');
+    }
+    // 최초 1회: icon 컬럼 추가 + img_url→icon 복사 + CSV로 img_url 갱신
+    const [[iconMig]] = await conn.execute(`SELECT v FROM settings WHERE k='icon_col_v1'`).catch(()=>[[null]]);
+    if(!iconMig){
+      await conn.execute(`ALTER TABLE menus ADD COLUMN IF NOT EXISTS icon VARCHAR(1000) DEFAULT ''`).catch(()=>{});
+      await conn.execute(`UPDATE menus SET icon=img_url WHERE img_url IS NOT NULL AND img_url!='' AND (icon IS NULL OR icon='')`).catch(()=>{});
+      // CSV 파싱 → img_url 갱신
+      try {
+        const fs  = require('fs');
+        const csv = fs.readFileSync(path.join(__dirname,'..','menu_image_list_full.csv'),'utf8');
+        const lines = csv.replace(/\r/g,'').split('\n').filter(l=>l.trim());
+        let updated=0;
+        for(let i=1;i<lines.length;i++){
+          const cols=[]; let cur='',inQ=false;
+          for(const ch of lines[i]){
+            if(ch==='"'){inQ=!inQ;}
+            else if(ch===','&&!inQ){cols.push(cur);cur='';}
+            else cur+=ch;
+          }
+          cols.push(cur);
+          if(cols.length>=4&&cols[3].trim()){
+            const [r]=await conn.execute('UPDATE menus SET img_url=? WHERE name=?',[cols[3].trim(),cols[1].trim()]);
+            updated+=r.affectedRows;
+          }
+        }
+        console.log(`CSV img_url 갱신: ${updated}건`);
+      } catch(e){ console.warn('CSV 읽기 실패(무시):', e.message); }
+      await conn.execute(`INSERT IGNORE INTO settings(k,v) VALUES('icon_col_v1','done')`).catch(()=>{});
+      console.log('icon 컬럼 마이그레이션 완료');
     }
     console.log('DB 테이블 초기화 완료');
   } finally {
