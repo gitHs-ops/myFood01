@@ -451,8 +451,9 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
   <div class="num-field">
     <label for="menuName">메뉴명</label>
     <div class="menuname-wrap">
-      <input type="text" id="menuName" placeholder="입력" autocomplete="off"
-        oninput="onMenuNameInput()" onkeydown="onMenuNameKey(event)">
+      <input type="text" id="menuName" placeholder="▾ 클릭하여 선택" autocomplete="off"
+        readonly onclick="toggleAcAll(event)" onkeydown="onMenuNameKey(event)"
+        style="cursor:pointer;">
       <button type="button" class="ac-toggle" onmousedown="toggleAcAll(event)" tabindex="-1">▾</button>
       <div class="ac-list" id="acList"></div>
     </div>
