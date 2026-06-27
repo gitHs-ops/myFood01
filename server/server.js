@@ -155,6 +155,16 @@ app.post('/api/menu/master/delete', async (req, res) => {
   } catch(e) { err(res, e.message); }
 });
 
+// 임시: 이미지 없는 메뉴 추출 (사용 후 제거)
+app.get('/api/admin/bad-img-menus', async (req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      "SELECT name, img_url FROM menus WHERE img_url IS NULL OR img_url='' OR img_url NOT LIKE 'http%' ORDER BY name"
+    );
+    ok(res, { count: rows.length, names: rows.map(r => ({ name: r.name, url: r.img_url||'' })) });
+  } catch(e) { err(res, e.message); }
+});
+
 // 전체 메뉴 조회 (GET /api/menu/all)
 app.get('/api/menu/all', async (req, res) => {
   try {
