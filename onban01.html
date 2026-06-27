@@ -382,6 +382,26 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 /* ── 주문 내역 페이지 ── */
 .hist-empty{text-align:center;padding:60px 20px;color:var(--light);}
 .hist-empty span{font-size:48px;display:block;margin-bottom:12px;}
+/* ── 주문내역 간단 리스트 ── */
+.hist-list{padding:0 14px;}
+.hist-li{display:flex;align-items:center;gap:10px;background:#fff;border-radius:14px;box-shadow:var(--shadow);padding:12px 14px;margin-bottom:10px;cursor:pointer;transition:transform .1s,box-shadow .15s;}
+.hist-li:active{transform:scale(.99);}
+.hist-li.editing{border:1.5px solid #E9A826;}
+.hist-li-main{flex:1;min-width:0;}
+.hist-li-top{display:flex;align-items:center;gap:5px;margin-bottom:5px;flex-wrap:wrap;}
+.hist-li-dt{font-size:11px;color:var(--light);}
+.hist-li-sum{font-size:14px;font-weight:700;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hist-li-badge{font-size:10px;font-weight:700;border-radius:999px;padding:2px 7px;}
+.hist-li-badge.reorder{background:#e0d4f7;color:#5b21b6;}
+.hist-li-badge.edit{background:#fff3cd;color:#856404;}
+.hist-li-right{display:flex;align-items:center;gap:4px;flex-shrink:0;}
+.hist-li-total{font-size:14px;font-weight:800;color:var(--teal);}
+.hist-li-arrow{font-size:20px;color:#ccc;}
+/* ── 주문 상세 팝업 ── */
+.order-detail-overlay{position:fixed;inset:0;background:rgba(0,0,0,.52);z-index:600;display:none;align-items:flex-start;justify-content:center;padding:18px 8px 40px;overflow-y:auto;}
+.order-detail-overlay.open{display:flex;}
+.order-detail-modal{position:relative;width:100%;max-width:440px;}
+.order-detail-close{display:block;margin:0 14px 8px auto;width:34px;height:34px;border-radius:50%;border:none;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.18);font-size:15px;color:#666;cursor:pointer;}
 .hist-card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);margin:0 14px 12px;overflow:hidden;}
 .hist-head{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:#f4fafa;border-bottom:1px solid #e8f5f4;}
 .hist-date{font-size:12px;color:var(--sub);}
@@ -1699,6 +1719,8 @@ function renderHistory(){
       +'<button onclick="renderHistory()" style="margin-top:10px;padding:7px 20px;border-radius:20px;border:none;background:#086266;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">다시 시도</button></p></div>';
   });
 }
+var _ORDER_STATUS_MAP={pending:'대기중',confirmed:'주문접수',delivered:'배송완료',cancelled:'취소됨'};
+var _ORDER_STATUS_CLS={pending:'pending',confirmed:'confirmed',delivered:'delivered',cancelled:'cancelled'};
 function _doRenderHistory(el){
   el.innerHTML='';
   var all=JSON.parse(localStorage.getItem('orders')||'[]');
@@ -1708,9 +1730,32 @@ function _doRenderHistory(el){
     el.innerHTML='<div class="hist-empty"><span>📋</span><p>'+label+' 주문 내역이 없어요.</p></div>';
     return;
   }
-  var statusMap={pending:'대기중',confirmed:'주문접수',delivered:'배송완료',cancelled:'취소됨'};
-  var statusCls={pending:'pending',confirmed:'confirmed',delivered:'delivered',cancelled:'cancelled'};
+  var listWrap=document.createElement('div');
+  listWrap.className='hist-list';
   orders.forEach(function(o){
+    var itemsSum=o.items.reduce(function(s,i){return s+i.price*i.qty;},0);
+    var isPickupMemo=(o.memo||'').startsWith('매장픽업');
+    var deliveryFee=(!isPickupMemo&&itemsSum>=20)?1:0;
+    var total=itemsSum+deliveryFee;
+    var summary=(o.items[0]?o.items[0].name:'')+(o.items.length>1?' 외 '+(o.items.length-1)+'건':'');
+    var reorderBadge=o.isReorder?'<span class="hist-li-badge reorder">재주문</span>':'';
+    var editBadge=_pendingItemEdits[o.id]?'<span class="hist-li-badge edit">편집중</span>':'';
+    var rowEl=document.createElement('div');
+    rowEl.className='hist-li'+(_pendingItemEdits[o.id]?' editing':'');
+    rowEl.innerHTML=
+      '<div class="hist-li-main">'
+        +'<div class="hist-li-top"><span class="hist-status '+(_ORDER_STATUS_CLS[o.status]||'pending')+'">'+(_ORDER_STATUS_MAP[o.status]||'대기중')+'</span>'+reorderBadge+editBadge+'<span class="hist-li-dt">'+fmtDT(o.date,o.time)+'</span></div>'
+        +'<div class="hist-li-sum">'+summary+'</div>'
+      +'</div>'
+      +'<div class="hist-li-right"><span class="hist-li-total">'+comma(total)+'천원</span><span class="hist-li-arrow">›</span></div>';
+    (function(oid){rowEl.onclick=function(){openOrderDetail(oid);};})(o.id);
+    listWrap.appendChild(rowEl);
+  });
+  el.appendChild(listWrap);
+}
+// 주문 상세 카드 1건 생성 (팝업에 주입) — 기존 카드 UI/기능 그대로
+function _buildOrderCard(o){
+  var statusMap=_ORDER_STATUS_MAP,statusCls=_ORDER_STATUS_CLS;
     var itemsSum=o.items.reduce(function(s,i){return s+i.price*i.qty;},0);
     var isPickupMemo=(o.memo||'').startsWith('매장픽업');
     var deliveryFee=(!isPickupMemo&&itemsSum>=20)?1:0;
@@ -1846,14 +1891,43 @@ function _doRenderHistory(el){
       acts.appendChild(btnReorder);
     }
     card.appendChild(acts);
-    el.appendChild(card);
-  });
-  // 재렌더 후에도 사용자가 활성화한 재주문 버튼 상태 복원 (영구 셋 기반)
-  Object.keys(_reorderActiveIds).forEach(function(id){
-    var b=document.getElementById('btn-reorder-'+id);
+  return card;
+}
+// 주문 상세 팝업 열기 — 클릭한 주문의 카드를 모달에 주입
+function openOrderDetail(id){
+  var orders=JSON.parse(localStorage.getItem('orders')||'[]');
+  var o=orders.find(function(x){return x.id===id;});
+  if(!o)return;
+  var modal=document.getElementById('orderDetailModal');
+  modal.innerHTML='';
+  var closeBtn=document.createElement('button');
+  closeBtn.className='order-detail-close';
+  closeBtn.innerHTML='✕';
+  closeBtn.onclick=function(){closeOrderDetail();};
+  modal.appendChild(closeBtn);
+  modal.appendChild(_buildOrderCard(o));
+  document.getElementById('orderDetailOverlay').classList.add('open');
+  // 편집된 주문이면 재주문 버튼 활성 상태 복원
+  Object.keys(_reorderActiveIds).forEach(function(rid){
+    var b=document.getElementById('btn-reorder-'+rid);
     if(b){b.disabled=false;b.style.opacity='';}
-    else delete _reorderActiveIds[id];   // 재주문 버튼이 없는 주문(취소/배송완료)은 정리
   });
+}
+// 팝업 닫기 — 미확정 항목편집 있으면 경고 후 원복
+function closeOrderDetail(){
+  if(_hasPendingItemEdits()){
+    if(!confirm('편집한 주문 항목이 있어요.\n\n재주문(다시 주문) 처리를 하지 않으면 삭제·수량 변경이 무시되고 원래 상태로 됩니다.\n그래도 닫으시겠어요?')){
+      return;
+    }
+    _revertPendingItemEdits();
+  }
+  _closeOrderDetailUI();
+  renderHistory();
+}
+// 팝업 UI만 닫기(가드 없이) — 재주문/취소/삭제 확정 후 사용
+function _closeOrderDetailUI(){
+  document.getElementById('orderDetailOverlay').classList.remove('open');
+  document.getElementById('orderDetailModal').innerHTML='';
 }
 function _updateHistTotal(id){
   var ords=JSON.parse(localStorage.getItem('orders')||'[]');
@@ -2059,8 +2133,8 @@ function deleteHistOrder(orderId){
   var orders=JSON.parse(localStorage.getItem('orders')||'[]');
   localStorage.setItem('orders',JSON.stringify(orders.filter(function(o){return o.id!==orderId;})));
   fetch(API_URL+'/api/orders/'+encodeURIComponent(orderId),{method:'DELETE'}).catch(function(){});
-  var card=document.getElementById('histcard-'+orderId);
-  if(card)card.remove();
+  _closeOrderDetailUI();
+  renderHistory();
 }
 function cancelHistOrder(orderId){
   if(!confirm('주문을 취소할까요?'))return;
@@ -2083,6 +2157,7 @@ function cancelHistOrder(orderId){
     );
   }
   showToast('주문이 취소됐습니다.');
+  _closeOrderDetailUI();
   renderHistory();
 }
 function reorder(order){
@@ -2149,6 +2224,7 @@ function reorder(order){
           method:'PUT',headers:{'Content-Type':'application/json'},
           body:JSON.stringify({status:origStatus})
         }).catch(function(){}).then(function(){
+          _closeOrderDetailUI();
           renderHistory();
           showSoldOutModal(d.soldOut);
         });
@@ -2184,6 +2260,7 @@ function reorder(order){
       loadMenus(true);
       lastOrderTotal=total;
       cart=[];orderItems=[];updateCartCount();
+      _closeOrderDetailUI();
       goPage('payment');
     })
     .catch(function(){});
@@ -2242,6 +2319,11 @@ window.onload=function(){
     }).catch(function(){});
 };
 </script>
+
+<!-- 주문 상세 팝업 -->
+<div class="order-detail-overlay" id="orderDetailOverlay" onclick="if(event.target===this)closeOrderDetail()">
+  <div class="order-detail-modal" id="orderDetailModal"></div>
+</div>
 
 <!-- 배송 주소 목록 모달 -->
 <div id="addrListOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:flex-end;justify-content:center;" onclick="closeAddrList(event)">
