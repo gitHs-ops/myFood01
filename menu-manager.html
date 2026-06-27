@@ -747,6 +747,7 @@ var CAT_EMOJI={'메인':'🍳','한우':'🥩','한돈':'🐷','반찬':'🥗','
 var _MENU_KW=[['삼계탕','🐓'],['찜닭','🐔'],['닭강정','🍗'],['닭갈비','🍗'],['닭볶음','🍗'],['닭가슴살','🍗'],['닭다리','🍗'],['닭한마리','🐓'],['닭개장','🍲'],['치킨','🍗'],['지코바','🍗'],['치코바','🍗'],['유린기','🍗'],['춘천닭','🍗'],['안동찜닭','🍗'],['버터치킨','🍛'],['불고기','🥩'],['갈비찜','🍖'],['갈비','🍖'],['등갈비','🍖'],['바싹불고기','🥩'],['육수불고기','🥩'],['사태','🥩'],['육전','🥩'],['떡갈비','🍖'],['함박','🍔'],['미트로프','🍖'],['동그랑땡','🍢'],['제육','🥩'],['불백','🥩'],['맥적','🥩'],['직화','🔥'],['스테이크','🥩'],['찹스테이크','🥩'],['수육','🍖'],['한우','🥩'],['삼겹','🥩'],['목살','🥩'],['등심카츠','🍱'],['안심카츠','🍱'],['카츠','🍱'],['동파육','🍖'],['감자탕','🍲'],['족발','🍖'],['오리불고기','🦆'],['훈제오리','🦆'],['오리냉채','🦆'],['오리','🦆'],['새우','🦐'],['쉬림프','🦐'],['낙지','🐙'],['쭈꾸미','🐙'],['주꾸미','🐙'],['오징어','🦑'],['꽃게','🦀'],['바지락','🦪'],['굴','🦪'],['꼬막','🦪'],['홍합','🦪'],['전복','🐚'],['아구','🐟'],['아귀','🐟'],['연어','🐟'],['고등어','🐟'],['가자미','🐟'],['광어','🐟'],['동태','🐟'],['황태','🐟'],['북어','🐟'],['명태','🐟'],['코다리','🐟'],['임연수','🐟'],['조기','🐟'],['열기','🐟'],['삼치','🐟'],['꽁치','🐟'],['노가리','🐟'],['알탕','🥚'],['명란','🍳'],['백합','🦪'],['해물','🦐'],['된장찌개','🍲'],['청국장','🍲'],['김치찌개','🍲'],['순두부','🍲'],['부대찌개','🍲'],['찌개','🍲'],['전골','🍲'],['미역국','🍜'],['미역','🍜'],['뭇국','🍜'],['탕국','🍜'],['곰탕','🍜'],['해장국','🍜'],['육개장','🍜'],['연포탕','🍜'],['꽃게탕','🦀'],['해물탕','🦐'],['짬뽕','🍜'],['황태국','🐟'],['북어국','🐟'],['콩나물국','🌱'],['쑥국','🌿'],['시금치국','🥬'],['찜','🫕'],['조림','🍱'],['볶음','🍳'],['구이','🔥'],['무침','🌿'],['냉채','🥗'],['샐러드','🥗'],['나물','🌿'],['겉절이','🥬'],['시래기','🌿'],['취나물','🌿'],['곤드레','🌿'],['봄나물','🌿'],['콩나물','🌱'],['숙주','🌱'],['시금치','🥬'],['배추','🥬'],['봄동','🥬'],['열무','🥬'],['두부','🫙'],['계란','🥚'],['달걀','🥚'],['에그','🥚'],['계란말이','🍳'],['에그마요','🥚'],['죽','🍚'],['솥밥','🍚'],['덮밥','🍚'],['비빔밥','🍚'],['국밥','🍚'],['볶음밥','🍚'],['약밥','🍚'],['알밥','🍚'],['떡볶이','🍢'],['가래떡','🍢'],['떡잡채','🍢'],['파스타','🍝'],['라구','🍝'],['라자냐','🍝'],['리조또','🍝'],['냉모밀','🍜'],['소바','🍜'],['메밀','🍜'],['쌀국수','🍜'],['잡채','🍜'],['칼국수','🍜'],['국수','🍜'],['전','🥞'],['부침','🥞'],['빈대떡','🥞'],['강정','🍡'],['탕수','🍡'],['튀김','🍟'],['치즈볼','🧀'],['스프','🥣'],['크림','🥛'],['스튜','🍲'],['카레','🍛'],['하이라이스','🍛'],['만두','🥟'],['어묵','🍢'],['꼬치','🍢'],['샌드위치','🥪'],['바게트','🥖'],['케잌','🎂'],['마들렌','🧁'],['과일','🍎'],['딸기','🍓'],['요거트','🥛'],['식혜','🍶'],['장아찌','🫙'],['젓갈','🫙'],['고추장','🌶'],['잼','🍯'],['밀키트','📦'],['샤브','📦'],['밀푀유','📦'],['스키야키','📦'],['월남쌈','📦'],['유부초밥','🍱'],['김밥','🍱'],['초밥','🍣'],['연근','🪷'],['우엉','🪵'],['더덕','🌿'],['마늘','🧄']];
 function getMenuEmoji(name,cat){var n=(name||'').toLowerCase();for(var i=0;i<_MENU_KW.length;i++){if(n.indexOf(_MENU_KW[i][0])>=0)return _MENU_KW[i][1];}return CAT_EMOJI[cat]||'🍽';}
 function menuDisplayName(name,cat){return (name||'')+(cat==='한우'||cat==='한돈'?'('+cat+')':'');}
+function _itemCat(name){var m=allMenus.find(function(x){return x.name===name;});return m?m.cat:'';}
 _buildCatMaps();
 function populateCatSelect(selId,selectedVal,withAll){var sel=document.getElementById(selId);if(!sel)return;var allOpt=withAll?'<option value="전체"'+(selectedVal==='전체'?' selected':'')+'>전체</option>':'';sel.innerHTML=allOpt+VALID_CATS.map(function(c){return '<option value="'+c+'"'+(c===selectedVal?' selected':'')+'>'+c+'</option>';}).join('');}
 var menus=[],filterCat='전체',filterAllCat='전체',workDate='',calViewYear,calViewMonth,imgTargetId=null,parsedMenus=[],pendingImgUrl=null,menuEditTargetId=null,editPendingImgUrl=null;
@@ -2158,7 +2159,7 @@ function renderOrdersList(today,todayOrders){
     var isNewAddReq=_isNewAddReq(order);
     var statusText={pending:'대기중',confirmed:'주문접수',cancelled:'취소됨',delivered:'배송완료'};
     var itemSum=order.items.reduce(function(s,i){return s+(i.price||0)*(i.qty||1);},0);
-    var summary=(order.items[0]?menuDisplayName(order.items[0].name,order.items[0].cat||''):'')+(order.items.length>1?' 외 '+(order.items.length-1)+'건':'');
+    var summary=(order.items[0]?menuDisplayName(order.items[0].name,order.items[0].cat||_itemCat(order.items[0].name)):'')+(order.items.length>1?' 외 '+(order.items.length-1)+'건':'');
     var row=document.createElement('div');
     row.className='order-li '+order.status+(isNewAddReq?' addreq-new':'');
     row.innerHTML=
@@ -2213,7 +2214,7 @@ function _buildAdminOrderCard(order){
 
     var items=document.createElement('div');
     items.className='order-items';
-    items.textContent=order.items.map(function(i){return menuDisplayName(i.name,i.cat||'')+' '+i.qty+'개';}).join(' · ');
+    items.textContent=order.items.map(function(i){return menuDisplayName(i.name,i.cat||_itemCat(i.name))+' '+i.qty+'개';}).join(' · ');
     card.appendChild(items);
 
     var total=document.createElement('div');
