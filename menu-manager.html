@@ -1382,7 +1382,8 @@ function renderMenuList(){
   var filtered=filterCat==='전체'?menus:menus.filter(function(m){return m.cat===filterCat;});
   if(!filtered.length){list.innerHTML='<div class="empty">메뉴가 없어요. 위에서 추가해주세요.</div>';return;}
   list.innerHTML=filtered.map(function(m){
-    var imgEl=m.imgUrl?'<img class="menu-thumb" src="'+m.imgUrl+'" alt="'+m.name+'" onclick="openImgPopup('+m.id+')" onerror="this.style.display=\'none\'">':'<button class="img-btn" title="이미지 등록" onclick="openImgPopup('+m.id+')">&#128247;</button>';
+    var _em=getMenuEmoji(m.name,m.cat);
+    var imgEl=m.imgUrl?'<img class="menu-thumb" src="'+m.imgUrl+'" alt="'+m.name+'" onclick="openImgPopup('+m.id+')" onerror="this.style.display=\'none\';this.insertAdjacentHTML(\'afterend\',\'<div class=\\\'img-btn\\\' onclick=\\\'openImgPopup('+m.id+')\\\' style=\\\'font-size:18px;\\\'>'+_em+'</div>\')">':'<div class="img-btn" onclick="openImgPopup('+m.id+')" title="이미지 등록" style="font-size:18px;">'+_em+'</div>';
     var chEl=m.child?' <span style="font-size:13px;">&#128103;</span>':'';
     return '<div class="menu-item">'+
       '<div class="cat-dot" style="background:'+(CAT_COLOR[m.cat]||'#888')+'"></div>'+imgEl+
@@ -1648,7 +1649,8 @@ function renderAllMenus(){
     pageCtrlHtml()+
     '<div class="menu-list" style="margin-top:8px;">'+
     pageItems.map(function(m,i){
-      var imgEl=m.imgUrl?'<img class="menu-thumb" src="'+m.imgUrl+'" alt="'+m.name+'" onclick="openImgPopup('+m.id+',\'all\')" onerror="this.style.display=\'none\'">':'<button class="img-btn" title="이미지 등록" onclick="openImgPopup('+m.id+',\'all\')">&#128247;</button>';
+      var _em=getMenuEmoji(m.name,m.cat);
+      var imgEl=m.imgUrl?'<img class="menu-thumb" src="'+m.imgUrl+'" alt="'+m.name+'" onclick="openImgPopup('+m.id+',\'all\')" onerror="this.style.display=\'none\';this.insertAdjacentHTML(\'afterend\',\'<div class=\\\'img-btn\\\' onclick=\\\'openImgPopup('+m.id+',\\\\\'all\\\\\')\\\' style=\\\'font-size:18px;\\\'>'+_em+'</div>\')">':'<div class="img-btn" onclick="openImgPopup('+m.id+',\'all\')" title="이미지 등록" style="font-size:18px;">'+_em+'</div>';
       var chEl=m.child?' <span style="font-size:13px;">&#128103;</span>':'';
       var chk=selectedAllIds.has(m.id)?' checked':'';
       var num='<span style="font-size:11px;color:#bbb;min-width:22px;text-align:right;flex-shrink:0;">'+(startNo+i)+'</span>';
