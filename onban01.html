@@ -980,7 +980,12 @@ function showMenuModal(id){
     updateCartCount();
     document.body.removeChild(overlay);
   };
+  var closeBtn2=document.createElement('button');
+  closeBtn2.style.cssText='background:#eee;color:#555;border:none;border-radius:14px;padding:14px 20px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap;';
+  closeBtn2.textContent='닫기';
+  closeBtn2.onclick=function(){document.body.removeChild(overlay);};
   actWrap.appendChild(cartBtn);
+  actWrap.appendChild(closeBtn2);
   modal.appendChild(imgWrap);
   modal.appendChild(closeBtn);
   modal.appendChild(body);
