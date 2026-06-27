@@ -665,9 +665,14 @@ async function initDB() {
       console.log('addreq_acked 마이그레이션 완료');
     }
     // 최초 1회: icon 컬럼 추가 + img_url→icon 복사 + CSV로 img_url 갱신
-    const [[iconMig]] = await conn.execute(`SELECT v FROM settings WHERE k='icon_col_v1'`).catch(()=>[[null]]);
+    const [[iconMig]] = await conn.execute(`SELECT v FROM settings WHERE k='icon_col_v2'`).catch(()=>[[null]]);
     if(!iconMig){
-      await conn.execute(`ALTER TABLE menus ADD COLUMN IF NOT EXISTS icon VARCHAR(1000) DEFAULT ''`).catch(()=>{});
+      // IF NOT EXISTS 미지원 MySQL 대비 — SHOW COLUMNS로 존재 여부 확인 후 추가
+      const [[iconColRow]] = await conn.execute(`SHOW COLUMNS FROM menus LIKE 'icon'`).catch(()=>[[null]]);
+      if(!iconColRow){
+        await conn.execute(`ALTER TABLE menus ADD COLUMN icon VARCHAR(1000) DEFAULT ''`);
+        console.log('icon 컬럼 추가 완료');
+      }
       await conn.execute(`UPDATE menus SET icon=img_url WHERE img_url IS NOT NULL AND img_url!='' AND (icon IS NULL OR icon='')`).catch(()=>{});
       // CSV 파싱 → img_url 갱신
       try {
@@ -690,7 +695,7 @@ async function initDB() {
         }
         console.log(`CSV img_url 갱신: ${updated}건`);
       } catch(e){ console.warn('CSV 읽기 실패(무시):', e.message); }
-      await conn.execute(`INSERT IGNORE INTO settings(k,v) VALUES('icon_col_v1','done')`).catch(()=>{});
+      await conn.execute(`INSERT IGNORE INTO settings(k,v) VALUES('icon_col_v2','done')`).catch(()=>{});
       console.log('icon 컬럼 마이그레이션 완료');
     }
     console.log('DB 테이블 초기화 완료');
