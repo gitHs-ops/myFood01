@@ -70,15 +70,15 @@ app.post('/api/menu/all', async (req, res) => {
       for (const m of list) {
         if (m.menuId) {
           await conn.execute(
-            `UPDATE menus SET name=?,cat=?,price=?,stock=?,child=?,img_url=?,\`desc\`=?,count=?,updated_at=? WHERE id=?`,
+            `UPDATE menus SET name=?,cat=?,price=?,stock=?,child=?,img_url=?,menu_desc=?,count=?,updated_at=? WHERE id=?`,
             [m.name, m.cat||'기타', m.price||0, m.stock||0, m.child?1:0, m.imgUrl||'', m.desc||'', m.count||0, m.updatedAt||0, m.menuId]
           );
         } else {
           await conn.execute(
-            `INSERT INTO menus (name,cat,price,stock,child,img_url,\`desc\`,count,updated_at)
+            `INSERT INTO menus (name,cat,price,stock,child,img_url,menu_desc,count,updated_at)
              VALUES (?,?,?,?,?,?,?,?,?)
              ON DUPLICATE KEY UPDATE cat=VALUES(cat),price=VALUES(price),stock=VALUES(stock),
-               child=VALUES(child),img_url=VALUES(img_url),\`desc\`=VALUES(\`desc\`),
+               child=VALUES(child),img_url=VALUES(img_url),menu_desc=VALUES(menu_desc),
                count=VALUES(count),updated_at=VALUES(updated_at)`,
             [m.name, m.cat||'기타', m.price||0, m.stock||0, m.child?1:0, m.imgUrl||'', m.desc||'', m.count||0, m.updatedAt||0]
           );
@@ -99,7 +99,7 @@ app.post('/api/menu/all', async (req, res) => {
 app.get('/api/menu/all', async (req, res) => {
   try {
     const [rows] = await pool.execute(
-      'SELECT id AS menuId,name,cat,price,stock,child,img_url AS imgUrl,`desc` AS `desc`,count,updated_at AS updatedAt FROM menus ORDER BY count DESC, name'
+      'SELECT id AS menuId,name,cat,price,stock,child,img_url AS imgUrl,menu_desc AS `desc`,count,updated_at AS updatedAt FROM menus ORDER BY count DESC, name'
     );
     const menus = rows.map(r => ({ ...r, child: !!r.child, price: Number(r.price||0) }));
     ok(res, { menus });
@@ -132,7 +132,7 @@ app.get('/api/menu/:date', async (req, res) => {
          d.stock,
          COALESCE(m.child,d.child) AS child,
          COALESCE(m.img_url,d.img_url) AS imgUrl,
-         m.\`desc\` AS \`desc\`
+         m.menu_desc AS `desc`
        FROM daily_menus d LEFT JOIN menus m ON d.menu_id=m.id
        WHERE d.date=? ORDER BY d.id`,
       [req.params.date]
@@ -166,15 +166,15 @@ app.post('/api/menu/daily', async (req, res) => {
         let menuId = m.menuId || null;
         if (menuId) {
           await conn.execute(
-            `UPDATE menus SET name=?,cat=?,price=?,child=?,img_url=?,\`desc\`=?,updated_at=? WHERE id=?`,
+            `UPDATE menus SET name=?,cat=?,price=?,child=?,img_url=?,menu_desc=?,updated_at=? WHERE id=?`,
             [m.name, m.cat||'기타', m.price||0, m.child?1:0, m.imgUrl||'', m.desc||'', m.updatedAt||Date.now(), menuId]
           );
         } else {
           await conn.execute(
-            `INSERT INTO menus (name,cat,price,child,img_url,\`desc\`,updated_at)
+            `INSERT INTO menus (name,cat,price,child,img_url,menu_desc,updated_at)
              VALUES (?,?,?,?,?,?,?)
              ON DUPLICATE KEY UPDATE cat=VALUES(cat),price=VALUES(price),child=VALUES(child),
-               img_url=VALUES(img_url),\`desc\`=VALUES(\`desc\`),updated_at=VALUES(updated_at)`,
+               img_url=VALUES(img_url),menu_desc=VALUES(menu_desc),updated_at=VALUES(updated_at)`,
             [m.name, m.cat||'기타', m.price||0, m.child?1:0, m.imgUrl||'', m.desc||'', m.updatedAt||Date.now()]
           );
           const [[mrow]] = await conn.execute('SELECT id FROM menus WHERE name=?', [m.name]);
@@ -513,7 +513,7 @@ async function initDB() {
       stock INT DEFAULT 0,
       child TINYINT(1) DEFAULT 0,
       img_url VARCHAR(1000) DEFAULT '',
-      \`desc\` TEXT,
+      menu_desc TEXT,
       count INT DEFAULT 0,
       updated_at BIGINT DEFAULT 0
     )`,
@@ -563,10 +563,12 @@ async function initDB() {
     // 기존 DB에 컬럼이 없을 경우 추가
     await conn.execute(`ALTER TABLE orders ADD COLUMN addreq_acked TINYINT(1) DEFAULT 0`).catch(()=>{});
     await conn.execute(`ALTER TABLE orders ADD COLUMN device_id VARCHAR(64)`).catch(()=>{});
-    // ── 메뉴 정규화: daily_menus.menu_id(→menus.id) + menus.desc ──
+    // ── 메뉴 정규화: daily_menus.menu_id(→menus.id) + menus.menu_desc ──
     await conn.execute(`ALTER TABLE daily_menus ADD COLUMN menu_id INT`).catch(()=>{});
     await conn.execute(`ALTER TABLE daily_menus ADD INDEX idx_menu (menu_id)`).catch(()=>{});
-    await conn.execute(`ALTER TABLE menus ADD COLUMN \`desc\` TEXT`).catch(()=>{});
+    // `desc`는 MySQL 예약어라 ODKU VALUES() 내부에서 버그 유발 → menu_desc로 rename
+    await conn.execute(`ALTER TABLE menus CHANGE \`desc\` menu_desc TEXT`).catch(()=>{});
+    await conn.execute(`ALTER TABLE menus ADD COLUMN menu_desc TEXT`).catch(()=>{});
     // 최초 1회: 기존 일자별 메뉴를 마스터에 등록 후 menu_id 연결
     const [[migMenu]] = await conn.execute(`SELECT v FROM settings WHERE k='menu_id_migrated_v1'`).catch(()=>[[null]]);
     if(!migMenu){
