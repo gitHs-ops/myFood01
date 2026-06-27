@@ -390,7 +390,8 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 .hist-li-main{flex:1;min-width:0;}
 .hist-li-top{display:flex;align-items:center;gap:5px;margin-bottom:5px;flex-wrap:wrap;}
 .hist-li-dt{font-size:11px;color:var(--light);}
-.hist-li-sum{font-size:14px;font-weight:700;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hist-li-sum{display:flex;align-items:center;gap:4px;font-size:14px;font-weight:700;color:#333;}
+.hist-li-sum-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .hist-li-badge{font-size:10px;font-weight:700;border-radius:999px;padding:2px 7px;}
 .hist-li-badge.reorder{background:#e0d4f7;color:#5b21b6;}
 .hist-li-badge.edit{background:#fff3cd;color:#856404;}
@@ -1746,16 +1747,16 @@ function _doRenderHistory(el){
     rowEl.innerHTML=
       '<div class="hist-li-main">'
         +'<div class="hist-li-top"><span class="hist-status '+(_ORDER_STATUS_CLS[o.status]||'pending')+'">'+(_ORDER_STATUS_MAP[o.status]||'대기중')+'</span>'+reorderBadge+editBadge+'<span class="hist-li-dt">'+fmtDT(o.date,o.time)+'</span></div>'
-        +'<div class="hist-li-sum">'+summary+'</div>'
+        +'<div class="hist-li-sum"><span class="hist-li-sum-text">'+summary+'</span><span class="hist-li-arrow">›</span></div>'
       +'</div>'
-      +'<div class="hist-li-right"><span class="hist-li-total">'+comma(total)+'천원</span><span class="hist-li-arrow">›</span></div>';
+      +'<div class="hist-li-right"><span class="hist-li-total">'+comma(total)+'천원</span></div>';
     (function(oid){rowEl.onclick=function(){openOrderDetail(oid);};})(o.id);
     if(o.status==='pending'){
       var cancelBtn=document.createElement('button');
       cancelBtn.className='hist-li-cancel';
       cancelBtn.textContent='주문취소';
       (function(oid){cancelBtn.onclick=function(e){e.stopPropagation();cancelHistOrder(oid);};})(o.id);
-      rowEl.querySelector('.hist-li-right').insertBefore(cancelBtn,rowEl.querySelector('.hist-li-arrow'));
+      rowEl.querySelector('.hist-li-right').appendChild(cancelBtn);
     }
     listWrap.appendChild(rowEl);
   });
