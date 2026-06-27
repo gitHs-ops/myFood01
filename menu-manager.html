@@ -1766,15 +1766,17 @@ function doMerge(targetId,sourceId){
 function confirmSendToToday(mode){
   var selected=Array.from(selectedAllIds).map(function(id){return allMenus.find(function(m){return m.id===id;});}).filter(Boolean);
   if(!selected.length){closeSendToTodayPopup();return;}
+  var _defStock=Number(getSettings().stock)||0;
+  function _stock(m){return (m.stock||0)>0?m.stock:_defStock;}
   if(mode==='replace'){
-    menus=selected.map(function(m){return {id:Date.now()+Math.random(),name:m.name,cat:m.cat,price:m.price,stock:m.stock||0,child:m.child,imgUrl:m.imgUrl||null};});
+    menus=selected.map(function(m){return {id:Date.now()+Math.random(),name:m.name,cat:m.cat,price:m.price,stock:_stock(m),child:m.child,imgUrl:m.imgUrl||null};});
     showToast(selected.length+'개로 일일 메뉴를 대체했어요!');
   }else{
     var existNames={};menus.forEach(function(m){existNames[m.name]=true;});
     var added=0;
     selected.forEach(function(m){
       if(!existNames[m.name]){
-        menus.push({id:Date.now()+Math.random(),name:m.name,cat:m.cat,price:m.price,stock:m.stock||0,child:m.child,imgUrl:m.imgUrl||null});
+        menus.push({id:Date.now()+Math.random(),name:m.name,cat:m.cat,price:m.price,stock:_stock(m),child:m.child,imgUrl:m.imgUrl||null});
         added++;
       }
     });
