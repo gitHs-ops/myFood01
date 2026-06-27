@@ -1539,7 +1539,7 @@ function renderHistSubTabs(){
   document.getElementById('histSubTabs').innerHTML=
     '<button class="tab'+(_histSubTab==='dates'?' active':'')+'" onclick="switchHistSubTab(\'dates\')">날짜별 메뉴 묶음</button>'
     +dropdown
-    +'<button class="tab'+(_histSubTab==='all'?' active':'')+'" onclick="switchHistSubTab(\'all\')">등록된 모든 메뉴</button>';
+    +'<button class="tab'+(_histSubTab==='all'?' active':'')+'" onclick="switchHistSubTab(\'all\')">마스터 메뉴</button>';
 }
 function switchHistSubTab(tab){
   _histSubTab=tab;
