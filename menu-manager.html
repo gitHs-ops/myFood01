@@ -668,6 +668,18 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
     <button style="margin-top:10px;width:100%;background:#eee;color:#555;border:none;border-radius:10px;padding:9px;font-size:13px;cursor:pointer;" onclick="closeHistLoadModal()">취소</button>
   </div>
 </div>
+<!-- 마스터 미등록 메뉴 안내 모달 -->
+<div class="cal-overlay" id="orphanOverlay" onclick="if(event.target===this)closeOrphanModal()">
+  <div style="background:#fff;border-radius:16px;padding:22px;width:320px;max-width:93vw;max-height:80vh;display:flex;flex-direction:column;" onclick="event.stopPropagation()">
+    <div style="font-size:15px;font-weight:700;color:#1a1a1a;margin-bottom:6px;">⚠️ 메뉴 창고에 없는 메뉴</div>
+    <p style="font-size:13px;color:#666;margin-bottom:12px;">아래 메뉴는 메뉴 창고(마스터)에 없어요.<br>기본 메뉴로 저장한 뒤 가져갈까요?</p>
+    <div id="orphanList" style="flex:1;overflow-y:auto;max-height:240px;margin-bottom:14px;"></div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-add" style="flex:2;font-size:14px;" onclick="confirmOrphanSave()">💾 기본 메뉴로 저장</button>
+      <button style="flex:1;background:#eee;color:#555;border:none;border-radius:10px;padding:10px;font-size:14px;cursor:pointer;font-family:inherit;" onclick="closeOrphanModal()">취소</button>
+    </div>
+  </div>
+</div>
 <script>
 var IMGBB_KEY='b5a6e9481bb9cb4791108cf50761a459';
 var CAT_COLOR={'메인':'#1D9E75','반찬':'#378ADD','김치':'#D4537E','밀키트':'#E9A826','기타':'#888780'};
@@ -1774,18 +1786,64 @@ function confirmHistLoad(mode){
   if(!date)return;
   importFromSheetByDate(date,mode);
 }
+var _pendingImport=null;  // {date,mode,imported} — 고아 메뉴 팝업 처리 대기 컨텍스트
 function importFromSheetByDate(date,mode){
   showToast('메뉴 창고에서 불러오는 중...');
   fetch(API_URL+'/api/menu/'+date)
     .then(function(r){if(!r.ok)throw new Error(date+' 날짜를 찾을 수 없습니다.');return r.json();})
     .then(function(d){
       var imported=(d.menus||[]).map(function(m){return Object.assign({id:Date.now()+Math.random(),stock:getSettings().stock||0},m);});
-      var addedCount=applyImportedMenus(imported,mode);
-      saveMenus(workDate);renderAll();filterCat='전체';
-      showToast(date+' 메뉴 '+addedCount+'개 → '+fmtDate(workDate)+' 적용!');
-      renderHistory();switchPage('manage');
+      // 마스터(메뉴 창고)에 없는 메뉴 검출
+      var masterNames={};allMenus.forEach(function(m){masterNames[(m.name||'').trim()]=true;});
+      var orphans=imported.filter(function(m){return !masterNames[(m.name||'').trim()];});
+      if(orphans.length){
+        _pendingImport={date:date,mode:mode,imported:imported};
+        openOrphanModal(orphans);
+        return;
+      }
+      _applyImportToToday(date,mode,imported);
     })
     .catch(function(e){showToast('❌ '+e.message);});
+}
+function _applyImportToToday(date,mode,imported){
+  var addedCount=applyImportedMenus(imported,mode);
+  saveMenus(workDate);renderAll();filterCat='전체';
+  showToast(date+' 메뉴 '+addedCount+'개 → '+fmtDate(workDate)+' 적용!');
+  renderHistory();switchPage('manage');
+}
+function openOrphanModal(orphans){
+  document.getElementById('orphanList').innerHTML=
+    '<div class="menu-list">'+orphans.map(function(m){
+      return '<div class="menu-item" style="padding:8px 10px;">'+
+        '<div class="cat-dot" style="background:'+(CAT_COLOR[m.cat]||'#888')+'"></div>'+
+        '<div class="name" style="flex:1;font-size:13px;font-weight:500;">'+m.name+'</div>'+
+        '<span style="font-size:12px;color:#086266;font-weight:700;">'+(m.price||0).toLocaleString()+'천원</span>'+
+      '</div>';
+    }).join('')+'</div>';
+  document.getElementById('orphanOverlay').classList.add('open');
+}
+function closeOrphanModal(){
+  document.getElementById('orphanOverlay').classList.remove('open');
+  _pendingImport=null;  // 취소: 오늘 메뉴 가져가기도 전체 중단
+}
+function confirmOrphanSave(){
+  if(!_pendingImport){document.getElementById('orphanOverlay').classList.remove('open');return;}
+  var ctx=_pendingImport;
+  var masterNames={};allMenus.forEach(function(m){masterNames[(m.name||'').trim()]=true;});
+  var ts=Date.now();
+  ctx.imported.forEach(function(m){
+    var nm=(m.name||'').trim();
+    if(nm&&!masterNames[nm]){
+      allMenus.push({id:ts++,menuId:null,name:nm,cat:m.cat||'기타',price:m.price||0,stock:0,child:!!m.child,desc:m.desc||'',imgUrl:m.imgUrl||null,count:0,updatedAt:ts});
+      masterNames[nm]=true;
+      m.menuId=null;  // 과거 stale menu_id 제거 → daily 저장 시 새 마스터에 이름 기준 재연결
+    }
+  });
+  saveAllMenus();
+  renderAllMenus();
+  document.getElementById('orphanOverlay').classList.remove('open');
+  _pendingImport=null;
+  _applyImportToToday(ctx.date,ctx.mode,ctx.imported);
 }
 function switchPage(name){
   if(name!=='manage'){
