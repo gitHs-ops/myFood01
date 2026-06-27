@@ -1943,6 +1943,15 @@ function _updateHistTotal(id){
   if(!o)return;
   var isPickup=(o.memo||'').startsWith('매장픽업');
   var itemsSum=o.items.reduce(function(s,i){return s+i.price*i.qty;},0);
+  // 2만원 미만 + 픽업 아님 → 매장픽업 강제
+  if(itemsSum<20&&!isPickup){
+    o.memo='매장픽업';
+    localStorage.setItem('orders',JSON.stringify(ords));
+    isPickup=true;
+    var memoWrap=document.getElementById('histmemo-'+id);
+    if(memoWrap)memoWrap.innerHTML=_histMemoHtml(id,'매장픽업');
+    showToast('⚠️ 2만원 미만 — 매장픽업으로 자동 변경됐어요.');
+  }
   var df=(!isPickup&&itemsSum>=20)?1:0;
   var total=itemsSum+df;
   var cardEl=document.getElementById('histcard-'+id);
@@ -2062,11 +2071,7 @@ function histEditMemo(id){
     '<select class="hist-req-textarea" id="histmemosel-'+id+'" onchange="histMemoSelChange(\''+id+'\')">'
     +'<option value="" disabled>선택하세요</option>'
     +_MEMO_OPTS.map(function(v){return '<option value="'+v+'"'+(prev===v?' selected':'')+'>'+v+'</option>';}).join('')
-    +'</select>'
-    +'<div class="hist-req-actions">'
-      +'<button class="hist-req-cancel" onclick="histCancelMemo(\''+id+'\')">취소</button>'
-      +'<button class="hist-req-save" onclick="histSaveMemo(\''+id+'\')">저장</button>'
-    +'</div>';
+    +'</select>';
 }
 function histMemoSelChange(id){
   var sel=document.getElementById('histmemosel-'+id);
@@ -2079,6 +2084,7 @@ function histMemoSelChange(id){
     showToast('⚠️ 2만원 미만은 매장픽업만 가능해요.');
     sel.value='매장픽업';
   }
+  histSaveMemo(id);
 }
 function histCancelMemo(id){
   var ords=JSON.parse(localStorage.getItem('orders')||'[]');
