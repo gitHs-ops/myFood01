@@ -400,8 +400,8 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 .hist-li-right{display:flex;align-items:center;gap:4px;flex-shrink:0;}
 .hist-li-total{font-size:14px;font-weight:800;color:var(--teal);}
 .hist-li-arrow{font-size:20px;color:#ccc;}
-.hist-li-addreq{font-size:11px;color:#086266;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px;}
-.hist-li-reply{font-size:11px;color:#b8860b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;}
+.hist-li-addreq{font-size:11px;color:#086266;word-break:break-all;margin-top:3px;line-height:1.5;}
+.hist-li-reply{font-size:11px;color:#b8860b;word-break:break-all;margin-top:1px;line-height:1.5;}
 .hist-li-cancel{padding:4px 10px;border-radius:8px;font-size:11px;font-weight:700;border:1.5px solid #f5c0c0;background:#fff;color:var(--red);cursor:pointer;font-family:inherit;white-space:nowrap;}
 /* ── 주문 상세 팝업 ── */
 .order-detail-overlay{position:fixed;inset:0;background:rgba(0,0,0,.52);z-index:600;display:none;align-items:flex-start;justify-content:center;padding:18px 8px 40px;overflow-y:auto;}
@@ -1759,8 +1759,8 @@ function _doRenderHistory(el){
       '<div class="hist-li-main">'
         +'<div class="hist-li-top"><span class="hist-status '+(_ORDER_STATUS_CLS[o.status]||'pending')+'">'+(_ORDER_STATUS_MAP[o.status]||'대기중')+'</span>'+reorderBadge+editBadge+'<span class="hist-li-dt">'+fmtDT(o.date,o.time)+'</span></div>'
         +'<div class="hist-li-sum"><span class="hist-li-sum-text">'+summary+'</span><span class="hist-li-arrow">›</span></div>'
-        +(o.additionalRequest?'<div class="hist-li-addreq">💬 '+o.additionalRequest.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/[\n\r]+/g,' ')+'</div>':'')
-        +(o.adminReply?'<div class="hist-li-reply">↩ '+o.adminReply.replace(/<br>/gi,' ').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/[\n\r]+/g,' ')+'</div>':'')
+        +(o.additionalRequest?'<div class="hist-li-addreq">💬 '+o.additionalRequest.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/[\n\r]+/g,'<br>')+'</div>':'')
+        +(o.adminReply?'<div class="hist-li-reply">↩ '+o.adminReply.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/[\n\r]+/g,'<br>')+'</div>':'')
       +'</div>'
       +'<div class="hist-li-right"><span class="hist-li-total">'+comma(total)+'천원</span></div>';
     (function(oid){rowEl.onclick=function(){openOrderDetail(oid);};})(o.id);
