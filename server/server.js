@@ -756,6 +756,31 @@ async function initDB() {
       } catch(e){ console.warn('retry CSV v2 읽기 실패:', e.message); }
       await conn.execute(`INSERT IGNORE INTO settings(k,v) VALUES('retry_img_v2','done')`).catch(()=>{});
     }
+    // retry CSV v3 — 빈 img_url 메뉴 추가 갱신
+    const [[retryMig3]] = await conn.execute(`SELECT v FROM settings WHERE k='retry_img_v3'`).catch(()=>[[null]]);
+    if(!retryMig3){
+      try {
+        const fs = require('fs');
+        const csv = fs.readFileSync(path.join(__dirname,'..','menu_image_list_retry.csv'),'utf8');
+        const lines = csv.replace(/\r/g,'').split('\n').filter(l=>l.trim());
+        let updated=0;
+        for(let i=1;i<lines.length;i++){
+          const cols=[]; let cur='',inQ=false;
+          for(const ch of lines[i]){
+            if(ch==='"'){inQ=!inQ;}
+            else if(ch===','&&!inQ){cols.push(cur);cur='';}
+            else cur+=ch;
+          }
+          cols.push(cur);
+          if(cols.length>=3&&cols[2].trim()){
+            const [r]=await conn.execute('UPDATE menus SET img_url=? WHERE name=?',[cols[2].trim(),cols[0].trim()]);
+            updated+=r.affectedRows;
+          }
+        }
+        console.log(`retry CSV v3 img_url 갱신: ${updated}건`);
+      } catch(e){ console.warn('retry CSV v3 읽기 실패:', e.message); }
+      await conn.execute(`INSERT IGNORE INTO settings(k,v) VALUES('retry_img_v3','done')`).catch(()=>{});
+    }
     console.log('DB 테이블 초기화 완료');
   } finally {
     conn.release();
