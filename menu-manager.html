@@ -439,6 +439,14 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
     <label class="child-toggle" style="margin-bottom:10px;"><input type="checkbox" id="editMenuChild"> 어린이도 먹을 수 있는 메뉴</label>
     <div class="edit-field"><label class="edit-label">메뉴 설명 (선택)</label><textarea id="editMenuDesc" class="edit-input" rows="2" placeholder="고객 상세 팝업에 표시됩니다" style="resize:vertical;font-family:inherit;"></textarea></div>
     <hr class="edit-divider">
+    <div class="edit-field">
+      <label class="edit-label">상세 이미지 URL <span style="font-size:10px;color:#aaa;font-weight:400;">(고객 상세 팝업)</span></label>
+      <input type="text" id="editMenuImgUrl" class="edit-input" placeholder="https://..." style="font-size:11px;color:#444;">
+    </div>
+    <div class="edit-field" style="margin-bottom:8px;">
+      <label class="edit-label">썸네일 이미지 URL <span style="font-size:10px;color:#aaa;font-weight:400;">(목록 아이콘)</span></label>
+      <input type="text" id="editMenuIconUrl" class="edit-input" placeholder="https://... (업로드 또는 직접 입력)" style="font-size:11px;color:#444;" oninput="setEditImgPreview(this.value||null)">
+    </div>
     <input type="file" id="editImgFileInput" accept="image/*" style="display:none" onchange="onEditFileSelected(event)">
     <div class="img-btn-row">
       <button class="img-btn-upload" id="editImgUploadBtn" onclick="document.getElementById('editImgFileInput').click()">&#128193; 사진 선택</button>
@@ -1241,6 +1249,8 @@ function openMenuEditPopup(id,ctx){
   populateCatSelect('editMenuCat',m.cat||'기타');
   document.getElementById('editMenuChild').checked=!!m.child;
   document.getElementById('editMenuDesc').value=m.desc||'';
+  document.getElementById('editMenuImgUrl').value=m.imgUrl||'';
+  document.getElementById('editMenuIconUrl').value=m.icon||'';
   setEditImgPreview(m.icon||null);
   setEditImgStatus('',false);
   document.getElementById('editImgUploadBtn').textContent=m.icon?'📁 사진 변경':'📁 사진 선택';
@@ -1313,6 +1323,7 @@ function saveEditImg(){
   if(!editPendingImgUrl||menuEditTargetId===null)return;
   var m=_arr(editCtx).find(function(x){return x.id===menuEditTargetId;});
   if(m){m.icon=editPendingImgUrl;_save(editCtx);_render(editCtx);}
+  document.getElementById('editMenuIconUrl').value=editPendingImgUrl;
   editPendingImgUrl=null;
   document.getElementById('editImgUploadBtn').textContent='📁 사진 변경';
   document.getElementById('editImgDeleteBtn').style.display='';
@@ -1324,6 +1335,7 @@ function deleteEditImg(){
   var m=_arr(editCtx).find(function(x){return x.id===menuEditTargetId;});
   if(m){m.icon=null;_save(editCtx);_render(editCtx);}
   editPendingImgUrl=null;
+  document.getElementById('editMenuIconUrl').value='';
   setEditImgPreview(null);
   document.getElementById('editImgUploadBtn').textContent='📁 사진 선택';
   document.getElementById('editImgDeleteBtn').style.display='none';
@@ -1342,7 +1354,10 @@ function saveMenuEditAll(){
   m.cat=document.getElementById('editMenuCat').value;
   m.child=document.getElementById('editMenuChild').checked;
   m.desc=document.getElementById('editMenuDesc').value.trim();
-  if(editPendingImgUrl){m.imgUrl=editPendingImgUrl;editPendingImgUrl=null;}
+  m.imgUrl=document.getElementById('editMenuImgUrl').value.trim();
+  var iconUrlInput=document.getElementById('editMenuIconUrl').value.trim();
+  if(editPendingImgUrl){m.icon=editPendingImgUrl;editPendingImgUrl=null;}
+  else if(iconUrlInput!==undefined){m.icon=iconUrlInput||null;}
   touch(m);
   if(editCtx==='menus'){
     if(oldName!==m.name){
