@@ -155,16 +155,6 @@ app.post('/api/menu/master/delete', async (req, res) => {
   } catch(e) { err(res, e.message); }
 });
 
-// 임시: icon 비정상 메뉴 추출 (사용 후 제거)
-app.get('/api/admin/bad-icon-menus', async (req, res) => {
-  try {
-    const [rows] = await pool.execute(
-      "SELECT name, icon FROM menus WHERE icon IS NULL OR icon='' OR icon='ERROR' OR icon NOT LIKE 'http%' ORDER BY name"
-    );
-    ok(res, { count: rows.length, items: rows.map(r => ({ name: r.name, icon: r.icon||'' })) });
-  } catch(e) { err(res, e.message); }
-});
-
 // 전체 메뉴 조회 (GET /api/menu/all)
 app.get('/api/menu/all', async (req, res) => {
   try {
