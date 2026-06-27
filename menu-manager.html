@@ -1119,7 +1119,7 @@ function addMenu(){
   save();
   document.getElementById('menuName').value='';
   document.getElementById('menuPrice').value='';
-  document.getElementById('menuStock').value='0';
+  document.getElementById('menuStock').value=getSettings().stock||0;
   document.getElementById('menuChild').checked=false;
   document.getElementById('menuDesc').value='';
   document.getElementById('dupWarn').classList.remove('show');
@@ -1353,7 +1353,7 @@ function saveMenuEditAll(){
   if(m.id===_addMenuMasterId){
     document.getElementById('menuName').value=m.name;
     document.getElementById('menuPrice').value=m.price;
-    document.getElementById('menuStock').value=m.stock;
+    document.getElementById('menuStock').value=(m.stock||0)>0?m.stock:(getSettings().stock||0);
     document.getElementById('menuCat').value=m.cat;
     document.getElementById('menuChild').checked=!!m.child;
     document.getElementById('menuDesc').value=m.desc||'';
