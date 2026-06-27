@@ -663,6 +663,14 @@ function showSoldOutModal(soldOut){
   document.body.appendChild(overlay);
 }
 function goPage(name){
+  // 주문내역에서 항목(수량·삭제)을 편집한 뒤 재주문 미처리로 이탈 시 경고 + 원복
+  var onHistory=document.getElementById('page-history').classList.contains('active');
+  if(onHistory&&name!=='history'&&name!=='payment'&&_hasPendingItemEdits()){
+    if(!confirm('편집한 주문 항목이 있어요.\n\n재주문(다시 주문) 처리를 하지 않으면 삭제·수량 변경이 반영되지 않고 취소됩니다.\n그래도 이동하시겠어요?')){
+      return;   // 머무름
+    }
+    _revertPendingItemEdits();   // 이동 강행 시 항목 원복(물리적 반영 아님)
+  }
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
   document.getElementById('page-'+name).classList.add('active');
   window.scrollTo(0,0);
@@ -1877,6 +1885,7 @@ function histEditQty(orderId,itemName,d){
   if(pEl)pEl.textContent=comma(item.price*item.qty)+'천원';
   localStorage.setItem('orders',JSON.stringify(orders));
   _updateHistTotal(orderId);
+  _pendingItemEdits[orderId]=true;
   _activateReorderBtn(orderId);
 }
 // 재주문 버튼 활성 상태 — SSE 재렌더(DOM 초기화)에도 유실되지 않도록 영구 보관
@@ -1885,6 +1894,38 @@ function _activateReorderBtn(id){
   _reorderActiveIds[id]=true;
   var btn=document.getElementById('btn-reorder-'+id);
   if(btn){btn.disabled=false;btn.style.opacity='';}
+}
+// 주문내역 항목(수량·삭제) 편집 — 재주문 처리 전까지는 미확정(물리적 반영 아님)
+var _pendingItemEdits={};
+function _hasPendingItemEdits(){return Object.keys(_pendingItemEdits).length>0;}
+// 미확정 항목편집을 원본(_snap.items)으로 되돌림 (재주문 안 하고 이탈/새로고침 시)
+function _revertPendingItemEdits(){
+  var orders=JSON.parse(localStorage.getItem('orders')||'[]');
+  var changed=false;
+  orders.forEach(function(o){
+    if(_pendingItemEdits[o.id]&&o._snap&&o._snap.items){
+      o.items=o._snap.items;   // 항목만 원복(메모·요청은 서버 반영분 유지)
+      delete o._snap;
+      delete _reorderActiveIds[o.id];
+      changed=true;
+    }
+  });
+  if(changed)localStorage.setItem('orders',JSON.stringify(orders));
+  _pendingItemEdits={};
+}
+// 새로고침/재진입 시 직전 세션의 미확정 항목편집을 모두 원복
+function _revertStaleItemEdits(){
+  var orders=JSON.parse(localStorage.getItem('orders')||'[]');
+  var changed=false;
+  orders.forEach(function(o){
+    if(o._snap&&o._snap.items){
+      o.items=o._snap.items;
+      delete o._snap;
+      changed=true;
+    }
+  });
+  if(changed)localStorage.setItem('orders',JSON.stringify(orders));
+  _pendingItemEdits={};
 }
 // 편집 시작 시 원본 값 1회 스냅샷 — 재주문 시 원본을 원래값으로 복원하기 위함
 function _snapOrig(ord){
@@ -1908,6 +1949,7 @@ function histDelItem(orderId,itemName){
   if(row)row.remove();
   localStorage.setItem('orders',JSON.stringify(orders));
   _updateHistTotal(orderId);
+  _pendingItemEdits[orderId]=true;
   _activateReorderBtn(orderId);
 }
 /* ── 주문 내역 배송방법/추가요청 편집 ── */
@@ -2086,6 +2128,7 @@ function reorder(order){
   }
   orders.unshift(newOrder);
   localStorage.setItem('orders',JSON.stringify(orders));
+  delete _pendingItemEdits[order.id];   // 재주문으로 편집 확정 → 미확정 해제
 
   // 취소 → 신규 주문 순서 보장 (재고: 복원 후 차감)
   fetch(API_URL+'/api/orders/'+encodeURIComponent(order.id)+'/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'cancelled'})})
@@ -2183,6 +2226,7 @@ function _startSSE(){
 }
 
 window.onload=function(){
+  _revertStaleItemEdits();   // 직전 세션의 재주문 미처리 항목편집 원복(물리적 반영 방지)
   loadMenus();
   _startMenuAutoRefresh();
   _startSSE();
