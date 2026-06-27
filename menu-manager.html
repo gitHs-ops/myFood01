@@ -159,7 +159,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
 .img-popup-title{font-size:15px;font-weight:700;color:#1a1a1a;}
 .img-popup-close{background:none;border:none;font-size:20px;color:#aaa;cursor:pointer;padding:2px 6px;border-radius:6px;line-height:1;font-family:inherit;}
 .img-popup-close:hover{background:#f0f0f0;color:#333;}
-.img-preview-wrap{width:100%;aspect-ratio:4/3;border-radius:12px;overflow:hidden;background:#f0faf9;border:1.5px dashed #cde8e7;display:flex;align-items:center;justify-content:center;margin-bottom:14px;}.img-preview-wrap.no-img{aspect-ratio:unset;height:40px;}
+.img-preview-wrap{width:100%;aspect-ratio:4/3;border-radius:12px;overflow:hidden;background:#f0faf9;border:1.5px dashed #cde8e7;display:flex;align-items:center;justify-content:center;margin-bottom:14px;}.img-preview-wrap.no-img{aspect-ratio:unset;height:56px;gap:8px;flex-direction:row;}
 .img-preview-wrap img{width:100%;height:100%;object-fit:cover;}
 .img-placeholder{text-align:center;color:#aaa;font-size:13px;}
 .img-placeholder span{font-size:32px;display:block;margin-bottom:6px;}
@@ -1251,7 +1251,7 @@ function setEditImgPreview(url){
   else{
     var em='🍽';
     if(menuEditTargetId!==null){var _m=_arr(editCtx||'menus').find(function(x){return x.id===menuEditTargetId;});if(_m)em=getMenuEmoji(_m.name,_m.cat);}
-    w.classList.remove('no-img');w.innerHTML='<div class="img-placeholder"><span>'+em+'</span>이미지 없음</div>';
+    w.classList.add('no-img');w.innerHTML='<span style="font-size:26px;line-height:1;">'+em+'</span><span style="font-size:12px;color:#bbb;">이미지 없음</span>';
   }
 }
 function setEditImgStatus(msg,loading){
