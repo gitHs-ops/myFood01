@@ -856,21 +856,28 @@ function saveNewMasterMenu(){
   var desc=document.getElementById('newMenuDesc').value.trim();
   if(!name){alert('메뉴명을 입력해주세요.');return;}
   if(!price){alert('금액을 입력해주세요.');return;}
-  if(allMenus.some(function(m){return (m.name||'').trim()===name;})){
-    if(!confirm('['+name+'] 이(가) 이미 메뉴 창고에 있어요.\n그래도 추가할까요?'))return;
-  }
   var ts=Date.now();
-  var newMaster={id:ts,menuId:null,name:name,cat:cat,price:price,stock:0,child:child,desc:desc,imgUrl:null,count:0,updatedAt:ts};
-  allMenus.push(newMaster);
-  saveAllMenus();
+  var newMaster;
+  var existingIdx=allMenus.findIndex(function(m){return (m.name||'').trim()===name;});
+  if(existingIdx>=0){
+    if(!confirm('['+name+'] 이(가) 이미 메뉴 창고에 있어요.\n그래도 업데이트할까요?'))return;
+    newMaster=allMenus[existingIdx];
+    newMaster.cat=cat;newMaster.price=price;newMaster.child=child;newMaster.desc=desc;newMaster.updatedAt=ts;
+  }else{
+    newMaster={id:ts,menuId:null,name:name,cat:cat,price:price,stock:0,child:child,desc:desc,imgUrl:null,count:0,updatedAt:ts};
+    allMenus.push(newMaster);
+  }
+  var _savedDesc=desc;
+  apiPost('/api/menu/all',deduplicateByName(allMenus),function(e,d){
+    if(e||(d&&!d.success))showToast('⚠️ 마스터 저장 실패: '+(d&&d.error||'서버 오류'));
+  });
   document.getElementById('newMenuOverlay').classList.remove('open');
-  // 추가 폼에 신 메뉴 정보 자동 반영 (오늘 메뉴 추가는 사용자가 직접)
   document.getElementById('menuName').value=name;
   document.getElementById('menuPrice').value=price;
   document.getElementById('menuStock').value=stock;
   document.getElementById('menuCat').value=cat;
   document.getElementById('menuChild').checked=child;
-  document.getElementById('menuDesc').value=desc;
+  document.getElementById('menuDesc').value=_savedDesc;
   _addMenuMode='select';
   _addMenuMasterId=newMaster.id;
   var editBtn=document.getElementById('addMasterEditBtn');
