@@ -1917,6 +1917,7 @@ function _buildOrderCard(o){
 }
 // 주문 상세 팝업 열기 — 클릭한 주문의 카드를 모달에 주입
 function openOrderDetail(id){
+  _detailOrderId=id;
   var orders=JSON.parse(localStorage.getItem('orders')||'[]');
   var o=orders.find(function(x){return x.id===id;});
   if(!o)return;
@@ -1948,6 +1949,7 @@ function closeOrderDetail(){
 }
 // 팝업 UI만 닫기(가드 없이) — 재주문/취소/삭제 확정 후 사용
 function _closeOrderDetailUI(){
+  _detailOrderId=null;
   document.getElementById('orderDetailOverlay').classList.remove('open');
   document.getElementById('orderDetailModal').innerHTML='';
 }
@@ -2002,7 +2004,8 @@ function _activateReorderBtn(id){
 }
 // 주문내역 항목(수량·삭제) 편집 — 재주문 처리 전까지는 미확정(물리적 반영 아님)
 var _pendingItemEdits={};
-function _hasPendingItemEdits(){return Object.keys(_pendingItemEdits).length>0;}
+var _detailOrderId=null;
+function _hasPendingItemEdits(){return _detailOrderId?!!_pendingItemEdits[_detailOrderId]:Object.keys(_pendingItemEdits).length>0;}
 // 미확정 항목편집을 원본(_snap.items)으로 되돌림 (재주문 안 하고 이탈/새로고침 시)
 function _revertPendingItemEdits(){
   var orders=JSON.parse(localStorage.getItem('orders')||'[]');
