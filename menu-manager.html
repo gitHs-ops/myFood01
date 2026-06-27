@@ -814,7 +814,7 @@ function pickAc(el){
     if(ref.price)document.getElementById('menuPrice').value=ref.price;
     if(ref.cat)document.getElementById('menuCat').value=ref.cat;
     document.getElementById('menuChild').checked=!!ref.child;
-    document.getElementById('menuDesc').value=(ref.desc!=null&&!/^\d+$/.test(String(ref.desc).trim()))?ref.desc||'':'';
+    document.getElementById('menuDesc').value=ref.desc||'';
   }
   _updateAddMenuImg();
   document.getElementById('menuPrice').focus();
@@ -1140,7 +1140,7 @@ function openMenuEditPopup(id,ctx){
   document.getElementById('editMenuStock').value=m.stock||0;
   document.getElementById('editMenuCat').value=m.cat||'기타';
   document.getElementById('editMenuChild').checked=!!m.child;
-  document.getElementById('editMenuDesc').value=(m.desc!=null&&/^\d+$/.test(String(m.desc).trim()))?'':(m.desc||'');
+  document.getElementById('editMenuDesc').value=m.desc||'';
   setEditImgPreview(m.imgUrl||null);
   setEditImgStatus('',false);
   document.getElementById('editImgUploadBtn').textContent=m.imgUrl?'📁 사진 변경':'📁 사진 선택';
