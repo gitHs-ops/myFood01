@@ -616,8 +616,9 @@ select.orderer-input{appearance:none;-webkit-appearance:none;background:#fff url
 </div>
 
 <script>
-var CAT_COLOR={'메인':'#1D9E75','반찬':'#378ADD','김치':'#D4537E','밀키트':'#E9A826','기타':'#888780'};
-var CAT_EMOJI={'메인':'🍳','반찬':'🥗','김치':'🥬','밀키트':'📦','기타':'🍽'};
+var CAT_COLOR={'메인':'#1D9E75','한우':'#C0392B','한돈':'#8E44AD','반찬':'#378ADD','김치':'#D4537E','밀키트':'#E9A826','기타':'#888780'};
+var CAT_EMOJI={'메인':'🍳','한우':'🥩','한돈':'🐷','반찬':'🥗','김치':'🥬','밀키트':'📦','기타':'🍽'};
+(function(){try{var s=localStorage.getItem('onban_categories');if(s){JSON.parse(s).forEach(function(c){CAT_COLOR[c.name]=c.color;});}}catch(e){}})();
 // 계좌 정보는 localStorage를 쓰지 않고 항상 구글시트에서 조회 (결제화면 진입 시 갱신).
 // 아래는 시트 조회 실패 시에만 쓰는 임시 기본값.
 var BANK={name:'국민은행',holder:'김현철',account:'118210210117'};

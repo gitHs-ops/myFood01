@@ -407,10 +407,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
     </div>
     <div class="edit-field">
       <label class="edit-label">카테고리</label>
-      <select id="editMenuCat" class="edit-input">
-        <option value="메인">메인</option><option value="반찬">반찬</option>
-        <option value="김치">김치</option><option value="밀키트">밀키트</option><option value="기타">기타</option>
-      </select>
+      <select id="editMenuCat" class="edit-input"></select>
     </div>
     <label class="child-toggle" style="margin-bottom:10px;"><input type="checkbox" id="editMenuChild"> 어린이도 먹을 수 있는 메뉴</label>
     <div class="edit-field"><label class="edit-label">메뉴 설명 (선택)</label><textarea id="editMenuDesc" class="edit-input" rows="2" placeholder="고객 상세 팝업에 표시됩니다" style="resize:vertical;font-family:inherit;"></textarea></div>
@@ -444,10 +441,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
       <button onclick="_setAddMenuNew()" style="background:#1D9E75;color:#fff;border:none;border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">+신 메뉴</button>
     </div>
     <div class="add-grid">
-  <select id="menuCat">
-    <option value="메인">메인</option><option value="반찬">반찬</option>
-    <option value="김치">김치</option><option value="밀키트">밀키트</option><option value="기타">기타</option>
-  </select>
+  <select id="menuCat"></select>
   <div class="num-field">
     <label for="menuName">메뉴명</label>
     <div class="menuname-wrap">
@@ -570,6 +564,19 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
     <button class="btn-setting-save" onclick="saveSendSettings()" style="margin-top:14px;">저장</button>
     <div class="setting-saved" id="settingSaved4">✓ 저장되었습니다</div>
   </div>
+  <div class="setting-card">
+    <div class="setting-title">🏷 카테고리 관리</div>
+    <div id="catSettingList"></div>
+    <button class="btn-add-bank" onclick="addNewCat()" style="margin-top:8px;">+ 카테고리 추가</button>
+    <div style="margin-top:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <button class="btn-setting-save" onclick="saveCatSettings()">저장</button>
+      <div class="setting-saved" id="settingSaved5">✓ 저장되었습니다</div>
+    </div>
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid #e8f5f4;">
+      <div style="font-size:12px;color:#888;margin-bottom:8px;">한우/한돈 접두사가 붙은 메뉴명을 정리하고 카테고리를 자동 설정합니다.</div>
+      <button class="btn-setting-save" style="background:#8E44AD;" onclick="migrateHanPrefix()">🐄 한우/한돈 카테고리 일괄 적용</button>
+    </div>
+  </div>
 </div>
 
 <div id="page-orders" class="page">
@@ -616,10 +623,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
     </div>
     <div class="edit-field">
       <label class="edit-label">카테고리</label>
-      <select id="newMenuCat" class="edit-input">
-        <option value="메인">메인</option><option value="반찬">반찬</option>
-        <option value="김치">김치</option><option value="밀키트">밀키트</option><option value="기타">기타</option>
-      </select>
+      <select id="newMenuCat" class="edit-input"></select>
     </div>
     <label class="child-toggle" style="margin-bottom:10px;"><input type="checkbox" id="newMenuChild"> 어린이도 먹을 수 있는 메뉴</label>
     <div class="edit-field"><label class="edit-label">메뉴 설명 (선택)</label><textarea id="newMenuDesc" class="edit-input" rows="2" placeholder="고객 상세 팝업에 표시됩니다" style="resize:vertical;font-family:inherit;"></textarea></div>
@@ -691,8 +695,22 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
 </div>
 <script>
 var IMGBB_KEY='b5a6e9481bb9cb4791108cf50761a459';
-var CAT_COLOR={'메인':'#1D9E75','반찬':'#378ADD','김치':'#D4537E','밀키트':'#E9A826','기타':'#888780'};
-var VALID_CATS=['메인','반찬','김치','밀키트','기타'];
+var CATS_KEY='onban_categories';
+var DEFAULT_CATS=[
+  {name:'메인',color:'#1D9E75'},
+  {name:'한우',color:'#C0392B'},
+  {name:'한돈',color:'#8E44AD'},
+  {name:'반찬',color:'#378ADD'},
+  {name:'김치',color:'#D4537E'},
+  {name:'밀키트',color:'#E9A826'},
+  {name:'기타',color:'#888780'}
+];
+function getCats(){try{var s=localStorage.getItem(CATS_KEY);if(s)return JSON.parse(s);}catch(e){}return DEFAULT_CATS.map(function(c){return {name:c.name,color:c.color};});}
+function setCats(cats){localStorage.setItem(CATS_KEY,JSON.stringify(cats));}
+var CAT_COLOR={};var VALID_CATS=[];
+function _buildCatMaps(){CAT_COLOR={};VALID_CATS=[];getCats().forEach(function(c){CAT_COLOR[c.name]=c.color;VALID_CATS.push(c.name);});}
+_buildCatMaps();
+function populateCatSelect(selId,selectedVal){var sel=document.getElementById(selId);if(!sel)return;sel.innerHTML=VALID_CATS.map(function(c){return '<option value="'+c+'"'+(c===selectedVal?' selected':'')+'>'+c+'</option>';}).join('');}
 var menus=[],filterCat='전체',filterAllCat='전체',workDate='',calViewYear,calViewMonth,imgTargetId=null,parsedMenus=[],pendingImgUrl=null,menuEditTargetId=null,editPendingImgUrl=null;
 var _menuDirty=false;
 var imgCtx='menus',editCtx='menus';
@@ -1160,7 +1178,7 @@ function openMenuEditPopup(id,ctx){
   document.getElementById('editMenuName').value=m.name||'';
   document.getElementById('editMenuPrice').value=m.price||0;
   document.getElementById('editMenuStock').value=m.stock||0;
-  document.getElementById('editMenuCat').value=m.cat||'기타';
+  populateCatSelect('editMenuCat',m.cat||'기타');
   document.getElementById('editMenuChild').checked=!!m.child;
   document.getElementById('editMenuDesc').value=m.desc||'';
   setEditImgPreview(m.imgUrl||null);
@@ -1781,7 +1799,7 @@ function openHistPreview(date){
     });
 }
 function renderPreviewBody(menus){
-  var catOrder=['메인','반찬','밀키트','김치','기타'];
+  var catOrder=VALID_CATS.slice();
   var catMap={};
   menus.forEach(function(m){var c=m.cat||'기타';if(!catMap[c])catMap[c]=[];catMap[c].push(m);});
   var html=catOrder.filter(function(c){return catMap[c];}).map(function(cat){
@@ -1917,7 +1935,7 @@ function switchPage(name){
     renderHistory();
   }
   if(name==='orders')renderOrders();
-  if(name==='settings')loadSettingsForm();
+  if(name==='settings'){loadSettingsForm();renderCatSettings();}
   _updateSaveBtn();
 }
 function guessCategory(name){if(/밀키트/.test(name))return '밀키트';if(/김치|깍두기|깻잎|열무|소박이|겉절이|쪽파/.test(name))return '김치';if(/국|탕|찌개|전골|찜|구이|볶음밥|덮밥|스테이크|육전|수육|갈비|삼겹|닭|오리|아구|조개/.test(name))return '메인';if(/조림|무침|볶음|샐러드|나물|장조림|스프|뭇국|미역국/.test(name))return '반찬';return '기타';}
@@ -1942,7 +1960,7 @@ function parseKakao(){
   });
 
   document.getElementById('parsedItems').innerHTML=parsedMenus.map(function(m,i){
-    var opts=Object.keys(CAT_COLOR).map(function(c){return '<option value="'+c+'"'+(c===m.cat?' selected':'')+'>'+c+'</option>';}).join('');
+    var opts=VALID_CATS.map(function(c){return '<option value="'+c+'"'+(c===m.cat?' selected':'')+'>'+c+'</option>';}).join('');
     return '<div class="parse-item"><span class="pi-name">'+m.name+(m.child?' 👧':'')+'</span><span class="pi-qty">'+m.price.toLocaleString()+'천원</span><select onchange="parsedMenus['+i+'].cat=this.value">'+opts+'</select></div>';
   }).join('');
   document.getElementById('parseResult').style.display='block';
@@ -2693,6 +2711,44 @@ function saveSendSettings(){
   });
 }
 
+/* ── 카테고리 관리 ── */
+var _editingCats=null;
+function renderCatSettings(){
+  var cats=getCats();
+  _editingCats=cats.map(function(c){return {name:c.name,color:c.color};});
+  document.getElementById('catSettingList').innerHTML=_editingCats.map(function(c,i){
+    return '<div class="setting-row" style="gap:6px;">'
+      +'<input type="color" value="'+c.color+'" style="width:34px;height:34px;border:none;border-radius:6px;cursor:pointer;padding:2px;" onchange="_editingCats['+i+'].color=this.value">'
+      +'<input class="setting-input" style="flex:1;" value="'+c.name.replace(/"/g,'&quot;')+'" oninput="_editingCats['+i+'].name=this.value.trim()">'
+      +'<button onclick="removeCatRow('+i+')" style="padding:4px 10px;border:1.5px solid #ddd;border-radius:8px;background:#fff;color:#999;cursor:pointer;font-size:13px;">✕</button>'
+      +'</div>';
+  }).join('');
+}
+function addNewCat(){
+  if(!_editingCats)_editingCats=getCats().map(function(c){return {name:c.name,color:c.color};});
+  _editingCats.push({name:'새 카테고리',color:'#888888'});
+  renderCatSettings();
+}
+function removeCatRow(i){_editingCats.splice(i,1);renderCatSettings();}
+function saveCatSettings(){
+  if(!_editingCats)return;
+  var cats=_editingCats.filter(function(c){return c.name;});
+  setCats(cats);_buildCatMaps();
+  populateCatSelect('menuCat','메인');populateCatSelect('newMenuCat','메인');
+  renderFilterTabs();renderAllFilterTabs();
+  var el=document.getElementById('settingSaved5');el.style.display='block';
+  setTimeout(function(){el.style.display='none';},2000);
+}
+function migrateHanPrefix(){
+  var count=0;
+  allMenus.forEach(function(m){
+    if(/^한우/.test(m.name)){m.cat='한우';m.name=m.name.replace(/^한우\s*/,'');touch(m);count++;}
+    else if(/^한돈/.test(m.name)){m.cat='한돈';m.name=m.name.replace(/^한돈\s*/,'');touch(m);count++;}
+  });
+  if(!count){alert('한우/한돈 접두사 메뉴가 없습니다.');return;}
+  saveAllMenus();renderAllMenus();renderMenuList();
+  alert(count+'개 메뉴 갱신 완료 (이름 정리 + 카테고리 설정)');
+}
 function loadSettingsForm(){
   function fillForm(){
     var s=getSettings();
@@ -2786,6 +2842,7 @@ window.onload=function(){
   var _goto=localStorage.getItem('mm_goto');if(_goto){localStorage.removeItem('mm_goto');setTimeout(function(){switchPage(_goto);},400);}
   // 시작 시 서버에서 설정 동기화 (localStorage stale 방지)
   loadSettingsFromSheet(function(){});
+  populateCatSelect('menuCat','메인');populateCatSelect('newMenuCat','메인');
   workDate=toISO(new Date());loadMenus(workDate);_startMenuSSE(workDate);
   _updateSaveBtn();
   _watchOverlaysForSaveBtn();
