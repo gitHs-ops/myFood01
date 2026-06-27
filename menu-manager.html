@@ -641,6 +641,15 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
     <button style="margin-top:8px;width:100%;background:#eee;color:#555;border:none;border-radius:10px;padding:9px;font-size:13px;cursor:pointer;font-family:inherit;" onclick="closeSendToTodayPopup()">취소</button>
   </div>
 </div>
+<!-- 메뉴 병합 모달 -->
+<div class="cal-overlay" id="mergeOverlay" onclick="if(event.target===this)closeMergeModal()">
+  <div style="background:#fff;border-radius:16px;padding:22px;width:340px;max-width:93vw;" onclick="event.stopPropagation()">
+    <div style="font-size:15px;font-weight:700;color:#1a1a1a;margin-bottom:6px;">🔀 중복 메뉴 병합</div>
+    <p style="font-size:13px;color:#666;margin-bottom:14px;">남길 메뉴를 선택하세요. 다른 하나는 삭제되고,<br>모든 날짜의 주문기록이 남길 메뉴로 합쳐집니다.</p>
+    <div id="mergeList"></div>
+    <button style="margin-top:6px;width:100%;background:#eee;color:#555;border:none;border-radius:10px;padding:9px;font-size:13px;cursor:pointer;font-family:inherit;" onclick="closeMergeModal()">취소</button>
+  </div>
+</div>
 <!-- 미리보기 모달 -->
 <div class="cal-overlay" id="histPreviewOverlay" onclick="if(event.target===this)this.classList.remove('open')">
   <div style="background:#fff;border-radius:16px;padding:20px 18px;width:320px;max-height:80vh;display:flex;flex-direction:column;" onclick="event.stopPropagation()">
@@ -1591,6 +1600,7 @@ function renderAllMenus(){
     pageCtrlHtml()+
     '<div style="margin-top:12px;display:flex;gap:8px;">'+
     '<button id="sendToTodayBtn" class="btn btn-add" style="flex:1;background:#1D9E75;font-size:13px;padding:11px 6px;display:flex;align-items:center;justify-content:center;gap:5px;opacity:.35;cursor:not-allowed;" disabled onclick="openSendToTodayPopup()"><span style="font-size:16px;">📤</span>선택항목을 오늘의 메뉴로 보내기</button>'+
+    '<button id="mergeBtn" class="btn" style="flex:0 0 auto;background:#7c3aed;color:#fff;border:none;border-radius:10px;font-size:13px;padding:11px 12px;display:none;align-items:center;justify-content:center;gap:4px;cursor:pointer;font-family:inherit;font-weight:700;" onclick="openMergeModal()">🔀 병합</button>'+
     '</div>';
 }
 function gotoAllPage(p){
@@ -1634,6 +1644,9 @@ function updateAllMenuBtns(){
   sendBtn.disabled=!has;
   sendBtn.style.opacity=has?'':'0.35';
   sendBtn.style.cursor=has?'pointer':'not-allowed';
+  // 병합: 정확히 2개 선택 시만 노출
+  var mergeBtn=document.getElementById('mergeBtn');
+  if(mergeBtn)mergeBtn.style.display=(selectedAllIds.size===2)?'flex':'none';
 }
 function openSendToTodayPopup(){
   if(!selectedAllIds.size){showToast('메뉴를 선택해주세요.');return;}
@@ -1651,6 +1664,39 @@ function openSendToTodayPopup(){
 }
 function closeSendToTodayPopup(){
   document.getElementById('sendToTodayOverlay').classList.remove('open');
+}
+// ── 중복 메뉴 병합 ──
+function openMergeModal(){
+  var sel=Array.from(selectedAllIds).map(function(id){return allMenus.find(function(m){return m.id===id;});}).filter(Boolean);
+  if(sel.length!==2){showToast('병합은 메뉴 2개를 선택하세요.');return;}
+  document.getElementById('mergeList').innerHTML=sel.map(function(m,i){
+    var other=sel[1-i];
+    return '<div style="border:1px solid #eee;border-radius:10px;padding:10px 12px;margin-bottom:10px;">'+
+      '<div style="font-size:14px;font-weight:700;color:#1a1a1a;margin-bottom:6px;">'+m.name+'</div>'+
+      '<button class="btn btn-add" style="width:100%;font-size:13px;padding:9px;" '+
+        'onclick="doMerge('+m.id+','+other.id+')">✅ 이 메뉴로 통일 (다른 하나 삭제)</button>'+
+      '</div>';
+  }).join('');
+  document.getElementById('mergeOverlay').classList.add('open');
+}
+function closeMergeModal(){document.getElementById('mergeOverlay').classList.remove('open');}
+function doMerge(targetId,sourceId){
+  var target=allMenus.find(function(m){return m.id===targetId;});
+  var source=allMenus.find(function(m){return m.id===sourceId;});
+  if(!target||!source){showToast('메뉴를 찾을 수 없어요.');return;}
+  if(!confirm("'"+source.name+"' 을(를) '"+target.name+"' 으로 합칠까요?\n'"+source.name+"' 은(는) 삭제됩니다."))return;
+  apiPost('/api/menu/master/merge',{
+    sourceId:source.menuId||0,sourceName:source.name,
+    targetId:target.menuId||0,targetName:target.name
+  },function(e,d){
+    if(e||(d&&!d.success)){showToast('⚠️ 병합 실패: '+((d&&d.error)||'서버 오류'));return;}
+    // 로컬 정리: source 제거
+    allMenus=allMenus.filter(function(m){return m.id!==sourceId;});
+    selectedAllIds.clear();
+    closeMergeModal();
+    importAllMenusFromSheet(function(){renderAllMenus();});  // 서버 최신 상태 재동기화
+    showToast("'"+source.name+"' → '"+target.name+"' 병합 완료!");
+  });
 }
 function confirmSendToToday(mode){
   var selected=Array.from(selectedAllIds).map(function(id){return allMenus.find(function(m){return m.id===id;});}).filter(Boolean);

@@ -120,6 +120,35 @@ app.get('/api/debug/menu-search', async (req, res) => {
   } catch(e) { err(res, e.message); }
 });
 
+// 마스터 병합 (POST /api/menu/master/merge)
+// source를 target으로 합침: daily_menus를 target으로 재연결 후 source 삭제
+app.post('/api/menu/master/merge', async (req, res) => {
+  try {
+    const body = req.body.data || req.body;
+    const sourceId = body.sourceId || 0, sourceName = body.sourceName || '';
+    const targetId = body.targetId || 0, targetName = body.targetName || '';
+    if ((!sourceId && !sourceName) || (!targetId && !targetName)) return err(res, '병합 대상 부족', 400);
+    if (sourceId && targetId && sourceId === targetId) return err(res, '같은 메뉴', 400);
+    const conn = await pool.getConnection();
+    await conn.beginTransaction();
+    try {
+      // 1) target의 진짜 id 확보(없으면 name으로 조회)
+      let tId = targetId;
+      if (!tId) { const [[r]] = await conn.execute('SELECT id FROM menus WHERE name=?', [targetName]); tId = r ? r.id : 0; }
+      if (!tId) { await conn.rollback(); conn.release(); return err(res, 'target 없음', 404); }
+      // 2) source를 참조(menu_id 또는 name)하는 daily_menus를 target으로 재연결 + 이름 통일
+      await conn.execute(
+        'UPDATE daily_menus SET menu_id=?, name=? WHERE menu_id=? OR name=?',
+        [tId, targetName, sourceId || 0, sourceName]
+      );
+      // 3) source 마스터 삭제 (id 우선, 없으면 name)
+      await conn.execute('DELETE FROM menus WHERE (id=? OR name=?) AND id<>?', [sourceId || 0, sourceName, tId]);
+      await conn.commit(); conn.release();
+      ok(res, { merged: true, targetId: tId });
+    } catch(e) { await conn.rollback(); conn.release(); throw e; }
+  } catch(e) { err(res, e.message); }
+});
+
 // 마스터 단건 삭제 (POST /api/menu/master/delete)
 // 일자별 목록(daily_menus)이 참조 중이면 삭제 차단하고 등록된 날짜 반환
 app.post('/api/menu/master/delete', async (req, res) => {
