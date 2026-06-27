@@ -2256,8 +2256,8 @@ function _buildAdminOrderCard(order){
 
       var btnCnl=document.createElement('button');
       btnCnl.className='btn-cancel-order';
-      btnCnl.textContent='주문취소';
-      btnCnl.onclick=function(){cancelOrder(order.id);};
+      btnCnl.textContent='닫기';
+      btnCnl.onclick=function(){closeAdminOrderDetail();};
 
       actions.appendChild(btnCfm);
       actions.appendChild(btnCnl);
@@ -2275,8 +2275,8 @@ function _buildAdminOrderCard(order){
 
       var btnCnlC=document.createElement('button');
       btnCnlC.className='btn-cancel-order';
-      btnCnlC.textContent='주문취소';
-      btnCnlC.onclick=function(){cancelOrder(order.id);};
+      btnCnlC.textContent='닫기';
+      btnCnlC.onclick=function(){closeAdminOrderDetail();};
 
       actionsC.appendChild(btnDlv);
       actionsC.appendChild(btnCnlC);
