@@ -1578,17 +1578,13 @@ function renderAllMenus(){
       var chEl=m.child?' <span style="font-size:13px;">&#128103;</span>':'';
       var chk=selectedAllIds.has(m.id)?' checked':'';
       var num='<span style="font-size:11px;color:#bbb;min-width:22px;text-align:right;flex-shrink:0;">'+(startNo+i)+'</span>';
-      return '<div class="menu-item ml-2line">'+
-        '<div class="mi-row1">'+num+
+      return '<div class="menu-item">'+num+
           '<input type="checkbox" class="menu-cb" id="cb_'+m.id+'" value="'+m.id+'"'+chk+' onchange="toggleAllSel(this)">'+
           '<div class="cat-dot" style="background:'+(CAT_COLOR[m.cat]||'#888')+'"></div>'+imgEl+
           '<div class="name"><span class="name-edit" onclick="openMenuEditPopup('+m.id+',\'all\')">'+m.name+chEl+' <span class="edit-pen">✏️</span></span></div>'+
-        '</div>'+
-        '<div class="mi-row2">'+
           '<div class="price-wrap"><span class="price-display" id="apd_'+m.id+'" onclick="startEditAllPrice('+m.id+')">'+(m.price||0).toLocaleString()+'천원</span><input class="price-input" id="api_'+m.id+'" type="number" min="1" value="'+(m.price||0)+'" onblur="commitAllPrice('+m.id+')" onkeydown="if(event.key===\'Enter\')commitAllPrice('+m.id+');if(event.key===\'Escape\')cancelAllPrice('+m.id+');"></div>'+
           '<div class="qty-ctrl"><button class="qty-btn" onclick="changeAllStock('+m.id+',-1)">-</button><span class="qty">'+(m.stock||0)+'</span><button class="qty-btn" onclick="changeAllStock('+m.id+',1)">+</button></div>'+
           '<button class="del-btn" onclick="deleteAllMenu('+m.id+')">&#10005;</button>'+
-        '</div>'+
       '</div>';
     }).join('')+
     '</div>'+
