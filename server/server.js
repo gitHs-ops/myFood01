@@ -73,6 +73,11 @@ app.post('/api/menu/all', async (req, res) => {
             `UPDATE menus SET name=?,cat=?,price=?,stock=?,child=?,img_url=?,menu_desc=?,count=?,updated_at=? WHERE id=?`,
             [m.name, m.cat||'기타', m.price||0, m.stock||0, m.child?1:0, m.imgUrl||'', m.desc||'', m.count||0, m.updatedAt||0, m.menuId]
           );
+          // rename 전파: 연결된 daily_menus의 비정규화 name도 갱신(옛 이름 잔존·중복 방지)
+          await conn.execute(
+            `UPDATE daily_menus SET name=? WHERE menu_id=? AND name<>?`,
+            [m.name, m.menuId, m.name]
+          );
         } else {
           await conn.execute(
             `INSERT INTO menus (name,cat,price,stock,child,img_url,menu_desc,count,updated_at)
