@@ -295,6 +295,28 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
   margin-top:6px;
 }
 .order-empty{text-align:center;padding:40px 20px;color:#aaa;font-size:14px;}
+/* ── 주문 리스트 행 ── */
+.order-li{display:flex;align-items:center;gap:10px;background:#fff;border-radius:14px;box-shadow:0 2px 8px rgba(8,98,102,.08);padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:transform .1s;border-left:4px solid #cde8e7;}
+.order-li:active{transform:scale(.99);}
+.order-li.pending{border-left-color:#E9A826;}
+.order-li.confirmed{border-left-color:#1D9E75;}
+.order-li.cancelled{border-left-color:#ccc;opacity:.65;}
+.order-li.delivered{border-left-color:#086266;}
+.order-li.addreq-new{box-shadow:0 0 0 2px #086266,0 2px 8px rgba(8,98,102,.12);}
+.order-li-main{flex:1;min-width:0;}
+.order-li-top{display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap;}
+.order-li-name{font-size:14px;font-weight:700;color:#1a1a1a;}
+.order-li-time{font-size:11px;color:#aaa;}
+.order-li-sum{display:flex;align-items:center;gap:4px;font-size:13px;color:#555;}
+.order-li-sum-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;}
+.order-li-arrow{font-size:18px;color:#ccc;flex-shrink:0;}
+.order-li-right{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0;}
+.order-li-total{font-size:14px;font-weight:800;color:#086266;white-space:nowrap;}
+/* ── 주문 상세 팝업 ── */
+.adm-order-overlay{position:fixed;inset:0;background:rgba(0,0,0,.52);z-index:700;display:none;align-items:flex-start;justify-content:center;padding:18px 8px 40px;overflow-y:auto;}
+.adm-order-overlay.open{display:flex;}
+.adm-order-popup{position:relative;width:100%;max-width:480px;}
+.adm-order-close{display:block;margin:0 14px 8px auto;width:34px;height:34px;border-radius:50%;border:none;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.18);font-size:15px;color:#666;cursor:pointer;}
 .orders-refresh-btn{font-size:11px;font-weight:600;color:#086266;background:#e0f7f6;border:1px solid #9adcda;border-radius:20px;padding:3px 10px;cursor:pointer;white-space:nowrap;animation:orders-blink 2s ease-in-out infinite;}
 @keyframes orders-blink{0%,100%{opacity:1;}50%{opacity:.4;}}
 .order-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:16px;}
@@ -596,6 +618,13 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
     <div class="order-stats" id="orderStats"></div>
     <div class="order-filter-tabs" id="orderFilterTabs"></div>
     <div id="orderList"></div>
+  </div>
+</div>
+<!-- 주문 상세 팝업 -->
+<div class="adm-order-overlay" id="admOrderOverlay" onclick="if(event.target===this)closeAdminOrderDetail()">
+  <div class="adm-order-popup">
+    <button class="adm-order-close" onclick="closeAdminOrderDetail()">✕</button>
+    <div id="admOrderDetailContent"></div>
   </div>
 </div>
 
@@ -2117,6 +2146,37 @@ function renderOrdersList(today,todayOrders){
   el.innerHTML='';
   filtered.forEach(function(order){
     var isNewAddReq=_isNewAddReq(order);
+    var statusText={pending:'대기중',confirmed:'주문접수',cancelled:'취소됨',delivered:'배송완료'};
+    var itemSum=order.items.reduce(function(s,i){return s+(i.price||0)*(i.qty||1);},0);
+    var summary=(order.items[0]?order.items[0].name:'')+(order.items.length>1?' 외 '+(order.items.length-1)+'건':'');
+    var row=document.createElement('div');
+    row.className='order-li '+order.status+(isNewAddReq?' addreq-new':'');
+    row.innerHTML=
+      '<div class="order-li-main">'
+        +'<div class="order-li-top"><span class="order-status status-'+order.status+'">'+statusText[order.status]+'</span>'+(order.isReorder?'<span style="font-size:10px;font-weight:700;background:#e0d4f7;color:#5b21b6;border-radius:999px;padding:2px 7px;">재주문</span>':'')+(isNewAddReq?'<span style="font-size:10px;font-weight:700;background:#c8ecea;color:#044f52;border-radius:999px;padding:2px 7px;">💬새요청</span>':'')+'<span class="order-li-name">'+order.name+'</span><span class="order-li-time">'+(order.phone?fmtPhone(order.phone)+' · ':'')+fmtDateTime(order.date,order.time)+'</span></div>'
+        +'<div class="order-li-sum"><span class="order-li-sum-text">'+summary+'</span><span class="order-li-arrow">›</span></div>'
+      +'</div>'
+      +'<div class="order-li-right"><span class="order-li-total">'+order.total.toLocaleString()+'천원</span></div>';
+    (function(oid){row.onclick=function(){openAdminOrderDetail(oid);};})(order.id);
+    el.appendChild(row);
+  });
+  updateAddReqBadge(todayOrders);
+}
+
+/* ── 주문 상세 팝업 ── */
+function openAdminOrderDetail(id){
+  var order=_ordersCache[id];if(!order)return;
+  var content=document.getElementById('admOrderDetailContent');
+  content.innerHTML='';
+  content.appendChild(_buildAdminOrderCard(order));
+  document.getElementById('admOrderOverlay').classList.add('open');
+}
+function closeAdminOrderDetail(){
+  document.getElementById('admOrderOverlay').classList.remove('open');
+  document.getElementById('admOrderDetailContent').innerHTML='';
+}
+function _buildAdminOrderCard(order){
+    var isNewAddReq=_isNewAddReq(order);
     var card=document.createElement('div');
     card.className='order-card '+order.status+(isNewAddReq?' addreq-new':'');
     card.id='ocard_'+order.id;
@@ -2228,9 +2288,7 @@ function renderOrdersList(today,todayOrders){
       card.appendChild(actionsD);
     }
 
-    el.appendChild(card);
-  });
-  updateAddReqBadge(todayOrders);
+    return card;
 }
 
 function setOrderFilter(f){orderFilter=f;renderOrders();}
@@ -2359,6 +2417,7 @@ function confirmOrder(id){
   o.status='confirmed';
   saveOrders(orders);
   _reRenderFromCache();
+  closeAdminOrderDetail();
   fetch(API_URL+'/api/orders/'+encodeURIComponent(id)+'/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'confirmed'})})
     .then(function(){renderOrders();}).catch(function(){});
   // 고객에게 주문접수 알림톡 (실패시 SMS 대체)
@@ -2393,6 +2452,7 @@ function deliverOrder(id){
   o.status='delivered';
   saveOrders(orders);
   _reRenderFromCache();
+  closeAdminOrderDetail();
   fetch(API_URL+'/api/orders/'+encodeURIComponent(id)+'/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'delivered'})})
     .then(function(){renderOrders();}).catch(function(){});
   if(o.phone){
@@ -2412,6 +2472,7 @@ function cancelOrder(id){
   o.status='cancelled';
   saveOrders(orders);
   _reRenderFromCache();
+  closeAdminOrderDetail();
   fetch(API_URL+'/api/orders/'+encodeURIComponent(id)+'/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'cancelled'})})
     .then(function(){if(o.date===workDate){loadMenus(workDate);}renderOrders();})
     .catch(function(){});
@@ -2426,11 +2487,8 @@ function cancelOrder(id){
 
 function deleteOrder(id){
   if(!confirm('이 주문을 삭제할까요?'))return;
+  closeAdminOrderDetail();
   delete _ordersCache[id];
-  // DOM 카드 즉시 제거
-  var card=document.getElementById('ocard_'+id);
-  if(card)card.remove();
-  // 통계/필터 탭 갱신 (현재 캐시 기준)
   var remaining=Object.values(_ordersCache);
   var today=workDate||toISO(new Date());
   renderOrdersList(today,remaining);
