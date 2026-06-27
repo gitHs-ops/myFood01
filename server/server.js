@@ -193,7 +193,8 @@ app.get('/api/menu/:date', async (req, res) => {
          COALESCE(m.price,m2.price,d.price) AS price,
          d.stock,
          COALESCE(m.child,m2.child,d.child) AS child,
-         COALESCE(m.img_url,m2.img_url,d.img_url) AS imgUrl,
+         COALESCE(m.img_url,m2.img_url) AS imgUrl,
+         COALESCE(m.icon,m2.icon) AS icon,
          COALESCE(m.menu_desc,m2.menu_desc) AS \`desc\`
        FROM daily_menus d
        LEFT JOIN menus m  ON m.id=d.menu_id
@@ -248,8 +249,8 @@ app.post('/api/menu/daily', async (req, res) => {
         }
         // 일자별: menu_id + 폴백용 기존 컬럼 동시 저장
         await conn.execute(
-          'INSERT INTO daily_menus (date,menu_id,name,cat,price,stock,child,img_url) VALUES (?,?,?,?,?,?,?,?)',
-          [date, menuId, m.name, m.cat||'기타', m.price||0, m.stock||0, m.child?1:0, m.imgUrl||'']
+          'INSERT INTO daily_menus (date,menu_id,name,cat,price,stock,child) VALUES (?,?,?,?,?,?,?)',
+          [date, menuId, m.name, m.cat||'기타', m.price||0, m.stock||0, m.child?1:0]
         );
       }
     }
@@ -580,7 +581,6 @@ async function initDB() {
       price DECIMAL(6,1) DEFAULT 0,
       stock INT DEFAULT 0,
       child TINYINT(1) DEFAULT 0,
-      img_url VARCHAR(1000) DEFAULT '',
       INDEX idx_date (date),
       INDEX idx_menu (menu_id)
     )`,
@@ -697,6 +697,14 @@ async function initDB() {
       } catch(e){ console.warn('CSV 읽기 실패(무시):', e.message); }
       await conn.execute(`INSERT IGNORE INTO settings(k,v) VALUES('icon_col_v2','done')`).catch(()=>{});
       console.log('icon 컬럼 마이그레이션 완료');
+    }
+    // daily_menus img_url 컬럼 제거 (이미지는 menus 마스터에서만 관리)
+    const [[dailyImgMig]] = await conn.execute(`SELECT v FROM settings WHERE k='daily_no_imgurl_v1'`).catch(()=>[[null]]);
+    if(!dailyImgMig){
+      const [[imgCol]] = await conn.execute(`SHOW COLUMNS FROM daily_menus LIKE 'img_url'`).catch(()=>[[null]]);
+      if(imgCol){ await conn.execute(`ALTER TABLE daily_menus DROP COLUMN img_url`).catch(()=>{}); }
+      await conn.execute(`INSERT IGNORE INTO settings(k,v) VALUES('daily_no_imgurl_v1','done')`).catch(()=>{});
+      console.log('daily_menus img_url 컬럼 제거 완료');
     }
     console.log('DB 테이블 초기화 완료');
   } finally {
