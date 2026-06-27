@@ -744,7 +744,7 @@ function setCats(cats){localStorage.setItem(CATS_KEY,JSON.stringify(cats));}
 var CAT_COLOR={};var VALID_CATS=[];
 function _buildCatMaps(){CAT_COLOR={};VALID_CATS=[];getCats().forEach(function(c){CAT_COLOR[c.name]=c.color;VALID_CATS.push(c.name);});}
 _buildCatMaps();
-function populateCatSelect(selId,selectedVal){var sel=document.getElementById(selId);if(!sel)return;sel.innerHTML=VALID_CATS.map(function(c){return '<option value="'+c+'"'+(c===selectedVal?' selected':'')+'>'+c+'</option>';}).join('');}
+function populateCatSelect(selId,selectedVal,withAll){var sel=document.getElementById(selId);if(!sel)return;var allOpt=withAll?'<option value="전체"'+(selectedVal==='전체'?' selected':'')+'>전체</option>':'';sel.innerHTML=allOpt+VALID_CATS.map(function(c){return '<option value="'+c+'"'+(c===selectedVal?' selected':'')+'>'+c+'</option>';}).join('');}
 var menus=[],filterCat='전체',filterAllCat='전체',workDate='',calViewYear,calViewMonth,imgTargetId=null,parsedMenus=[],pendingImgUrl=null,menuEditTargetId=null,editPendingImgUrl=null;
 var _menuDirty=false;
 var imgCtx='menus',editCtx='menus';
@@ -835,6 +835,7 @@ function applyImportedMenus(imported,mode){
 // useCat=true: 카테고리 필터 적용(타이핑용), false: 전체(▾버튼용)
 function acNames(useCat){
   var cat=useCat?((document.getElementById('menuCat')||{}).value||''):'';
+  if(cat==='전체')cat='';
   var names=allMenus.filter(function(m){return !cat||m.cat===cat;}).map(function(m){return m.name.trim();}).filter(Boolean);
   menus.forEach(function(m){if(m.name&&(!cat||m.cat===cat)&&names.indexOf(m.name.trim())<0)names.push(m.name.trim());});
   names.sort(function(a,b){return a.localeCompare(b,'ko',{numeric:true});});
@@ -1100,6 +1101,7 @@ function addMenu(){
   var desc=document.getElementById('menuDesc').value.trim();
   if(!name){alert('메뉴명을 입력해주세요.');return;}
   if(!price){alert('금액을 입력해주세요.');return;}
+  if(cat==='전체'){alert('카테고리를 선택해주세요.');return;}
   // 현재 목록 중복 확인
   if(menus.some(function(m){return m.name.trim()===name;})){
     if(!confirm('['+name+']이(가) 이미 목록에 있어요.\n그래도 추가할까요?'))return;
@@ -2804,7 +2806,7 @@ function saveCatSettings(){
   if(!_editingCats)return;
   var cats=_editingCats.filter(function(c){return c.name;});
   setCats(cats);_buildCatMaps();
-  populateCatSelect('menuCat','메인');populateCatSelect('newMenuCat','메인');
+  populateCatSelect('menuCat','전체',true);populateCatSelect('newMenuCat','메인');
   renderFilterTabs();renderAllFilterTabs();
   var el=document.getElementById('settingSaved5');el.style.display='block';
   setTimeout(function(){el.style.display='none';},2000);
@@ -2971,7 +2973,7 @@ window.onload=function(){
   var _goto=localStorage.getItem('mm_goto');if(_goto){localStorage.removeItem('mm_goto');setTimeout(function(){switchPage(_goto);},400);}
   // 시작 시 서버에서 설정 동기화 (localStorage stale 방지)
   loadSettingsFromSheet(function(){});
-  populateCatSelect('menuCat','메인');populateCatSelect('newMenuCat','메인');
+  populateCatSelect('menuCat','전체',true);populateCatSelect('newMenuCat','메인');
   workDate=toISO(new Date());loadMenus(workDate);_startMenuSSE(workDate);
   _updateSaveBtn();
   _watchOverlaysForSaveBtn();
