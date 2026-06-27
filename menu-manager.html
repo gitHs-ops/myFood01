@@ -54,6 +54,8 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
 .legend{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;}
 .legend-item{display:flex;align-items:center;gap:5px;font-size:12px;color:#555;cursor:pointer;border-radius:20px;padding:4px 10px;border:1.5px solid transparent;transition:background .12s,border-color .12s;}
 .legend-item:hover{background:#e8f5f4;}
+.legend-item.legend-readonly{cursor:default;pointer-events:none;}
+.legend-item.legend-readonly:hover{background:transparent;}
 .legend-item.active{background:#086266;color:#fff;border-color:#086266;}
 .legend-item.active .legend-dot{background:#fff!important;}
 .legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
@@ -1642,7 +1644,7 @@ function renderAllFilterTabs(){
   if(!el)return;
   // 범례만 표시 — 클릭 없음, 필터는 드롭다운에서
   el.innerHTML=VALID_CATS.map(function(c){
-    return '<div class="legend-item"><div class="legend-dot" style="background:'+(CAT_COLOR[c]||'#888')+'"></div>'+c+'</div>';
+    return '<div class="legend-item legend-readonly"><div class="legend-dot" style="background:'+(CAT_COLOR[c]||'#888')+'"></div>'+c+'</div>';
   }).join('');
   var ft=document.getElementById('allFilterTabs');if(ft)ft.style.display='none';
 }
