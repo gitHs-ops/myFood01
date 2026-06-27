@@ -132,7 +132,7 @@ app.get('/api/menu/:date', async (req, res) => {
          d.stock,
          COALESCE(m.child,d.child) AS child,
          COALESCE(m.img_url,d.img_url) AS imgUrl,
-         m.menu_desc AS `desc`
+         m.menu_desc AS \`desc\`
        FROM daily_menus d LEFT JOIN menus m ON d.menu_id=m.id
        WHERE d.date=? ORDER BY d.id`,
       [req.params.date]
