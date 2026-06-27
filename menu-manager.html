@@ -1579,7 +1579,14 @@ function deleteAllMenu(id){
   apiPost('/api/menu/master/delete',{id:m.menuId||0,name:m.name},function(e,d){
     if(e){showToast('⚠️ 삭제 실패: 서버 오류');return;}
     if(d&&d.blocked){
-      alert('['+m.name+'] 은(는) 등록된 메뉴 목록에 있어 삭제할 수 없어요.\n먼저 해당 날짜 목록에서 제거하세요.'+((d.dates&&d.dates.length)?'\n\n등록된 날짜: '+d.dates.join(', '):''));
+      var dateStr=(d.dates&&d.dates.length)?'\n등록된 날짜: '+d.dates.join(', '):'';
+      if(!confirm('['+m.name+'] 은(는) 사용 중인 메뉴예요.'+dateStr+'\n\n강제로 모두 삭제해도 되나요?'))return;
+      apiPost('/api/menu/master/delete',{id:m.menuId||0,name:m.name,force:true},function(e2,d2){
+        if(e2||!(d2&&d2.success)){showToast('⚠️ 강제 삭제 실패');return;}
+        allMenus=allMenus.filter(function(x){return x.id!==id;});
+        renderAllMenus();
+        showToast('['+m.name+'] 강제 삭제 완료.');
+      });
       return;
     }
     allMenus=allMenus.filter(function(x){return x.id!==id;});

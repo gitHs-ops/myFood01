@@ -133,17 +133,22 @@ app.post('/api/menu/master/merge', async (req, res) => {
 });
 
 // 마스터 단건 삭제 (POST /api/menu/master/delete)
-// 일자별 목록(daily_menus)이 참조 중이면 삭제 차단하고 등록된 날짜 반환
+// force:true 이면 daily_menus에서도 제거 후 강제 삭제
 app.post('/api/menu/master/delete', async (req, res) => {
   try {
     const body = req.body.data || req.body;
     const id = body.id || 0, name = body.name || '';
-    const [dates] = await pool.execute(
-      "SELECT DISTINCT DATE_FORMAT(date,'%Y-%m-%d') AS d FROM daily_menus WHERE menu_id=? OR name=? ORDER BY d DESC",
-      [id, name]
-    );
-    if (dates.length) {
-      return res.json({ success: false, blocked: true, dates: dates.map(r => r.d) });
+    const force = !!body.force;
+    if (!force) {
+      const [dates] = await pool.execute(
+        "SELECT DISTINCT DATE_FORMAT(date,'%Y-%m-%d') AS d FROM daily_menus WHERE menu_id=? OR name=? ORDER BY d DESC",
+        [id, name]
+      );
+      if (dates.length) {
+        return res.json({ success: false, blocked: true, dates: dates.map(r => r.d) });
+      }
+    } else {
+      await pool.execute('DELETE FROM daily_menus WHERE menu_id=? OR name=?', [id, name]);
     }
     await pool.execute('DELETE FROM menus WHERE id=? OR name=?', [id, name]);
     ok(res, { deleted: true });
