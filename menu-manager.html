@@ -1155,19 +1155,19 @@ function openImgPopup(id,ctx){
   imgTargetId=id;pendingImgUrl=null;
   var m=_arr(imgCtx).find(function(x){return x.id===id;});if(!m)return;
   document.getElementById('imgPopupTitle').textContent=m.name+' - 이미지 관리';
-  document.getElementById('imgDeleteBtn').style.display=m.icon?'':'none';
-  document.getElementById('imgUploadBtn').textContent=m.icon?'📁 사진 변경':'📁 사진 선택';
+  document.getElementById('imgDeleteBtn').style.display=_validUrl(m.imgUrl)?'':'none';
+  document.getElementById('imgUploadBtn').textContent=_validUrl(m.imgUrl)?'📁 사진 변경':'📁 사진 선택';
   document.getElementById('imgSaveBtn').disabled=true;
   document.getElementById('imgStatus').style.display='none';
   document.getElementById('imgFileInput').value='';
-  setImgPreview(_validUrl(m.icon)||_validUrl(m.imgUrl)||'');
+  setImgPreview(_validUrl(m.imgUrl)||_validUrl(m.icon)||'');
   document.getElementById('imgOverlay').classList.add('open');
 }
 function closeImgPopup(e){if(e&&e.target!==document.getElementById('imgOverlay'))return;document.getElementById('imgOverlay').classList.remove('open');imgTargetId=null;pendingImgUrl=null;}
 function saveImg(){
   if(!pendingImgUrl||imgTargetId===null)return;
   var m=_arr(imgCtx).find(function(x){return x.id===imgTargetId;});
-  if(m){m.icon=pendingImgUrl;touch(m);_save(imgCtx);_render(imgCtx);if(imgCtx==='all')syncAllMenuToMenus(m);}
+  if(m){m.imgUrl=pendingImgUrl;touch(m);_save(imgCtx);_render(imgCtx);if(imgCtx==='all')syncAllMenuToMenus(m);}
   pendingImgUrl=null;
   document.getElementById('imgSaveBtn').disabled=true;
   document.getElementById('imgUploadBtn').textContent='📁 사진 변경';
@@ -1233,7 +1233,7 @@ function uploadToImgBB(b64){
   xhr.timeout=30000;
   xhr.send(form);
 }
-function deleteImg(){if(imgTargetId===null)return;if(!confirm('이미지를 삭제할까요?'))return;var m=_arr(imgCtx).find(function(x){return x.id===imgTargetId;});if(m){m.icon=null;_save(imgCtx);_render(imgCtx);}document.getElementById('imgOverlay').classList.remove('open');imgTargetId=null;}
+function deleteImg(){if(imgTargetId===null)return;if(!confirm('이미지를 삭제할까요?'))return;var m=_arr(imgCtx).find(function(x){return x.id===imgTargetId;});if(m){m.imgUrl=null;_save(imgCtx);_render(imgCtx);}document.getElementById('imgOverlay').classList.remove('open');imgTargetId=null;}
 
 // ── 메뉴 편집 팝업 ──
 function openMenuEditPopup(id,ctx){
