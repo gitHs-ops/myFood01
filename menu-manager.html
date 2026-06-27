@@ -968,6 +968,9 @@ function saveNewMasterMenu(){
 function openAddMasterEdit(){
   if(!_addMenuMasterId)return;
   openMenuEditPopup(_addMenuMasterId,'all');
+  var fs=document.getElementById('menuStock');
+  var es=document.getElementById('editMenuStock');
+  if(fs&&es&&fs.value!=='')es.value=fs.value;
 }
 // 선택/입력된 메뉴명에 해당하는 마스터 사진을 미리보기로 표시
 function _updateAddMenuImg(){
