@@ -1167,8 +1167,13 @@ function saveImg(){
 }
 function setImgPreview(url){
   var w=document.getElementById('imgPreviewWrap');
-  if(url){var img=document.createElement('img');img.src=url;img.alt='미리보기';img.onerror=function(){w.innerHTML='<div class="img-placeholder"><span>&#9888;</span>불러올 수 없어요</div>';};w.innerHTML='';w.appendChild(img);}
-  else{w.innerHTML='<div class="img-placeholder"><span>&#128444;</span>이미지 없음</div>';}
+  function _showEmoji(){
+    var em='🍽';
+    if(imgTargetId!==null){var _m=_arr(imgCtx).find(function(x){return x.id===imgTargetId;});if(_m)em=getMenuEmoji(_m.name,_m.cat);}
+    w.innerHTML='<div class="img-placeholder" style="font-size:36px;">'+em+'</div>';
+  }
+  if(url){var img=document.createElement('img');img.src=url;img.alt='미리보기';img.onerror=function(){_showEmoji();};w.innerHTML='';w.appendChild(img);}
+  else{_showEmoji();}
 }
 function setImgStatus(msg,loading){var el=document.getElementById('imgStatus');var btn=document.getElementById('imgUploadBtn');el.textContent=msg;el.style.display=msg?'block':'none';btn.disabled=loading;}
 function onFileSelected(e){
@@ -1252,12 +1257,13 @@ function closeMenuEditPopup(e){
 }
 function setEditImgPreview(url){
   var w=document.getElementById('editImgPreviewWrap');
-  if(url){w.classList.remove('no-img');var img=document.createElement('img');img.src=url;img.alt='미리보기';img.onerror=function(){w.innerHTML='<div class="img-placeholder"><span>&#9888;</span>불러올 수 없어요</div>';};w.innerHTML='';w.appendChild(img);}
-  else{
+  function _showEmoji(){
     var em='🍽';
     if(menuEditTargetId!==null){var _m=_arr(editCtx||'menus').find(function(x){return x.id===menuEditTargetId;});if(_m)em=getMenuEmoji(_m.name,_m.cat);}
     w.classList.add('no-img');w.innerHTML='<span style="font-size:26px;line-height:1;">'+em+'</span><span style="font-size:12px;color:#bbb;">이미지 없음</span>';
   }
+  if(url){w.classList.remove('no-img');var img=document.createElement('img');img.src=url;img.alt='미리보기';img.onerror=function(){_showEmoji();};w.innerHTML='';w.appendChild(img);}
+  else{_showEmoji();}
 }
 function setEditImgStatus(msg,loading){
   var el=document.getElementById('editImgStatus');var btn=document.getElementById('editImgUploadBtn');
