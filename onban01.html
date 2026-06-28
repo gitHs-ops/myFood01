@@ -1299,6 +1299,10 @@ function _loadAddrList(phone){
   el.innerHTML='<div style="text-align:center;color:#aaa;padding:16px 0;">불러오는 중...</div>';
   var url=API_URL+'/api/customers-master'+(phone?'?phone='+encodeURIComponent(phone):'');
   fetch(url).then(function(r){return r.json();}).then(function(d){
+    if(!d.success){
+      el.innerHTML='<div style="color:#e53935;padding:12px;font-size:12px;">오류: '+(d.error||'unknown')+'</div>';
+      return;
+    }
     var items=(d.items||[]);
     var history=(d.history||[]);
     el.innerHTML='';
