@@ -670,7 +670,7 @@ function goPage(name){
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
   document.getElementById('page-'+name).classList.add('active');
   window.scrollTo(0,0);
-  if(name==='cart')renderCart();
+  if(name==='cart'){if(selectedMenuIds.size>0)_flushSelectedToCart();renderCart();}
   if(name==='order')renderOrder();
   if(name==='payment')renderPayment();
   if(name==='history')renderHistory();
@@ -692,7 +692,7 @@ function updateFloatCartBtn(){
   document.getElementById('floatCartLabel').textContent='장바구니 담기 ('+n+'개 선택)';
 }
 
-function addSelectedToCart(){
+function _flushSelectedToCart(){
   selectedMenuIds.forEach(function(mid){
     var m=allMenus.find(function(x){return String(x.id)===mid;});
     if(!m||(m.stock||0)===0)return;
@@ -704,6 +704,9 @@ function addSelectedToCart(){
   updateCartCount();
   updateFloatCartBtn();
   renderMenuGrid();
+}
+function addSelectedToCart(){
+  _flushSelectedToCart();
   goPage('cart');
 }
 
