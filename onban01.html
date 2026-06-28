@@ -1142,8 +1142,10 @@ function renderOrdererPage(){
           _cachedMaster=m;
           var nEl=document.getElementById('ordererName');
           var pEl=document.getElementById('ordererPhone');
+          var aEl=document.getElementById('ordererAddr');
           if(nEl&&m.name) nEl.value=m.name;
           if(pEl&&m.phone) pEl.value=m.phone;
+          if(aEl&&m.addr1) aEl.value=m.addr1;
         }
         _toggleAddrListBtn();
       }).catch(function(){ _toggleAddrListBtn(); });
@@ -1368,7 +1370,7 @@ function _buildAddrItem(c, isMaster){
       txt.textContent=a;
       var selBtn=document.createElement('button');
       selBtn.className='btn-addr-save';
-      selBtn.style.cssText='padding:5px 10px;font-size:12px;white-space:nowrap;flex-shrink:0;';
+      selBtn.style.cssText='padding:3px 10px;font-size:11px;white-space:nowrap;flex-shrink:0;';
       selBtn.textContent='선택';
       (function(addr){selBtn.onclick=function(){pickAddr(addr,c.memo||'');};})(a);
       row.appendChild(label);row.appendChild(txt);row.appendChild(selBtn);
