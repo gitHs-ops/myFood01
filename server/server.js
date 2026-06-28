@@ -861,6 +861,30 @@ async function initDB() {
 }
 
 
+// tmp: UNIQUE(name) → UNIQUE(name,cat) 스키마 변경 + 건너뜀 밀키트 재처리 (즉시 제거 예정)
+app.post('/api/admin/fix-unique-and-rename', async (req,res)=>{
+  const IDS=[39,421,433,448,521,818,874,953,996,1070];
+  const idList=IDS.join(',');
+  let conn;
+  try{
+    conn=await pool.getConnection();
+    // 1. name 단독 UNIQUE 제거, (name,cat) 복합 UNIQUE 추가
+    await conn.query('ALTER TABLE menus DROP INDEX `name`');
+    await conn.query('ALTER TABLE menus ADD UNIQUE KEY `uq_name_cat` (`name`,`cat`)');
+    // 2. 건너뜀 10건 재처리 (빈이름 방지 조건 유지)
+    await conn.query(
+      `UPDATE menus SET
+        name=TRIM(REPLACE(REPLACE(REPLACE(name,'(밀키트)',''),',밀키트',''),'밀키트','')),
+        cat='밀키트'
+       WHERE id IN (${idList})
+         AND TRIM(REPLACE(REPLACE(REPLACE(name,'(밀키트)',''),',밀키트',''),'밀키트',''))!=''`
+    );
+    const [rows]=await conn.query(`SELECT id,name,cat FROM menus WHERE id IN (${idList}) ORDER BY name`);
+    ok(res,{menus:rows});
+  }catch(e){err(res,e.message);}
+  finally{if(conn)conn.release();}
+});
+
 initDB()
   .then(() => app.listen(PORT, () => console.log(`onban-api running on :${PORT}`)))
   .catch(e => { console.error('DB 초기화 실패:', e.message); process.exit(1); });
