@@ -1383,9 +1383,12 @@ function _showAddrForm(c,replaceEl){
   var isNew=!c;
   var form=document.createElement('div');
   form.className='addr-form';
-  var fName=document.createElement('input');fName.placeholder='이름';fName.value=c?c.name||'':'';
-  var fPhone=document.createElement('input');fPhone.placeholder='전화번호 (필수)';fPhone.type='tel';fPhone.value=c?c.phone||'':'';
-  var fAddr=document.createElement('input');fAddr.placeholder='주소 (필수)';fAddr.value=c?c.addr||'':'';
+  var _curPhone=(document.getElementById('ordererPhone').value||'').trim();
+  var _curName=(document.getElementById('ordererName').value||'').trim();
+  var fName=document.createElement('input');fName.placeholder='이름';fName.value=c?c.name||'':_curName;
+  var fPhone=document.createElement('input');fPhone.placeholder='전화번호 (필수)';fPhone.type='tel';fPhone.required=true;
+  fPhone.value=c?c.phone||'':_curPhone;
+  var fAddr=document.createElement('input');fAddr.placeholder='주소 (필수)';fAddr.required=true;fAddr.value=c?c.addr||'':'';
   var fMemo=document.createElement('input');fMemo.placeholder='메모 (선택)';fMemo.value=c?c.memo||'':'';
   var btns=document.createElement('div');btns.className='addr-form-btns';
   var saveBtn=document.createElement('button');saveBtn.className='btn-addr-save';saveBtn.textContent=isNew?'추가':'저장';
