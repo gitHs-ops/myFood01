@@ -860,6 +860,36 @@ async function initDB() {
   }
 }
 
+// tmp: 밀키트 메뉴명 정리 마이그레이션 (즉시 제거 예정)
+app.post('/api/admin/rename-milkit', async (req,res)=>{
+  const IDS=[39,64,84,98,117,127,240,284,336,350,374,378,391,406,421,433,448,453,491,521,522,539,541,602,607,640,641,682,701,708,798,799,800,818,825,832,874,884,953,955,973,993,994,996,1011,1046,1055,1061,1062,1066,1070,1071,1110,1118,1119,1148,1186,1187,1188,1204,1207,1218,1322,1343,1374,1375,1376,1378,1379,1389,1395,1396,1397,1401,1402,1409,1432];
+  function cleanName(name){
+    let n=name;
+    n=n.replace(/\(밀키트\)/g,'');
+    n=n.replace(/,밀키트/g,'');
+    n=n.replace(/밀키트/g,'');
+    n=n.replace(/\s+/g,' ').trim();
+    return n;
+  }
+  const conn=await pool.getConnection();
+  try{
+    const results=[];
+    for(const id of IDS){
+      const [[row]]=await conn.execute('SELECT name,cat FROM menus WHERE id=?',[id]);
+      if(!row){results.push({id,skip:true,reason:'not found'});continue;}
+      let newName=cleanName(row.name);
+      if(!newName){results.push({id,skip:true,reason:'빈이름',orig:row.name});continue;}
+      let newCat=row.cat;
+      if(row.cat==='한우'){newName=newName+'(한우)';newCat='밀키트';}
+      else if(row.cat==='한돈'){newName=newName+'(한돈)';newCat='밀키트';}
+      else if(row.cat==='기타'){newCat='밀키트';}
+      await conn.execute('UPDATE menus SET name=?,cat=? WHERE id=?',[newName,newCat,id]);
+      results.push({id,oldName:row.name,newName,oldCat:row.cat,newCat});
+    }
+    ok(res,{results});
+  }finally{conn.release();}
+});
+
 initDB()
   .then(() => app.listen(PORT, () => console.log(`onban-api running on :${PORT}`)))
   .catch(e => { console.error('DB 초기화 실패:', e.message); process.exit(1); });
