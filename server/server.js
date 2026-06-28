@@ -860,6 +860,15 @@ async function initDB() {
   }
 }
 
+// tmp: 밀키트 메뉴 추출 (즉시 제거 예정)
+app.get('/api/admin/milkit-menus', async (req,res)=>{
+  const conn=await pool.getConnection();
+  try{
+    const [rows]=await conn.execute(`SELECT id, name, cat, price, img_url FROM menus WHERE name LIKE '%밀키트%' ORDER BY name`);
+    ok(res,{menus:rows});
+  }finally{conn.release();}
+});
+
 initDB()
   .then(() => app.listen(PORT, () => console.log(`onban-api running on :${PORT}`)))
   .catch(e => { console.error('DB 초기화 실패:', e.message); process.exit(1); });
