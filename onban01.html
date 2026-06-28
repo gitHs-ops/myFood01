@@ -1133,6 +1133,9 @@ function cartOrder(){
 function renderOrdererPage(){
   var el=document.getElementById('ordererOrderContent');
   el.innerHTML='';
+  // 배송방법 블랭크면 첫 항목으로 초기화
+  var memoEl=document.getElementById('ordererMemo');
+  if(memoEl&&!memoEl.value) memoEl.selectedIndex=1;
 
   // device_id로 customers_master 조회 → name/phone 자동 채우기
   (function(){
