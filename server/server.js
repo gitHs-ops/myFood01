@@ -525,14 +525,18 @@ app.get('/api/customers-master', async (req, res) => {
       ? await pool.execute(`SELECT * FROM customers_master WHERE ${pCond}=? ORDER BY updated_at DESC`,[phone])
       : await pool.execute('SELECT * FROM customers_master ORDER BY updated_at DESC');
 
-    // 2. orders 주문이력 중 master에 없는 주소 (phone 기준 조회, addr 중복 제거)
+    // 2. 주문이력 중 master에 없는 주소 (orders + customers 모두 조회)
     const masterAddrs = new Set(master.flatMap(r => [r.addr1,r.addr2,r.addr3].filter(Boolean)));
     const [hist] = phone
       ? await pool.execute(
-          `SELECT name, phone, addr, memo FROM orders
-            WHERE ${pCond}=? AND addr IS NOT NULL AND addr!=''
-            GROUP BY addr ORDER BY MAX(date) DESC LIMIT 20`,
-          [phone])
+          `SELECT name, phone, addr, memo FROM (
+             SELECT name, phone, addr, memo, date FROM orders
+               WHERE ${pCond}=? AND addr IS NOT NULL AND addr!=''
+             UNION ALL
+             SELECT name, phone, addr, memo, date FROM customers
+               WHERE ${pCond}=? AND addr IS NOT NULL AND addr!=''
+           ) t GROUP BY addr ORDER BY MAX(date) DESC LIMIT 20`,
+          [phone, phone])
       : [[]];
     const history = hist.filter(r => !masterAddrs.has(r.addr));
 
