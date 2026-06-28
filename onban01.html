@@ -1190,7 +1190,6 @@ function renderOrdererPage(){
     var phone=document.getElementById('ordererPhone').value.trim();
     if(!phone){alert('연락처를 입력해주세요.');document.getElementById('ordererPhone').focus();return;}
     var memo=document.getElementById('ordererMemo').value;
-    if(!memo){alert('배송방법을 선택해주세요.');document.getElementById('ordererMemo').focus();return;}
     var addr=document.getElementById('ordererAddr').value.trim();
     if(memo!=='매장픽업'&&!addr){alert('배송 주소를 입력해주세요.');document.getElementById('ordererAddr').focus();return;}
     var _itemsTotal=orderItems.reduce(function(s,c){return s+c.price*c.qty;},0);
@@ -2129,7 +2128,6 @@ function histCancelMemo(id){
 function histSaveMemo(id){
   var sel=document.getElementById('histmemosel-'+id);
   var text=sel?sel.value:'';
-  if(!text){showToast('배송방법을 선택해주세요.');return;}
   var ords=JSON.parse(localStorage.getItem('orders')||'[]');
   var ord=ords.find(function(o){return o.id===id;});
   if(!ord)return;
