@@ -586,7 +586,7 @@ async function initDB() {
     )`,
     `CREATE TABLE IF NOT EXISTS menus (
       id INT AUTO_INCREMENT PRIMARY KEY,
-      name VARCHAR(200) UNIQUE NOT NULL,
+      name VARCHAR(200) NOT NULL,
       cat VARCHAR(50) DEFAULT '기타',
       price DECIMAL(6,1) DEFAULT 0,
       stock INT DEFAULT 0,
@@ -595,7 +595,8 @@ async function initDB() {
       icon VARCHAR(1000) DEFAULT '',
       menu_desc TEXT,
       count INT DEFAULT 0,
-      updated_at BIGINT DEFAULT 0
+      updated_at BIGINT DEFAULT 0,
+      UNIQUE KEY uq_name_cat (name, cat)
     )`,
     `CREATE TABLE IF NOT EXISTS orders (
       id VARCHAR(100) PRIMARY KEY,

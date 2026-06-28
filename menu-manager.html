@@ -828,15 +828,15 @@ function parseMenuCsv(csvText,defaultStock){
 function applyImportedMenus(imported,mode){
   var addedCount;
   if(mode==='add'){
-    var existNames={};menus.forEach(function(m){existNames[m.name.trim()]=true;});
+    var existNames={};menus.forEach(function(m){existNames[(m.name||'').trim()+'|'+(m.cat||'').trim()]=true;});
     var newItems=[],dupItems=[];
-    imported.forEach(function(m){if(existNames[m.name.trim()])dupItems.push(m.name);else newItems.push(m);});
+    imported.forEach(function(m){if(existNames[(m.name||'').trim()+'|'+(m.cat||'').trim()])dupItems.push(m.name);else newItems.push(m);});
     menus=menus.concat(newItems);
     addedCount=newItems.length;
     if(dupItems.length)showToast('중복 제외 '+dupItems.length+'개: '+dupItems.join(', '));
   }else{
     var seen={},uniq=[],dupItems=[];
-    imported.forEach(function(m){if(seen[m.name.trim()])dupItems.push(m.name);else{seen[m.name.trim()]=true;uniq.push(m);}});
+    imported.forEach(function(m){var k=(m.name||'').trim()+'|'+(m.cat||'').trim();if(seen[k])dupItems.push(m.name);else{seen[k]=true;uniq.push(m);}});
     menus=uniq;
     addedCount=uniq.length;
     if(dupItems.length)showToast('중복 제외 '+dupItems.length+'개: '+dupItems.join(', '));
@@ -946,9 +946,9 @@ function saveNewMasterMenu(){
   if(!price){alert('금액을 입력해주세요.');return;}
   var ts=Date.now();
   var newMaster;
-  var existingIdx=allMenus.findIndex(function(m){return (m.name||'').trim()===name;});
+  var existingIdx=allMenus.findIndex(function(m){return (m.name||'').trim()===name&&(m.cat||'').trim()===cat;});
   if(existingIdx>=0){
-    if(!confirm('['+name+'] 이(가) 이미 메뉴 창고에 있어요.\n그래도 업데이트할까요?'))return;
+    if(!confirm('['+name+'] ('+cat+') 이(가) 이미 메뉴 창고에 있어요.\n그래도 업데이트할까요?'))return;
     newMaster=allMenus[existingIdx];
     newMaster.cat=cat;newMaster.price=price;newMaster.child=child;newMaster.desc=desc;newMaster.updatedAt=ts;
   }else{
@@ -1622,7 +1622,7 @@ function deduplicateByName(arr){
   var seen={};
   return arr.filter(function(m){
     if(!m.name)return false;
-    var k=m.name.trim().toLowerCase();
+    var k=(m.name||'').trim().toLowerCase()+'|'+(m.cat||'').trim();
     if(seen[k])return false;
     seen[k]=true;
     return true;
@@ -1814,10 +1814,10 @@ function confirmSendToToday(mode){
     menus=selected.map(function(m){return {id:Date.now()+Math.random(),name:m.name,cat:m.cat,price:m.price,stock:_stock(m),child:m.child,imgUrl:m.imgUrl||null};});
     showToast(selected.length+'개로 일일 메뉴를 대체했어요!');
   }else{
-    var existNames={};menus.forEach(function(m){existNames[m.name]=true;});
+    var existNames={};menus.forEach(function(m){existNames[(m.name||'').trim()+'|'+(m.cat||'').trim()]=true;});
     var added=0;
     selected.forEach(function(m){
-      if(!existNames[m.name]){
+      if(!existNames[(m.name||'').trim()+'|'+(m.cat||'').trim()]){
         menus.push({id:Date.now()+Math.random(),name:m.name,cat:m.cat,price:m.price,stock:_stock(m),child:m.child,imgUrl:m.imgUrl||null});
         added++;
       }
@@ -2042,10 +2042,10 @@ function parseKakao(){
   });
   if(!parsedMenus.length){alert('인식된 메뉴가 없어요.\n형식: 메뉴명 금액');return;}
 
-  // ── 파싱 목록 내 중복 제거 (같은 이름이 두 번 이상 나온 경우) ──
+  // ── 파싱 목록 내 중복 제거 (같은 이름+카테고리가 두 번 이상 나온 경우) ──
   var seen={};
   parsedMenus=parsedMenus.filter(function(m){
-    var key=m.name.trim();
+    var key=(m.name||'').trim()+'|'+(m.cat||'').trim();
     if(seen[key])return false;
     seen[key]=true;return true;
   });
@@ -2062,13 +2062,13 @@ function importParsed(){
 
   var items, skipped=[];
   if(add){
-    // 기존 메뉴 이름 목록
+    // 기존 메뉴 이름+카테고리 목록
     var existNames={};
-    menus.forEach(function(m){existNames[m.name.trim()]=true;});
+    menus.forEach(function(m){existNames[(m.name||'').trim()+'|'+(m.cat||'').trim()]=true;});
     // 중복이면 건너뜀
     var newItems=[], dupItems=[];
     parsedMenus.forEach(function(m){
-      if(existNames[m.name.trim()]){dupItems.push(m.name);}
+      if(existNames[(m.name||'').trim()+'|'+(m.cat||'').trim()]){dupItems.push(m.name);}
       else{newItems.push(Object.assign({},m,{id:Date.now()+Math.random()}));}
     });
     items=newItems; skipped=dupItems;
@@ -2987,13 +2987,13 @@ function importFromSheet(mode){
       var imported=(d.menus||[]).map(function(m){return Object.assign({id:Date.now()+Math.random(),stock:getSettings().stock||0},m);});
       var confirmMsg;
       if(mode==='add'){
-        var existNames={};menus.forEach(function(m){existNames[m.name.trim()]=true;});
-        var newCount=imported.filter(function(m){return!existNames[m.name.trim()];}).length;
+        var existNames={};menus.forEach(function(m){existNames[(m.name||'').trim()+'|'+(m.cat||'').trim()]=true;});
+        var newCount=imported.filter(function(m){return!existNames[(m.name||'').trim()+'|'+(m.cat||'').trim()];}).length;
         var dupCount=imported.length-newCount;
         confirmMsg=newCount+'개 메뉴를 현재 목록에 추가할까요?'+(dupCount?' (중복 제외 '+dupCount+'개)':'');
       }else{
         var seen={},uniqCount=0,dupCount=0;
-        imported.forEach(function(m){if(seen[m.name.trim()])dupCount++;else{seen[m.name.trim()]=true;uniqCount++;}});
+        imported.forEach(function(m){var k=(m.name||'').trim()+'|'+(m.cat||'').trim();if(seen[k])dupCount++;else{seen[k]=true;uniqCount++;}});
         confirmMsg=uniqCount+'개 메뉴로 현재 목록을 대체할까요?'+(dupCount?' (중복 제외 '+dupCount+'개)':'');
       }
       if(!confirm(confirmMsg))return;
