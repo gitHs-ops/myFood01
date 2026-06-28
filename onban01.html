@@ -1139,6 +1139,7 @@ function renderOrdererPage(){
       .then(function(d){
         if(d.success&&d.items&&d.items.length){
           var m=d.items[0];
+          _cachedMaster=m;
           var nEl=document.getElementById('ordererName');
           var pEl=document.getElementById('ordererPhone');
           if(nEl&&m.name) nEl.value=m.name;
@@ -1291,10 +1292,21 @@ function sendAlimtalk(phone,tplId,vars,fallbackMsg){
 
 // ── 배송 주소 목록 ──
 // ── 주소록 (customers_master) ─────────────────────────────────
+var _cachedMaster=null;
+
 function showAddrList(){
-  var phone=(document.getElementById('ordererPhone').value||'').replace(/[^0-9]/g,'');
   document.getElementById('addrListOverlay').style.display='flex';
-  _loadAddrList(phone);
+  if(_cachedMaster){
+    _renderAddrFromCache(_cachedMaster);
+  } else {
+    var phone=(document.getElementById('ordererPhone').value||'').replace(/[^0-9]/g,'');
+    _loadAddrList(phone);
+  }
+}
+function _renderAddrFromCache(m){
+  var el=document.getElementById('addrListContent');
+  el.innerHTML='';
+  el.appendChild(_buildAddrItem(m,true));
 }
 function _loadAddrList(phone){
   var el=document.getElementById('addrListContent');
