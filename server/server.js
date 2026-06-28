@@ -525,6 +525,14 @@ app.get('/api/customers-master', async (req, res) => {
       ? await pool.execute('SELECT * FROM customers_master WHERE phone=? ORDER BY updated_at DESC',[phone])
       : await pool.execute('SELECT * FROM customers_master ORDER BY updated_at DESC');
 
+    // phone 조회 성공 + device_id 있으면 DB에 device_id 자동 갱신 (NULL인 기존 레코드 대응)
+    if(phone && deviceId && master.length){
+      await pool.execute(
+        'UPDATE customers_master SET device_id=? WHERE phone=? AND (device_id IS NULL OR device_id=?)',
+        [deviceId, phone, deviceId]
+      ).catch(()=>{});
+    }
+
     ok(res, {items: master});
   } catch(e) { err(res, e.message); }
 });
