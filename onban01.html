@@ -127,17 +127,6 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
   padding:2px 7px;border-radius:999px;font-weight:700;flex-shrink:0;white-space:nowrap;
 }
 .menu-stock-tag.low{background:#fff0f0;color:#e53935;}
-.soldout-badge{
-  display:inline-block;background:#f0f0f0;color:#999;
-  font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;
-  margin-bottom:12px;
-}
-.btn-soldout{
-  flex:1;display:flex;align-items:center;justify-content:center;gap:8px;
-  padding:14px;border-radius:12px;font-size:14px;font-weight:700;
-  border:1.5px solid #ddd;background:#f5f5f5;color:#aaa;cursor:not-allowed;
-}
-
 /* ── 페이지 전환 ── */
 .page{display:none;}
 .page.active{display:block;}
@@ -156,51 +145,11 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 .menu-modal-price span{font-size:12px;font-weight:400;color:var(--sub);}
 .menu-modal-desc{font-size:12px;line-height:1.6;color:#444;margin-top:10px;padding-top:10px;border-top:1px solid #eee;white-space:pre-wrap;word-break:break-word;}
 .menu-modal-img{position:relative;}
-.detail-img{position:relative;}
 .tmp-img-badge{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.82);color:#fff;font-size:13px;font-weight:900;padding:5px 18px;border-radius:20px;letter-spacing:.5px;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.4);white-space:nowrap;}
 .menu-modal-actions{padding:10px 14px 18px;display:flex;gap:10px;align-items:center;}
 .menu-modal-cart-btn{width:100%;background:var(--teal);color:#fff;border:none;border-radius:12px;padding:11px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;transition:opacity .15s;}
 .menu-modal-cart-btn:active{opacity:.8;}
 .menu-modal-cart-btn.sold-out{background:#ccc;cursor:not-allowed;}
-/* ── 상세 페이지 ── */
-.detail-img{
-  width:100%;max-height:240px;overflow:hidden;
-  background:linear-gradient(135deg,#e8f5f4,#c8ebe9);
-  display:flex;align-items:center;justify-content:center;font-size:64px;
-}
-.detail-img img{width:100%;height:100%;object-fit:cover;}
-.detail-body{padding:20px;background:#fff;}
-.detail-name{font-size:22px;font-weight:900;margin-bottom:8px;}
-.detail-badges{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;}
-.detail-price{font-size:28px;font-weight:900;color:var(--teal);margin-bottom:20px;}
-.detail-price span{font-size:14px;font-weight:400;color:var(--sub);}
-.qty-row{display:flex;align-items:center;gap:12px;margin-bottom:24px;}
-.qty-row label{font-size:14px;font-weight:700;color:var(--sub);}
-.qty-ctrl{display:flex;align-items:center;gap:0;border:1.5px solid #d6efee;border-radius:10px;overflow:hidden;}
-.qty-ctrl button{
-  width:38px;height:38px;border:none;background:#f4fafa;
-  font-size:18px;font-weight:700;color:var(--teal);cursor:pointer;
-}
-.qty-ctrl button:active{background:#e8f5f4;}
-.qty-ctrl span{width:44px;text-align:center;font-size:16px;font-weight:700;}
-.action-row{display:flex;gap:10px;}
-.btn-cart{
-  flex:1;display:flex;align-items:center;justify-content:center;gap:8px;
-  padding:14px;border-radius:12px;font-size:15px;font-weight:700;
-  border:2px solid var(--teal);background:#fff;color:var(--teal);cursor:pointer;
-  transition:all .15s;
-}
-.btn-cart:active{background:#e8f5f4;}
-.btn-cart svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;}
-.btn-order{
-  flex:1;display:flex;align-items:center;justify-content:center;gap:8px;
-  padding:14px;border-radius:12px;font-size:15px;font-weight:700;
-  border:none;background:var(--teal);color:#fff;cursor:pointer;
-  transition:opacity .15s;
-}
-.btn-order:active{opacity:.85;}
-.btn-order svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;}
-
 /* ── 뒤로 버튼 ── */
 .back-bar{
   display:flex;align-items:center;gap:8px;
@@ -567,11 +516,6 @@ select.orderer-input{appearance:none;-webkit-appearance:none;background:#fff url
   </div>
 </div>
 
-<!-- ════ 페이지: 상세 ════ -->
-<div id="page-detail" class="page">
-  <div id="detailContent"></div>
-</div>
-
 <!-- ════ 페이지: 장바구니 ════ -->
 <div id="page-cart" class="page">
   <div class="section-title">장바구니</div>
@@ -653,8 +597,6 @@ function parseCsvLine(line){
 var allMenus=[];
 var filterCat='전체';
 var cart=[];
-var detailMenu=null;
-var detailQty=1;
 var selectedMenuIds=new Set(); // 체크박스 선택 항목
 var orderItems=[];
 var ordererInfo={name:'',phone:'',addr:'',memo:'',additionalRequest:''};
@@ -993,125 +935,6 @@ function showMenuModal(id){
   overlay.appendChild(modal);
   document.body.appendChild(overlay);
 }
-// ── 상세 페이지 (주문하기 흐름용) ──
-function openDetail(id){
-  // id 타입 무관하게 비교
-  detailMenu=allMenus.find(function(m){return String(m.id)===String(id);});
-  if(!detailMenu){console.warn('메뉴를 찾을 수 없음:',id);return;}
-  detailQty=1;
-  renderDetail();
-  goPage('detail');
-}
-function renderDetail(){
-  var m=detailMenu;
-  var wrap=document.getElementById('detailContent');
-  wrap.innerHTML='';
-
-  var imgWrap=document.createElement('div');
-  imgWrap.className='detail-img';
-  var _detImg=_validUrl(m.imgUrl)||_validUrl(m.icon);
-  if(_detImg){
-    var img=document.createElement('img');
-    img.src=_detImg; img.alt=m.name;
-    imgWrap.appendChild(img);
-    if(_isPexels(_detImg)){var _b2=document.createElement('span');_b2.className='tmp-img-badge';_b2.textContent='임시 이미지';imgWrap.appendChild(_b2);}
-  } else {
-    imgWrap.textContent=getMenuEmoji(m.name,m.cat);
-  }
-
-  var body=document.createElement('div');
-  body.className='detail-body';
-
-  var badges=document.createElement('div');
-  badges.className='detail-badges';
-  var cb=document.createElement('span');
-  cb.className='badge badge-cat';
-  cb.style.cssText='font-size:12px;padding:3px 10px;';
-  cb.textContent=m.cat;
-  badges.appendChild(cb);
-  if(m.child){
-    var cb2=document.createElement('span');
-    cb2.className='badge badge-child';
-    cb2.style.cssText='font-size:12px;padding:3px 10px;';
-    cb2.textContent='어린이도 OK';
-    badges.appendChild(cb2);
-  }
-
-  var nameEl=document.createElement('div');
-  nameEl.className='detail-name';
-  nameEl.textContent=menuDisplayName(m.name,m.cat);
-
-  var priceEl=document.createElement('div');
-  priceEl.className='detail-price';
-  priceEl.innerHTML=comma(m.price)+'<span>천원</span>';
-
-  var qtyRow=document.createElement('div');
-  qtyRow.className='qty-row';
-  qtyRow.innerHTML='<label>수량</label>'
-    +'<div class="qty-ctrl">'
-    +'<button onclick="changeDetailQty(-1)">-</button>'
-    +'<span id="detailQtyDisp">'+detailQty+'</span>'
-    +'<button onclick="changeDetailQty(1)">+</button>'
-    +'</div>';
-
-  var isSoldout=(m.stock||0)===0;
-  var actions=document.createElement('div');
-  actions.className='action-row';
-
-  body.appendChild(badges);
-  body.appendChild(nameEl);
-  body.appendChild(priceEl);
-
-  if(isSoldout){
-    var sbadge=document.createElement('div');
-    sbadge.className='soldout-badge';
-    sbadge.textContent='⚠ 현재 품절 — 전화로 추가 문의 가능합니다';
-    body.appendChild(sbadge);
-    var btnSO=document.createElement('button');
-    btnSO.className='btn-soldout';
-    btnSO.textContent='품절된 메뉴입니다';
-    btnSO.disabled=true;
-    actions.appendChild(btnSO);
-  } else {
-    body.appendChild(qtyRow);
-    var btnCart=document.createElement('button');
-    btnCart.className='btn-cart';
-    btnCart.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>장바구니';
-    btnCart.onclick=addToCart;
-    var btnOrder=document.createElement('button');
-    btnOrder.className='btn-order';
-    btnOrder.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/></svg>주문하기';
-    btnOrder.onclick=buyNow;
-    actions.appendChild(btnCart);
-    actions.appendChild(btnOrder);
-  }
-  body.appendChild(actions);
-  wrap.appendChild(imgWrap);
-  wrap.appendChild(body);
-}
-function changeDetailQty(d){
-  detailQty=Math.max(1,detailQty+d);
-  var el=document.getElementById('detailQtyDisp');
-  if(el)el.textContent=detailQty;
-}
-function addToCart(){
-  var m=detailMenu;
-  var existing=cart.find(function(c){return c.name===m.name;});
-  if(existing){existing.qty+=detailQty;}
-  else{cart.push({menuId:(m.menuId!=null?m.menuId:null),name:m.name,cat:m.cat||'',price:m.price,qty:detailQty,imgUrl:m.imgUrl||null,child:m.child,checked:true});}
-  updateCartCount();
-  showToast('장바구니에 담았어요!');
-}
-function buyNow(){
-  if(!detailMenu){showToast('메뉴를 선택해주세요.');return;}
-  addToCart();
-  // 장바구니에서 주문하기와 동일한 흐름
-  orderItems=cart.filter(function(c){return c.checked;});
-  if(!orderItems.length){showToast('주문할 항목이 없어요.');return;}
-  goPage('orderer');
-  renderOrdererPage();
-}
-
 // ── 장바구니 ──
 function updateCartCount(){
   var cnt=cart.reduce(function(s,c){return s+c.qty;},0);
