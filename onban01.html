@@ -1146,6 +1146,22 @@ function renderOrdererPage(){
     }
   }catch(e){}
 
+  // device_id로 customers_master 조회 → name/phone 자동 채우기 (master 우선)
+  (function(){
+    var did=_getDeviceId();
+    fetch(API_URL+'/api/customers-master?device_id='+encodeURIComponent(did))
+      .then(function(r){return r.json();})
+      .then(function(d){
+        if(!d.success||!d.items||!d.items.length) return;
+        var m=d.items[0];
+        var nEl=document.getElementById('ordererName');
+        var pEl=document.getElementById('ordererPhone');
+        if(nEl&&m.name) nEl.value=m.name;
+        if(pEl&&m.phone) pEl.value=m.phone;
+        _toggleAddrListBtn();
+      }).catch(function(){});
+  })();
+
   // 주문 항목 요약 박스
   var total=orderItems.reduce(function(s,c){return s+c.price*c.qty;},0);
   var box=document.createElement('div');
