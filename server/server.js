@@ -863,31 +863,32 @@ async function initDB() {
 // tmp: 밀키트 메뉴명 정리 마이그레이션 (즉시 제거 예정)
 app.post('/api/admin/rename-milkit', async (req,res)=>{
   const IDS=[39,64,84,98,117,127,240,284,336,350,374,378,391,406,421,433,448,453,491,521,522,539,541,602,607,640,641,682,701,708,798,799,800,818,825,832,874,884,953,955,973,993,994,996,1011,1046,1055,1061,1062,1066,1070,1071,1110,1118,1119,1148,1186,1187,1188,1204,1207,1218,1322,1343,1374,1375,1376,1378,1379,1389,1395,1396,1397,1401,1402,1409,1432];
-  function cleanName(name){
-    let n=name;
-    n=n.replace(/\(밀키트\)/g,'');
-    n=n.replace(/,밀키트/g,'');
-    n=n.replace(/밀키트/g,'');
-    n=n.replace(/\s+/g,' ').trim();
-    return n;
-  }
-  const conn=await pool.getConnection();
+  const ph=IDS.map(()=>'?').join(',');
+  let conn;
   try{
-    const results=[];
-    for(const id of IDS){
-      const [[row]]=await conn.execute('SELECT name,cat FROM menus WHERE id=?',[id]);
-      if(!row){results.push({id,skip:true,reason:'not found'});continue;}
-      let newName=cleanName(row.name);
-      if(!newName){results.push({id,skip:true,reason:'빈이름',orig:row.name});continue;}
-      let newCat=row.cat;
-      if(row.cat==='한우'){newName=newName+'(한우)';newCat='밀키트';}
-      else if(row.cat==='한돈'){newName=newName+'(한돈)';newCat='밀키트';}
-      else if(row.cat==='기타'){newCat='밀키트';}
-      await conn.execute('UPDATE menus SET name=?,cat=? WHERE id=?',[newName,newCat,id]);
-      results.push({id,oldName:row.name,newName,oldCat:row.cat,newCat});
-    }
-    ok(res,{results});
-  }finally{conn.release();}
+    conn=await pool.getConnection();
+    // step1: 한우/한돈 → 정리된이름+(cat), cat=밀키트
+    await conn.execute(
+      `UPDATE menus SET
+        name=CONCAT(TRIM(REPLACE(REPLACE(REPLACE(name,'(밀키트)',''),',밀키트',''),'밀키트','')),CONCAT('(',cat,')')),
+        cat='밀키트'
+       WHERE id IN (${ph}) AND cat IN ('한우','한돈')
+         AND TRIM(REPLACE(REPLACE(REPLACE(name,'(밀키트)',''),',밀키트',''),'밀키트',''))!=''`,
+      IDS
+    );
+    // step2: 밀키트/기타 → 이름 정리, cat=밀키트
+    await conn.execute(
+      `UPDATE menus SET
+        name=TRIM(REPLACE(REPLACE(REPLACE(name,'(밀키트)',''),',밀키트',''),'밀키트','')),
+        cat='밀키트'
+       WHERE id IN (${ph}) AND cat NOT IN ('한우','한돈')
+         AND TRIM(REPLACE(REPLACE(REPLACE(name,'(밀키트)',''),',밀키트',''),'밀키트',''))!=''`,
+      IDS
+    );
+    const [rows]=await conn.execute(`SELECT id,name,cat FROM menus WHERE id IN (${ph}) ORDER BY name`,IDS);
+    ok(res,{updated:rows.length,menus:rows});
+  }catch(e){err(res,e.message);}
+  finally{if(conn)conn.release();}
 });
 
 initDB()
