@@ -525,19 +525,7 @@ app.get('/api/customers-master', async (req, res) => {
       ? await pool.execute('SELECT * FROM customers_master WHERE phone=? ORDER BY updated_at DESC',[phone])
       : await pool.execute('SELECT * FROM customers_master ORDER BY updated_at DESC');
 
-    // 2. orders 주문이력 중 master에 없는 주소
-    const masterAddrs = new Set(master.flatMap(r => [r.addr1,r.addr2,r.addr3].filter(Boolean)));
-    const [hist] = phone
-      ? await pool.execute(
-          `SELECT name, phone, addr, memo FROM orders
-            WHERE REPLACE(REPLACE(REPLACE(phone,'-',''),')',''),'(','')=?
-            AND addr IS NOT NULL AND addr!=''
-            ORDER BY date DESC LIMIT 20`,
-          [phone])
-      : [[]];
-    const history = hist.filter(r => !masterAddrs.has(r.addr));
-
-    ok(res, {items: master, history});
+    ok(res, {items: master});
   } catch(e) { err(res, e.message); }
 });
 

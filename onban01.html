@@ -1322,25 +1322,14 @@ function _loadAddrList(phone){
       return;
     }
     var items=(d.items||[]);
-    var history=(d.history||[]);
     el.innerHTML='';
     if(items.length){
-      // 저장된 주소 카드 (addr1/2/3 선택)
       el.appendChild(_buildAddrItem(items[0],true));
     } else {
-      // 저장 주소 없음 → 편집 폼 바로 표시
       var addWrap=document.createElement('div');
       addWrap.id='addrAddWrap';
       el.appendChild(addWrap);
       _showAddrForm(null);
-    }
-    // 과거 주문 주소 (orders 이력 중 master에 없는 것)
-    if(history.length){
-      var sec=document.createElement('div');
-      sec.style.cssText='font-size:11px;font-weight:700;color:#aaa;letter-spacing:.5px;margin:14px 0 6px;';
-      sec.textContent='과거 주문 주소';
-      el.appendChild(sec);
-      history.forEach(function(c){el.appendChild(_buildAddrItem(c,false));});
     }
   }).catch(function(){
     el.innerHTML='<div style="text-align:center;color:#e53935;padding:16px 0;">불러오기 실패</div>';
