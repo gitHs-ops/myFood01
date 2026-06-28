@@ -502,41 +502,34 @@ app.delete('/api/orders/:id', async (req, res) => {
   } catch(e) { err(res, e.message); }
 });
 
-// ══════════════════════════════════════════════════════════════
-// 고객 정보
-// ══════════════════════════════════════════════════════════════
-
-// 고객 저장 (POST /api/customers)
-app.post('/api/customers', async (req, res) => {
-  try {
-    const d = req.body.data || req.body;
-    const [date, name, phone, addr, memo] = Array.isArray(d) ? d : [d.date,d.name,d.phone,d.addr,d.memo];
-    await pool.execute(
-      'INSERT INTO customers (date,name,phone,addr,memo) VALUES (?,?,?,?,?)',
-      [date, name, phone, addr, memo]
-    );
-    ok(res);
-  } catch(e) { err(res, e.message); }
-});
-
 // ── customers_master CRUD ──────────────────────────────────────
-// GET /api/customers-master?phone=xxx
+// GET /api/customers-master?phone=xxx&device_id=xxx
 // JOIN: customers_master (저장 주소) + customers (주문이력) — 조인키: phone
 app.get('/api/customers-master', async (req, res) => {
   try {
     const phone = (req.query.phone||'').replace(/[^0-9]/g,'');
+    const deviceId = (req.query.device_id||'').trim();
     const pCond = 'REGEXP_REPLACE(phone,"[^0-9]","")';
+
+    // device_id만 있으면 기기 자동 인식 (이름/전화 선입력용)
+    if(deviceId && !phone){
+      const [rows] = await pool.execute(
+        'SELECT * FROM customers_master WHERE device_id=? ORDER BY updated_at DESC LIMIT 1',
+        [deviceId]
+      );
+      return ok(res, {items: rows, history: [], device_match: rows.length>0});
+    }
 
     // 1. customers_master 저장 주소
     const [master] = phone
       ? await pool.execute(`SELECT * FROM customers_master WHERE ${pCond}=? ORDER BY updated_at DESC`,[phone])
       : await pool.execute('SELECT * FROM customers_master ORDER BY updated_at DESC');
 
-    // 2. customers 주문이력 중 master에 없는 주소 (phone 기준 JOIN, addr 중복 제거)
-    const masterAddrs = new Set(master.map(r => r.addr));
+    // 2. orders 주문이력 중 master에 없는 주소 (phone 기준 조회, addr 중복 제거)
+    const masterAddrs = new Set(master.flatMap(r => [r.addr1,r.addr2,r.addr3].filter(Boolean)));
     const [hist] = phone
       ? await pool.execute(
-          `SELECT name, phone, addr, memo FROM customers
+          `SELECT name, phone, addr, memo FROM orders
             WHERE ${pCond}=? AND addr IS NOT NULL AND addr!=''
             GROUP BY addr ORDER BY MAX(date) DESC LIMIT 20`,
           [phone])
@@ -550,11 +543,11 @@ app.get('/api/customers-master', async (req, res) => {
 // POST /api/customers-master
 app.post('/api/customers-master', async (req, res) => {
   try {
-    const {name,phone,addr,memo} = req.body;
-    if(!phone||!addr) return err(res,'phone and addr required',400);
+    const {name,phone,addr1,addr2,addr3,memo,device_id} = req.body;
+    if(!phone||!addr1) return err(res,'phone and addr1 required',400);
     const [r] = await pool.execute(
-      'INSERT INTO customers_master (name,phone,addr,memo) VALUES (?,?,?,?)',
-      [name||'',phone,addr,memo||'']
+      'INSERT INTO customers_master (name,phone,addr1,addr2,addr3,memo,device_id) VALUES (?,?,?,?,?,?,?)',
+      [name||'',phone,addr1,addr2||null,addr3||null,memo||'',device_id||null]
     );
     ok(res, {id: r.insertId});
   } catch(e) { err(res, e.message); }
@@ -563,10 +556,10 @@ app.post('/api/customers-master', async (req, res) => {
 // PUT /api/customers-master/:id
 app.put('/api/customers-master/:id', async (req, res) => {
   try {
-    const {name,phone,addr,memo} = req.body;
+    const {name,phone,addr1,addr2,addr3,memo,device_id} = req.body;
     await pool.execute(
-      'UPDATE customers_master SET name=?,phone=?,addr=?,memo=? WHERE id=?',
-      [name||'',phone,addr,memo||'',req.params.id]
+      'UPDATE customers_master SET name=?,phone=?,addr1=?,addr2=?,addr3=?,memo=?,device_id=COALESCE(?,device_id) WHERE id=?',
+      [name||'',phone,addr1,addr2||null,addr3||null,memo||'',device_id||null,req.params.id]
     );
     ok(res);
   } catch(e) { err(res, e.message); }
@@ -691,8 +684,11 @@ async function initDB() {
       id INT AUTO_INCREMENT PRIMARY KEY,
       name VARCHAR(100),
       phone VARCHAR(30) NOT NULL,
-      addr VARCHAR(500) NOT NULL,
+      addr1 VARCHAR(500) NOT NULL,
+      addr2 VARCHAR(500) DEFAULT NULL,
+      addr3 VARCHAR(500) DEFAULT NULL,
       memo VARCHAR(200) DEFAULT '',
+      device_id VARCHAR(100) DEFAULT NULL,
       created_at DATETIME DEFAULT NOW(),
       updated_at DATETIME DEFAULT NOW() ON UPDATE NOW()
     )`,
@@ -924,6 +920,25 @@ async function initDB() {
       const [r]=await conn.execute('UPDATE menus SET img_url=? WHERE img_url=?',['' ,DEFAULT_URL]);
       await conn.execute(`INSERT IGNORE INTO settings(k,v) VALUES('clear_default_url_v1','done')`).catch(()=>{});
       console.log(`기본 URL 초기화: ${r.affectedRows}건`);
+    }
+    // customers_master: device_id 컬럼 추가
+    const [[devIdMig]] = await conn.execute(`SELECT v FROM settings WHERE k='cm_device_id_v1'`).catch(()=>[[null]]);
+    if(!devIdMig){
+      await conn.execute(`ALTER TABLE customers_master ADD COLUMN IF NOT EXISTS device_id VARCHAR(100) DEFAULT NULL`).catch(()=>{});
+      await conn.execute(`INSERT IGNORE INTO settings(k,v) VALUES('cm_device_id_v1','done')`).catch(()=>{});
+      console.log('customers_master device_id 컬럼 추가 완료');
+    }
+    // customers_master: addr → addr1/addr2/addr3 마이그레이션
+    const [[cmAddrMig]] = await conn.execute(`SELECT v FROM settings WHERE k='cm_addr3_v1'`).catch(()=>[[null]]);
+    if(!cmAddrMig){
+      const [[addrCol]] = await conn.execute(`SHOW COLUMNS FROM customers_master LIKE 'addr'`).catch(()=>[[null]]);
+      if(addrCol){
+        await conn.execute(`ALTER TABLE customers_master CHANGE addr addr1 VARCHAR(500) NOT NULL`).catch(()=>{});
+        await conn.execute(`ALTER TABLE customers_master ADD COLUMN IF NOT EXISTS addr2 VARCHAR(500) DEFAULT NULL AFTER addr1`).catch(()=>{});
+        await conn.execute(`ALTER TABLE customers_master ADD COLUMN IF NOT EXISTS addr3 VARCHAR(500) DEFAULT NULL AFTER addr2`).catch(()=>{});
+        console.log('customers_master addr→addr1/addr2/addr3 마이그레이션 완료');
+      }
+      await conn.execute(`INSERT IGNORE INTO settings(k,v) VALUES('cm_addr3_v1','done')`).catch(()=>{});
     }
     console.log('DB 테이블 초기화 완료');
   } finally {

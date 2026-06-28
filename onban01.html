@@ -544,11 +544,11 @@ select.orderer-input{appearance:none;-webkit-appearance:none;background:#fff url
   </div>
   <div class="orderer-box">
     <div class="orderer-title">📝 주문자 정보 입력</div>
-    <input class="orderer-input" id="ordererName" type="text" placeholder="이름을 입력해주세요 *" maxlength="20">
-    <input class="orderer-input" id="ordererPhone" type="tel" placeholder="연락처 (선택)" maxlength="20">
+    <input class="orderer-input" id="ordererName" type="text" placeholder="이름을 입력해주세요 *" maxlength="20" oninput="_toggleAddrListBtn()">
+    <input class="orderer-input" id="ordererPhone" type="tel" placeholder="연락처 (필수) *" maxlength="20" oninput="_toggleAddrListBtn()">
     <div class="addr-wrap">
       <input class="orderer-input" id="ordererAddr" type="text" placeholder="배송 주소 (픽업 외 필수)" maxlength="100">
-      <button class="btn-addr-list" onclick="showAddrList()">📋 목록</button>
+      <button class="btn-addr-list" id="btnAddrList" onclick="showAddrList()" disabled style="opacity:.4;cursor:not-allowed;">📋 목록</button>
     </div>
     <select class="orderer-input" id="ordererMemo" required onchange="_updateDeliveryFee()">
       <option value="" disabled>요청사항 선택 (필수)</option>
@@ -1183,6 +1183,7 @@ function renderOrdererPage(){
     var name=document.getElementById('ordererName').value.trim();
     if(!name){alert('이름을 입력해주세요.');document.getElementById('ordererName').focus();return;}
     var phone=document.getElementById('ordererPhone').value.trim();
+    if(!phone){alert('연락처를 입력해주세요.');document.getElementById('ordererPhone').focus();return;}
     var memo=document.getElementById('ordererMemo').value;
     if(!memo){alert('요청사항을 선택해주세요.');document.getElementById('ordererMemo').focus();return;}
     var addr=document.getElementById('ordererAddr').value.trim();
@@ -1336,17 +1337,49 @@ function _buildAddrItem(c, isMaster){
   var wrap=document.createElement('div');
   wrap.className='addr-item';
   if(c.id) wrap.dataset.id=c.id;
-  var body=document.createElement('div');
-  body.className='addr-item-body';
-  body.innerHTML='<div style="font-size:14px;font-weight:700;color:#1a1a1a;">'+(c.name||'')
-    +(c.phone?' <span style="font-size:12px;color:#888;font-weight:400;">'+c.phone+'</span>':'')+'</div>'
-    +'<div style="font-size:13px;color:#444;margin-top:3px;">'+c.addr+'</div>'
-    +(c.memo?'<div style="font-size:12px;color:#b8860b;margin-top:2px;">📝 '+c.memo+'</div>':'');
-  body.onclick=function(){pickAddr(c.addr,c.memo||'');};
-  var acts=document.createElement('div');
-  acts.className='addr-item-actions';
+
+  // 헤더: 이름 + 전화
+  var header=document.createElement('div');
+  header.style.cssText='font-size:14px;font-weight:700;color:#1a1a1a;margin-bottom:6px;';
+  header.innerHTML=(c.name||'')+(c.phone?' <span style="font-size:12px;color:#888;font-weight:400;">'+c.phone+'</span>':'');
+  wrap.appendChild(header);
+
   if(isMaster){
-    // 저장된 주소: 수정 / 삭제
+    // 주소1/2/3 라디오 선택 (기본: 주소1)
+    var addrs=[c.addr1,c.addr2,c.addr3];
+    var radios=[];
+    addrs.forEach(function(a,i){
+      if(!a) return;
+      var row=document.createElement('label');
+      row.style.cssText='display:flex;align-items:flex-start;gap:8px;cursor:pointer;padding:4px 0;';
+      var rb=document.createElement('input');
+      rb.type='radio';rb.name='addr_sel_'+c.id;rb.value=a;
+      rb.style.marginTop='3px';rb.checked=(i===0);
+      radios.push(rb);
+      var txt=document.createElement('span');
+      txt.style.cssText='font-size:13px;color:#333;';
+      txt.innerHTML='<span style="font-size:11px;font-weight:700;color:#086266;margin-right:4px;">주소'+(i+1)+'</span>'+a;
+      row.appendChild(rb);row.appendChild(txt);
+      wrap.appendChild(row);
+    });
+    if(c.memo){
+      var memoEl=document.createElement('div');
+      memoEl.style.cssText='font-size:12px;color:#b8860b;margin-top:4px;';
+      memoEl.textContent='📝 '+c.memo;
+      wrap.appendChild(memoEl);
+    }
+    // 선택 버튼
+    var selBtn=document.createElement('button');
+    selBtn.className='btn-addr-save';selBtn.style.cssText='width:100%;margin-top:8px;padding:8px 0;font-size:13px;';
+    selBtn.textContent='이 주소로 선택';
+    selBtn.onclick=function(){
+      var chosen=radios.find(function(r){return r.checked;});
+      if(chosen) pickAddr(chosen.value, c.memo||'');
+    };
+    wrap.appendChild(selBtn);
+    // 수정/삭제 버튼
+    var acts=document.createElement('div');
+    acts.className='addr-item-actions';
     var eBtn=document.createElement('button');
     eBtn.className='btn-addr-edit';eBtn.textContent='수정';
     eBtn.onclick=function(e){e.stopPropagation();_showAddrForm(c,wrap);};
@@ -1360,62 +1393,66 @@ function _buildAddrItem(c, isMaster){
         .catch(function(){alert('삭제 실패');});
     };
     acts.appendChild(eBtn);acts.appendChild(dBtn);
+    wrap.appendChild(acts);
   } else {
-    // 과거 주문 주소: 주소록에 저장하기
+    // 과거 주문 주소 (단일 addr)
+    var addrEl=document.createElement('div');
+    addrEl.style.cssText='font-size:13px;color:#444;margin-bottom:6px;cursor:pointer;';
+    addrEl.textContent=c.addr;
+    addrEl.onclick=function(){pickAddr(c.addr,c.memo||'');};
+    wrap.appendChild(addrEl);
     var sBtn=document.createElement('button');
-    sBtn.className='btn-addr-edit';sBtn.style.flex='1';sBtn.textContent='주소록에 저장';
+    sBtn.className='btn-addr-edit';sBtn.style.cssText='width:100%;';sBtn.textContent='주소록에 저장';
     sBtn.onclick=function(e){
       e.stopPropagation();
       fetch(API_URL+'/api/customers-master',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({name:c.name||'',phone:c.phone||'',addr:c.addr,memo:c.memo||''})})
+        body:JSON.stringify({name:c.name||'',phone:c.phone||'',addr1:c.addr,memo:c.memo||'',device_id:_getDeviceId()})})
         .then(function(){
           var ph=(document.getElementById('ordererPhone').value||'').replace(/[^0-9]/g,'');
           _loadAddrList(ph);
         }).catch(function(){alert('저장 실패');});
     };
-    acts.appendChild(sBtn);
+    wrap.appendChild(sBtn);
   }
-  wrap.appendChild(body);wrap.appendChild(acts);
   return wrap;
 }
 function _showAddrForm(c,replaceEl){
-  // c=null이면 추가, c=객체면 수정
   var isNew=!c;
   var form=document.createElement('div');
   form.className='addr-form';
-  var _curPhone=(document.getElementById('ordererPhone').value||'').trim();
-  var _curName=(document.getElementById('ordererName').value||'').trim();
-  var fName=document.createElement('input');fName.placeholder='이름';fName.value=c?c.name||'':_curName;
-  var fPhone=document.createElement('input');fPhone.placeholder='전화번호 (필수)';fPhone.type='tel';fPhone.required=true;
-  fPhone.value=c?c.phone||'':_curPhone;
-  var fAddr=document.createElement('input');fAddr.placeholder='주소 (필수)';fAddr.required=true;fAddr.value=c?c.addr||'':'';
+  var fAddr1=document.createElement('input');fAddr1.placeholder='주소1 (필수)';fAddr1.required=true;fAddr1.value=c?c.addr1||'':'';
+  var fAddr2=document.createElement('input');fAddr2.placeholder='주소2 (선택)';fAddr2.value=c?c.addr2||'':'';
+  var fAddr3=document.createElement('input');fAddr3.placeholder='주소3 (선택)';fAddr3.value=c?c.addr3||'':'';
   var fMemo=document.createElement('input');fMemo.placeholder='메모 (선택)';fMemo.value=c?c.memo||'':'';
   var btns=document.createElement('div');btns.className='addr-form-btns';
-  var saveBtn=document.createElement('button');saveBtn.className='btn-addr-save';saveBtn.textContent=isNew?'추가':'저장';
+  var saveBtn=document.createElement('button');saveBtn.className='btn-addr-save';saveBtn.textContent='저장';
   var cancelBtn=document.createElement('button');cancelBtn.className='btn-addr-cancel';cancelBtn.textContent='취소';
   saveBtn.onclick=function(){
-    var phone=(fPhone.value||'').trim();
-    var addr=(fAddr.value||'').trim();
-    if(!phone||!addr){alert('전화번호와 주소는 필수입니다.');return;}
-    var body={name:fName.value.trim(),phone:phone,addr:addr,memo:fMemo.value.trim()};
+    var addr1=(fAddr1.value||'').trim();
+    if(!addr1){alert('주소1은 필수입니다.');return;}
+    var name=(document.getElementById('ordererName').value||'').trim();
+    var phone=(document.getElementById('ordererPhone').value||'').trim();
+    var body={name:name,phone:phone,addr1:addr1,
+      addr2:fAddr2.value.trim()||null,addr3:fAddr3.value.trim()||null,memo:fMemo.value.trim(),
+      device_id:_getDeviceId()};
     var url=API_URL+'/api/customers-master'+(isNew?'':'/'+c.id);
     fetch(url,{method:isNew?'POST':'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
       .then(function(r){return r.json();})
       .then(function(d){
         if(!d.success){alert('저장 실패: '+(d.error||''));return;}
-        var phone2=(document.getElementById('ordererPhone').value||'').replace(/[^0-9]/g,'');
-        _loadAddrList(phone2);
+        var ph=phone.replace(/[^0-9]/g,'');
+        _loadAddrList(ph);
       }).catch(function(){alert('저장 실패');});
   };
   cancelBtn.onclick=function(){
-    var phone2=(document.getElementById('ordererPhone').value||'').replace(/[^0-9]/g,'');
-    if(isNew){form.remove();}else{_loadAddrList(phone2);}
+    var ph=(document.getElementById('ordererPhone').value||'').replace(/[^0-9]/g,'');
+    if(isNew){form.remove();}else{_loadAddrList(ph);}
   };
   btns.appendChild(saveBtn);btns.appendChild(cancelBtn);
-  [fName,fPhone,fAddr,fMemo,btns].forEach(function(el){form.appendChild(el);});
+  [fAddr1,fAddr2,fAddr3,fMemo,btns].forEach(function(el){form.appendChild(el);});
   if(isNew){
-    var wrap=document.getElementById('addrAddWrap');
-    wrap.innerHTML='';wrap.appendChild(form);
+    var addWrap=document.getElementById('addrAddWrap');
+    addWrap.innerHTML='';addWrap.appendChild(form);
   } else {
     replaceEl.replaceWith(form);
   }
@@ -1502,8 +1539,6 @@ function saveOrder(cb){
     );
   }
 
-  // 고객정보 시트 저장
-  fetch(API_URL+'/api/customers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:[order.date,order.name,order.phone,order.addr,order.memo]})}).catch(function(){});
 
   // 관리자에게 새 주문 알림
   var adminPhoneFixed='010-2698-9056';
@@ -2311,6 +2346,27 @@ function _startSSE(){
   };
 }
 
+function _toggleAddrListBtn(){
+  var name=(document.getElementById('ordererName').value||'').trim();
+  var phone=(document.getElementById('ordererPhone').value||'').trim();
+  var btn=document.getElementById('btnAddrList');
+  if(!btn) return;
+  var ok=!!(name&&phone);
+  btn.disabled=!ok;
+  btn.style.opacity=ok?'1':'0.4';
+  btn.style.cursor=ok?'pointer':'not-allowed';
+}
+function _getDeviceId(){
+  var k='onban_device_id';
+  var id=localStorage.getItem(k);
+  if(!id){
+    id='xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){
+      var r=Math.random()*16|0;return(c==='x'?r:(r&0x3|0x8)).toString(16);
+    });
+    localStorage.setItem(k,id);
+  }
+  return id;
+}
 window.onload=function(){
   _revertStaleItemEdits();   // 직전 세션의 재주문 미처리 항목편집 원복(물리적 반영 방지)
   loadMenus();
