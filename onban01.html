@@ -1345,21 +1345,24 @@ function _buildAddrItem(c, isMaster){
   wrap.appendChild(header);
 
   if(isMaster){
-    // 주소1/2/3 라디오 선택 (기본: 주소1)
+    // 주소1/2/3 — 각 행 우측에 선택 버튼
     var addrs=[c.addr1,c.addr2,c.addr3];
-    var radios=[];
     addrs.forEach(function(a,i){
       if(!a) return;
-      var row=document.createElement('label');
-      row.style.cssText='display:flex;align-items:flex-start;gap:8px;cursor:pointer;padding:4px 0;';
-      var rb=document.createElement('input');
-      rb.type='radio';rb.name='addr_sel_'+c.id;rb.value=a;
-      rb.style.marginTop='3px';rb.checked=(i===0);
-      radios.push(rb);
+      var row=document.createElement('div');
+      row.style.cssText='display:flex;align-items:center;gap:8px;padding:4px 0;';
+      var label=document.createElement('span');
+      label.style.cssText='font-size:11px;font-weight:700;color:#086266;white-space:nowrap;';
+      label.textContent='주소'+(i+1);
       var txt=document.createElement('span');
-      txt.style.cssText='font-size:13px;color:#333;';
-      txt.innerHTML='<span style="font-size:11px;font-weight:700;color:#086266;margin-right:4px;">주소'+(i+1)+'</span>'+a;
-      row.appendChild(rb);row.appendChild(txt);
+      txt.style.cssText='font-size:13px;color:#333;flex:1;';
+      txt.textContent=a;
+      var selBtn=document.createElement('button');
+      selBtn.className='btn-addr-save';
+      selBtn.style.cssText='padding:5px 10px;font-size:12px;white-space:nowrap;flex-shrink:0;';
+      selBtn.textContent='선택';
+      (function(addr){selBtn.onclick=function(){pickAddr(addr,c.memo||'');};})(a);
+      row.appendChild(label);row.appendChild(txt);row.appendChild(selBtn);
       wrap.appendChild(row);
     });
     if(c.memo){
@@ -1368,15 +1371,6 @@ function _buildAddrItem(c, isMaster){
       memoEl.textContent='📝 '+c.memo;
       wrap.appendChild(memoEl);
     }
-    // 선택 버튼
-    var selBtn=document.createElement('button');
-    selBtn.className='btn-addr-save';selBtn.style.cssText='width:100%;margin-top:8px;padding:8px 0;font-size:13px;';
-    selBtn.textContent='이 주소로 선택';
-    selBtn.onclick=function(){
-      var chosen=radios.find(function(r){return r.checked;});
-      if(chosen) pickAddr(chosen.value, c.memo||'');
-    };
-    wrap.appendChild(selBtn);
     // 수정/삭제 버튼
     var acts=document.createElement('div');
     acts.className='addr-item-actions';
