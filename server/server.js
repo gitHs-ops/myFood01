@@ -671,15 +671,6 @@ async function initDB() {
       device_id VARCHAR(64),
       created_at DATETIME DEFAULT NOW()
     )`,
-    `CREATE TABLE IF NOT EXISTS customers (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      date DATE,
-      name VARCHAR(100),
-      phone VARCHAR(30),
-      addr VARCHAR(500),
-      memo VARCHAR(1000),
-      created_at DATETIME DEFAULT NOW()
-    )`,
     `CREATE TABLE IF NOT EXISTS customers_master (
       id INT AUTO_INCREMENT PRIMARY KEY,
       name VARCHAR(100),
@@ -920,6 +911,13 @@ async function initDB() {
       const [r]=await conn.execute('UPDATE menus SET img_url=? WHERE img_url=?',['' ,DEFAULT_URL]);
       await conn.execute(`INSERT IGNORE INTO settings(k,v) VALUES('clear_default_url_v1','done')`).catch(()=>{});
       console.log(`기본 URL 초기화: ${r.affectedRows}건`);
+    }
+    // customers 테이블 DROP (불용 처리)
+    const [[dropCustMig]] = await conn.execute(`SELECT v FROM settings WHERE k='drop_customers_v1'`).catch(()=>[[null]]);
+    if(!dropCustMig){
+      await conn.execute(`DROP TABLE IF EXISTS customers`).catch(()=>{});
+      await conn.execute(`INSERT IGNORE INTO settings(k,v) VALUES('drop_customers_v1','done')`).catch(()=>{});
+      console.log('customers 테이블 DROP 완료');
     }
     // customers_master: device_id 컬럼 추가
     const [[devIdMig]] = await conn.execute(`SELECT v FROM settings WHERE k='cm_device_id_v1'`).catch(()=>[[null]]);
