@@ -832,10 +832,12 @@ function renderMenuGrid(){
     } else {
       priceEl.className='menu-price';
       priceEl.textContent=comma(m.price)+'천원';
-      var stockTag=document.createElement('span');
-      stockTag.className='menu-stock-tag'+((m.stock||0)<=5?' low':'');
-      stockTag.textContent='재고 '+(m.stock||0);
-      nameWrap.appendChild(stockTag);
+      if((m.stock||0)>0&&(m.stock||0)<=3){
+        var stockTag=document.createElement('span');
+        stockTag.className='menu-stock-tag low';
+        stockTag.textContent='⚠ '+(m.stock||0)+'개 남음';
+        nameWrap.appendChild(stockTag);
+      }
       midCol.appendChild(nameWrap);
       var chk=document.createElement('div');
       chk.className='menu-chk'+(selectedMenuIds.has(String(m.id))?' checked':'');

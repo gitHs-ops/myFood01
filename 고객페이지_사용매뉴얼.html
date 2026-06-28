@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>온반(溫飯) 고객 페이지 사용 매뉴얼</title>
+<style>
+  body { font-family: "맑은 고딕", "Malgun Gothic", sans-serif; font-size: 11pt; line-height: 1.8; color: #1a1a1a; margin: 60px 80px; max-width: 800px; }
+  h1 { font-size: 22pt; font-weight: bold; color: #086266; text-align: center; margin-bottom: 4px; }
+  .subtitle { text-align: center; font-size: 11pt; color: #666; margin-bottom: 32px; }
+  h2 { font-size: 15pt; font-weight: bold; color: #086266; border-bottom: 2px solid #086266; padding-bottom: 4px; margin-top: 36px; margin-bottom: 12px; }
+  h3 { font-size: 12pt; font-weight: bold; color: #1a4a4a; margin-top: 20px; margin-bottom: 8px; }
+  h4 { font-size: 11pt; font-weight: bold; color: #333; margin-top: 14px; margin-bottom: 6px; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 18px; font-size: 10.5pt; }
+  th { background: #086266; color: #fff; padding: 8px 10px; text-align: left; font-weight: bold; }
+  td { padding: 7px 10px; border: 1px solid #cde8e7; vertical-align: top; }
+  tr:nth-child(even) td { background: #f4fafa; }
+  .note { background: #fffbea; border-left: 4px solid #E9A826; padding: 10px 14px; margin: 12px 0; font-size: 10.5pt; border-radius: 4px; }
+  .tip  { background: #f0faf9; border-left: 4px solid #086266; padding: 10px 14px; margin: 12px 0; font-size: 10.5pt; border-radius: 4px; }
+  .warn { background: #fff5f5; border-left: 4px solid #e05; padding: 10px 14px; margin: 12px 0; font-size: 10.5pt; border-radius: 4px; }
+  ol, ul { margin: 8px 0 8px 22px; }
+  li { margin-bottom: 5px; }
+  .step { display: inline-block; background: #086266; color: #fff; border-radius: 50%; width: 20px; height: 20px; text-align: center; line-height: 20px; font-size: 9pt; font-weight: bold; margin-right: 6px; }
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 9.5pt; font-weight: bold; }
+  .badge-teal { background: #086266; color: #fff; }
+  .badge-yellow { background: #FEE500; color: #3A1D1D; }
+  .badge-red { background: #e05; color: #fff; }
+  .badge-gray { background: #eee; color: #999; }
+  .flow { background: #f9fffe; border: 1.5px solid #cde8e7; border-radius: 8px; padding: 14px 20px; margin: 12px 0; }
+  .flow-arrow { color: #086266; font-size: 13pt; margin: 0 8px; }
+  .toc-box { background: #f4fafa; border: 1.5px solid #9adcda; border-radius: 8px; padding: 16px 24px; margin-bottom: 36px; }
+  .toc-box h3 { margin-top: 0; color: #086266; }
+  .toc-box a { color: #086266; text-decoration: none; }
+  .toc-box a:hover { text-decoration: underline; }
+  hr { border: none; border-top: 1px solid #e0f0ef; margin: 30px 0; }
+  .cover-info { text-align: center; margin-bottom: 40px; padding: 24px; background: linear-gradient(135deg, #086266, #0a7a7f); color: #fff; border-radius: 12px; }
+  .cover-info h1 { color: #fff; }
+  .cover-info .subtitle { color: rgba(255,255,255,0.8); }
+  .cover-info .meta { font-size: 10pt; color: rgba(255,255,255,0.7); margin-top: 16px; }
+  @media print {
+    body { margin: 20mm 25mm; }
+    h2 { page-break-before: auto; }
+  }
+</style>
+</head>
+<body>
+
+<div class="cover-info">
+  <h1>🍱 온반(溫飯)</h1>
+  <div class="subtitle">고객 페이지 사용 매뉴얼</div>
+  <div class="meta">작성일: 2026년 6월 28일 &nbsp;|&nbsp; 대상: 오늘의 반찬 주문 고객</div>
+</div>
+
+<div class="toc-box">
+  <h3>📋 목차</h3>
+  <ol>
+    <li><a href="#sec1">화면 구성 개요</a></li>
+    <li><a href="#sec2">상단 헤더 및 네비게이션</a></li>
+    <li><a href="#sec3">메뉴 목록 페이지</a></li>
+    <li><a href="#sec4">메뉴 상세 팝업</a></li>
+    <li><a href="#sec5">메뉴 상세 페이지</a></li>
+    <li><a href="#sec6">장바구니</a></li>
+    <li><a href="#sec7">주문자 정보 입력</a></li>
+    <li><a href="#sec8">주문 확인</a></li>
+    <li><a href="#sec9">결제 안내 페이지</a></li>
+    <li><a href="#sec10">주문 내역 조회</a></li>
+    <li><a href="#sec11">자주 묻는 질문 (FAQ)</a></li>
+  </ol>
+</div>
+
+<hr>
+
+<h2 id="sec1">1. 화면 구성 개요</h2>
+<p>온반 고객 페이지는 단일 HTML 앱으로, 아래의 화면(페이지)이 전환되며 동작합니다.</p>
+
+<table>
+  <tr><th>화면</th><th>역할</th></tr>
+  <tr><td>메뉴 목록</td><td>오늘 판매 중인 메뉴를 카테고리별로 조회</td></tr>
+  <tr><td>메뉴 상세 팝업</td><td>메뉴명 클릭 시 사진·가격·설명 미리보기 + 장바구니 담기</td></tr>
+  <tr><td>메뉴 상세 페이지</td><td>수량 선택 후 장바구니 또는 바로 주문</td></tr>
+  <tr><td>장바구니</td><td>담은 메뉴 확인·수량 변경·선택 주문</td></tr>
+  <tr><td>주문자 정보 입력</td><td>이름·연락처·주소·요청사항 입력</td></tr>
+  <tr><td>주문 확인</td><td>최종 주문 내용 확인 후 결제 요청</td></tr>
+  <tr><td>결제 안내</td><td>계좌 이체 정보 및 금액 안내</td></tr>
+  <tr><td>주문 내역</td><td>오늘 주문 조회·재주문·취소·추가 요청</td></tr>
+</table>
+
+<div class="tip">💡 페이지 새로고침 없이 상단 버튼으로 화면 전환이 가능합니다.</div>
+
+<hr>
+
+<h2 id="sec2">2. 상단 헤더 및 네비게이션</h2>
+
+<h3>2.1 로고 및 슬로건</h3>
+<p>상단 검은색 바에 온반 로고와 "<em>엄마의 정성처럼 따뜻한 마음과 온기를 담았습니다</em>" 문구가 표시됩니다.</p>
+
+<h3>2.2 상단 버튼</h3>
+<table>
+  <tr><th>버튼</th><th>기능</th></tr>
+  <tr><td>🗔 메뉴 목록</td><td>오늘의 메뉴 목록 화면으로 이동</td></tr>
+  <tr><td>🛍 장바구니</td><td>장바구니 화면으로 이동. 담긴 메뉴 수량이 빨간 뱃지로 표시</td></tr>
+  <tr><td>🕐 주문내역</td><td>지금까지 주문한 내역 조회 화면으로 이동</td></tr>
+</table>
+
+<hr>
+
+<h2 id="sec3">3. 메뉴 목록 페이지</h2>
+
+<h3>3.1 날짜 배너</h3>
+<p>화면 상단에 오늘 날짜와 자동 갱신 카운트다운이 표시됩니다.</p>
+<ul>
+  <li>카운트다운이 0이 되면 메뉴 목록이 자동으로 갱신됩니다.</li>
+  <li>오늘 등록된 메뉴가 없으면 "오늘 등록된 메뉴가 없어요." 메시지가 표시됩니다.</li>
+</ul>
+
+<h3>3.2 카테고리 탭</h3>
+<p>메뉴를 종류별로 필터링할 수 있는 탭입니다.</p>
+<table>
+  <tr><th>카테고리</th><th>색상</th><th>설명</th></tr>
+  <tr><td>전체</td><td>—</td><td>모든 메뉴 표시</td></tr>
+  <tr><td>메인</td><td>초록</td><td>메인 요리 (국, 탕, 찌개 등)</td></tr>
+  <tr><td>한우</td><td>빨강</td><td>한우 요리</td></tr>
+  <tr><td>한돈</td><td>보라</td><td>한돈(국내산 돼지) 요리</td></tr>
+  <tr><td>반찬</td><td>파랑</td><td>반찬류</td></tr>
+  <tr><td>김치</td><td>분홍</td><td>김치류</td></tr>
+  <tr><td>밀키트</td><td>노랑</td><td>밀키트 상품</td></tr>
+  <tr><td>기타</td><td>회색</td><td>기타 메뉴</td></tr>
+</table>
+
+<h3>3.3 메뉴 카드</h3>
+<p>각 메뉴는 카드 형태로 표시되며, 구성 요소는 다음과 같습니다.</p>
+
+<table>
+  <tr><th>요소</th><th>설명</th></tr>
+  <tr><td>카테고리 색 점 (●)</td><td>카테고리를 색상으로 표시</td></tr>
+  <tr><td>썸네일 이미지 / 이모지</td><td>메뉴 사진 또는 음식 이모지</td></tr>
+  <tr><td>메뉴명</td><td>메뉴 이름 (한우/한돈/밀키트는 괄호 표시)</td></tr>
+  <tr><td><span class="badge badge-yellow">어린이</span> 태그</td><td>어린이 식단 포함 메뉴에 노란 태그 표시</td></tr>
+  <tr><td>재고 태그</td><td>잔여 수량이 3개 이하면 <span style="color:#e53935;font-weight:bold;">⚠ 3개 남음</span> 형태로 표시</td></tr>
+  <tr><td><span class="badge badge-gray">품절</span> 태그</td><td>재고 소진 시 품절 표시, 선택 불가</td></tr>
+  <tr><td>가격</td><td>단위: 천원 (예: 6천원 = 6,000원)</td></tr>
+  <tr><td>체크박스 ☑</td><td>클릭하면 장바구니에 바로 추가</td></tr>
+</table>
+
+<div class="note">📌 노란 왼쪽 테두리가 있는 메뉴는 <strong>어린이 식단</strong>에 포함되는 메뉴입니다.</div>
+
+<h3>3.4 메뉴 선택 방법</h3>
+
+<h4>방법 1 — 체크박스 클릭 (빠른 담기)</h4>
+<ol>
+  <li>메뉴 카드 우측 체크박스를 클릭합니다.</li>
+  <li>체크박스가 초록으로 변하며 장바구니에 수량 1개가 담깁니다.</li>
+  <li>화면 하단에 <span class="badge badge-teal">🛒 장바구니 보기</span> 플로팅 버튼이 나타납니다.</li>
+</ol>
+
+<h4>방법 2 — 메뉴명 클릭 (상세 팝업)</h4>
+<ol>
+  <li>메뉴명을 클릭하면 상세 팝업이 나타납니다.</li>
+  <li>사진, 가격, 설명을 확인 후 <strong>장바구니 담기</strong> 또는 <strong>닫기</strong> 버튼을 선택합니다.</li>
+</ol>
+
+
+<hr>
+
+<h2 id="sec4">4. 메뉴 상세 팝업</h2>
+<p>메뉴명을 클릭하면 중앙에 팝업 창이 나타납니다.</p>
+
+<table>
+  <tr><th>구성 요소</th><th>설명</th></tr>
+  <tr><td>사진 이미지</td><td>메뉴 사진 (없으면 이모지 표시). 이미지 좌하단에 <strong>임시 이미지</strong> 배지가 있으면 대표 사진 미확정 상태</td></tr>
+  <tr><td>✕ 닫기 버튼</td><td>우측 상단 X 버튼으로 팝업 닫기</td></tr>
+  <tr><td>카테고리 뱃지</td><td>메뉴 카테고리 (예: <span class="badge" style="background:#378ADD;color:#fff;">반찬</span>)</td></tr>
+  <tr><td>메뉴명</td><td>메뉴 이름</td></tr>
+  <tr><td>가격</td><td>판매 가격</td></tr>
+  <tr><td>설명</td><td>메뉴 소개 문구</td></tr>
+  <tr><td>🛒 장바구니 담기</td><td>클릭 시 장바구니에 1개 추가 후 팝업 자동 닫힘</td></tr>
+  <tr><td>닫기 버튼</td><td>담지 않고 팝업 닫기</td></tr>
+</table>
+
+<div class="warn">⚠ 품절 메뉴는 <strong>장바구니 담기</strong> 버튼이 비활성화(회색)됩니다.</div>
+
+<hr>
+
+<h2 id="sec5">5. 메뉴 상세 페이지</h2>
+<p>가격 영역 클릭 시 이동하는 상세 페이지입니다.</p>
+
+<h3>5.1 상단 구성</h3>
+<ul>
+  <li><strong>뒤로 버튼</strong>: 좌측 상단 ← 버튼으로 목록으로 복귀</li>
+  <li><strong>대표 이미지</strong>: 최대 240px 높이로 사진 표시 (없으면 이모지)</li>
+  <li><strong>임시 이미지 배지</strong>: 대표 사진이 임시 상태인 경우 표시</li>
+</ul>
+
+<h3>5.2 수량 선택 및 주문</h3>
+<ol>
+  <li><strong>−/+</strong> 버튼으로 수량을 조절합니다.</li>
+  <li>두 가지 버튼 중 하나를 선택합니다.</li>
+</ol>
+
+<table>
+  <tr><th>버튼</th><th>동작</th></tr>
+  <tr><td>🛒 장바구니 담기</td><td>선택 수량만큼 장바구니에 추가 후 목록으로 복귀</td></tr>
+  <tr><td>⚡ 바로 주문</td><td>장바구니를 거치지 않고 바로 주문자 정보 입력 화면으로 이동</td></tr>
+</table>
+
+<hr>
+
+<h2 id="sec6">6. 장바구니</h2>
+
+<h3>6.1 장바구니 화면 구성</h3>
+<table>
+  <tr><th>요소</th><th>설명</th></tr>
+  <tr><td>체크박스</td><td>항목별 선택/해제. 선택된 항목만 주문됩니다.</td></tr>
+  <tr><td>썸네일</td><td>메뉴 사진 또는 이모지</td></tr>
+  <tr><td>메뉴명 / 가격</td><td>담긴 메뉴 정보</td></tr>
+  <tr><td>−/+ 수량 조절</td><td>수량 변경 (1 미만은 자동 제거)</td></tr>
+  <tr><td>✕ 삭제 버튼</td><td>해당 메뉴를 장바구니에서 제거</td></tr>
+</table>
+
+<h3>6.2 요약 정보</h3>
+<table>
+  <tr><th>항목</th><th>설명</th></tr>
+  <tr><td>선택 메뉴 수</td><td>체크된 항목 수</td></tr>
+  <tr><td>합계 금액</td><td>체크된 항목 합산 금액</td></tr>
+</table>
+
+<h3>6.3 하단 버튼</h3>
+<table>
+  <tr><th>버튼</th><th>기능</th></tr>
+  <tr><td>전체 선택</td><td>모든 항목 체크/해제 토글</td></tr>
+  <tr><td>선택 삭제</td><td>체크된 항목만 삭제</td></tr>
+  <tr><td>🛍 선택 주문</td><td>체크된 항목으로 주문 진행 → 주문자 정보 입력 화면</td></tr>
+</table>
+
+<div class="note">📌 장바구니가 비어 있으면 "장바구니가 비어 있어요" 안내와 함께 하단 버튼이 표시되지 않습니다.</div>
+
+<div class="warn">⚠ 품절된 메뉴가 장바구니에 있으면 주문 진행 시 품절 알림이 표시되고 해당 항목은 자동 제외됩니다.</div>
+
+<hr>
+
+<h2 id="sec7">7. 주문자 정보 입력</h2>
+
+<h3>7.1 입력 항목</h3>
+<table>
+  <tr><th>항목</th><th>필수 여부</th><th>설명</th></tr>
+  <tr><td>이름</td><td>필수 <span class="badge badge-red">*</span></td><td>주문자 성명 (최대 20자)</td></tr>
+  <tr><td>연락처</td><td>선택</td><td>전화번호 또는 휴대폰 번호</td></tr>
+  <tr><td>배송 주소</td><td>픽업 외 필수</td><td>직접 입력 또는 📋 목록에서 선택</td></tr>
+  <tr><td>요청사항</td><td>필수</td><td>경비원실 / 문앞 / 택배함 / 현관에서 직접 수령 / 매장 픽업 중 선택</td></tr>
+  <tr><td>추가 요청사항</td><td>선택</td><td>자유 형식 입력 (최대 200자)</td></tr>
+</table>
+
+<h3>7.2 주소 목록 기능</h3>
+<p>배송 주소 입력란 우측 <strong>📋 목록</strong> 버튼을 클릭하면 이전에 사용한 주소 목록에서 선택할 수 있습니다.</p>
+
+<div class="tip">💡 <strong>매장 픽업</strong>을 선택하면 주소 입력이 필요 없습니다. 가까운 경우 픽업 권장 배너가 표시될 수 있습니다.</div>
+
+<h3>7.3 주문 내용 확인 박스</h3>
+<p>주문자 정보 입력 화면 하단에 선택한 메뉴, 수량, 금액 요약이 표시됩니다.</p>
+
+<hr>
+
+<h2 id="sec8">8. 주문 확인</h2>
+<p>주문자 정보 입력 후 이동하는 최종 확인 화면입니다.</p>
+
+<ul>
+  <li>주문 메뉴 목록 및 수량, 금액이 표시됩니다.</li>
+  <li>총 합계 금액이 초록 박스에 강조 표시됩니다.</li>
+  <li><strong>📦 주문 요청</strong> 버튼(노란색)을 클릭하면 주문이 접수되고 결제 안내 화면으로 이동합니다.</li>
+</ul>
+
+<div class="note">📌 주문 요청 후에는 주문 번호가 생성되며 주문 내역에서 확인할 수 있습니다.</div>
+
+<hr>
+
+<h2 id="sec9">9. 결제 안내 페이지</h2>
+<p>주문 요청 후 계좌 이체 방식으로 결제합니다.</p>
+
+<h3>9.1 계좌 정보</h3>
+<table>
+  <tr><th>항목</th><th>내용</th></tr>
+  <tr><td>은행</td><td>국민은행</td></tr>
+  <tr><td>예금주</td><td>운영자 성명</td></tr>
+  <tr><td>계좌번호</td><td>화면에 표시된 계좌번호 확인</td></tr>
+</table>
+
+<h3>9.2 결제 진행 방법</h3>
+<ol>
+  <li><strong>계좌번호 복사</strong> 버튼을 클릭하여 계좌번호를 클립보드에 복사합니다.</li>
+  <li>본인 은행 앱에서 이체를 진행합니다.</li>
+  <li>이체 완료 후 <strong>입금자명</strong>을 주문자 이름으로 기재합니다.</li>
+  <li><strong>홈으로</strong> 버튼을 클릭하여 메뉴 목록으로 돌아갑니다.</li>
+</ol>
+
+<div class="note">📌 결제 금액은 주문 화면의 <strong>총 합계 금액</strong>과 동일하게 이체하세요.</div>
+<div class="warn">⚠ 이체 후 입금 확인까지 최대 수 분이 소요될 수 있습니다. 확인 완료 시 주문 상태가 변경됩니다.</div>
+
+<hr>
+
+<h2 id="sec10">10. 주문 내역 조회</h2>
+
+<h3>10.1 주문 목록</h3>
+<p>상단 <strong>🕐 주문내역</strong> 버튼을 클릭하면 지금까지 주문한 내역이 최신순으로 표시됩니다.</p>
+
+<table>
+  <tr><th>표시 항목</th><th>설명</th></tr>
+  <tr><td>주문 날짜/시간</td><td>주문 접수 일시</td></tr>
+  <tr><td>메뉴 요약</td><td>대표 메뉴명 외 n건 형태로 표시</td></tr>
+  <tr><td>주문 상태 뱃지</td><td>접수중 / 확인됨 / 배달완료 / 취소됨</td></tr>
+  <tr><td>합계 금액</td><td>해당 주문의 총 결제 금액</td></tr>
+</table>
+
+<h3>10.2 주문 상태 안내</h3>
+<table>
+  <tr><th>상태</th><th>색상</th><th>의미</th></tr>
+  <tr><td>접수중</td><td><span class="badge" style="background:#fff3cd;color:#856404;">접수중</span></td><td>주문이 접수되어 확인 대기 중</td></tr>
+  <tr><td>확인됨</td><td><span class="badge" style="background:#d1e7dd;color:#0f5132;">확인됨</span></td><td>관리자가 주문을 확인함</td></tr>
+  <tr><td>배달완료</td><td><span class="badge" style="background:#cfe2ff;color:#084298;">배달완료</span></td><td>배달 또는 픽업 완료</td></tr>
+  <tr><td>취소됨</td><td><span class="badge" style="background:#f8d7da;color:#842029;">취소됨</span></td><td>주문이 취소됨</td></tr>
+</table>
+
+<h3>10.3 주문 상세 조회</h3>
+<p>목록에서 항목을 클릭하면 상세 팝업이 열립니다.</p>
+
+<h4>상세 팝업 기능</h4>
+<table>
+  <tr><th>기능</th><th>설명</th></tr>
+  <tr><td>주문 메뉴 목록</td><td>담긴 메뉴, 수량, 가격 확인</td></tr>
+  <tr><td>요청사항 확인</td><td>배송 요청사항 및 추가 요청사항 확인</td></tr>
+  <tr><td>관리자 답변</td><td>관리자 메모·답변이 있으면 초록 채팅 버블로 표시</td></tr>
+  <tr><td>추가 요청 입력</td><td>"+ 추가 요청 입력" 버튼으로 메모 추가 가능</td></tr>
+  <tr><td>재주문</td><td>동일 메뉴를 장바구니에 다시 담아 재주문</td></tr>
+  <tr><td>주문 취소</td><td>접수중 상태일 때만 취소 가능</td></tr>
+</table>
+
+<div class="tip">💡 <strong>재주문</strong> 버튼은 이전과 동일한 메뉴를 빠르게 담을 수 있어 자주 이용하시는 메뉴 재주문에 편리합니다.</div>
+
+<div class="warn">⚠ <strong>확인됨/배달완료</strong> 상태에서는 취소가 불가합니다. 취소가 필요한 경우 관리자에게 직접 연락해 주세요.</div>
+
+<h3>10.4 추가 요청 (주문 후 메모)</h3>
+<ol>
+  <li>주문 상세 팝업 하단 <strong>"+ 추가 요청 입력"</strong> 버튼을 클릭합니다.</li>
+  <li>텍스트 박스에 내용을 입력합니다.</li>
+  <li><strong>저장</strong> 버튼을 클릭하면 관리자에게 전달됩니다.</li>
+  <li>저장 후 수정도 가능합니다 (<strong>✏ 수정</strong> 버튼).</li>
+</ol>
+
+<hr>
+
+<h2 id="sec11">11. 자주 묻는 질문 (FAQ)</h2>
+
+<h3>Q. 장바구니에 담았는데 새로 고침하면 사라지나요?</h3>
+<p>네. 장바구니 내용은 임시 저장이므로 페이지를 닫거나 새로 고침하면 초기화됩니다. 주문은 담은 즉시 진행하시기를 권장합니다.</p>
+
+<h3>Q. 품절 메뉴는 어떻게 알 수 있나요?</h3>
+<p>메뉴 카드에 <span class="badge badge-gray">품절</span> 태그가 표시되며, 카드 전체가 흐릿하게 표시됩니다.</p>
+
+<h3>Q. "임시 이미지" 배지는 무엇인가요?</h3>
+<p>메뉴 대표 사진이 아직 확정되지 않은 임시 이미지입니다. 실제 음식 사진으로 업데이트 예정입니다.</p>
+
+<h3>Q. 매장 픽업은 어떻게 신청하나요?</h3>
+<p>주문자 정보 입력 화면의 요청사항에서 <strong>"매장 픽업"</strong>을 선택하시면 됩니다. 배송 주소 입력은 불필요합니다.</p>
+
+<h3>Q. 주문 취소는 어디서 하나요?</h3>
+<p><strong>주문내역</strong> → 해당 주문 클릭 → 하단 <strong>주문 취소</strong> 버튼. 단, <strong>접수중</strong> 상태일 때만 가능합니다.</p>
+
+<h3>Q. 계좌번호를 잘못 이체했어요.</h3>
+<p>주문 상세 팝업의 <strong>추가 요청</strong> 기능을 통해 관리자에게 메모를 남겨 주세요.</p>
+
+<hr>
+
+<p style="text-align:center;color:#aaa;font-size:9.5pt;margin-top:40px;">
+  온반(溫飯) 고객 페이지 사용 매뉴얼 ⓒ 2026<br>
+  문의: 주문 내역 → 추가 요청 또는 운영자 직접 연락
+</p>
+
+</body>
+</html>
