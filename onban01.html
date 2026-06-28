@@ -1302,32 +1302,23 @@ function _loadAddrList(phone){
     var items=(d.items||[]);
     var history=(d.history||[]);
     el.innerHTML='';
-    // 추가 폼 자리 (항상 맨 위)
-    var addWrap=document.createElement('div');
-    addWrap.id='addrAddWrap';
-    el.appendChild(addWrap);
-    if(!items.length&&!history.length){
-      var empty=document.createElement('div');
-      empty.style.cssText='text-align:center;color:#aaa;padding:20px 0;';
-      empty.textContent=phone?'일치하는 주소가 없어요.':'저장된 주소가 없어요.';
-      el.appendChild(empty);
+    if(items.length){
+      // 저장된 주소 카드 (addr1/2/3 선택)
+      el.appendChild(_buildAddrItem(items[0],true));
     } else {
-      // customers_master 저장 주소
-      if(items.length){
-        var sec1=document.createElement('div');
-        sec1.style.cssText='font-size:11px;font-weight:700;color:#086266;letter-spacing:.5px;margin-bottom:6px;';
-        sec1.textContent='저장된 주소';
-        el.appendChild(sec1);
-        items.forEach(function(c){el.appendChild(_buildAddrItem(c,true));});
-      }
-      // customers 주문이력 주소 (master에 없는 것)
-      if(history.length){
-        var sec2=document.createElement('div');
-        sec2.style.cssText='font-size:11px;font-weight:700;color:#aaa;letter-spacing:.5px;margin:10px 0 6px;';
-        sec2.textContent='과거 주문 주소';
-        el.appendChild(sec2);
-        history.forEach(function(c){el.appendChild(_buildAddrItem(c,false));});
-      }
+      // 저장 주소 없음 → 편집 폼 바로 표시
+      var addWrap=document.createElement('div');
+      addWrap.id='addrAddWrap';
+      el.appendChild(addWrap);
+      _showAddrForm(null);
+    }
+    // 과거 주문 주소 (orders 이력 중 master에 없는 것)
+    if(history.length){
+      var sec=document.createElement('div');
+      sec.style.cssText='font-size:11px;font-weight:700;color:#aaa;letter-spacing:.5px;margin:14px 0 6px;';
+      sec.textContent='과거 주문 주소';
+      el.appendChild(sec);
+      history.forEach(function(c){el.appendChild(_buildAddrItem(c,false));});
     }
   }).catch(function(){
     el.innerHTML='<div style="text-align:center;color:#e53935;padding:16px 0;">불러오기 실패</div>';
@@ -2388,11 +2379,8 @@ window.onload=function(){
 <div id="addrListOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:flex-end;justify-content:center;" onclick="closeAddrList(event)">
   <div style="background:#fff;border-radius:16px 16px 0 0;width:100%;max-height:70vh;overflow-y:auto;padding:20px 16px 32px;" onclick="event.stopPropagation()">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-      <div style="font-size:15px;font-weight:700;color:#1a1a1a;">📋 배송 주소 목록</div>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <button onclick="_showAddrForm(null)" style="background:var(--teal);color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer;">+ 추가</button>
-        <button onclick="document.getElementById('addrListOverlay').style.display='none'" style="background:#f0f0f0;color:#555;border:none;border-radius:8px;width:32px;height:32px;font-size:18px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
-      </div>
+      <div style="font-size:15px;font-weight:700;color:#1a1a1a;">📋 배송 주소</div>
+      <button onclick="document.getElementById('addrListOverlay').style.display='none'" style="background:#f0f0f0;color:#555;border:none;border-radius:8px;width:32px;height:32px;font-size:18px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
     </div>
     <div id="addrListContent"></div>
   </div>
