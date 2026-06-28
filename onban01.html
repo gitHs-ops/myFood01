@@ -1131,35 +1131,21 @@ function renderOrdererPage(){
   var el=document.getElementById('ordererOrderContent');
   el.innerHTML='';
 
-  // 이전 주문자 정보 자동 채우기 (입력되지 않은 필드만)
-  try{
-    var allOrders=JSON.parse(localStorage.getItem('orders')||'[]');
-    var prev=allOrders.find(function(o){return o.name&&o.status!=='cancelled';});
-    if(prev){
-      var nEl=document.getElementById('ordererName');
-      var pEl=document.getElementById('ordererPhone');
-      var aEl=document.getElementById('ordererAddr');
-      var mEl=document.getElementById('ordererMemo');
-      if(nEl&&!nEl.value) nEl.value=prev.name||'';
-      if(pEl&&!pEl.value) pEl.value=prev.phone||'';
-      if(aEl&&!aEl.value) aEl.value=prev.addr||'';
-    }
-  }catch(e){}
-
-  // device_id로 customers_master 조회 → name/phone 자동 채우기 (master 우선)
+  // device_id로 customers_master 조회 → name/phone 자동 채우기
   (function(){
     var did=_getDeviceId();
     fetch(API_URL+'/api/customers-master?device_id='+encodeURIComponent(did))
       .then(function(r){return r.json();})
       .then(function(d){
-        if(!d.success||!d.items||!d.items.length) return;
-        var m=d.items[0];
-        var nEl=document.getElementById('ordererName');
-        var pEl=document.getElementById('ordererPhone');
-        if(nEl&&m.name) nEl.value=m.name;
-        if(pEl&&m.phone) pEl.value=m.phone;
+        if(d.success&&d.items&&d.items.length){
+          var m=d.items[0];
+          var nEl=document.getElementById('ordererName');
+          var pEl=document.getElementById('ordererPhone');
+          if(nEl&&m.name) nEl.value=m.name;
+          if(pEl&&m.phone) pEl.value=m.phone;
+        }
         _toggleAddrListBtn();
-      }).catch(function(){});
+      }).catch(function(){ _toggleAddrListBtn(); });
   })();
 
   // 주문 항목 요약 박스
