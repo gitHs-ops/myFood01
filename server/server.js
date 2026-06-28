@@ -519,6 +519,51 @@ app.post('/api/customers', async (req, res) => {
   } catch(e) { err(res, e.message); }
 });
 
+// ── customers_master CRUD ──────────────────────────────────────
+// GET /api/customers-master?phone=xxx
+app.get('/api/customers-master', async (req, res) => {
+  try {
+    const phone = (req.query.phone||'').replace(/[^0-9]/g,'');
+    const [rows] = phone
+      ? await pool.execute('SELECT * FROM customers_master WHERE REGEXP_REPLACE(phone,"[^0-9]","")=? ORDER BY updated_at DESC',[phone])
+      : await pool.execute('SELECT * FROM customers_master ORDER BY updated_at DESC');
+    ok(res, {items: rows});
+  } catch(e) { err(res, e.message); }
+});
+
+// POST /api/customers-master
+app.post('/api/customers-master', async (req, res) => {
+  try {
+    const {name,phone,addr,memo} = req.body;
+    if(!phone||!addr) return err(res,'phone and addr required',400);
+    const [r] = await pool.execute(
+      'INSERT INTO customers_master (name,phone,addr,memo) VALUES (?,?,?,?)',
+      [name||'',phone,addr,memo||'']
+    );
+    ok(res, {id: r.insertId});
+  } catch(e) { err(res, e.message); }
+});
+
+// PUT /api/customers-master/:id
+app.put('/api/customers-master/:id', async (req, res) => {
+  try {
+    const {name,phone,addr,memo} = req.body;
+    await pool.execute(
+      'UPDATE customers_master SET name=?,phone=?,addr=?,memo=? WHERE id=?',
+      [name||'',phone,addr,memo||'',req.params.id]
+    );
+    ok(res);
+  } catch(e) { err(res, e.message); }
+});
+
+// DELETE /api/customers-master/:id
+app.delete('/api/customers-master/:id', async (req, res) => {
+  try {
+    await pool.execute('DELETE FROM customers_master WHERE id=?',[req.params.id]);
+    ok(res);
+  } catch(e) { err(res, e.message); }
+});
+
 // ══════════════════════════════════════════════════════════════
 // 설정
 // ══════════════════════════════════════════════════════════════
@@ -625,6 +670,15 @@ async function initDB() {
       addr VARCHAR(500),
       memo VARCHAR(1000),
       created_at DATETIME DEFAULT NOW()
+    )`,
+    `CREATE TABLE IF NOT EXISTS customers_master (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      name VARCHAR(100),
+      phone VARCHAR(30) NOT NULL,
+      addr VARCHAR(500) NOT NULL,
+      memo VARCHAR(200) DEFAULT '',
+      created_at DATETIME DEFAULT NOW(),
+      updated_at DATETIME DEFAULT NOW() ON UPDATE NOW()
     )`,
     `CREATE TABLE IF NOT EXISTS settings (
       k VARCHAR(100) PRIMARY KEY,

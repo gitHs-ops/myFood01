@@ -323,8 +323,20 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 .btn-addr-list{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:var(--teal);color:#fff;border:none;border-radius:7px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;}
 .addr-sheet{position:fixed;bottom:0;left:0;right:0;background:#fff;border-radius:16px 16px 0 0;max-height:55vh;overflow-y:auto;padding:20px 16px 32px;z-index:200;box-shadow:0 -4px 24px rgba(0,0,0,.15);}
 .addr-sheet-title{font-size:15px;font-weight:700;color:#1a1a1a;margin-bottom:14px;}
-.addr-item{padding:13px 14px;border-radius:10px;border:1.5px solid #d6efee;margin-bottom:8px;font-size:14px;cursor:pointer;}
-.addr-item:active{background:#e8f5f4;}
+.addr-item{padding:13px 14px;border-radius:10px;border:1.5px solid #d6efee;margin-bottom:8px;font-size:14px;}
+.addr-item-body{cursor:pointer;}
+.addr-item-body:active{background:#e8f5f4;border-radius:8px;}
+.addr-item-actions{display:flex;gap:6px;margin-top:8px;}
+.btn-addr-edit,.btn-addr-del{flex:1;padding:6px 0;font-size:12px;font-weight:700;border:none;border-radius:7px;cursor:pointer;}
+.btn-addr-edit{background:#e8f5f4;color:#086266;}
+.btn-addr-del{background:#fff0f0;color:#e53935;}
+.addr-form{background:#f5f9f9;border-radius:10px;padding:12px;margin-bottom:10px;border:1.5px solid #b2dedd;}
+.addr-form input{width:100%;box-sizing:border-box;border:1.5px solid #cce5e4;border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;margin-bottom:6px;outline:none;}
+.addr-form input:focus{border-color:var(--teal);}
+.addr-form input:last-of-type{margin-bottom:8px;}
+.addr-form-btns{display:flex;gap:6px;}
+.btn-addr-save{flex:2;background:var(--teal);color:#fff;border:none;border-radius:8px;padding:8px 0;font-size:13px;font-weight:700;cursor:pointer;}
+.btn-addr-cancel{flex:1;background:#eee;color:#555;border:none;border-radius:8px;padding:8px 0;font-size:13px;font-weight:700;cursor:pointer;}
 .no-menu span{font-size:48px;display:block;margin-bottom:12px;}
 
 /* ── 상단 공통 버튼 ── */
@@ -1275,42 +1287,102 @@ function sendAlimtalk(phone,tplId,vars,fallbackMsg){
 }
 
 // ── 배송 주소 목록 ──
+// ── 주소록 (customers_master) ─────────────────────────────────
 function showAddrList(){
-  var name=(document.getElementById('ordererName').value||'').trim();
   var phone=(document.getElementById('ordererPhone').value||'').replace(/[^0-9]/g,'');
-  var el=document.getElementById('addrListContent');
   document.getElementById('addrListOverlay').style.display='flex';
-
-  // 이전 주문에서 이름+전화번호 일치 주소 추출
-  var orders=JSON.parse(localStorage.getItem('orders')||'[]');
-  var seen={};
-  var matched=[];
-  orders.forEach(function(o){
-    if(!o.addr)return;
-    var oPhone=(o.phone||'').replace(/[^0-9]/g,'');
-    var nameOk=!name||o.name===name;
-    var phoneOk=!phone||oPhone===phone;
-    if(nameOk&&phoneOk&&!seen[o.addr]){
-      seen[o.addr]=true;
-      matched.push({name:o.name,phone:o.phone,addr:o.addr,memo:o.memo||''});
+  _loadAddrList(phone);
+}
+function _loadAddrList(phone){
+  var el=document.getElementById('addrListContent');
+  el.innerHTML='<div style="text-align:center;color:#aaa;padding:16px 0;">불러오는 중...</div>';
+  var url=API_URL+'/api/customers-master'+(phone?'?phone='+encodeURIComponent(phone):'');
+  fetch(url).then(function(r){return r.json();}).then(function(d){
+    var items=(d.items||[]);
+    el.innerHTML='';
+    // 추가 폼 자리 (항상 맨 위)
+    var addWrap=document.createElement('div');
+    addWrap.id='addrAddWrap';
+    el.appendChild(addWrap);
+    if(!items.length){
+      var empty=document.createElement('div');
+      empty.style.cssText='text-align:center;color:#aaa;padding:20px 0;';
+      empty.textContent=phone?'일치하는 주소가 없어요.':'저장된 주소가 없어요.';
+      el.appendChild(empty);
+    } else {
+      items.forEach(function(c){el.appendChild(_buildAddrItem(c));});
     }
+  }).catch(function(){
+    el.innerHTML='<div style="text-align:center;color:#e53935;padding:16px 0;">불러오기 실패</div>';
   });
-
-  if(!matched.length){
-    el.innerHTML='<div style="text-align:center;color:#aaa;padding:20px 0;">'
-      +(name||phone?'일치하는 배송 주소가 없어요.':'저장된 주소가 없어요.')+'</div>';
-    return;
+}
+function _buildAddrItem(c){
+  var wrap=document.createElement('div');
+  wrap.className='addr-item';
+  wrap.dataset.id=c.id;
+  var body=document.createElement('div');
+  body.className='addr-item-body';
+  body.innerHTML='<div style="font-size:14px;font-weight:700;color:#1a1a1a;">'+(c.name||'')
+    +(c.phone?' <span style="font-size:12px;color:#888;font-weight:400;">'+c.phone+'</span>':'')+'</div>'
+    +'<div style="font-size:13px;color:#444;margin-top:3px;">'+c.addr+'</div>'
+    +(c.memo?'<div style="font-size:12px;color:#b8860b;margin-top:2px;">📝 '+c.memo+'</div>':'');
+  body.onclick=function(){pickAddr(c.addr,c.memo||'');};
+  var acts=document.createElement('div');
+  acts.className='addr-item-actions';
+  var eBtn=document.createElement('button');
+  eBtn.className='btn-addr-edit';eBtn.textContent='수정';
+  eBtn.onclick=function(e){e.stopPropagation();_showAddrForm(c,wrap);};
+  var dBtn=document.createElement('button');
+  dBtn.className='btn-addr-del';dBtn.textContent='삭제';
+  dBtn.onclick=function(e){
+    e.stopPropagation();
+    if(!confirm('이 주소를 삭제할까요?'))return;
+    fetch(API_URL+'/api/customers-master/'+c.id,{method:'DELETE'})
+      .then(function(){wrap.remove();})
+      .catch(function(){alert('삭제 실패');});
+  };
+  acts.appendChild(eBtn);acts.appendChild(dBtn);
+  wrap.appendChild(body);wrap.appendChild(acts);
+  return wrap;
+}
+function _showAddrForm(c,replaceEl){
+  // c=null이면 추가, c=객체면 수정
+  var isNew=!c;
+  var form=document.createElement('div');
+  form.className='addr-form';
+  var fName=document.createElement('input');fName.placeholder='이름';fName.value=c?c.name||'':'';
+  var fPhone=document.createElement('input');fPhone.placeholder='전화번호 (필수)';fPhone.type='tel';fPhone.value=c?c.phone||'':'';
+  var fAddr=document.createElement('input');fAddr.placeholder='주소 (필수)';fAddr.value=c?c.addr||'':'';
+  var fMemo=document.createElement('input');fMemo.placeholder='메모 (선택)';fMemo.value=c?c.memo||'':'';
+  var btns=document.createElement('div');btns.className='addr-form-btns';
+  var saveBtn=document.createElement('button');saveBtn.className='btn-addr-save';saveBtn.textContent=isNew?'추가':'저장';
+  var cancelBtn=document.createElement('button');cancelBtn.className='btn-addr-cancel';cancelBtn.textContent='취소';
+  saveBtn.onclick=function(){
+    var phone=(fPhone.value||'').trim();
+    var addr=(fAddr.value||'').trim();
+    if(!phone||!addr){alert('전화번호와 주소는 필수입니다.');return;}
+    var body={name:fName.value.trim(),phone:phone,addr:addr,memo:fMemo.value.trim()};
+    var url=API_URL+'/api/customers-master'+(isNew?'':'/'+c.id);
+    fetch(url,{method:isNew?'POST':'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+      .then(function(r){return r.json();})
+      .then(function(d){
+        if(!d.success){alert('저장 실패: '+(d.error||''));return;}
+        var phone2=(document.getElementById('ordererPhone').value||'').replace(/[^0-9]/g,'');
+        _loadAddrList(phone2);
+      }).catch(function(){alert('저장 실패');});
+  };
+  cancelBtn.onclick=function(){
+    var phone2=(document.getElementById('ordererPhone').value||'').replace(/[^0-9]/g,'');
+    if(isNew){form.remove();}else{_loadAddrList(phone2);}
+  };
+  btns.appendChild(saveBtn);btns.appendChild(cancelBtn);
+  [fName,fPhone,fAddr,fMemo,btns].forEach(function(el){form.appendChild(el);});
+  if(isNew){
+    var wrap=document.getElementById('addrAddWrap');
+    wrap.innerHTML='';wrap.appendChild(form);
+  } else {
+    replaceEl.replaceWith(form);
   }
-  el.innerHTML=matched.map(function(c){
-    var ae=c.addr.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-    var me=(c.memo||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-    return '<div class="addr-item" onclick="pickAddr(\''+ae+'\',\''+me+'\')">'
-      +'<div style="font-size:14px;font-weight:700;color:#1a1a1a;">'+c.name
-      +' <span style="font-size:12px;color:#888;font-weight:400;">'+c.phone+'</span></div>'
-      +'<div style="font-size:13px;color:#444;margin-top:3px;">'+c.addr+'</div>'
-      +(c.memo?'<div style="font-size:12px;color:#b8860b;margin-top:2px;">📝 '+c.memo+'</div>':'')
-      +'</div>';
-  }).join('');
 }
 function pickAddr(addr,memo){
   document.getElementById('ordererAddr').value=addr;
@@ -2229,7 +2301,10 @@ window.onload=function(){
 <!-- 배송 주소 목록 모달 -->
 <div id="addrListOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:flex-end;justify-content:center;" onclick="closeAddrList(event)">
   <div style="background:#fff;border-radius:16px 16px 0 0;width:100%;max-height:70vh;overflow-y:auto;padding:20px 16px 32px;" onclick="event.stopPropagation()">
-    <div style="font-size:15px;font-weight:700;color:#1a1a1a;margin-bottom:12px;">📋 배송 주소 목록</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <div style="font-size:15px;font-weight:700;color:#1a1a1a;">📋 배송 주소 목록</div>
+      <button onclick="_showAddrForm(null)" style="background:var(--teal);color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer;">+ 추가</button>
+    </div>
     <div id="addrListContent"></div>
   </div>
 </div>
