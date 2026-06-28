@@ -1387,7 +1387,7 @@ function _buildAddrItem(c, isMaster){
     var acts=document.createElement('div');
     acts.className='addr-item-actions';
     var eBtn=document.createElement('button');
-    eBtn.className='btn-addr-edit';eBtn.textContent='수정';
+    eBtn.className='btn-addr-edit';eBtn.innerHTML='✏️ 수정';
     eBtn.onclick=function(e){e.stopPropagation();_showAddrForm(c,wrap);};
     var dBtn=document.createElement('button');
     dBtn.className='btn-addr-del';dBtn.textContent='삭제';
