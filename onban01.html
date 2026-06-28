@@ -2092,7 +2092,7 @@ function _histMemoHtml(id,text){
     +'<button class="hist-req-edit-btn" onclick="histEditMemo(\''+id+'\')" title="수정">✏️ 수정</button></div>';
 }
 function _histExtraHtml(id,text){
-  if(!text) return '<button class="hist-req-add-btn" onclick="histEditExtra(\''+id+'\')">✏️ 추가 요청 추가</button>';
+  if(!text) return '<button class="hist-req-add-btn" onclick="histEditExtra(\''+id+'\')">✏️ 추가 요청 입력</button>';
   var safe=(text||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
   return '<div class="hist-extra-card-section">'
     +'<span class="hist-extra-label">추가요청사항</span>'
