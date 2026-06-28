@@ -509,7 +509,7 @@ app.get('/api/customers-master', async (req, res) => {
   try {
     const phone = (req.query.phone||'').replace(/[^0-9]/g,'');
     const deviceId = (req.query.device_id||'').trim();
-    const pCond = 'REGEXP_REPLACE(phone,"[^0-9]","")';
+    const pCond = "REGEXP_REPLACE(phone,'[^0-9]','')";
 
     // device_id만 있으면 기기 자동 인식 (이름/전화 선입력용)
     if(deviceId && !phone){
