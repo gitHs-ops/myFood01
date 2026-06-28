@@ -192,6 +192,9 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 .sum-label{font-size:13px;color:var(--sub);}
 .sum-value{font-size:13px;font-weight:700;}
 .sum-total{font-size:18px;font-weight:900;color:var(--teal);}
+.sum-delivery-info{font-size:12px;font-weight:700;margin-top:8px;padding-top:8px;border-top:1px dashed #e0e0e0;text-align:center;}
+.sum-delivery-info.ok{color:#086266;}
+.sum-delivery-info.warn{color:#e08600;}
 .cart-actions{padding:0 14px;display:flex;gap:10px;margin-top:14px;}
 .btn-select-all{
   padding:12px 16px;border-radius:10px;font-size:13px;font-weight:700;
@@ -1068,8 +1071,14 @@ function renderCart(){
 
   var summary=document.createElement('div');
   summary.className='cart-summary';
+  var deliveryLine=total>0
+    ?(total>=20
+      ?'<div class="sum-delivery-info ok">🚚 배달 가능 — 배달료 1천원 추가됩니다</div>'
+      :'<div class="sum-delivery-info warn">⚠ 2만원 이상 주문 시 배달 가능 (현재 '+(20-total)+'천원 부족)</div>')
+    :'';
   summary.innerHTML='<div class="cart-summary-row"><span class="sum-label">선택 항목</span><span class="sum-value">'+checked.length+'개</span></div>'
-    +'<div class="cart-summary-row"><span class="sum-label">합계금액</span><span class="sum-value sum-total">'+comma(total)+'천원</span></div>';
+    +'<div class="cart-summary-row"><span class="sum-label">합계금액</span><span class="sum-value sum-total">'+comma(total)+'천원</span></div>'
+    +deliveryLine;
   el.appendChild(summary);
 
   var actions=document.createElement('div');
