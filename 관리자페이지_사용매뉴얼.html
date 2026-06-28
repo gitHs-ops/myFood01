@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>온반(溫飯) 관리자 페이지 사용 매뉴얼</title>
+<style>
+  body { font-family: "맑은 고딕", "Malgun Gothic", sans-serif; font-size: 11pt; line-height: 1.8; color: #1a1a1a; margin: 60px 80px; max-width: 800px; }
+  h1 { font-size: 22pt; font-weight: bold; color: #086266; text-align: center; margin-bottom: 4px; }
+  .subtitle { text-align: center; font-size: 11pt; color: #666; margin-bottom: 32px; }
+  h2 { font-size: 15pt; font-weight: bold; color: #086266; border-bottom: 2px solid #086266; padding-bottom: 4px; margin-top: 36px; margin-bottom: 12px; }
+  h3 { font-size: 12pt; font-weight: bold; color: #1a4a4a; margin-top: 20px; margin-bottom: 8px; }
+  h4 { font-size: 11pt; font-weight: bold; color: #333; margin-top: 14px; margin-bottom: 6px; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 18px; font-size: 10.5pt; }
+  th { background: #086266; color: #fff; padding: 8px 10px; text-align: left; font-weight: bold; }
+  td { padding: 7px 10px; border: 1px solid #cde8e7; vertical-align: top; }
+  tr:nth-child(even) td { background: #f4fafa; }
+  .note { background: #fffbea; border-left: 4px solid #E9A826; padding: 10px 14px; margin: 12px 0; font-size: 10.5pt; border-radius: 4px; }
+  .tip  { background: #f0faf9; border-left: 4px solid #086266; padding: 10px 14px; margin: 12px 0; font-size: 10.5pt; border-radius: 4px; }
+  .warn { background: #fff5f5; border-left: 4px solid #e05; padding: 10px 14px; margin: 12px 0; font-size: 10.5pt; border-radius: 4px; }
+  ol, ul { margin: 8px 0 8px 22px; }
+  li { margin-bottom: 5px; }
+  .step { display: inline-block; background: #086266; color: #fff; border-radius: 50%; width: 20px; height: 20px; text-align: center; line-height: 20px; font-size: 9pt; font-weight: bold; margin-right: 6px; }
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 9.5pt; font-weight: bold; }
+  .badge-teal { background: #086266; color: #fff; }
+  .badge-yellow { background: #FEE500; color: #3A1D1D; }
+  .badge-red { background: #e05; color: #fff; }
+  .badge-gray { background: #eee; color: #999; }
+  .flow { background: #f9fffe; border: 1.5px solid #cde8e7; border-radius: 8px; padding: 14px 20px; margin: 12px 0; }
+  .flow-arrow { color: #086266; font-size: 13pt; margin: 0 8px; }
+  .toc-box { background: #f4fafa; border: 1.5px solid #9adcda; border-radius: 8px; padding: 16px 24px; margin-bottom: 36px; }
+  .toc-box h3 { margin-top: 0; color: #086266; }
+  .toc-box a { color: #086266; text-decoration: none; }
+  .toc-box a:hover { text-decoration: underline; }
+  hr { border: none; border-top: 1px solid #e0f0ef; margin: 30px 0; }
+  .cover-info { text-align: center; margin-bottom: 40px; padding: 24px; background: linear-gradient(135deg, #086266, #0a7a7f); color: #fff; border-radius: 12px; }
+  .cover-info h1 { color: #fff; }
+  .cover-info .subtitle { color: rgba(255,255,255,0.8); }
+  .cover-info .meta { font-size: 10pt; color: rgba(255,255,255,0.7); margin-top: 16px; }
+  @media print {
+    body { margin: 20mm 25mm; }
+    h2 { page-break-before: auto; }
+  }
+</style>
+</head>
+<body>
+
+<div class="cover-info">
+  <h1>🍱 온반(溫飯)</h1>
+  <div class="subtitle">관리자 페이지 사용 매뉴얼</div>
+  <div class="meta">작성일: 2026년 6월 28일 &nbsp;|&nbsp; 대상: 오늘의 반찬 운영 관리자</div>
+</div>
+
+<div class="toc-box">
+  <h3>목차</h3>
+  <ol>
+    <li><a href="#sec1">접속 및 로그인</a></li>
+    <li><a href="#sec2">화면 구성 — 탭 메뉴</a></li>
+    <li><a href="#sec3">메뉴 관리</a></li>
+    <li><a href="#sec4">카카오 발송</a></li>
+    <li><a href="#sec5">주문 관리</a></li>
+    <li><a href="#sec6">메뉴 창고</a></li>
+    <li><a href="#sec7">설정</a></li>
+  </ol>
+</div>
+
+<hr>
+
+<h2 id="sec1">1. 접속 및 로그인</h2>
+<p>관리자 페이지(<strong>menu-manager.html</strong>)에 접속하면 비밀번호 입력 창이 표시됩니다.</p>
+<ul>
+  <li>올바른 비밀번호 입력 시 관리자 화면으로 진입합니다.</li>
+  <li>비밀번호가 틀리면 페이지가 닫힙니다.</li>
+</ul>
+<div class="warn">⚠ 비밀번호는 외부에 노출되지 않도록 주의하세요.</div>
+
+<hr>
+
+<h2 id="sec2">2. 화면 구성 — 탭 메뉴</h2>
+<p>상단 탭으로 각 기능 페이지를 전환합니다.</p>
+<table>
+  <tr><th>탭</th><th>기능</th></tr>
+  <tr><td>🍱 메뉴 관리</td><td>일일 메뉴 추가·편집·재고 조정 및 저장</td></tr>
+  <tr><td>💬 카카오 발송</td><td>카카오채널 안내 문자 생성 및 복사</td></tr>
+  <tr><td>📦 주문 관리</td><td>접수된 주문 조회·상태 변경·답변</td></tr>
+  <tr><td>🗄 메뉴 창고</td><td>과거 일일 메뉴 및 전체 마스터 메뉴 조회</td></tr>
+  <tr><td>⚙ 설정</td><td>재고·계좌·관리자 정보·발송·카테고리 설정</td></tr>
+</table>
+
+<hr>
+
+<h2 id="sec3">3. 🍱 메뉴 관리</h2>
+
+<h3>3.1 통계 현황</h3>
+<p>탭 진입 시 상단에 오늘의 주문 통계(주문 수, 금액 등)가 요약 표시됩니다.</p>
+
+<h3>3.2 일일 메뉴 추가 등록</h3>
+<table>
+  <tr><th>항목</th><th>설명</th></tr>
+  <tr><td>카테고리</td><td>메뉴 분류 선택</td></tr>
+  <tr><td>메뉴명</td><td>클릭하면 마스터 메뉴 목록에서 선택. 직접 입력도 가능</td></tr>
+  <tr><td>금액(천원)</td><td>판매 단가 입력</td></tr>
+  <tr><td>재고(수량)</td><td>판매 가능 수량 입력 (-1 입력 시 무제한)</td></tr>
+  <tr><td>어린이 메뉴</td><td>어린이도 먹을 수 있는 메뉴 여부 체크</td></tr>
+  <tr><td>메뉴 설명</td><td>마스터 메뉴에 저장된 설명 자동 표시 (읽기 전용)</td></tr>
+</table>
+<ul>
+  <li><strong>+ 오늘의 메뉴에 추가</strong> 버튼으로 목록에 추가합니다.</li>
+  <li><strong>+신 메뉴</strong> 버튼으로 마스터에 없는 신규 메뉴를 바로 등록할 수 있습니다.</li>
+</ul>
+<div class="tip">💡 같은 메뉴를 이미 추가했을 때 중복 경고가 표시됩니다.</div>
+
+<h3>3.3 오늘의 메뉴 목록</h3>
+<ul>
+  <li>추가된 메뉴가 카테고리별로 표시됩니다.</li>
+  <li>각 메뉴 행에서 재고 수량 조정, 가격 수정, 삭제가 가능합니다.</li>
+  <li>✏️ <strong>수정</strong> 버튼으로 메뉴명·설명·이미지 등 마스터 정보를 편집할 수 있습니다.</li>
+</ul>
+
+<h3>3.4 일일 메뉴 저장</h3>
+<p>하단 플로팅 <strong>💾 일일 메뉴 저장</strong> 버튼을 클릭하면 오늘의 메뉴가 서버에 저장되어 고객 화면에 표시됩니다.</p>
+<div class="note">📌 저장 전에는 고객 화면에 반영되지 않습니다. 메뉴 확정 후 반드시 저장하세요.</div>
+
+<hr>
+
+<h2 id="sec4">4. 💬 카카오 발송</h2>
+
+<h3>4.1 발송 문자 생성</h3>
+<ul>
+  <li><strong>오늘메뉴에서 가져오기</strong> 버튼으로 현재 일일 메뉴를 카카오 안내 형식으로 자동 생성합니다.</li>
+  <li>생성된 텍스트는 직접 수정(✏️ 내용 수정 버튼)도 가능합니다.</li>
+</ul>
+
+<h3>4.2 텍스트 복사 및 활용</h3>
+<ul>
+  <li><strong>텍스트 복사하기</strong> 버튼으로 클립보드에 복사 후 카카오채널에 붙여넣기합니다.</li>
+</ul>
+
+<h3>4.3 카카오 톡 내용으로 일일 메뉴 생성</h3>
+<ul>
+  <li>카카오톡 채널 메시지 내용을 붙여넣으면 자동으로 일일 메뉴를 파싱·생성합니다.</li>
+</ul>
+<div class="tip">💡 기존에 카카오채널로 관리하던 메뉴를 빠르게 가져올 때 유용합니다.</div>
+
+<hr>
+
+<h2 id="sec5">5. 📦 주문 관리</h2>
+
+<h3>5.1 주문 목록</h3>
+<ul>
+  <li>접수된 주문이 실시간으로 표시됩니다. 15초마다 자동 갱신됩니다.</li>
+  <li><strong>실시간 변경 확인!</strong> 버튼으로 즉시 새로고침할 수 있습니다.</li>
+  <li>상태별 필터 탭으로 주문을 분류해서 볼 수 있습니다.</li>
+</ul>
+
+<h3>5.2 주문 상태</h3>
+<table>
+  <tr><th>상태</th><th>설명</th></tr>
+  <tr><td>접수</td><td>고객이 주문을 완료한 상태</td></tr>
+  <tr><td>확정</td><td>관리자가 주문을 확인·확정한 상태</td></tr>
+  <tr><td>배송중</td><td>배송이 시작된 상태</td></tr>
+  <tr><td>완료</td><td>배송 완료</td></tr>
+  <tr><td>취소</td><td>주문 취소 처리</td></tr>
+</table>
+
+<h3>5.3 주문 상세</h3>
+<p>주문 행을 클릭하면 상세 팝업이 표시됩니다.</p>
+<ul>
+  <li>주문자 정보(이름·연락처·주소·배송방법) 확인</li>
+  <li>주문 메뉴 목록·수량·금액 확인</li>
+  <li>상태 변경 버튼으로 주문 상태 업데이트</li>
+  <li>추가 요청사항 확인 및 관리자 답변 입력</li>
+</ul>
+<div class="tip">💡 상태 변경 시 설정에 따라 고객에게 알림톡 또는 SMS가 자동 발송됩니다.</div>
+
+<h3>5.4 추가 요청 처리</h3>
+<ul>
+  <li>고객이 입력한 추가 요청사항이 주문 상세에 표시됩니다.</li>
+  <li>답변 입력란에 내용을 작성하면 고객 주문내역 화면에 <strong>💬 온반 답변</strong>으로 표시됩니다.</li>
+  <li>미처리 추가 요청이 있으면 탭 뱃지(숫자)가 표시됩니다.</li>
+</ul>
+
+<hr>
+
+<h2 id="sec6">6. 🗄 메뉴 창고</h2>
+
+<h3>6.1 일일 메뉴 이력</h3>
+<ul>
+  <li>날짜별로 저장된 과거 일일 메뉴를 조회할 수 있습니다.</li>
+  <li>과거 메뉴를 참고하여 오늘의 메뉴를 구성할 때 활용합니다.</li>
+</ul>
+
+<h3>6.2 전체 마스터 메뉴</h3>
+<ul>
+  <li>등록된 전체 마스터 메뉴 목록을 카테고리별로 조회합니다.</li>
+  <li>메뉴명·가격·설명·이미지 등 마스터 정보를 확인·편집할 수 있습니다.</li>
+</ul>
+
+<hr>
+
+<h2 id="sec7">7. ⚙ 설정</h2>
+
+<h3>7.1 기본 재고 설정</h3>
+<ul>
+  <li>메뉴 추가 시 자동 적용되는 초기 재고량을 설정합니다.</li>
+  <li>저장 버튼 클릭 후 적용됩니다.</li>
+</ul>
+
+<h3>7.2 계좌 정보 관리</h3>
+<ul>
+  <li>고객 결제 안내에 표시되는 계좌를 등록·관리합니다.</li>
+  <li>은행명·예금주·계좌번호를 입력 후 추가합니다.</li>
+  <li>여러 계좌 등록이 가능합니다.</li>
+</ul>
+
+<h3>7.3 관리자 정보</h3>
+<table>
+  <tr><th>항목</th><th>설명</th></tr>
+  <tr><td>연락처</td><td>관리자 휴대폰 번호 (주문 알림 수신)</td></tr>
+  <tr><td>이메일</td><td>관리자 이메일</td></tr>
+  <tr><td>배송업체</td><td>배송업체 연락처 (SMS 발송 대상)</td></tr>
+</table>
+
+<h3>7.4 발송 설정</h3>
+<table>
+  <tr><th>항목</th><th>설명</th></tr>
+  <tr><td>💬 문자(SMS) 발송</td><td>주문 확정·배송·취소 시 배송업체에 SMS 자동 발송</td></tr>
+  <tr><td>🔔 알림톡 발송</td><td>주문 접수·확정·완료·취소 시 고객에게 카카오 알림톡 자동 발송</td></tr>
+</table>
+<div class="note">📌 발송 기능은 토글 스위치로 ON/OFF 가능합니다. 변경 후 저장 버튼을 클릭하세요.</div>
+
+<h3>7.5 카테고리 관리</h3>
+<ul>
+  <li>메뉴 분류에 사용되는 카테고리를 추가·수정·삭제할 수 있습니다.</li>
+  <li><strong>🐄 한우/한돈 카테고리 일괄 적용</strong> 버튼으로 한우·한돈 접두사가 붙은 메뉴를 자동 분류합니다.</li>
+</ul>
+
+</body>
+</html>
