@@ -946,6 +946,14 @@ async function initDB() {
       await conn.execute(`INSERT IGNORE INTO settings(k,v) VALUES('cm_addr23_v1','done')`).catch(()=>{});
       console.log('customers_master addr2/addr3 보완 완료');
     }
+    // customers_master: device_id 컬럼 보완 (SHOW COLUMNS로 존재 확인 후 추가)
+    const [[devIdMig2]] = await conn.execute(`SELECT v FROM settings WHERE k='cm_device_id_v2'`).catch(()=>[[null]]);
+    if(!devIdMig2){
+      const [[devIdCol]] = await conn.execute(`SHOW COLUMNS FROM customers_master LIKE 'device_id'`).catch(()=>[[null]]);
+      if(!devIdCol) await conn.execute(`ALTER TABLE customers_master ADD COLUMN device_id VARCHAR(100) DEFAULT NULL`).catch(()=>{});
+      await conn.execute(`INSERT IGNORE INTO settings(k,v) VALUES('cm_device_id_v2','done')`).catch(()=>{});
+      console.log('customers_master device_id 보완 완료');
+    }
     console.log('DB 테이블 초기화 완료');
   } finally {
     conn.release();
