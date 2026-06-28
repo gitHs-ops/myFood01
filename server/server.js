@@ -860,6 +860,17 @@ async function initDB() {
   }
 }
 
+// tmp-test: 단계별 진단
+app.get('/api/admin/milkit-test', async (req,res)=>{
+  let conn;
+  try{
+    conn=await pool.getConnection();
+    const [[row]]=await conn.execute('SELECT id,name,cat FROM menus WHERE id=?',[39]);
+    ok(res,{step:'db-ok',row});
+  }catch(e){err(res,e.message);}
+  finally{if(conn)conn.release();}
+});
+
 // tmp: 밀키트 메뉴명 정리 마이그레이션 (즉시 제거 예정)
 app.post('/api/admin/rename-milkit', async (req,res)=>{
   const IDS=[39,64,84,98,117,127,240,284,336,350,374,378,391,406,421,433,448,453,491,521,522,539,541,602,607,640,641,682,701,708,798,799,800,818,825,832,874,884,953,955,973,993,994,996,1011,1046,1055,1061,1062,1066,1070,1071,1110,1118,1119,1148,1186,1187,1188,1204,1207,1218,1322,1343,1374,1375,1376,1378,1379,1389,1395,1396,1397,1401,1402,1409,1432];
