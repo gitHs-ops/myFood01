@@ -307,6 +307,8 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
   box-shadow:var(--shadow);margin:14px;padding:18px;
 }
 .orderer-title{font-size:14px;font-weight:700;color:var(--teal);margin-bottom:14px;}
+.orderer-field{margin-bottom:10px;}
+.orderer-label{font-size:11px;font-weight:700;color:#888;letter-spacing:.4px;margin-bottom:4px;}
 .orderer-input{
   width:100%;padding:12px 14px;
   border:1.5px solid #d6efee;border-radius:10px;
@@ -544,21 +546,36 @@ select.orderer-input{appearance:none;-webkit-appearance:none;background:#fff url
   </div>
   <div class="orderer-box">
     <div class="orderer-title">📝 주문자 정보 입력</div>
-    <input class="orderer-input" id="ordererName" type="text" placeholder="이름을 입력해주세요 *" maxlength="20" oninput="_toggleAddrListBtn()">
-    <input class="orderer-input" id="ordererPhone" type="tel" placeholder="연락처 (필수) *" maxlength="20" oninput="_toggleAddrListBtn()">
-    <div class="addr-wrap">
-      <input class="orderer-input" id="ordererAddr" type="text" placeholder="배송 주소 (픽업 외 필수)" maxlength="100">
-      <button class="btn-addr-list" id="btnAddrList" onclick="showAddrList()" disabled style="opacity:.4;cursor:not-allowed;">📋 목록</button>
+    <div class="orderer-field">
+      <div class="orderer-label">이름</div>
+      <input class="orderer-input" id="ordererName" type="text" placeholder="이름을 입력해주세요 *" maxlength="20" oninput="_toggleAddrListBtn()" style="margin-bottom:0;">
     </div>
-    <select class="orderer-input" id="ordererMemo" required onchange="_updateDeliveryFee()">
-      <option value="" disabled>배송방법 선택 (필수)</option>
-      <option value="경비원실" selected>경비원실</option>
-      <option value="문앞">문앞</option>
-      <option value="택배함">택배함</option>
-      <option value="현관에서직접수령">현관에서 직접 수령</option>
-      <option value="매장픽업">매장 픽업</option>
-    </select>
-    <textarea class="orderer-input orderer-direct-req" id="ordererDirectReq" placeholder="✏️ 추가요청사항 (선택) — 자유롭게 입력하세요" rows="3" maxlength="200"></textarea>
+    <div class="orderer-field">
+      <div class="orderer-label">전화번호</div>
+      <input class="orderer-input" id="ordererPhone" type="tel" placeholder="연락처 (필수) *" maxlength="20" oninput="_toggleAddrListBtn()" style="margin-bottom:0;">
+    </div>
+    <div class="orderer-field">
+      <div class="orderer-label">배송주소</div>
+      <div class="addr-wrap" style="margin-bottom:0;">
+        <input class="orderer-input" id="ordererAddr" type="text" placeholder="배송 주소 (픽업 외 필수)" maxlength="100">
+        <button class="btn-addr-list" id="btnAddrList" onclick="showAddrList()" disabled style="opacity:.4;cursor:not-allowed;">📋 목록</button>
+      </div>
+    </div>
+    <div class="orderer-field">
+      <div class="orderer-label">배송방법</div>
+      <select class="orderer-input" id="ordererMemo" required onchange="_updateDeliveryFee()" style="margin-bottom:0;">
+        <option value="" disabled>배송방법 선택 (필수)</option>
+        <option value="경비원실" selected>경비원실</option>
+        <option value="문앞">문앞</option>
+        <option value="택배함">택배함</option>
+        <option value="현관에서직접수령">현관에서 직접 수령</option>
+        <option value="매장픽업">매장 픽업</option>
+      </select>
+    </div>
+    <div class="orderer-field">
+      <div class="orderer-label">추가요청</div>
+      <textarea class="orderer-input orderer-direct-req" id="ordererDirectReq" placeholder="✏️ 자유롭게 입력하세요" rows="3" maxlength="200" style="margin-bottom:0;"></textarea>
+    </div>
   </div>
   <div id="ordererOrderContent"></div>
 </div>
