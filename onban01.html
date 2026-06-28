@@ -798,6 +798,7 @@ function renderMenuGrid(){
     if(_ic){var ti=document.createElement('img');ti.src=_ic;ti.alt=m.name;ti.onerror=function(){this.parentNode.textContent=getMenuEmoji(m.name,m.cat);};dot.appendChild(ti);}
     else{dot.textContent=getMenuEmoji(m.name,m.cat);}
     if(unavailable)dot.style.opacity='.45';
+    else{dot.style.cursor='pointer';(function(mid){dot.onclick=function(e){e.stopPropagation();showMenuModal(mid);};})(String(m.id));}
 
     // 중간 컬럼
     var midCol=document.createElement('div');
