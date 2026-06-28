@@ -540,16 +540,19 @@ app.get('/api/customers-master', async (req, res) => {
   } catch(e) { err(res, e.message); }
 });
 
-// POST /api/customers-master
+// POST /api/customers-master (phone UNIQUE → UPSERT)
 app.post('/api/customers-master', async (req, res) => {
   try {
     const {name,phone,addr1,addr2,addr3,memo,device_id} = req.body;
     if(!phone||!addr1) return err(res,'phone and addr1 required',400);
-    const [r] = await pool.execute(
-      'INSERT INTO customers_master (name,phone,addr1,addr2,addr3,memo,device_id) VALUES (?,?,?,?,?,?,?)',
+    await pool.execute(
+      `INSERT INTO customers_master (name,phone,addr1,addr2,addr3,memo,device_id) VALUES (?,?,?,?,?,?,?)
+       ON DUPLICATE KEY UPDATE
+         name=VALUES(name), addr1=VALUES(addr1), addr2=VALUES(addr2), addr3=VALUES(addr3),
+         memo=VALUES(memo), device_id=COALESCE(VALUES(device_id),device_id)`,
       [name||'',phone,addr1,addr2||null,addr3||null,memo||'',device_id||null]
     );
-    ok(res, {id: r.insertId});
+    ok(res);
   } catch(e) { err(res, e.message); }
 });
 
@@ -681,7 +684,8 @@ async function initDB() {
       memo VARCHAR(200) DEFAULT '',
       device_id VARCHAR(100) DEFAULT NULL,
       created_at DATETIME DEFAULT NOW(),
-      updated_at DATETIME DEFAULT NOW() ON UPDATE NOW()
+      updated_at DATETIME DEFAULT NOW() ON UPDATE NOW(),
+      UNIQUE KEY uq_cm_phone (phone)
     )`,
     `CREATE TABLE IF NOT EXISTS settings (
       k VARCHAR(100) PRIMARY KEY,
@@ -945,6 +949,29 @@ async function initDB() {
       if(!addr3Col) await conn.execute(`ALTER TABLE customers_master ADD COLUMN addr3 VARCHAR(500) DEFAULT NULL AFTER addr2`).catch(()=>{});
       await conn.execute(`INSERT IGNORE INTO settings(k,v) VALUES('cm_addr23_v1','done')`).catch(()=>{});
       console.log('customers_master addr2/addr3 보완 완료');
+    }
+    // customers_master: phone UNIQUE 제약 — 중복 행 병합 후 UNIQUE KEY 추가
+    const [[phoneUniqMig]] = await conn.execute(`SELECT v FROM settings WHERE k='cm_phone_unique_v1'`).catch(()=>[[null]]);
+    if(!phoneUniqMig){
+      // 중복 phone → 최신(id 높은) 행 유지, 나머지 삭제
+      const [dupPhones] = await conn.execute(
+        `SELECT phone FROM customers_master GROUP BY phone HAVING COUNT(*)>1`
+      ).catch(()=>[[]]);
+      for(const row of dupPhones){
+        const [ids] = await conn.execute(
+          `SELECT id FROM customers_master WHERE phone=? ORDER BY id DESC`, [row.phone]
+        );
+        for(let i=1;i<ids.length;i++){
+          await conn.execute(`DELETE FROM customers_master WHERE id=?`,[ids[i].id]);
+        }
+      }
+      // UNIQUE KEY 추가 (없을 때만)
+      const [idxList] = await conn.execute(`SHOW INDEX FROM customers_master WHERE Key_name='uq_cm_phone'`).catch(()=>[[]]);
+      if(!idxList.length){
+        await conn.execute(`ALTER TABLE customers_master ADD UNIQUE KEY uq_cm_phone (phone)`).catch(e=>{console.warn('uq_cm_phone 추가 실패:', e.message);});
+      }
+      await conn.execute(`INSERT IGNORE INTO settings(k,v) VALUES('cm_phone_unique_v1','done')`).catch(()=>{});
+      console.log('customers_master phone UNIQUE 제약 완료');
     }
     // customers_master: device_id 컬럼 보완 (SHOW COLUMNS로 존재 확인 후 추가)
     const [[devIdMig2]] = await conn.execute(`SELECT v FROM settings WHERE k='cm_device_id_v2'`).catch(()=>[[null]]);
