@@ -934,11 +934,19 @@ async function initDB() {
       const [[addrCol]] = await conn.execute(`SHOW COLUMNS FROM customers_master LIKE 'addr'`).catch(()=>[[null]]);
       if(addrCol){
         await conn.execute(`ALTER TABLE customers_master CHANGE addr addr1 VARCHAR(500) NOT NULL`).catch(()=>{});
-        await conn.execute(`ALTER TABLE customers_master ADD COLUMN IF NOT EXISTS addr2 VARCHAR(500) DEFAULT NULL AFTER addr1`).catch(()=>{});
-        await conn.execute(`ALTER TABLE customers_master ADD COLUMN IF NOT EXISTS addr3 VARCHAR(500) DEFAULT NULL AFTER addr2`).catch(()=>{});
-        console.log('customers_master addr→addr1/addr2/addr3 마이그레이션 완료');
+        console.log('customers_master addr→addr1 완료');
       }
       await conn.execute(`INSERT IGNORE INTO settings(k,v) VALUES('cm_addr3_v1','done')`).catch(()=>{});
+    }
+    // customers_master: addr2/addr3 컬럼 보완 (별도 키로 항상 체크)
+    const [[addr23Mig]] = await conn.execute(`SELECT v FROM settings WHERE k='cm_addr23_v1'`).catch(()=>[[null]]);
+    if(!addr23Mig){
+      const [[addr2Col]] = await conn.execute(`SHOW COLUMNS FROM customers_master LIKE 'addr2'`).catch(()=>[[null]]);
+      if(!addr2Col) await conn.execute(`ALTER TABLE customers_master ADD COLUMN addr2 VARCHAR(500) DEFAULT NULL AFTER addr1`).catch(()=>{});
+      const [[addr3Col]] = await conn.execute(`SHOW COLUMNS FROM customers_master LIKE 'addr3'`).catch(()=>[[null]]);
+      if(!addr3Col) await conn.execute(`ALTER TABLE customers_master ADD COLUMN addr3 VARCHAR(500) DEFAULT NULL AFTER addr2`).catch(()=>{});
+      await conn.execute(`INSERT IGNORE INTO settings(k,v) VALUES('cm_addr23_v1','done')`).catch(()=>{});
+      console.log('customers_master addr2/addr3 보완 완료');
     }
     console.log('DB 테이블 초기화 완료');
   } finally {
