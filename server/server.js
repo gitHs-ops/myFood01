@@ -507,11 +507,11 @@ app.delete('/api/orders/:id', async (req, res) => {
 // JOIN: customers_master (저장 주소) + customers (주문이력) — 조인키: phone
 app.get('/api/customers-master', async (req, res) => {
   try {
+    // phone은 항상 숫자만 (저장 시 정규화 보장)
     const phone = (req.query.phone||'').replace(/[^0-9]/g,'');
     const deviceId = (req.query.device_id||'').trim();
-    const pCond = "REGEXP_REPLACE(phone,'[^0-9]','')";
 
-    // device_id만 있으면 기기 자동 인식 (이름/전화 선입력용)
+    // device_id만 있으면 기기 자동 인식
     if(deviceId && !phone){
       const [rows] = await pool.execute(
         'SELECT * FROM customers_master WHERE device_id=? ORDER BY updated_at DESC LIMIT 1',
@@ -520,17 +520,18 @@ app.get('/api/customers-master', async (req, res) => {
       return ok(res, {items: rows, history: [], device_match: rows.length>0});
     }
 
-    // 1. customers_master 저장 주소
+    // 1. customers_master — 단순 WHERE phone=? (저장 시 숫자 정규화됨)
     const [master] = phone
-      ? await pool.execute(`SELECT * FROM customers_master WHERE ${pCond}=? ORDER BY updated_at DESC`,[phone])
+      ? await pool.execute('SELECT * FROM customers_master WHERE phone=? ORDER BY updated_at DESC',[phone])
       : await pool.execute('SELECT * FROM customers_master ORDER BY updated_at DESC');
 
-    // 2. orders 주문이력 중 master에 없는 주소 (customers 테이블 불용)
+    // 2. orders 주문이력 중 master에 없는 주소
     const masterAddrs = new Set(master.flatMap(r => [r.addr1,r.addr2,r.addr3].filter(Boolean)));
     const [hist] = phone
       ? await pool.execute(
           `SELECT name, phone, addr, memo FROM orders
-            WHERE ${pCond}=? AND addr IS NOT NULL AND addr!=''
+            WHERE REPLACE(REPLACE(REPLACE(phone,'-',''),')',''),'(','')=?
+            AND addr IS NOT NULL AND addr!=''
             GROUP BY addr ORDER BY MAX(date) DESC LIMIT 20`,
           [phone])
       : [[]];
@@ -543,7 +544,8 @@ app.get('/api/customers-master', async (req, res) => {
 // POST /api/customers-master (phone UNIQUE → UPSERT)
 app.post('/api/customers-master', async (req, res) => {
   try {
-    const {name,phone,addr1,addr2,addr3,memo,device_id} = req.body;
+    const {name,addr1,addr2,addr3,memo,device_id} = req.body;
+    const phone = (req.body.phone||'').replace(/[^0-9]/g,'');
     if(!phone||!addr1) return err(res,'phone and addr1 required',400);
     await pool.execute(
       `INSERT INTO customers_master (name,phone,addr1,addr2,addr3,memo,device_id) VALUES (?,?,?,?,?,?,?)
@@ -559,7 +561,8 @@ app.post('/api/customers-master', async (req, res) => {
 // PUT /api/customers-master/:id
 app.put('/api/customers-master/:id', async (req, res) => {
   try {
-    const {name,phone,addr1,addr2,addr3,memo,device_id} = req.body;
+    const {name,addr1,addr2,addr3,memo,device_id} = req.body;
+    const phone = (req.body.phone||'').replace(/[^0-9]/g,'');
     await pool.execute(
       'UPDATE customers_master SET name=?,phone=?,addr1=?,addr2=?,addr3=?,memo=?,device_id=COALESCE(?,device_id) WHERE id=?',
       [name||'',phone,addr1,addr2||null,addr3||null,memo||'',device_id||null,req.params.id]
