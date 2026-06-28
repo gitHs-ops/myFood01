@@ -529,7 +529,7 @@ app.get('/api/customers-master', async (req, res) => {
     const masterAddrs = new Set(master.flatMap(r => [r.addr1,r.addr2,r.addr3].filter(Boolean)));
     const [hist] = phone
       ? await pool.execute(
-          `SELECT name, phone, addr, memo FROM orders
+          `SELECT ANY_VALUE(name) as name, ANY_VALUE(phone) as phone, addr, ANY_VALUE(memo) as memo FROM orders
             WHERE REPLACE(REPLACE(REPLACE(phone,'-',''),')',''),'(','')=?
             AND addr IS NOT NULL AND addr!=''
             GROUP BY addr ORDER BY MAX(date) DESC LIMIT 20`,
