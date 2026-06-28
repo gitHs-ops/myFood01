@@ -521,13 +521,29 @@ app.post('/api/customers', async (req, res) => {
 
 // ── customers_master CRUD ──────────────────────────────────────
 // GET /api/customers-master?phone=xxx
+// JOIN: customers_master (저장 주소) + customers (주문이력) — 조인키: phone
 app.get('/api/customers-master', async (req, res) => {
   try {
     const phone = (req.query.phone||'').replace(/[^0-9]/g,'');
-    const [rows] = phone
-      ? await pool.execute('SELECT * FROM customers_master WHERE REGEXP_REPLACE(phone,"[^0-9]","")=? ORDER BY updated_at DESC',[phone])
+    const pCond = 'REGEXP_REPLACE(phone,"[^0-9]","")';
+
+    // 1. customers_master 저장 주소
+    const [master] = phone
+      ? await pool.execute(`SELECT * FROM customers_master WHERE ${pCond}=? ORDER BY updated_at DESC`,[phone])
       : await pool.execute('SELECT * FROM customers_master ORDER BY updated_at DESC');
-    ok(res, {items: rows});
+
+    // 2. customers 주문이력 중 master에 없는 주소 (phone 기준 JOIN, addr 중복 제거)
+    const masterAddrs = new Set(master.map(r => r.addr));
+    const [hist] = phone
+      ? await pool.execute(
+          `SELECT name, phone, addr, memo FROM customers
+            WHERE ${pCond}=? AND addr IS NOT NULL AND addr!=''
+            GROUP BY addr ORDER BY MAX(date) DESC LIMIT 20`,
+          [phone])
+      : [[]];
+    const history = hist.filter(r => !masterAddrs.has(r.addr));
+
+    ok(res, {items: master, history});
   } catch(e) { err(res, e.message); }
 });
 

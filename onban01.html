@@ -1299,27 +1299,43 @@ function _loadAddrList(phone){
   var url=API_URL+'/api/customers-master'+(phone?'?phone='+encodeURIComponent(phone):'');
   fetch(url).then(function(r){return r.json();}).then(function(d){
     var items=(d.items||[]);
+    var history=(d.history||[]);
     el.innerHTML='';
     // 추가 폼 자리 (항상 맨 위)
     var addWrap=document.createElement('div');
     addWrap.id='addrAddWrap';
     el.appendChild(addWrap);
-    if(!items.length){
+    if(!items.length&&!history.length){
       var empty=document.createElement('div');
       empty.style.cssText='text-align:center;color:#aaa;padding:20px 0;';
       empty.textContent=phone?'일치하는 주소가 없어요.':'저장된 주소가 없어요.';
       el.appendChild(empty);
     } else {
-      items.forEach(function(c){el.appendChild(_buildAddrItem(c));});
+      // customers_master 저장 주소
+      if(items.length){
+        var sec1=document.createElement('div');
+        sec1.style.cssText='font-size:11px;font-weight:700;color:#086266;letter-spacing:.5px;margin-bottom:6px;';
+        sec1.textContent='저장된 주소';
+        el.appendChild(sec1);
+        items.forEach(function(c){el.appendChild(_buildAddrItem(c,true));});
+      }
+      // customers 주문이력 주소 (master에 없는 것)
+      if(history.length){
+        var sec2=document.createElement('div');
+        sec2.style.cssText='font-size:11px;font-weight:700;color:#aaa;letter-spacing:.5px;margin:10px 0 6px;';
+        sec2.textContent='과거 주문 주소';
+        el.appendChild(sec2);
+        history.forEach(function(c){el.appendChild(_buildAddrItem(c,false));});
+      }
     }
   }).catch(function(){
     el.innerHTML='<div style="text-align:center;color:#e53935;padding:16px 0;">불러오기 실패</div>';
   });
 }
-function _buildAddrItem(c){
+function _buildAddrItem(c, isMaster){
   var wrap=document.createElement('div');
   wrap.className='addr-item';
-  wrap.dataset.id=c.id;
+  if(c.id) wrap.dataset.id=c.id;
   var body=document.createElement('div');
   body.className='addr-item-body';
   body.innerHTML='<div style="font-size:14px;font-weight:700;color:#1a1a1a;">'+(c.name||'')
@@ -1329,19 +1345,36 @@ function _buildAddrItem(c){
   body.onclick=function(){pickAddr(c.addr,c.memo||'');};
   var acts=document.createElement('div');
   acts.className='addr-item-actions';
-  var eBtn=document.createElement('button');
-  eBtn.className='btn-addr-edit';eBtn.textContent='수정';
-  eBtn.onclick=function(e){e.stopPropagation();_showAddrForm(c,wrap);};
-  var dBtn=document.createElement('button');
-  dBtn.className='btn-addr-del';dBtn.textContent='삭제';
-  dBtn.onclick=function(e){
-    e.stopPropagation();
-    if(!confirm('이 주소를 삭제할까요?'))return;
-    fetch(API_URL+'/api/customers-master/'+c.id,{method:'DELETE'})
-      .then(function(){wrap.remove();})
-      .catch(function(){alert('삭제 실패');});
-  };
-  acts.appendChild(eBtn);acts.appendChild(dBtn);
+  if(isMaster){
+    // 저장된 주소: 수정 / 삭제
+    var eBtn=document.createElement('button');
+    eBtn.className='btn-addr-edit';eBtn.textContent='수정';
+    eBtn.onclick=function(e){e.stopPropagation();_showAddrForm(c,wrap);};
+    var dBtn=document.createElement('button');
+    dBtn.className='btn-addr-del';dBtn.textContent='삭제';
+    dBtn.onclick=function(e){
+      e.stopPropagation();
+      if(!confirm('이 주소를 삭제할까요?'))return;
+      fetch(API_URL+'/api/customers-master/'+c.id,{method:'DELETE'})
+        .then(function(){wrap.remove();})
+        .catch(function(){alert('삭제 실패');});
+    };
+    acts.appendChild(eBtn);acts.appendChild(dBtn);
+  } else {
+    // 과거 주문 주소: 주소록에 저장하기
+    var sBtn=document.createElement('button');
+    sBtn.className='btn-addr-edit';sBtn.style.flex='1';sBtn.textContent='주소록에 저장';
+    sBtn.onclick=function(e){
+      e.stopPropagation();
+      fetch(API_URL+'/api/customers-master',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({name:c.name||'',phone:c.phone||'',addr:c.addr,memo:c.memo||''})})
+        .then(function(){
+          var ph=(document.getElementById('ordererPhone').value||'').replace(/[^0-9]/g,'');
+          _loadAddrList(ph);
+        }).catch(function(){alert('저장 실패');});
+    };
+    acts.appendChild(sBtn);
+  }
   wrap.appendChild(body);wrap.appendChild(acts);
   return wrap;
 }
