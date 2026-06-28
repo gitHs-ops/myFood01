@@ -529,10 +529,10 @@ app.get('/api/customers-master', async (req, res) => {
     const masterAddrs = new Set(master.flatMap(r => [r.addr1,r.addr2,r.addr3].filter(Boolean)));
     const [hist] = phone
       ? await pool.execute(
-          `SELECT ANY_VALUE(name) as name, ANY_VALUE(phone) as phone, addr, ANY_VALUE(memo) as memo FROM orders
+          `SELECT name, phone, addr, memo FROM orders
             WHERE REPLACE(REPLACE(REPLACE(phone,'-',''),')',''),'(','')=?
             AND addr IS NOT NULL AND addr!=''
-            GROUP BY addr ORDER BY MAX(date) DESC LIMIT 20`,
+            ORDER BY date DESC LIMIT 20`,
           [phone])
       : [[]];
     const history = hist.filter(r => !masterAddrs.has(r.addr));
