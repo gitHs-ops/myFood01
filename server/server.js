@@ -878,18 +878,18 @@ app.post('/api/admin/rename-milkit', async (req,res)=>{
   let conn;
   try{
     conn=await pool.getConnection();
-    // step1: 한우/한돈 → 정리된이름+(cat), cat=밀키트
+    // step1: 한우/한돈 → 정리된이름+(cat), cat=밀키트 (중복시 건너뜀)
     await conn.execute(
-      `UPDATE menus SET
+      `UPDATE IGNORE menus SET
         name=CONCAT(TRIM(REPLACE(REPLACE(REPLACE(name,'(밀키트)',''),',밀키트',''),'밀키트','')),CONCAT('(',cat,')')),
         cat='밀키트'
        WHERE id IN (${ph}) AND cat IN ('한우','한돈')
          AND TRIM(REPLACE(REPLACE(REPLACE(name,'(밀키트)',''),',밀키트',''),'밀키트',''))!=''`,
       IDS
     );
-    // step2: 밀키트/기타 → 이름 정리, cat=밀키트
+    // step2: 밀키트/기타 → 이름 정리, cat=밀키트 (중복시 건너뜀)
     await conn.execute(
-      `UPDATE menus SET
+      `UPDATE IGNORE menus SET
         name=TRIM(REPLACE(REPLACE(REPLACE(name,'(밀키트)',''),',밀키트',''),'밀키트','')),
         cat='밀키트'
        WHERE id IN (${ph}) AND cat NOT IN ('한우','한돈')
