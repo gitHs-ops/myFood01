@@ -1383,22 +1383,19 @@ function _buildAddrItem(c, isMaster){
       memoEl.textContent='📝 '+c.memo;
       wrap.appendChild(memoEl);
     }
-    // 수정/삭제 버튼
+    // 수정/닫기 버튼
     var acts=document.createElement('div');
     acts.className='addr-item-actions';
     var eBtn=document.createElement('button');
     eBtn.className='btn-addr-edit';eBtn.innerHTML='✏️ 수정';
     eBtn.onclick=function(e){e.stopPropagation();_showAddrForm(c,wrap);};
-    var dBtn=document.createElement('button');
-    dBtn.className='btn-addr-del';dBtn.textContent='삭제';
-    dBtn.onclick=function(e){
+    var closeBtn=document.createElement('button');
+    closeBtn.className='btn-addr-del';closeBtn.textContent='닫기';
+    closeBtn.onclick=function(e){
       e.stopPropagation();
-      if(!confirm('이 주소를 삭제할까요?'))return;
-      fetch(API_URL+'/api/customers-master/'+c.id,{method:'DELETE'})
-        .then(function(){wrap.remove();})
-        .catch(function(){alert('삭제 실패');});
+      document.getElementById('addrListOverlay').style.display='none';
     };
-    acts.appendChild(eBtn);acts.appendChild(dBtn);
+    acts.appendChild(eBtn);acts.appendChild(closeBtn);
     wrap.appendChild(acts);
   } else {
     // 과거 주문 주소 (단일 addr)
