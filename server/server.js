@@ -7,7 +7,22 @@ const path    = require('path');
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors());
+const ALLOWED_ORIGINS = [
+  'https://giths-ops.github.io',   // 프로덕션 GitHub Pages
+  'http://localhost:3000',          // 로컬 개발
+  'http://127.0.0.1:3000',
+  'http://localhost:5500',          // VS Code Live Server
+  'http://127.0.0.1:5500',
+];
+app.use(cors({
+  origin: function(origin, cb) {
+    // curl / 서버간 호출 등 origin 없는 경우 허용
+    if (!origin) return cb(null, true);
+    if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+    cb(new Error('CORS blocked: ' + origin));
+  },
+  credentials: true,
+}));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -34,6 +49,90 @@ const sseClients = new Set();
 function broadcast(type, payload={}) {
   const msg = `data: ${JSON.stringify({ type, ...payload })}\n\n`;
   for (const r of sseClients) { try { r.write(msg); } catch(e) { sseClients.delete(r); } }
+}
+
+// ── GAS 알림 발송 헬퍼 (fire-and-forget) ─────────────────────
+async function _getNotifySettings() {
+  const [rows] = await pool.execute(
+    "SELECT k,v FROM settings WHERE k IN ('gasUrl','smsEnabled','alimtalkEnabled','adminPhone','deliveryPhone')"
+  );
+  const s = {};
+  rows.forEach(r => { s[r.k] = r.v; });
+  return s;
+}
+function _gasCall(url, params) {
+  const qs = Object.entries(params)
+    .map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+    .join('&');
+  fetch(url + '?' + qs, { redirect: 'follow' }).catch(() => {});
+}
+function _sms(phone, msg, url, ns) {
+  if (!phone || !msg || !url) return;
+  if (String(ns.smsEnabled ?? 'true') === 'false') return;
+  _gasCall(url, { receiver: String(phone).replace(/[^0-9]/g,''), msg });
+}
+function _alimtalk(phone, tplId, vars, fallback, url, ns) {
+  if (!phone || !url) return;
+  if (String(ns.alimtalkEnabled ?? 'true') === 'false') return;
+  _gasCall(url, { action: 'alimtalk', receiver: phone, tplId, vars: JSON.stringify(vars), msg: fallback || '' });
+}
+function _notifyOrder(order, isReorder) {
+  (async () => {
+    try {
+      const ns  = await _getNotifySettings();
+      const url = (ns.gasUrl || '').trim();
+      if (!url) return;
+      const items    = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []);
+      const menuList = items.map(i => `${i.name} ${i.qty||1}개`).join(', ');
+      const total    = order.total || 0;
+      const tplId    = isReorder
+        ? 'KA01TP260522215451814ICITJ2ltD6g'
+        : 'KA01TP260522043036061jyoL3rs2iVT';
+      const fallback = `[오늘의 반찬] ${order.name}님, ${isReorder?'재주문':'주문'}이 접수됐습니다! ${menuList} 합계: ${Number(total).toLocaleString()}천원`;
+      _alimtalk(order.phone, tplId, { 이름: order.name||'', 메뉴목록: menuList, 금액: String(total) }, fallback, url, ns);
+      if (ns.adminPhone) {
+        const label = isReorder ? '재주문' : '새 주문';
+        const adminMsg = `[오늘의 반찬] ${label}! ${order.name}${order.phone?' ('+order.phone+')':''} ${menuList} 합계: ${Number(total).toLocaleString()}천원${order.memo?' 배송:'+order.memo:''}${order.additionalRequest?' 요청:'+order.additionalRequest:''}`;
+        _sms(ns.adminPhone, adminMsg, url, ns);
+      }
+    } catch(e) {}
+  })();
+}
+function _notifyStatus(orderId, status) {
+  (async () => {
+    try {
+      const ns  = await _getNotifySettings();
+      const url = (ns.gasUrl || '').trim();
+      if (!url) return;
+      const [[o]] = await pool.execute(
+        'SELECT phone,name,total,addr,memo,additional_request,items FROM orders WHERE id=?', [orderId]
+      );
+      if (!o) return;
+      const items    = typeof o.items === 'string' ? JSON.parse(o.items) : (o.items || []);
+      const menuList = items.map(i => `${i.name} ${i.qty||1}개`).join(', ');
+      if (status === 'confirmed') {
+        _alimtalk(o.phone, 'KA01TP260522043220298Ev0vb3LtcjG',
+          { 이름: o.name, 메뉴목록: menuList, 금액: String(o.total||0) },
+          `[오늘의 반찬] ${o.name}님, 배송업체에 요청했습니다! ${menuList} 합계: ${Number(o.total||0).toLocaleString()}천원`, url, ns);
+        if (ns.deliveryPhone) {
+          const delivMsg = `[오늘의 반찬] 배송 요청 / ${o.name}${o.phone?' '+o.phone:''}`
+            + (o.addr ? ' / ' + o.addr : '')
+            + ' / ' + menuList
+            + (o.memo ? ' / 배송:' + (o.memo||'').split(' / ')[0].trim() : '')
+            + (o.additional_request ? ' / 요청:' + o.additional_request : '');
+          _sms(ns.deliveryPhone, delivMsg, url, ns);
+        }
+      } else if (status === 'delivered') {
+        _alimtalk(o.phone, 'KA01TP260522043333235AUBreysEIxj',
+          { 이름: o.name },
+          `[오늘의 반찬] ${o.name}님, 배송이 완료됐습니다! 맛있게 드세요 😊`, url, ns);
+      } else if (status === 'cancelled') {
+        _alimtalk(o.phone, 'KA01TP2605220434459714HrsH0pRr0l',
+          { 이름: o.name },
+          `[오늘의 반찬] ${o.name}님, 주문이 취소됐습니다.`, url, ns);
+      }
+    } catch(e) {}
+  })();
 }
 
 // SSE 연결 (GET /api/events)
@@ -392,6 +491,7 @@ app.post('/api/orders', async (req, res) => {
       await conn.commit(); conn.release();
       broadcast('order_new', { orderId: order.id, date });
       ok(res, { action: 'inserted' });
+      _notifyOrder(order, !!order.isReorder);
     } catch(e) { await conn.rollback(); conn.release(); throw e; }
   } catch(e) { err(res, e.message); }
 });
@@ -446,6 +546,9 @@ app.put('/api/orders/:id/status', async (req, res) => {
       await conn.commit(); conn.release();
       broadcast('order_status', { orderId: req.params.id, status, date });
       ok(res);
+      if (['confirmed','delivered','cancelled'].includes(status)) {
+        _notifyStatus(req.params.id, status);
+      }
     } catch(e) { await conn.rollback(); conn.release(); throw e; }
   } catch(e) { err(res, e.message); }
 });
@@ -489,6 +592,18 @@ app.put('/api/orders/:id/reply', async (req, res) => {
     );
     broadcast('order_reply', { orderId: req.params.id });
     ok(res);
+    // 고객 알림 (fire-and-forget)
+    (async () => {
+      try {
+        const ns  = await _getNotifySettings();
+        const url = (ns.gasUrl || '').trim();
+        if (!url) return;
+        const [[o]] = await pool.execute('SELECT phone, name FROM orders WHERE id=?', [req.params.id]);
+        if (!o) return;
+        const fallback = `[오늘의 반찬] ${text||''}`;
+        _alimtalk(o.phone, 'KA01TP260529154902220c1zr7XODUTj', { 이름: o.name||'' }, fallback, url, ns);
+      } catch(e) {}
+    })();
   } catch(e) { err(res, e.message); }
 });
 
