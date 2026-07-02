@@ -491,6 +491,52 @@ select.orderer-input{appearance:none;-webkit-appearance:none;background:#fff url
 }
 .order-summary-total-lbl{font-size:14px;font-weight:700;color:#555;}
 .order-summary-total-amt{font-size:20px;font-weight:800;color:#086266;}
+/* ── 예약주문 페이지 ── */
+.reserve-search-wrap{padding:8px 12px 4px;}
+.reserve-search-inp{width:100%;box-sizing:border-box;border:1.5px solid #cde8e7;border-radius:12px;padding:9px 14px 9px 36px;font-size:14px;font-family:inherit;outline:none;background:#f8fdfd url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='%23aaa' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") no-repeat 11px center/15px;}
+.reserve-search-inp:focus{border-color:var(--teal);background-color:#fff;}
+.reserve-cat-tabs{display:flex;gap:6px;padding:10px 14px 8px;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;}
+.reserve-cat-tabs::-webkit-scrollbar{display:none;}
+.reserve-cat-tab{flex-shrink:0;padding:5px 13px;border-radius:20px;border:1.5px solid #cde8e7;background:#fff;font-size:12px;font-weight:600;color:#555;cursor:pointer;white-space:nowrap;}
+.reserve-cat-tab.active{background:var(--teal);color:#fff;border-color:var(--teal);}
+.reserve-menu-list{padding:0 12px 80px;}
+.reserve-menu-row{display:flex;align-items:center;gap:10px;background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(8,98,102,.08);padding:11px 13px;margin-bottom:8px;cursor:pointer;border:2px solid transparent;transition:border-color .15s;}
+.reserve-menu-row.selected{border-color:var(--teal);}
+.reserve-check{width:20px;height:20px;border-radius:50%;border:2px solid #ccc;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;color:transparent;transition:all .15s;}
+.reserve-menu-row.selected .reserve-check{background:var(--teal);border-color:var(--teal);color:#fff;}
+.reserve-menu-emoji{font-size:22px;width:30px;text-align:center;flex-shrink:0;}
+.reserve-menu-info{flex:1;min-width:0;}
+.reserve-menu-name{font-size:13px;font-weight:700;color:#222;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.reserve-menu-cat-lbl{font-size:11px;color:#888;margin-top:1px;}
+.reserve-menu-price{font-size:13px;font-weight:700;color:var(--teal);white-space:nowrap;flex-shrink:0;}
+.reserve-pager{display:flex;align-items:center;justify-content:center;gap:10px;padding:10px 0 6px;}
+.reserve-pager button{border:none;background:#f0faf9;color:#086266;border-radius:8px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;}
+.reserve-pager button:disabled{opacity:.35;cursor:not-allowed;}
+.reserve-pager span{font-size:12px;color:#888;}
+.reserve-submit-bar{position:fixed;bottom:0;left:0;right:0;background:var(--teal);padding:10px 14px;z-index:200;display:flex;align-items:center;gap:10px;}
+.reserve-submit-bar button{flex:1;background:#fff;color:var(--teal);border:none;border-radius:20px;padding:10px 0;font-size:14px;font-weight:800;cursor:pointer;}
+.reserve-submit-badge{background:#e05;color:#fff;border-radius:50%;width:22px;height:22px;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+/* ── 예약주문 팝업 ── */
+.reserve-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:flex-end;justify-content:center;}
+.reserve-overlay.open{display:flex;}
+.reserve-modal{background:#fff;border-radius:20px 20px 0 0;width:100%;max-height:88vh;overflow-y:auto;padding-bottom:20px;}
+.reserve-modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid #f0faf9;position:sticky;top:0;background:#fff;z-index:1;}
+.reserve-modal-title{font-size:16px;font-weight:800;color:#1a1a1a;}
+.reserve-modal-close{background:#f0f0f0;border:none;border-radius:50%;width:32px;height:32px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.reserve-modal-items{padding:10px 14px 0;}
+.reserve-modal-item{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f4faf9;}
+.reserve-item-name{flex:1;font-size:13px;font-weight:600;color:#222;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.reserve-qty-ctrl{display:flex;align-items:center;border:1.5px solid #cde8e7;border-radius:8px;overflow:hidden;flex-shrink:0;}
+.reserve-qty-ctrl button{width:28px;height:28px;border:none;background:#f4fafa;font-size:16px;font-weight:700;color:var(--teal);cursor:pointer;line-height:1;}
+.reserve-qty-ctrl span{width:32px;text-align:center;font-size:13px;font-weight:700;}
+.reserve-item-price{font-size:12px;font-weight:700;color:var(--teal);width:54px;text-align:right;flex-shrink:0;}
+.reserve-modal-total{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-top:2px solid #e8f5f4;font-size:14px;font-weight:700;margin-top:4px;}
+.reserve-info-box{padding:0 14px;margin-top:8px;}
+.reserve-info-lbl{font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px;}
+.reserve-info-inp{width:100%;box-sizing:border-box;border:1.5px solid #cde8e7;border-radius:10px;padding:9px 12px;font-size:14px;font-family:inherit;outline:none;margin-bottom:8px;}
+.reserve-info-inp:focus{border-color:var(--teal);}
+.reserve-confirm-btn{display:block;width:calc(100% - 28px);margin:12px 14px 0;background:var(--teal);color:#fff;border:none;border-radius:14px;padding:13px 0;font-size:15px;font-weight:800;cursor:pointer;}
+.hist-status.reserve{background:#ede7f6;color:#6a1b9a;}
 </style>
 </head>
 <body>
@@ -518,6 +564,10 @@ select.orderer-input{appearance:none;-webkit-appearance:none;background:#fff url
     <button class="top-btn" onclick="window.open('고객페이지_사용매뉴얼.html','_blank')">
       <svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
       설명서
+    </button>
+    <button class="top-btn" onclick="goPage('reserve')">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      예약주문
     </button>
   </div>
 </div>
@@ -605,6 +655,41 @@ select.orderer-input{appearance:none;-webkit-appearance:none;background:#fff url
   <div id="historyContent"></div>
 </div>
 
+<!-- ════ 페이지: 예약 주문 ════ -->
+<div id="page-reserve" class="page">
+  <div class="section-title">📅 예약 주문</div>
+  <div class="reserve-search-wrap">
+    <input type="text" id="reserveSearch" class="reserve-search-inp" placeholder="메뉴명 검색..." oninput="_setReserveSearch(this.value)">
+  </div>
+  <div id="reserveCatTabs" class="reserve-cat-tabs"></div>
+  <div id="reserveMenuList" class="reserve-menu-list"></div>
+</div>
+
+<!-- 예약주문 팝업 -->
+<div class="reserve-overlay" id="reserveOverlay" onclick="if(event.target===this)closeReservePopup()">
+  <div class="reserve-modal">
+    <div class="reserve-modal-head">
+      <span class="reserve-modal-title">📅 예약 주문 목록</span>
+      <button class="reserve-modal-close" onclick="closeReservePopup()">✕</button>
+    </div>
+    <div class="reserve-modal-items" id="reserveModalItems"></div>
+    <div class="reserve-modal-total" id="reserveModalTotal"></div>
+    <div class="reserve-info-box">
+      <span class="reserve-info-lbl">이름 *</span>
+      <input class="reserve-info-inp" id="reserveName" type="text" placeholder="이름을 입력해주세요" maxlength="20">
+      <span class="reserve-info-lbl">전화번호 *</span>
+      <input class="reserve-info-inp" id="reservePhone" type="tel" placeholder="연락처를 입력해주세요" maxlength="20">
+      <span class="reserve-info-lbl">📅 예약 날짜 * <small style="color:#aaa;font-weight:400">(오늘로부터 1~7일)</small></span>
+      <input class="reserve-info-inp" id="reserveDateInput" type="date">
+      <span class="reserve-info-lbl">배송 주소</span>
+      <input class="reserve-info-inp" id="reserveAddr" type="text" placeholder="배송 주소 (픽업 외 필수)" maxlength="100">
+      <span class="reserve-info-lbl">요청사항</span>
+      <input class="reserve-info-inp" id="reserveRequest" type="text" placeholder="자유롭게 입력하세요" maxlength="200">
+    </div>
+    <button class="reserve-confirm-btn" onclick="submitReserveOrder()">예약 주문 신청하기</button>
+  </div>
+</div>
+
 <script>
 var CAT_COLOR={'메인':'#1D9E75','한우':'#C0392B','한돈':'#8E44AD','반찬':'#378ADD','김치':'#D4537E','밀키트':'#E9A826','기타':'#888780'};
 var CAT_EMOJI={'메인':'🍳','한우':'🥩','한돈':'🐷','반찬':'🥗','김치':'🥬','밀키트':'📦','기타':'🍽'};
@@ -623,7 +708,7 @@ function _itemCat(name){var m=allMenus.find(function(x){return x.name===name;});
 (function(){try{var s=localStorage.getItem('onban_categories');if(s){JSON.parse(s).forEach(function(c){CAT_COLOR[c.name]=c.color;});}}catch(e){}})();
 // 계좌 정보는 localStorage를 쓰지 않고 항상 구글시트에서 조회 (결제화면 진입 시 갱신).
 // 아래는 시트 조회 실패 시에만 쓰는 임시 기본값.
-var BANK={name:'국민은행',holder:'김현철',account:'118210210117'};
+var BANK={name:'',holder:'',account:''};
 
 function parseCsvLine(line){
   var result=[],cur='',inQ=false;
@@ -643,6 +728,16 @@ var orderItems=[];
 var ordererInfo={name:'',phone:'',addr:'',memo:'',additionalRequest:''};
 var lastOrderTotal=0;
 var menuDate=toISO(new Date());
+var _reserveAllMenus=[];
+var _reserveCat='전체';
+var _reserveSel={};
+var _reservePage=0;
+var _RESERVE_PAGE=10;
+var _reserveLoaded=false;
+var _reservePageItems=[];
+var _reserveDateMin='';
+var _reserveDateMax='';
+var _reserveSearchText='';
 
 function toISO(d){
   // 한국 시간(UTC+9) 기준으로 날짜 계산
@@ -701,6 +796,7 @@ function goPage(name){
   if(name==='order')renderOrder();
   if(name==='payment')renderPayment();
   if(name==='history')renderHistory();
+  if(name==='reserve'){loadReserveMenus();_renderReserveBar();}
   // list 이탈 시 플로팅 버튼 숨김
   if(name!=='list'){
     var fw=document.getElementById('floatCartWrap');
@@ -742,10 +838,14 @@ var API_URL='https://myfood01-production.up.railway.app';
 function getDeviceId(){
   var k='onban_device_id';
   var id=localStorage.getItem(k);
-  if(!id){id='dev-'+Date.now()+'-'+Math.random().toString(36).slice(2,10);localStorage.setItem(k,id);}
+  if(!id){
+    id='xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){
+      var r=Math.random()*16|0;return(c==='x'?r:(r&0x3|0x8)).toString(16);
+    });
+    localStorage.setItem(k,id);
+  }
   return id;
 }
-var ALIMTALK_URL='https://script.google.com/macros/s/AKfycbwtXJL4_lMynbG4U13PqbnPOiTp15evyw0BPPQ0A9aV5QYlI5dSQB4Ru-8BOqVR9RPq1w/exec';
 function loadMenus(silent){
   var iso=toISO(new Date());
   menuDate=iso;
@@ -1166,7 +1266,7 @@ function renderOrdererPage(){
 
   // device_id로 customers_master 조회 → name/phone 자동 채우기
   (function(){
-    var did=_getDeviceId();
+    var did=getDeviceId();
     fetch(API_URL+'/api/customers-master?device_id='+encodeURIComponent(did))
       .then(function(r){return r.json();})
       .then(function(d){
@@ -1302,27 +1402,6 @@ function _pickPickup(){
   if(banner)banner.remove();
 }
 
-// ── 발송 설정: API에서 직접 로드 (localStorage 우회) ──
-var _sendSettings={smsEnabled:true,alimtalkEnabled:true}; // 기본값 ON, API 로드 후 갱신
-
-// ── SMS 발송 (솔라피) ──
-function sendSMS(phone, msg){
-  if(!_sendSettings.smsEnabled)return;
-  var qs='receiver='+encodeURIComponent(phone)+'&msg='+encodeURIComponent(msg);
-  fetch('https://script.google.com/macros/s/AKfycbwtXJL4_lMynbG4U13PqbnPOiTp15evyw0BPPQ0A9aV5QYlI5dSQB4Ru-8BOqVR9RPq1w/exec?'+qs,{redirect:'follow'}).catch(function(){});
-}
-
-function sendAlimtalk(phone,tplId,vars,fallbackMsg){
-  if(!phone)return;
-  if(!_sendSettings.alimtalkEnabled)return;
-  var gasUrl='https://script.google.com/macros/s/AKfycbwtXJL4_lMynbG4U13PqbnPOiTp15evyw0BPPQ0A9aV5QYlI5dSQB4Ru-8BOqVR9RPq1w/exec';
-  var qs='action=alimtalk'
-    +'&receiver='+encodeURIComponent(phone)
-    +'&tplId='+encodeURIComponent(tplId)
-    +'&vars='+encodeURIComponent(JSON.stringify(vars))
-    +'&msg='+encodeURIComponent(fallbackMsg||'');
-  fetch(gasUrl+'?'+qs,{redirect:'follow'}).catch(function(){});
-}
 
 // ── 배송 주소 목록 ──
 // ── 주소록 (customers_master) ─────────────────────────────────
@@ -1345,7 +1424,7 @@ function _renderAddrFromCache(m){
 function _loadAddrList(phone){
   var el=document.getElementById('addrListContent');
   el.innerHTML='<div style="text-align:center;color:#aaa;padding:16px 0;">불러오는 중...</div>';
-  var did=_getDeviceId();
+  var did=getDeviceId();
   var url=API_URL+'/api/customers-master'+(phone?'?phone='+encodeURIComponent(phone)+'&device_id='+encodeURIComponent(did):'?device_id='+encodeURIComponent(did));
   fetch(url).then(function(r){return r.json();}).then(function(d){
     if(!d.success){
@@ -1429,7 +1508,7 @@ function _buildAddrItem(c, isMaster){
     sBtn.onclick=function(e){
       e.stopPropagation();
       fetch(API_URL+'/api/customers-master',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({name:c.name||'',phone:c.phone||'',addr1:c.addr,memo:c.memo||'',device_id:_getDeviceId()})})
+        body:JSON.stringify({name:c.name||'',phone:c.phone||'',addr1:c.addr,memo:c.memo||'',device_id:getDeviceId()})})
         .then(function(){
           var ph=(document.getElementById('ordererPhone').value||'').replace(/[^0-9]/g,'');
           _loadAddrList(ph);
@@ -1457,7 +1536,7 @@ function _showAddrForm(c,replaceEl){
     var phone=(document.getElementById('ordererPhone').value||'').trim();
     var body={name:name,phone:phone,addr1:addr1,
       addr2:fAddr2.value.trim()||null,addr3:fAddr3.value.trim()||null,memo:fMemo.value.trim(),
-      device_id:_getDeviceId()};
+      device_id:getDeviceId()};
     var url=API_URL+'/api/customers-master'+(isNew?'':'/'+c.id);
     fetch(url,{method:isNew?'POST':'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
       .then(function(r){return r.json();})
@@ -1551,33 +1630,6 @@ function saveOrder(cb){
       if(cb)cb({success:true,order:order});
     })
     .catch(function(){if(cb)cb({success:false,soldOut:[]});});
-
-  // 고객에게 주문 접수 문자
-    if(order.phone){
-    var menuList=order.items.map(function(i){return i.name+' '+i.qty+'개';}).join(', ');
-    sendAlimtalk(order.phone,
-      'KA01TP260522043036061jyoL3rs2iVT',
-      {'이름':order.name,'메뉴목록':menuList,'금액':String(total)},
-      '[오늘의 반찬] '+order.name+'님, 주문이 접수됐습니다! '+menuList+' 합계: '+total.toLocaleString()+'천원'
-    );
-  }
-
-
-  // 관리자에게 새 주문 알림
-  var adminPhoneFixed='010-2698-9056';
-  var adminMsg='[오늘의 반찬] 새 주문! '
-    +order.name+(order.phone?' ('+order.phone+')':'')
-    +' '+order.items.map(function(i){return i.name+' '+i.qty+'개';}).join(', ')
-    +' 합계: '+total.toLocaleString()+'천원'
-    +(order.memo?' 배송:'+order.memo:'')
-    +(order.additionalRequest?' 요청:'+order.additionalRequest:'');
-  sendSMS(adminPhoneFixed, adminMsg);
-  // 설정 페이지 관리자 연락처로도 발송 (다를 경우만)
-  var adminInfo=JSON.parse(localStorage.getItem('onban_admin')||'{}');
-  var adminPhoneSettings=String(adminInfo.phone||'').replace(/[^0-9]/g,'');
-  if(adminPhoneSettings&&adminPhoneSettings!==adminPhoneFixed.replace(/[^0-9]/g,'')){
-    sendSMS(adminPhoneSettings, adminMsg);
-  }
 
   return order;
 }
@@ -1765,8 +1817,8 @@ function renderHistory(){
       +'<button onclick="renderHistory()" style="margin-top:10px;padding:7px 20px;border-radius:20px;border:none;background:#086266;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">다시 시도</button></p></div>';
   });
 }
-var _ORDER_STATUS_MAP={pending:'대기중',confirmed:'주문접수',delivered:'배송완료',cancelled:'취소됨'};
-var _ORDER_STATUS_CLS={pending:'pending',confirmed:'confirmed',delivered:'delivered',cancelled:'cancelled'};
+var _ORDER_STATUS_MAP={pending:'대기중',confirmed:'주문접수',delivered:'배송완료',cancelled:'취소됨','예약주문':'예약주문'};
+var _ORDER_STATUS_CLS={pending:'pending',confirmed:'confirmed',delivered:'delivered',cancelled:'cancelled','예약주문':'reserve'};
 function _doRenderHistory(el){
   el.innerHTML='';
   var all=JSON.parse(localStorage.getItem('orders')||'[]');
@@ -1797,7 +1849,7 @@ function _doRenderHistory(el){
       +'</div>'
       +'<div class="hist-li-right"><span class="hist-li-total">'+comma(total)+'천원</span></div>';
     (function(oid){rowEl.onclick=function(){openOrderDetail(oid);};})(o.id);
-    if(o.status==='pending'){
+    if(o.status==='pending'||o.status==='예약주문'){
       var cancelBtn=document.createElement('button');
       cancelBtn.className='hist-li-cancel';
       cancelBtn.textContent='주문취소';
@@ -2209,16 +2261,6 @@ function cancelHistOrder(orderId){
   // API 상태 업데이트 (관리자 동기화)
   fetch(API_URL+'/api/orders/'+encodeURIComponent(orderId)+'/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'cancelled'})})
     .then(function(){loadMenus(true);}).catch(function(){});
-  // 취소 알림톡
-  if(o.phone){
-    var menuList=o.items.map(function(i){return i.name+' '+i.qty+'개';}).join(', ');
-    var total=o.items.reduce(function(s,i){return s+i.price*i.qty;},0);
-    sendAlimtalk(o.phone,
-      'KA01TP2605220434459714HrsH0pRr0l',
-      {'이름':o.name},
-      '[오늘의 반찬] '+o.name+'님, 주문이 취소됐습니다.'
-    );
-  }
   showToast('주문이 취소됐습니다.');
   _closeOrderDetailUI();
   renderHistory();
@@ -2298,25 +2340,6 @@ function reorder(order){
         fetch(API_URL+'/api/orders/'+encodeURIComponent(order.id)+'/memo',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({memo:origSnap.memo})}).catch(function(){});
         fetch(API_URL+'/api/orders/'+encodeURIComponent(order.id)+'/request',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:origSnap.additionalRequest})}).catch(function(){});
       }
-      // 서버 승인 후 알림 발송
-      var menuList=order.items.map(function(i){return i.name+' '+i.qty+'개';}).join(', ');
-      if(order.phone){
-        sendAlimtalk(order.phone,
-          'KA01TP260522215451814ICITJ2ltD6g',
-          {'이름':order.name,'메뉴목록':menuList,'금액':String(total)},
-          '[오늘의 반찬] '+order.name+'님, 재주문이 접수됐습니다! '+menuList+' 합계: '+total.toLocaleString()+'천원'
-        );
-      }
-      var adminPhoneFixed='010-2698-9056';
-      var adminMsg='[오늘의 반찬] 재주문! '+order.name+(order.phone?' ('+order.phone+')':'')+' '
-        +order.items.map(function(i){return i.name+' '+i.qty+'개';}).join(', ')
-        +' 합계: '+total.toLocaleString()+'천원'+(order.memo?' 요청:'+order.memo:'');
-      sendSMS(adminPhoneFixed,adminMsg);
-      var adminInfo=JSON.parse(localStorage.getItem('onban_admin')||'{}');
-      var adminPhoneSettings=String(adminInfo.phone||'').replace(/[^0-9]/g,'');
-      if(adminPhoneSettings&&adminPhoneSettings!==adminPhoneFixed.replace(/[^0-9]/g,'')){
-        sendSMS(adminPhoneSettings,adminMsg);
-      }
       if(newOrder.additionalRequest){
         fetch(API_URL+'/api/orders/'+encodeURIComponent(newOrder.id)+'/request',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:newOrder.additionalRequest})}).catch(function(){});
       }
@@ -2375,32 +2398,225 @@ function _toggleAddrListBtn(){
   btn.style.opacity=ok?'1':'0.4';
   btn.style.cursor=ok?'pointer':'not-allowed';
 }
-function _getDeviceId(){
-  var k='onban_device_id';
-  var id=localStorage.getItem(k);
-  if(!id){
-    id='xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){
-      var r=Math.random()*16|0;return(c==='x'?r:(r&0x3|0x8)).toString(16);
-    });
-    localStorage.setItem(k,id);
-  }
-  return id;
+// ══ 예약주문 ══
+function loadReserveMenus(){
+  if(_reserveLoaded)return;
+  document.getElementById('reserveMenuList').innerHTML=
+    '<div style="text-align:center;padding:40px;color:#aaa;font-size:13px;">마스터 메뉴 불러오는 중...</div>';
+  fetch(API_URL+'/api/menu/all',{cache:'no-store'})
+  .then(function(r){return r.json();})
+  .then(function(d){
+    if(d.success&&Array.isArray(d.menus)){
+      _reserveAllMenus=d.menus;
+      _reserveLoaded=true;
+      renderReservePage();
+    } else {
+      document.getElementById('reserveMenuList').innerHTML=
+        '<div style="text-align:center;padding:40px;color:#e05;font-size:13px;">메뉴를 불러오지 못했어요.</div>';
+    }
+  })
+  .catch(function(){
+    document.getElementById('reserveMenuList').innerHTML=
+      '<div style="text-align:center;padding:40px;color:#e05;font-size:13px;">네트워크 오류가 발생했어요.</div>';
+  });
 }
+function renderReservePage(){
+  _renderReserveCatTabs();
+  _renderReserveList();
+  _renderReserveBar();
+}
+function _reserveCats(){
+  var cats=['전체'];
+  var seen={};
+  _reserveAllMenus.forEach(function(m){if(m.cat&&!seen[m.cat]){seen[m.cat]=1;cats.push(m.cat);}});
+  return cats;
+}
+function _renderReserveCatTabs(){
+  var wrap=document.getElementById('reserveCatTabs');
+  if(!wrap)return;
+  var cats=_reserveCats();
+  wrap.innerHTML=cats.map(function(c){
+    var lbl=c==='전체'?'전체':((CAT_EMOJI[c]||'')+' '+c);
+    return '<button class="reserve-cat-tab'+(c===_reserveCat?' active':'')+'" onclick="_setReserveCat(\''+c.replace(/'/g,"\\'")+'\')">'
+      +lbl+'</button>';
+  }).join('');
+}
+function _setReserveCat(cat){
+  _reserveCat=cat;
+  _reservePage=0;
+  _renderReserveCatTabs();
+  _renderReserveList();
+}
+function _reserveFiltered(){
+  var list=_reserveAllMenus;
+  if(_reserveSearchText){
+    var kw=_reserveSearchText.toLowerCase();
+    list=list.filter(function(m){return m.name.toLowerCase().indexOf(kw)>=0;});
+  }
+  if(_reserveCat!=='전체')list=list.filter(function(m){return m.cat===_reserveCat;});
+  return list;
+}
+function _setReserveSearch(v){
+  _reserveSearchText=v;
+  _reservePage=0;
+  _renderReserveList();
+}
+function _renderReserveList(){
+  var wrap=document.getElementById('reserveMenuList');
+  if(!wrap)return;
+  var list=_reserveFiltered();
+  var total=list.length;
+  var pages=Math.max(1,Math.ceil(total/_RESERVE_PAGE));
+  if(_reservePage>=pages)_reservePage=pages-1;
+  _reservePageItems=list.slice(_reservePage*_RESERVE_PAGE,(_reservePage+1)*_RESERVE_PAGE);
+  var html='';
+  _reservePageItems.forEach(function(m,i){
+    var sel=!!_reserveSel[m.menuId];
+    html+='<div class="reserve-menu-row'+(sel?' selected':'')+'" onclick="_toggleReserveByIdx('+i+')">'
+      +'<div class="reserve-check">'+( sel?'✓':'' )+'</div>'
+      +'<div class="reserve-menu-emoji">'+getMenuEmoji(m.name,m.cat)+'</div>'
+      +'<div class="reserve-menu-info">'
+        +'<div class="reserve-menu-name">'+m.name+'</div>'
+        +'<div class="reserve-menu-cat-lbl">'+(CAT_EMOJI[m.cat]||'')+' '+m.cat+'</div>'
+      +'</div>'
+      +'<div class="reserve-menu-price">'+comma(m.price)+'천원</div>'
+      +'</div>';
+  });
+  if(!_reservePageItems.length){
+    html='<div style="text-align:center;padding:40px;color:#aaa;font-size:13px;">메뉴가 없어요.</div>';
+  }
+  html+='<div class="reserve-pager">'
+    +'<button onclick="_reservePageGo(-1)"'+(_reservePage===0?' disabled':'')+'>이전</button>'
+    +'<span>'+(_reservePage+1)+' / '+pages+'</span>'
+    +'<button onclick="_reservePageGo(1)"'+(_reservePage>=pages-1?' disabled':'')+'>다음</button>'
+    +'</div>';
+  wrap.innerHTML=html;
+}
+function _reservePageGo(d){
+  _reservePage+=d;
+  _renderReserveList();
+}
+function _toggleReserveByIdx(i){
+  var m=_reservePageItems[i];
+  if(!m)return;
+  if(_reserveSel[m.menuId]){delete _reserveSel[m.menuId];}
+  else{_reserveSel[m.menuId]={id:m.menuId,name:m.name,cat:m.cat,price:m.price,qty:1};}
+  _renderReserveList();
+  _renderReserveBar();
+}
+function _renderReserveBar(){
+  var old=document.getElementById('reserveSubmitBar');
+  if(old)old.remove();
+  var page=document.getElementById('page-reserve');
+  if(!page||!page.classList.contains('active'))return;
+  var cnt=Object.keys(_reserveSel).length;
+  var bar=document.createElement('div');
+  bar.className='reserve-submit-bar';
+  bar.id='reserveSubmitBar';
+  bar.innerHTML='<div class="reserve-submit-badge">'+cnt+'</div>'
+    +'<button onclick="openReservePopup()"'+(cnt===0?' disabled style="opacity:.5;cursor:not-allowed;"':'')+'>예약 주문 신청하기</button>';
+  page.appendChild(bar);
+}
+function openReservePopup(){
+  if(!Object.keys(_reserveSel).length){showToast('메뉴를 선택해주세요.');return;}
+  _reserveDateMin=toISO(new Date(new Date().getTime()+24*60*60*1000));
+  _reserveDateMax=toISO(new Date(new Date().getTime()+7*24*60*60*1000));
+  var rdi=document.getElementById('reserveDateInput');
+  if(rdi){rdi.min=_reserveDateMin;rdi.max=_reserveDateMax;if(!rdi.value)rdi.value=_reserveDateMin;}
+  _renderReserveModalItems();
+  document.getElementById('reserveOverlay').classList.add('open');
+}
+function closeReservePopup(){
+  document.getElementById('reserveOverlay').classList.remove('open');
+}
+function _renderReserveModalItems(){
+  var items=Object.values(_reserveSel);
+  var html='';
+  items.forEach(function(it){
+    html+='<div class="reserve-modal-item">'
+      +'<span class="reserve-item-name">'+it.name+'</span>'
+      +'<div class="reserve-qty-ctrl">'
+        +'<button onclick="_reserveQty(\''+it.id+'\', -1)">−</button>'
+        +'<span id="rqty-'+it.id+'">'+it.qty+'</span>'
+        +'<button onclick="_reserveQty(\''+it.id+'\', 1)">+</button>'
+      +'</div>'
+      +'<span class="reserve-item-price" id="rprice-'+it.id+'">'+comma(it.price*it.qty)+'천원</span>'
+      +'</div>';
+  });
+  document.getElementById('reserveModalItems').innerHTML=html;
+  _updateReserveTotal();
+}
+function _reserveQty(id,delta){
+  if(!_reserveSel[id])return;
+  var q=Math.max(1,Math.min(99,_reserveSel[id].qty+delta));
+  _reserveSel[id].qty=q;
+  var qs=document.getElementById('rqty-'+id);
+  if(qs)qs.textContent=q;
+  var ps=document.getElementById('rprice-'+id);
+  if(ps)ps.textContent=comma(_reserveSel[id].price*q)+'천원';
+  _updateReserveTotal();
+}
+function _updateReserveTotal(){
+  var total=Object.values(_reserveSel).reduce(function(s,it){return s+it.price*it.qty;},0);
+  var el=document.getElementById('reserveModalTotal');
+  if(el)el.innerHTML='<span>합계</span><span style="color:var(--teal)">'+comma(total)+'천원</span>';
+}
+function submitReserveOrder(){
+  var name=(document.getElementById('reserveName').value||'').trim();
+  var phone=(document.getElementById('reservePhone').value||'').trim();
+  var reserveDate=(document.getElementById('reserveDateInput').value||'').trim();
+  var addr=(document.getElementById('reserveAddr').value||'').trim();
+  var req=(document.getElementById('reserveRequest').value||'').trim();
+  if(!name){showToast('이름을 입력해주세요.');return;}
+  if(!phone){showToast('전화번호를 입력해주세요.');return;}
+  if(!reserveDate){showToast('예약 날짜를 선택해주세요.');return;}
+  if(reserveDate<_reserveDateMin||reserveDate>_reserveDateMax){showToast('예약 날짜는 내일부터 7일 이내로 선택해주세요.');return;}
+  var items=Object.values(_reserveSel).map(function(it){
+    return{menuId:it.id,name:it.name,cat:it.cat,qty:it.qty,price:it.price};
+  });
+  if(!items.length){showToast('메뉴를 선택해주세요.');return;}
+  var total=items.reduce(function(s,it){return s+it.price*it.qty;},0);
+  var order={
+    id:'RSV'+Date.now(),
+    date:menuDate,
+    time:new Date().toTimeString().slice(0,8),
+    name:name,phone:phone,addr:addr,memo:'',
+    additionalRequest:req,
+    items:items,total:total,deliveryFee:0,
+    deviceId:getDeviceId(),
+    status:'예약주문',
+    reserveDate:reserveDate
+  };
+  var btn=document.querySelector('.reserve-confirm-btn');
+  if(btn){btn.disabled=true;btn.textContent='저장 중...';}
+  fetch(API_URL+'/api/orders',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({data:order})
+  })
+  .then(function(r){return r.json();})
+  .then(function(d){
+    if(d.success){
+      closeReservePopup();
+      _reserveSel={};
+      _renderReserveList();
+      _renderReserveBar();
+      showToast('예약 주문이 접수되었어요 ✅');
+    } else {
+      showToast('저장 실패: '+(d.error||'오류'));
+    }
+  })
+  .catch(function(){showToast('저장 중 오류가 발생했어요.');})
+  .finally(function(){
+    if(btn){btn.disabled=false;btn.textContent='예약 주문 신청하기';}
+  });
+}
+
 window.onload=function(){
   _revertStaleItemEdits();   // 직전 세션의 재주문 미처리 항목편집 원복(물리적 반영 방지)
   loadMenus();
   _startMenuAutoRefresh();
   _startSSE();
-  // 발송 설정을 API에서 직접 로드 → _sendSettings 갱신 (localStorage 의존 제거)
-  fetch(API_URL+'/api/settings',{cache:'no-store'})
-    .then(function(r){return r.json();})
-    .then(function(d){
-      if(d&&d.success&&d.data){
-        var dd=d.data;
-        if(dd.smsEnabled!==undefined)      _sendSettings.smsEnabled      = (dd.smsEnabled===true||dd.smsEnabled==='true');
-        if(dd.alimtalkEnabled!==undefined) _sendSettings.alimtalkEnabled = (dd.alimtalkEnabled===true||dd.alimtalkEnabled==='true');
-      }
-    }).catch(function(){});
 };
 </script>
 

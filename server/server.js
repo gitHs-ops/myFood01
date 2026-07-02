@@ -43,6 +43,11 @@ const pool = mysql.createPool({
 
 const ok  = (res, data={}) => res.json({ success: true,  ...data });
 const err = (res, msg, status=500) => res.status(status).json({ success: false, error: msg });
+const toKSTDateStr = d => {
+  if (!d) return null;
+  if (d instanceof Date) { const kst=new Date(d.getTime()+9*60*60*1000); return kst.toISOString().slice(0,10); }
+  return String(d).slice(0,10);
+};
 
 // ── SSE 클라이언트 풀 ─────────────────────────────────────────
 const sseClients = new Set();
@@ -410,22 +415,18 @@ app.get('/api/orders', async (req, res) => {
     else if (name)  { sql += ' AND name=?';    params.push(name); }
     sql += ' ORDER BY created_at DESC';
     const [rows] = await pool.execute(sql, params);
-    // mysql2 timezone:'+09:00'로 DATE컬럼이 KST자정(=UTC 전날15시)으로 반환 → +9h 보정
-    const toDateStr = d => {
-      if (d instanceof Date) { const kst=new Date(d.getTime()+9*60*60*1000); return kst.toISOString().slice(0,10); }
-      return String(d||'').slice(0,10);
-    };
-    // DATETIME 컬럼 → Unix ms + 9h 보정 (timezone:'+09:00'로 Date가 9h 뒤로 밀림, toDateStr과 동일 처리)
+    // DATETIME 컬럼 → Unix ms + 9h 보정
     const toTS = d => { if(!d)return null; const ms=d instanceof Date?d.getTime():new Date(String(d).replace(' ','T')).getTime(); return isNaN(ms)?null:ms+9*60*60*1000; };
     const orders = rows.map(r => ({
-      id: r.id, date: toDateStr(r.date), time: r.time,
+      id: r.id, date: toKSTDateStr(r.date), time: r.time,
       name: r.name, phone: r.phone, addr: r.addr, memo: r.memo,
       items: typeof r.items === 'string' ? JSON.parse(r.items) : (r.items||[]),
       total: r.total, status: r.status,
       adminReply: r.admin_reply, replyAt: toTS(r.reply_at),
       additionalRequest: r.additional_request,
       addreqAcked: !!r.addreq_acked,
-      isReorder: !!r.is_reorder
+      isReorder: !!r.is_reorder,
+      reserveDate: toKSTDateStr(r.reserve_date)
     }));
     ok(res, { orders });
   } catch(e) { err(res, e.message); }
@@ -446,46 +447,48 @@ app.post('/api/orders', async (req, res) => {
 
     const items  = order.items || [];
     const date   = order.date;
+    const isReserve = order.status === '예약주문';
     const conn   = await pool.getConnection();
     await conn.beginTransaction();
     try {
-      // 재고 확인 (FOR UPDATE — 동시 주문 직렬화)
-      // menu_id 있으면 id 기준(rename 안전), 없으면(레거시 주문) name 폴백
-      const soldOut = [];
-      for (const item of items) {
-        const byId = item.menuId != null;
-        const [rows] = await conn.execute(
-          byId ? 'SELECT stock FROM daily_menus WHERE date=? AND menu_id=? FOR UPDATE'
-               : 'SELECT stock FROM daily_menus WHERE date=? AND name=? FOR UPDATE',
-          [date, byId ? item.menuId : item.name]
-        );
-        const stock = rows.length ? rows[0].stock : 0;
-        if (stock < (item.qty || 1)) soldOut.push({ name: item.name, available: stock });
-      }
-      if (soldOut.length) {
-        await conn.rollback(); conn.release();
-        return res.json({ success: false, soldOut });
-      }
-
-      // 재고 차감
-      for (const item of items) {
-        const byId = item.menuId != null;
-        await conn.execute(
-          byId ? 'UPDATE daily_menus SET stock = stock - ? WHERE date=? AND menu_id=?'
-               : 'UPDATE daily_menus SET stock = stock - ? WHERE date=? AND name=?',
-          [item.qty || 1, date, byId ? item.menuId : item.name]
-        );
+      if (!isReserve) {
+        // 재고 확인 (FOR UPDATE — 동시 주문 직렬화)
+        const soldOut = [];
+        for (const item of items) {
+          const byId = item.menuId != null;
+          const [rows] = await conn.execute(
+            byId ? 'SELECT stock FROM daily_menus WHERE date=? AND menu_id=? FOR UPDATE'
+                 : 'SELECT stock FROM daily_menus WHERE date=? AND name=? FOR UPDATE',
+            [date, byId ? item.menuId : item.name]
+          );
+          const stock = rows.length ? rows[0].stock : 0;
+          if (stock < (item.qty || 1)) soldOut.push({ name: item.name, available: stock });
+        }
+        if (soldOut.length) {
+          await conn.rollback(); conn.release();
+          return res.json({ success: false, soldOut });
+        }
+        // 재고 차감
+        for (const item of items) {
+          const byId = item.menuId != null;
+          await conn.execute(
+            byId ? 'UPDATE daily_menus SET stock = stock - ? WHERE date=? AND menu_id=?'
+                 : 'UPDATE daily_menus SET stock = stock - ? WHERE date=? AND name=?',
+            [item.qty || 1, date, byId ? item.menuId : item.name]
+          );
+        }
       }
 
       // 주문 저장
       await conn.execute(
-        'INSERT INTO orders (id,date,time,name,phone,addr,memo,items,total,status,is_reorder,additional_request,device_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
+        'INSERT INTO orders (id,date,time,name,phone,addr,memo,items,total,status,is_reorder,additional_request,device_id,reserve_date) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
         [
           order.id, date, order.time||'',
           order.name||'', order.phone||'', order.addr||'', order.memo||'',
           JSON.stringify(items), order.total||0,
           order.status||'pending', order.isReorder?1:0,
-          order.additionalRequest||'', order.deviceId||null
+          order.additionalRequest||'', order.deviceId||null,
+          order.reserveDate||null
         ]
       );
       await conn.commit(); conn.release();
@@ -506,45 +509,53 @@ app.put('/api/orders/:id/status', async (req, res) => {
     await conn.beginTransaction();
     try {
       const [rows] = await conn.execute(
-        'SELECT status, date, items FROM orders WHERE id=? FOR UPDATE', [req.params.id]
+        'SELECT status, date, items, reserve_date FROM orders WHERE id=? FOR UPDATE', [req.params.id]
       );
       if (!rows.length) { await conn.rollback(); conn.release(); return err(res, '주문 없음', 404); }
 
-      const prev   = rows[0].status;
-      const date   = rows[0].date;
-      const items  = typeof rows[0].items === 'string' ? JSON.parse(rows[0].items) : (rows[0].items||[]);
+      const prev        = rows[0].status;
+      let   orderDate   = toKSTDateStr(rows[0].date) || rows[0].date;
+      const items       = typeof rows[0].items === 'string' ? JSON.parse(rows[0].items) : (rows[0].items||[]);
+      const reserveDate = toKSTDateStr(rows[0].reserve_date);
       const wasActive    = ['pending','confirmed','delivered'].includes(prev);
       const nowCancelled = status === 'cancelled';
       const wasCancelled = prev === 'cancelled';
       const nowActive    = ['pending','confirmed','delivered'].includes(status);
+      const isReserveOrder = !!reserveDate; // 예약주문은 재고와 무관 — 모든 stock 조작 스킵
 
-      await conn.execute('UPDATE orders SET status=? WHERE id=?', [status, req.params.id]);
+      // 예약주문 → confirmed: date를 reserve_date로 업데이트
+      if (status === 'confirmed' && prev === '예약주문' && reserveDate) {
+        orderDate = reserveDate;
+        await conn.execute('UPDATE orders SET status=?, date=? WHERE id=?', [status, orderDate, req.params.id]);
+      } else {
+        await conn.execute('UPDATE orders SET status=? WHERE id=?', [status, req.params.id]);
+      }
 
-      // 취소 시 재고 복원 (menu_id 우선, 없으면 name 폴백)
-      if (wasActive && nowCancelled) {
+      // 취소 시 재고 복원 (menu_id 우선, 없으면 name 폴백) — 예약주문 제외
+      if (wasActive && nowCancelled && !isReserveOrder) {
         for (const item of items) {
           const byId = item.menuId != null;
           await conn.execute(
             byId ? 'UPDATE daily_menus SET stock = stock + ? WHERE date=? AND menu_id=?'
                  : 'UPDATE daily_menus SET stock = stock + ? WHERE date=? AND name=?',
-            [item.qty || 1, date, byId ? item.menuId : item.name]
+            [item.qty || 1, orderDate, byId ? item.menuId : item.name]
           );
         }
       }
-      // 취소 해제(재주문 실패 롤백) 시 재고 재차감 (menu_id 우선, 없으면 name 폴백)
-      if (wasCancelled && nowActive) {
+      // 취소 해제(재주문 실패 롤백) 시 재고 재차감 (menu_id 우선, 없으면 name 폴백) — 예약주문 제외
+      if (wasCancelled && nowActive && !isReserveOrder) {
         for (const item of items) {
           const byId = item.menuId != null;
           await conn.execute(
             byId ? 'UPDATE daily_menus SET stock = GREATEST(stock - ?, 0) WHERE date=? AND menu_id=?'
                  : 'UPDATE daily_menus SET stock = GREATEST(stock - ?, 0) WHERE date=? AND name=?',
-            [item.qty || 1, date, byId ? item.menuId : item.name]
+            [item.qty || 1, orderDate, byId ? item.menuId : item.name]
           );
         }
       }
 
       await conn.commit(); conn.release();
-      broadcast('order_status', { orderId: req.params.id, status, date });
+      broadcast('order_status', { orderId: req.params.id, status, date: orderDate });
       ok(res);
       if (['confirmed','delivered','cancelled'].includes(status)) {
         _notifyStatus(req.params.id, status);
@@ -1094,6 +1105,14 @@ async function initDB() {
       if(!devIdCol) await conn.execute(`ALTER TABLE customers_master ADD COLUMN device_id VARCHAR(100) DEFAULT NULL`).catch(()=>{});
       await conn.execute(`INSERT IGNORE INTO settings(k,v) VALUES('cm_device_id_v2','done')`).catch(()=>{});
       console.log('customers_master device_id 보완 완료');
+    }
+    // orders: reserve_date 컬럼 추가
+    const [[reserveDateMig]] = await conn.execute(`SELECT v FROM settings WHERE k='orders_reserve_date_v1'`).catch(()=>[[null]]);
+    if(!reserveDateMig){
+      const [[rdCol]] = await conn.execute(`SHOW COLUMNS FROM orders LIKE 'reserve_date'`).catch(()=>[[null]]);
+      if(!rdCol) await conn.execute(`ALTER TABLE orders ADD COLUMN reserve_date DATE NULL`).catch(()=>{});
+      await conn.execute(`INSERT IGNORE INTO settings(k,v) VALUES('orders_reserve_date_v1','done')`).catch(()=>{});
+      console.log('orders.reserve_date 컬럼 추가 완료');
     }
     console.log('DB 테이블 초기화 완료');
   } finally {

@@ -263,6 +263,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
 .status-confirmed{background:#e8f8f2;color:#1D9E75;}
 .status-cancelled{background:#f0f0f0;color:#999;}
 .status-delivered{background:#e0f4f1;color:#086266;font-weight:700;}
+.status-예약주문{background:#ede7f6;color:#6a1b9a;}
 .order-items{font-size:15px;font-weight:900;color:#086266;margin-bottom:10px;line-height:1.8;}
 .order-total{font-size:15px;font-weight:900;color:#086266;margin-bottom:12px;}
 .order-memo{font-size:12px;color:#b8860b;background:#fff8e1;padding:6px 10px;border-radius:6px;margin-bottom:10px;}
@@ -2169,14 +2170,16 @@ function renderOrdersList(today,todayOrders){
   var confirmed=todayOrders.filter(function(o){return o.status==='confirmed';}).length;
   var delivered=todayOrders.filter(function(o){return o.status==='delivered';}).length;
   var cancelled=todayOrders.filter(function(o){return o.status==='cancelled';}).length;
+  var reserve=todayOrders.filter(function(o){return o.status==='예약주문';}).length;
   document.getElementById('orderStats').innerHTML=
     '<div class="order-stat"><div class="order-stat-num">'+todayOrders.length+'</div><div class="order-stat-lbl">전체</div></div>'+
     '<div class="order-stat"><div class="order-stat-num" style="color:#E9A826;">'+pending+'</div><div class="order-stat-lbl">대기중</div></div>'+
     '<div class="order-stat"><div class="order-stat-num" style="color:#1D9E75;">'+confirmed+'</div><div class="order-stat-lbl">주문접수</div></div>'+
-    '<div class="order-stat"><div class="order-stat-num" style="color:#086266;">'+delivered+'</div><div class="order-stat-lbl">배송완료</div></div>';
+    '<div class="order-stat"><div class="order-stat-num" style="color:#086266;">'+delivered+'</div><div class="order-stat-lbl">배송완료</div></div>'+
+    (reserve?'<div class="order-stat"><div class="order-stat-num" style="color:#6a1b9a;">'+reserve+'</div><div class="order-stat-lbl">예약주문</div></div>':'');
 
   // 필터 탭
-  var filterLabels=[['all','전체'],['pending','대기중'],['confirmed','주문접수'],['delivered','배송완료'],['cancelled','취소']];
+  var filterLabels=[['all','전체'],['pending','대기중'],['confirmed','주문접수'],['delivered','배송완료'],['cancelled','취소'],['예약주문','📅예약']];
   document.getElementById('orderFilterTabs').innerHTML=filterLabels.map(function(f){
     return '<button class="order-filter-tab'+(orderFilter===f[0]?' active':'')+'" data-f="'+f[0]+'">'+f[1]+'</button>';
   }).join('');
@@ -2200,7 +2203,7 @@ function renderOrdersList(today,todayOrders){
   el.innerHTML='';
   filtered.forEach(function(order){
     var isNewAddReq=_isNewAddReq(order);
-    var statusText={pending:'대기중',confirmed:'주문접수',cancelled:'취소됨',delivered:'배송완료'};
+    var statusText={pending:'대기중',confirmed:'주문접수',cancelled:'취소됨',delivered:'배송완료','예약주문':'예약주문'};
     var itemSum=order.items.reduce(function(s,i){return s+(i.price||0)*(i.qty||1);},0);
     var summary=(order.items[0]?menuDisplayName(order.items[0].name,order.items[0].cat||_itemCat(order.items[0].name)):'')+(order.items.length>1?' 외 '+(order.items.length-1)+'건':'');
     var row=document.createElement('div');
@@ -2247,8 +2250,8 @@ function _buildAdminOrderCard(order){
       card.appendChild(newBadge);
     }
 
-    var statusText={'pending':'⏳ 대기중','confirmed':'✅ 주문접수','cancelled':'❌ 취소','delivered':'🚚 배송완료'};
-    var statusClass={'pending':'status-pending','confirmed':'status-confirmed','cancelled':'status-cancelled','delivered':'status-delivered'};
+    var statusText={'pending':'⏳ 대기중','confirmed':'✅ 주문접수','cancelled':'❌ 취소','delivered':'🚚 배송완료','예약주문':'📅 예약주문'};
+    var statusClass={'pending':'status-pending','confirmed':'status-confirmed','cancelled':'status-cancelled','delivered':'status-delivered','예약주문':'status-예약주문'};
 
     var header=document.createElement('div');
     header.className='order-header';
@@ -2256,6 +2259,13 @@ function _buildAdminOrderCard(order){
       '<div class="order-time">'+fmtDateTime(order.date,order.time)+'</div></div>'+
       '<div style="display:flex;align-items:center;gap:4px;">'+(order.isReorder?'<span style="font-size:10px;font-weight:700;background:#e0d4f7;color:#5b21b6;border-radius:999px;padding:2px 7px;">재주문</span>':'')+'<span style="font-size:11px;color:#888;">처리상태</span><span class="order-status '+statusClass[order.status]+'">'+statusText[order.status]+'</span></div>';
     card.appendChild(header);
+
+    if(order.reserveDate){
+      var rdRow=document.createElement('div');
+      rdRow.style.cssText='font-size:13px;font-weight:700;color:#6a1b9a;background:#f3e5f5;border-radius:8px;padding:6px 12px;margin:6px 0 2px;';
+      rdRow.textContent='📅 예약 날짜: '+order.reserveDate;
+      card.appendChild(rdRow);
+    }
 
     var items=document.createElement('div');
     items.className='order-items';
@@ -2293,13 +2303,13 @@ function _buildAdminOrderCard(order){
     addWrap.innerHTML=innerHtml;
     card.appendChild(addWrap);
 
-    if(order.status==='pending'){
+    if(order.status==='pending'||order.status==='예약주문'){
       var actions=document.createElement('div');
       actions.className='order-actions';
 
       var btnCfm=document.createElement('button');
       btnCfm.className='btn-confirm-order';
-      btnCfm.textContent='✅ 주문 접수';
+      btnCfm.textContent=order.status==='예약주문'?'✅ 예약 주문 접수':'✅ 주문 접수';
       btnCfm.onclick=function(){confirmOrder(order.id);};
 
       var btnCnl=document.createElement('button');
@@ -2378,21 +2388,6 @@ function sendAdminReply(orderId, phone){
   var ta=document.getElementById('replyta_'+orderId);
   var text=ta?ta.value.trim():'';
   if(!text){showToast('답변 내용을 입력하세요.');return;}
-  var s=getSettings();
-  var notifyOn=(s.smsEnabled!==false||s.alimtalkEnabled!==false);
-  if(notifyOn){
-    var fallbackMsg='[오늘의 반찬] '+text;
-    // 알림톡 (템플릿 있을 때만)
-    if(s.alimtalkEnabled!==false && TPL_ADMIN_REPLY){
-      var orderInfo=_ordersCache[orderId]||{};
-      sendAlimtalk(phone, TPL_ADMIN_REPLY,
-        {이름:orderInfo.name||''},
-        fallbackMsg);
-    } else if(s.smsEnabled!==false){
-      // 알림톡 템플릿 없으면 SMS만
-      sendSMS(phone, fallbackMsg);
-    }
-  }
   // 줄바꿈 → <br> 변환 후 저장
   var combined=text.replace(/\n/g,'<br>');
   // API에 합산 답변 저장
@@ -2446,23 +2441,6 @@ function fmtDateTime(date, time){
   return mmdd+(dow?' '+dow:'')+(hhmm?' '+hhmm:'');
 }
 
-function sendSMS(phone, msg){
-  if(!phone)return;
-  if(getSettings().smsEnabled===false){console.log('[SMS OFF] 발송 건너뜀');return;}
-  var qs='receiver='+encodeURIComponent(phone)+'&msg='+encodeURIComponent(msg);
-  fetch('https://script.google.com/macros/s/AKfycbwtXJL4_lMynbG4U13PqbnPOiTp15evyw0BPPQ0A9aV5QYlI5dSQB4Ru-8BOqVR9RPq1w/exec?'+qs,{redirect:'follow'}).catch(function(){});
-}
-
-function sendAlimtalk(phone, tplId, vars, fallbackMsg){
-  if(!phone)return;
-  if(getSettings().alimtalkEnabled===false){console.log('[알림톡 OFF] 발송 건너뜀');return;}
-  var qs='action=alimtalk'
-    +'&receiver='+encodeURIComponent(phone)
-    +'&tplId='+encodeURIComponent(tplId)
-    +'&vars='+encodeURIComponent(JSON.stringify(vars))
-    +'&msg='+encodeURIComponent(fallbackMsg||'');
-  fetch('https://script.google.com/macros/s/AKfycbwtXJL4_lMynbG4U13PqbnPOiTp15evyw0BPPQ0A9aV5QYlI5dSQB4Ru-8BOqVR9RPq1w/exec?'+qs,{redirect:'follow'}).catch(function(){});
-}
 
 
 
@@ -2470,33 +2448,14 @@ function confirmOrder(id){
   var orders=getOrders();
   var o=_findOrder(orders,id);
   if(!o)return;
+  var wasReserve=o.status==='예약주문';
   o.status='confirmed';
+  if(wasReserve&&o.reserveDate)o.date=o.reserveDate;
   saveOrders(orders);
   _reRenderFromCache();
   closeAdminOrderDetail();
   fetch(API_URL+'/api/orders/'+encodeURIComponent(id)+'/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'confirmed'})})
     .then(function(){renderOrders();}).catch(function(){});
-  // 고객에게 주문접수 알림톡 (실패시 SMS 대체)
-  if(o.phone){
-    var menuList=o.items.map(function(i){return i.name+' '+i.qty+'개';}).join(', ');
-    sendAlimtalk(o.phone,
-      'KA01TP260522043220298Ev0vb3LtcjG',
-      {'이름':o.name,'메뉴목록':menuList,'금액':o.total.toLocaleString()},
-      '[오늘의 반찬] '+o.name+'님, 배송업체에 요청했습니다! '+menuList+' 합계: '+o.total.toLocaleString()+'천원'
-    );
-  }
-  // 배송업체에 배송 정보 문자
-  var admin=getAdminInfo();
-  if(admin.deliveryPhone){
-    var delivMsg='[오늘의 반찬] 배송 요청'
-      +' / '+o.name
-      +(o.phone?' '+o.phone:'')
-      +(o.addr?' / '+o.addr:'')
-      +' / '+o.items.map(function(i){return i.name+' '+i.qty+'개';}).join(', ')
-      +(o.memo?' / 배송:'+(o.memo||'').split(' / ')[0].trim():'')
-      +(o.additionalRequest?' / 요청:'+o.additionalRequest:'');
-    sendSMS(admin.deliveryPhone, delivMsg);
-  }
 }
 
 
@@ -2511,13 +2470,6 @@ function deliverOrder(id){
   closeAdminOrderDetail();
   fetch(API_URL+'/api/orders/'+encodeURIComponent(id)+'/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'delivered'})})
     .then(function(){renderOrders();}).catch(function(){});
-  if(o.phone){
-    sendAlimtalk(o.phone,
-      'KA01TP260522043333235AUBreysEIxj',
-      {'이름':o.name},
-      '[오늘의 반찬] '+o.name+'님, 배송이 완료됐습니다! 맛있게 드세요 😊'
-    );
-  }
 }
 
 function cancelOrder(id){
@@ -2532,13 +2484,6 @@ function cancelOrder(id){
   fetch(API_URL+'/api/orders/'+encodeURIComponent(id)+'/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'cancelled'})})
     .then(function(){if(o.date===workDate){loadMenus(workDate);}renderOrders();})
     .catch(function(){});
-  if(o.phone){
-    sendAlimtalk(o.phone,
-      'KA01TP2605220434459714HrsH0pRr0l',
-      {'이름':o.name},
-      '[오늘의 반찬] '+o.name+'님, 주문이 취소됐습니다.'
-    );
-  }
 }
 
 function deleteOrder(id){
@@ -2632,7 +2577,6 @@ function startOrderPolling(){startSSE();}
 
 /* ════ 설정 ════ */
 var API_URL='https://myfood01-production.up.railway.app';
-var TPL_ADMIN_REPLY='KA01TP260529154902220c1zr7XODUTj';
 var SETTINGS_KEY='onban_settings';
 var BANKS_KEY='onban_banks';
 
@@ -2642,7 +2586,7 @@ function getSettings(){
   return Object.assign(def,JSON.parse(localStorage.getItem(SETTINGS_KEY)||'{}'));
 }
 function getAdminInfo(){
-  var def={phone:'010-2698-9056',email:'',deliveryPhone:''};
+  var def={phone:'',email:'',deliveryPhone:''};
   return Object.assign(def,JSON.parse(localStorage.getItem(ADMIN_KEY)||'{}'));
 }
 // ── API POST 유틸 (대용량 데이터용) ──
@@ -2706,7 +2650,7 @@ function saveAdminInfo(){
   syncSettingsToSheet(null);
 }
 function getBanks(){
-  var def=[{name:'국민은행',holder:'김현철',account:'118210210117',primary:true}];
+  var def=[];
   var saved=localStorage.getItem(BANKS_KEY);
   return saved?JSON.parse(saved):def;
 }
