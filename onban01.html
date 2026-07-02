@@ -1627,6 +1627,14 @@ function saveOrder(cb){
       var orders=JSON.parse(localStorage.getItem('orders')||'[]');
       orders.unshift(order);
       localStorage.setItem('orders',JSON.stringify(orders));
+      // 고객 정보 자동 저장 — 다음 주문 시 자동완성에 사용 (fire-and-forget)
+      if(order.name&&order.phone){
+        fetch(API_URL+'/api/customers-master',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({name:order.name,phone:order.phone,addr1:order.addr||'',memo:order.memo||'',device_id:getDeviceId()})
+        }).catch(function(){});
+      }
       if(cb)cb({success:true,order:order});
     })
     .catch(function(){if(cb)cb({success:false,soldOut:[]});});

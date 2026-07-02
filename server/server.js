@@ -668,13 +668,18 @@ app.post('/api/customers-master', async (req, res) => {
   try {
     const {name,addr1,addr2,addr3,memo,device_id} = req.body;
     const phone = (req.body.phone||'').replace(/[^0-9]/g,'');
-    if(!phone||!addr1) return err(res,'phone and addr1 required',400);
+    if(!phone) return err(res,'phone required',400);
+    // 빈 값은 기존 값 유지 (addr 없이도 저장 허용 — 기존 addr 보존)
     await pool.execute(
       `INSERT INTO customers_master (name,phone,addr1,addr2,addr3,memo,device_id) VALUES (?,?,?,?,?,?,?)
        ON DUPLICATE KEY UPDATE
-         name=VALUES(name), addr1=VALUES(addr1), addr2=VALUES(addr2), addr3=VALUES(addr3),
-         memo=VALUES(memo), device_id=COALESCE(VALUES(device_id),device_id)`,
-      [name||'',phone,addr1,addr2||null,addr3||null,memo||'',device_id||null]
+         name=IF(VALUES(name)!='',VALUES(name),name),
+         addr1=IF(VALUES(addr1)!='',VALUES(addr1),addr1),
+         addr2=COALESCE(VALUES(addr2),addr2),
+         addr3=COALESCE(VALUES(addr3),addr3),
+         memo=IF(VALUES(memo)!='',VALUES(memo),memo),
+         device_id=COALESCE(VALUES(device_id),device_id)`,
+      [name||'', phone, addr1||'', addr2||null, addr3||null, memo||'', device_id||null]
     );
     ok(res);
   } catch(e) { err(res, e.message); }
