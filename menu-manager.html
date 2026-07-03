@@ -2180,6 +2180,10 @@ function _isTodayReserveConfirmed(o){
   var todayStr=toISO(new Date());
   return o.status==='confirmed'&&!!o.additionalRequest&&o.additionalRequest.indexOf(todayStr+' 예약주문함')===0;
 }
+function _isWorkDateReserveTag(o){
+  var wd=workDate||toISO(new Date());
+  return !!o.additionalRequest&&o.additionalRequest.indexOf(wd+' 예약주문함')===0;
+}
 function updateAddReqBadge(orders){
   var count=(orders||[]).filter(function(o){return o.status==='pending'||_isNewAddReq(o);}).length;
   var el=document.getElementById('addreqBadge');
@@ -2276,9 +2280,10 @@ function renderOrdersList(today,todayOrders){
     var summary=(order.items[0]?menuDisplayName(order.items[0].name,order.items[0].cat||_itemCat(order.items[0].name)):'')+(order.items.length>1?' 외 '+(order.items.length-1)+'건':'');
     var row=document.createElement('div');
     row.className='order-li '+order.status+(isNewAddReq?' addreq-new':'');
+    var statusLabel=(_isWorkDateReserveTag(order)?'예약 ':'')+statusText[order.status];
     row.innerHTML=
       '<div class="order-li-main">'
-        +'<div class="order-li-top"><span class="order-status status-'+order.status+'">'+statusText[order.status]+'</span>'+(order.isReorder?'<span style="font-size:10px;font-weight:700;background:#e0d4f7;color:#5b21b6;border-radius:999px;padding:2px 7px;">재주문</span>':'')+(isNewAddReq?'<span style="font-size:10px;font-weight:700;background:#c8ecea;color:#044f52;border-radius:999px;padding:2px 7px;">💬새요청</span>':'')+'<span class="order-li-name">'+order.name+'</span><span class="order-li-time">'+(order.phone?fmtPhone(order.phone)+' · ':'')+fmtDateTime(order.createdDate||order.date,order.time)+'</span></div>'
+        +'<div class="order-li-top"><span class="order-status status-'+order.status+'">'+statusLabel+'</span>'+(order.isReorder?'<span style="font-size:10px;font-weight:700;background:#e0d4f7;color:#5b21b6;border-radius:999px;padding:2px 7px;">재주문</span>':'')+(isNewAddReq?'<span style="font-size:10px;font-weight:700;background:#c8ecea;color:#044f52;border-radius:999px;padding:2px 7px;">💬새요청</span>':'')+'<span class="order-li-name">'+order.name+'</span><span class="order-li-time">'+(order.phone?fmtPhone(order.phone)+' · ':'')+fmtDateTime(order.createdDate||order.date,order.time)+'</span></div>'
         +'<div class="order-li-sum"><span class="order-li-sum-text">'+summary+'</span><span class="order-li-arrow">›</span></div>'
         +(order.additionalRequest?'<div class="order-li-addreq">💬 '+order.additionalRequest.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/[\n\r]+/g,'<br>')+'</div>':'')
         +(order.adminReply?'<div class="order-li-reply">↩ '+order.adminReply.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/[\n\r]+/g,'<br>')+'</div>':'')
@@ -2327,9 +2332,10 @@ function _buildAdminOrderCard(order){
 
     var header=document.createElement('div');
     header.className='order-header';
+    var statusLabelC=(_isWorkDateReserveTag(order)?'예약 ':'')+statusText[order.status];
     header.innerHTML='<div><div class="order-name">👤 '+order.name+(order.phone?' · '+fmtPhone(order.phone):'')+'</div>'+
       '<div class="order-time">'+fmtDateTime(order.createdDate||order.date,order.time)+'</div></div>'+
-      '<div style="display:flex;align-items:center;gap:4px;">'+(order.isReorder?'<span style="font-size:10px;font-weight:700;background:#e0d4f7;color:#5b21b6;border-radius:999px;padding:2px 7px;">재주문</span>':'')+'<span style="font-size:11px;color:#888;">처리상태</span><span class="order-status '+statusClass[order.status]+'">'+statusText[order.status]+'</span></div>';
+      '<div style="display:flex;align-items:center;gap:4px;">'+(order.isReorder?'<span style="font-size:10px;font-weight:700;background:#e0d4f7;color:#5b21b6;border-radius:999px;padding:2px 7px;">재주문</span>':'')+'<span style="font-size:11px;color:#888;">처리상태</span><span class="order-status '+statusClass[order.status]+'">'+statusLabelC+'</span></div>';
     card.appendChild(header);
 
     if(order.reserveDate){
