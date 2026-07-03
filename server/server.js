@@ -437,7 +437,8 @@ app.get('/api/orders', async (req, res) => {
       additionalRequest: r.additional_request,
       addreqAcked: !!r.addreq_acked,
       isReorder: !!r.is_reorder,
-      reserveDate: toKSTDateStr(r.reserve_date)
+      reserveDate: toKSTDateStr(r.reserve_date),
+      createdDate: toKSTDateStr(r.created_at)
     }));
     ok(res, { orders });
   } catch(e) { err(res, e.message); }
