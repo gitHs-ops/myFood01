@@ -1341,16 +1341,16 @@ function renderOrdererPage(){
   btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" width="22" height="22"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>주문 확정하기';
   btn.onclick=function(){
     var name=document.getElementById('ordererName').value.trim();
-    if(!name){alert('이름을 입력해주세요.');document.getElementById('ordererName').focus();return;}
+    if(!name){showToast('이름을 입력해주세요.');document.getElementById('ordererName').focus();return;}
     var phone=document.getElementById('ordererPhone').value.trim();
-    if(!phone){alert('연락처를 입력해주세요.');document.getElementById('ordererPhone').focus();return;}
+    if(!phone){showToast('연락처를 입력해주세요.');document.getElementById('ordererPhone').focus();return;}
     var memo=document.getElementById('ordererMemo').value;
     var addr=document.getElementById('ordererAddr').value.trim();
-    if(memo!=='매장픽업'&&!addr){alert('배송 주소를 입력해주세요.');document.getElementById('ordererAddr').focus();return;}
+    if(memo!=='매장픽업'&&!addr){showToast('배송 주소를 입력해주세요.');document.getElementById('ordererAddr').focus();return;}
     var _itemsTotal=orderItems.reduce(function(s,c){return s+c.price*c.qty;},0);
     if(memo!=='매장픽업'&&_itemsTotal<20){
       if(!document.getElementById('pickupRecommendBanner'))_showPickupRecommend();
-      alert('2만원 미만 주문은 매장 픽업만 가능해요.\n배송방법을 매장픽업으로 변경해주세요.');
+      showToast('2만원 미만 주문은 매장 픽업만 가능해요. 배송방법을 매장픽업으로 변경해주세요.');
       document.getElementById('ordererMemo').focus();
       return;
     }
@@ -1535,9 +1535,10 @@ function _buildAddrItem(c, isMaster){
       fetch(API_URL+'/api/customers-master',{method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({name:c.name||'',phone:c.phone||'',addr1:c.addr,memo:c.memo||'',device_id:getDeviceId()})})
         .then(function(){
-          var ph=(document.getElementById('ordererPhone').value||'').replace(/[^0-9]/g,'');
+          var phoneId=_addrTarget==='reserve'?'reservePhone':'ordererPhone';
+          var ph=(document.getElementById(phoneId).value||'').replace(/[^0-9]/g,'');
           _loadAddrList(ph);
-        }).catch(function(){alert('저장 실패');});
+        }).catch(function(){showToast('저장 실패');});
     };
     wrap.appendChild(sBtn);
   }
@@ -1556,9 +1557,12 @@ function _showAddrForm(c,replaceEl){
   var cancelBtn=document.createElement('button');cancelBtn.className='btn-addr-cancel';cancelBtn.textContent='취소';
   saveBtn.onclick=function(){
     var addr1=(fAddr1.value||'').trim();
-    if(!addr1){alert('주소1은 필수입니다.');return;}
-    var name=(document.getElementById('ordererName').value||'').trim();
-    var phone=(document.getElementById('ordererPhone').value||'').trim();
+    if(!addr1){showToast('주소1은 필수입니다.');return;}
+    var nameId=_addrTarget==='reserve'?'reserveName':'ordererName';
+    var phoneId=_addrTarget==='reserve'?'reservePhone':'ordererPhone';
+    var name=(document.getElementById(nameId).value||'').trim();
+    var phone=(document.getElementById(phoneId).value||'').trim();
+    if(!phone){showToast('전화번호를 입력해주세요.');return;}
     var body={name:name,phone:phone,addr1:addr1,
       addr2:fAddr2.value.trim()||null,addr3:fAddr3.value.trim()||null,memo:fMemo.value.trim(),
       device_id:getDeviceId()};
@@ -1566,13 +1570,14 @@ function _showAddrForm(c,replaceEl){
     fetch(url,{method:isNew?'POST':'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
       .then(function(r){return r.json();})
       .then(function(d){
-        if(!d.success){alert('저장 실패: '+(d.error||''));return;}
+        if(!d.success){showToast('저장 실패: '+(d.error||''));return;}
         var ph=phone.replace(/[^0-9]/g,'');
         _loadAddrList(ph);
-      }).catch(function(){alert('저장 실패');});
+      }).catch(function(){showToast('저장 실패');});
   };
   cancelBtn.onclick=function(){
-    var ph=(document.getElementById('ordererPhone').value||'').replace(/[^0-9]/g,'');
+    var phoneId=_addrTarget==='reserve'?'reservePhone':'ordererPhone';
+    var ph=(document.getElementById(phoneId).value||'').replace(/[^0-9]/g,'');
     if(isNew){form.remove();}else{_loadAddrList(ph);}
   };
   btns.appendChild(saveBtn);btns.appendChild(cancelBtn);
@@ -2086,7 +2091,7 @@ function _updateHistTotal(id){
     isPickup=true;
     var memoWrap=document.getElementById('histmemo-'+id);
     if(memoWrap)memoWrap.innerHTML=_histMemoHtml(id,'매장픽업');
-    alert('⚠️ 2만원 미만 — 매장픽업으로 자동 변경됐어요.');
+    showToast('⚠️ 2만원 미만 — 매장픽업으로 자동 변경됐어요.');
   }
   var df=(!isPickup&&itemsSum>=20)?1:0;
   var total=itemsSum+df;
