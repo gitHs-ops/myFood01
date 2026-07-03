@@ -448,7 +448,7 @@ app.post('/api/orders', async (req, res) => {
 
     const items  = order.items || [];
     const date   = order.date;
-    const isReserve = order.status === '예약주문';
+    const isReserve = order.status === '예약주문' || !!order.fromReserveOrder;
     const conn   = await pool.getConnection();
     await conn.beginTransaction();
     try {

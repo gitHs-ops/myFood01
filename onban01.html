@@ -2318,6 +2318,7 @@ function reorder(order){
     memo:order.memo||'',
     items:order.items.map(function(i){return {menuId:(i.menuId!=null?i.menuId:null),name:i.name,qty:i.qty,price:i.price};}),
     total:total,deliveryFee:deliveryFee,status:'pending',isReorder:true,
+    fromReserveOrder:order.status==='예약주문',
     additionalRequest:order.additionalRequest||'',
     deviceId:getDeviceId()
   };
