@@ -2512,16 +2512,16 @@ function showToast(msg){
   if(!existing){
     existing=document.createElement('div');
     existing.id='mgr-toast';
-    existing.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:999px;font-size:13px;opacity:0;transition:all .3s;z-index:999;white-space:nowrap;';
+    existing.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,calc(-50% + 10px));background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:999px;font-size:13px;opacity:0;transition:all .3s;z-index:9999;white-space:nowrap;';
     document.body.appendChild(existing);
   }
   existing.textContent=msg;
   existing.style.opacity='1';
-  existing.style.transform='translateX(-50%) translateY(0)';
+  existing.style.transform='translate(-50%,-50%)';
   clearTimeout(existing._t);
   existing._t=setTimeout(function(){
     existing.style.opacity='0';
-    existing.style.transform='translateX(-50%) translateY(20px)';
+    existing.style.transform='translate(-50%,calc(-50% + 10px))';
   },2500);
 }
 
