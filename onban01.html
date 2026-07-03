@@ -2127,15 +2127,31 @@ function histEditQty(orderId,itemName,d){
   if(pEl)pEl.textContent=comma(item.price*item.qty)+'천원';
   localStorage.setItem('orders',JSON.stringify(orders));
   _updateHistTotal(orderId);
-  _pendingItemEdits[orderId]=true;
-  _activateReorderBtn(orderId);
+  _updateReorderBtnState(orderId);
 }
 // 재주문 버튼 활성 상태 — SSE 재렌더(DOM 초기화)에도 유실되지 않도록 영구 보관
 var _reorderActiveIds={};
-function _activateReorderBtn(id){
-  _reorderActiveIds[id]=true;
+// 원본(_snap)과 현재값을 비교해 실제 변경 여부 판단 — 되돌리면 다시 비활성화
+function _hasRealChange(ord){
+  if(!ord||!ord._snap)return false;
+  var snap=ord._snap;
+  if((ord.memo||'')!==(snap.memo||''))return true;
+  var a=ord.items||[],b=snap.items||[];
+  if(a.length!==b.length)return true;
+  for(var i=0;i<a.length;i++){
+    var bi=b.find(function(x){return x.name===a[i].name;});
+    if(!bi||bi.qty!==a[i].qty)return true;
+  }
+  return false;
+}
+function _updateReorderBtnState(id){
+  var orders=JSON.parse(localStorage.getItem('orders')||'[]');
+  var ord=orders.find(function(o){return o.id===id;});
+  var changed=_hasRealChange(ord);
+  if(changed){_reorderActiveIds[id]=true;_pendingItemEdits[id]=true;}
+  else{delete _reorderActiveIds[id];delete _pendingItemEdits[id];}
   var btn=document.getElementById('btn-reorder-'+id);
-  if(btn){btn.disabled=false;btn.style.opacity='';}
+  if(btn){btn.disabled=!changed;btn.style.opacity=changed?'':'.45';}
 }
 // 주문내역 항목(수량·삭제) 편집 — 재주문 처리 전까지는 미확정(물리적 반영 아님)
 var _pendingItemEdits={};
@@ -2192,8 +2208,7 @@ function histDelItem(orderId,itemName){
   if(row)row.remove();
   localStorage.setItem('orders',JSON.stringify(orders));
   _updateHistTotal(orderId);
-  _pendingItemEdits[orderId]=true;
-  _activateReorderBtn(orderId);
+  _updateReorderBtnState(orderId);
 }
 /* ── 주문 내역 배송방법/추가요청 편집 ── */
 function _histMemoHtml(id,text){
@@ -2258,7 +2273,7 @@ function histSaveMemo(id){
   localStorage.setItem('orders',JSON.stringify(ords));
   document.getElementById('histmemo-'+id).innerHTML=_histMemoHtml(id,text);
   _updateHistTotal(id);
-  _activateReorderBtn(id);
+  _updateReorderBtnState(id);
   fetch(API_URL+'/api/orders/'+encodeURIComponent(id)+'/memo',{
     method:'PUT',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({memo:text})
