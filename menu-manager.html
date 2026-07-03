@@ -1092,7 +1092,7 @@ function _startMenuSSE(date){
 function selectDate(iso){
   workDate=iso;
   document.getElementById('dateDisplayBtn').textContent=fmtDate(iso);
-  loadMenus(iso);filterCat='전체';renderAll();renderHistory();
+  loadMenus(iso);filterCat='전체';renderAll();renderHistory();renderOrders();
   _startMenuSSE(iso);
   document.getElementById('calOverlay').classList.remove('open');
 }
