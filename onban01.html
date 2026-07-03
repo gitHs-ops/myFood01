@@ -916,6 +916,7 @@ function renderCatTabs(){
   Object.keys(CAT_COLOR).forEach(function(c){
     if(allMenus.some(function(m){return m.cat===c;}))cats.push(c);
   });
+  if(cats.indexOf('기타')<0)cats.push('기타');
   if(allMenus.some(function(m){return m.child;}))cats.push('어린이');
   var tabs=document.getElementById('catTabs');
   tabs.innerHTML='';
