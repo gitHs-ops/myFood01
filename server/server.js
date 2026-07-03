@@ -38,7 +38,8 @@ const pool = mysql.createPool({
   database:          process.env.MYSQLDATABASE || process.env.MYSQL_DATABASE,
   waitForConnections: true,
   connectionLimit:   10,
-  timezone:          '+09:00'
+  timezone:          '+09:00',
+  charset:           'utf8mb4'
 });
 
 const ok  = (res, data={}) => res.json({ success: true,  ...data });

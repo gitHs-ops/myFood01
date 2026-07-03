@@ -2303,13 +2303,14 @@ function _buildAdminOrderCard(order){
     addWrap.innerHTML=innerHtml;
     card.appendChild(addWrap);
 
-    if(order.status==='pending'||order.status==='예약주문'){
+    var _isReserveStatus=order.status==='예약주문'||(!!order.reserveDate&&order.status!=='confirmed'&&order.status!=='delivered'&&order.status!=='cancelled');
+    if(order.status==='pending'||_isReserveStatus){
       var actions=document.createElement('div');
       actions.className='order-actions';
 
       var btnCfm=document.createElement('button');
       btnCfm.className='btn-confirm-order';
-      btnCfm.textContent=order.status==='예약주문'?'✅ 예약 주문 접수':'✅ 주문 접수';
+      btnCfm.textContent=_isReserveStatus?'✅ 예약 주문 접수':'✅ 주문 접수';
       btnCfm.onclick=function(){confirmOrder(order.id);};
 
       var btnCnl=document.createElement('button');
