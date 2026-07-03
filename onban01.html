@@ -2601,7 +2601,7 @@ function submitReserveOrder(){
     date:menuDate,
     time:new Date().toTimeString().slice(0,8),
     name:name,phone:phone,addr:addr,memo:memo,
-    additionalRequest:req,
+    additionalRequest:(menuDate+' 예약주문함')+(req?' / '+req:''),
     items:items,total:total,deliveryFee:0,
     deviceId:getDeviceId(),
     status:'예약주문',
