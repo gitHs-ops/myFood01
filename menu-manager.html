@@ -2400,13 +2400,17 @@ function _buildAdminOrderCard(order){
       var btnPri=document.createElement('button');
       btnPri.className='btn-confirm-order';
       btnPri.textContent=primary.label;
-      var deliverBlocked=order.status==='confirmed'&&!!order.reserveDate&&order.reserveDate!==workDate;
+      var todayStr=toISO(new Date());
+      var reserveMismatch=!!order.reserveDate&&order.reserveDate!==workDate;
+      var notToday=workDate!==todayStr;
+      var deliverBlocked=order.status==='confirmed'&&(reserveMismatch||notToday);
       if(deliverBlocked){
         btnPri.disabled=true;
         btnPri.style.opacity='.45';
         btnPri.style.cursor='not-allowed';
-        btnPri.title='예약 날짜('+order.reserveDate+')에만 배송완료 처리할 수 있어요.';
-        btnPri.onclick=function(){showToast('예약 날짜('+order.reserveDate+')에만 배송완료 처리할 수 있어요.');};
+        var blockMsg=reserveMismatch?('예약 날짜('+order.reserveDate+')에만 배송완료 처리할 수 있어요.'):'작업일자가 오늘일 때만 배송완료 처리할 수 있어요.';
+        btnPri.title=blockMsg;
+        btnPri.onclick=function(){showToast(blockMsg);};
       }else{
         btnPri.onclick=function(){primary.fn(order.id);};
       }
