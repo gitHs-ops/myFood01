@@ -2018,13 +2018,6 @@ function _buildOrderCard(o){
     // 액션 버튼
     var acts=document.createElement('div');
     acts.className='hist-actions';
-    if(o.status==='pending'){
-      var btnClose=document.createElement('button');
-      btnClose.className='hist-btn-cancel';
-      btnClose.textContent='닫기';
-      btnClose.onclick=function(){closeOrderDetail();};
-      acts.appendChild(btnClose);
-    }
     if(o.status==='cancelled'){
       var btnDel=document.createElement('button');
       btnDel.className='hist-btn-delete';
