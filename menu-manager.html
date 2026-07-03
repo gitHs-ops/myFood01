@@ -2570,11 +2570,13 @@ function deleteOrder(id){
   var remaining=Object.values(_ordersCache);
   var today=workDate||toISO(new Date());
   renderOrdersList(today,remaining);
-  if(_histSubTab==='reserved')loadReservedOrders();
   fetch(API_URL+'/api/orders/'+encodeURIComponent(id),{method:'DELETE'})
     .then(function(r){return r.json();})
     .then(function(d){
-      if(d&&d.success){showToast('🗑 삭제 완료');}
+      if(d&&d.success){
+        showToast('🗑 삭제 완료');
+        if(_histSubTab==='reserved')loadReservedOrders();
+      }
       else{
         showToast('⚠️ 삭제 실패: '+(d&&d.error||''));
         renderOrders();
