@@ -2408,18 +2408,16 @@ function _buildAdminOrderCard(order){
       card.appendChild(actionsC);
     }
 
-    if(order.status==='cancelled'){
-      var actionsD=document.createElement('div');
-      actionsD.className='order-actions';
+    var actionsX=document.createElement('div');
+    actionsX.className='order-actions';
 
-      var btnDel=document.createElement('button');
-      btnDel.className='btn-cancel-order';
-      btnDel.textContent='🗑 삭제';
-      btnDel.onclick=function(){deleteOrder(order.id);};
+    var btnX=document.createElement('button');
+    btnX.className='btn-cancel-order';
+    btnX.textContent='✕ 삭제';
+    btnX.onclick=function(){deleteOrder(order.id);};
 
-      actionsD.appendChild(btnDel);
-      card.appendChild(actionsD);
-    }
+    actionsX.appendChild(btnX);
+    card.appendChild(actionsX);
 
     return card;
 }
