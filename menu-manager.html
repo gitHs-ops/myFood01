@@ -1094,6 +1094,7 @@ function selectDate(iso){
   workDate=iso;
   document.getElementById('dateDisplayBtn').textContent=fmtDate(iso);
   loadMenus(iso);filterCat='전체';renderAll();renderHistory();renderOrders();
+  if(_histSubTab==='reserved')loadReservedOrders();
   _startMenuSSE(iso);
   document.getElementById('calOverlay').classList.remove('open');
 }
@@ -1597,7 +1598,8 @@ function switchHistSubTab(tab){
   }
 }
 function loadReservedOrders(){
-  fetch(API_URL+'/api/orders?reserved=1',{cache:'no-store'})
+  var from=workDate||toISO(new Date());
+  fetch(API_URL+'/api/orders?reserved=1&reservedFrom='+encodeURIComponent(from),{cache:'no-store'})
     .then(function(r){return r.json();})
     .then(function(d){
       var orders=d.orders||[];
@@ -1613,7 +1615,7 @@ function renderReservedOrders(orders){
   var el=document.getElementById('reservedMenuList');
   if(!el)return;
   if(!orders.length){
-    el.innerHTML='<div class="order-empty">📭 오늘 이후 접수된 예약주문이 없어요.</div>';
+    el.innerHTML='<div class="order-empty">📭 작업일자 이후 접수된 예약주문이 없어요.</div>';
     return;
   }
   el.innerHTML='';
