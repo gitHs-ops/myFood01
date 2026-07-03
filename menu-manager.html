@@ -2176,7 +2176,7 @@ function renderOrdersList(today,todayOrders){
     '<div class="order-stat"><div class="order-stat-num" style="color:#E9A826;">'+pending+'</div><div class="order-stat-lbl">대기중</div></div>'+
     '<div class="order-stat"><div class="order-stat-num" style="color:#1D9E75;">'+confirmed+'</div><div class="order-stat-lbl">주문접수</div></div>'+
     '<div class="order-stat"><div class="order-stat-num" style="color:#086266;">'+delivered+'</div><div class="order-stat-lbl">배송완료</div></div>'+
-    (reserve?'<div class="order-stat"><div class="order-stat-num" style="color:#6a1b9a;">'+reserve+'</div><div class="order-stat-lbl">예약주문</div></div>':'');
+    (reserve?'<div class="order-stat"><div class="order-stat-num" style="color:#6a1b9a;">'+reserve+'</div><div class="order-stat-lbl">예약</div></div>':'');
 
   // 필터 탭
   var filterLabels=[['all','전체'],['pending','대기중'],['confirmed','주문접수'],['delivered','배송완료'],['cancelled','취소'],['예약주문','예약']];
