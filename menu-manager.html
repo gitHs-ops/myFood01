@@ -2379,12 +2379,18 @@ function _buildAdminOrderCard(order){
       btnCfm.textContent=_isReserveStatus?'✅ 예약 주문 접수':'✅ 주문 접수';
       btnCfm.onclick=function(){confirmOrder(order.id);};
 
+      var btnDelR=document.createElement('button');
+      btnDelR.className='btn-cancel-order';
+      btnDelR.textContent='✕ 삭제';
+      btnDelR.onclick=function(){deleteOrder(order.id);};
+
       var btnCnl=document.createElement('button');
       btnCnl.className='btn-cancel-order';
       btnCnl.textContent='닫기';
       btnCnl.onclick=function(){closeAdminOrderDetail();};
 
       actions.appendChild(btnCfm);
+      actions.appendChild(btnDelR);
       actions.appendChild(btnCnl);
       card.appendChild(actions);
     }
@@ -2408,16 +2414,18 @@ function _buildAdminOrderCard(order){
       card.appendChild(actionsC);
     }
 
-    var actionsX=document.createElement('div');
-    actionsX.className='order-actions';
+    if(!(order.status==='pending'||_isReserveStatus)){
+      var actionsX=document.createElement('div');
+      actionsX.className='order-actions';
 
-    var btnX=document.createElement('button');
-    btnX.className='btn-cancel-order';
-    btnX.textContent='✕ 삭제';
-    btnX.onclick=function(){deleteOrder(order.id);};
+      var btnX=document.createElement('button');
+      btnX.className='btn-cancel-order';
+      btnX.textContent='✕ 삭제';
+      btnX.onclick=function(){deleteOrder(order.id);};
 
-    actionsX.appendChild(btnX);
-    card.appendChild(actionsX);
+      actionsX.appendChild(btnX);
+      card.appendChild(actionsX);
+    }
 
     return card;
 }
