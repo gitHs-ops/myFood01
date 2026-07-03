@@ -535,6 +535,7 @@ select.orderer-input{appearance:none;-webkit-appearance:none;background:#fff url
 .reserve-info-lbl{font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px;}
 .reserve-info-inp{width:100%;box-sizing:border-box;border:1.5px solid #cde8e7;border-radius:10px;padding:9px 12px;font-size:14px;font-family:inherit;outline:none;margin-bottom:8px;}
 .reserve-info-inp:focus{border-color:var(--teal);}
+select.reserve-info-inp{appearance:none;-webkit-appearance:none;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'%3E%3Cpolyline points='6 9 12 15 18 9' fill='none' stroke='%23666' stroke-width='2'/%3E%3C/svg%3E") no-repeat right 14px center/12px;cursor:pointer;}
 .reserve-confirm-btn{display:block;width:calc(100% - 28px);margin:12px 14px 0;background:var(--teal);color:#fff;border:none;border-radius:14px;padding:13px 0;font-size:15px;font-weight:800;cursor:pointer;}
 .hist-status.reserve{background:#ede7f6;color:#6a1b9a;}
 </style>
@@ -683,6 +684,15 @@ select.orderer-input{appearance:none;-webkit-appearance:none;background:#fff url
       <input class="reserve-info-inp" id="reserveDateInput" type="date">
       <span class="reserve-info-lbl">배송 주소</span>
       <input class="reserve-info-inp" id="reserveAddr" type="text" placeholder="배송 주소 (픽업 외 필수)" maxlength="100">
+      <span class="reserve-info-lbl">배송 방법 *</span>
+      <select class="reserve-info-inp" id="reserveMemo">
+        <option value="" disabled selected>배송방법 선택 (필수)</option>
+        <option value="경비원실">경비원실</option>
+        <option value="문앞">문앞</option>
+        <option value="택배함">택배함</option>
+        <option value="현관에서직접수령">현관에서 직접 수령</option>
+        <option value="매장픽업">매장 픽업</option>
+      </select>
       <span class="reserve-info-lbl">요청사항</span>
       <input class="reserve-info-inp" id="reserveRequest" type="text" placeholder="자유롭게 입력하세요" maxlength="200">
     </div>
@@ -2574,11 +2584,13 @@ function submitReserveOrder(){
   var phone=(document.getElementById('reservePhone').value||'').trim();
   var reserveDate=(document.getElementById('reserveDateInput').value||'').trim();
   var addr=(document.getElementById('reserveAddr').value||'').trim();
+  var memo=(document.getElementById('reserveMemo').value||'').trim();
   var req=(document.getElementById('reserveRequest').value||'').trim();
   if(!name){showToast('이름을 입력해주세요.');return;}
   if(!phone){showToast('전화번호를 입력해주세요.');return;}
   if(!reserveDate){showToast('예약 날짜를 선택해주세요.');return;}
   if(reserveDate<_reserveDateMin||reserveDate>_reserveDateMax){showToast('예약 날짜는 내일부터 7일 이내로 선택해주세요.');return;}
+  if(!memo){showToast('배송 방법을 선택해주세요.');return;}
   var items=Object.values(_reserveSel).map(function(it){
     return{menuId:it.id,name:it.name,cat:it.cat,qty:it.qty,price:it.price};
   });
@@ -2588,7 +2600,7 @@ function submitReserveOrder(){
     id:'RSV'+Date.now(),
     date:menuDate,
     time:new Date().toTimeString().slice(0,8),
-    name:name,phone:phone,addr:addr,memo:'',
+    name:name,phone:phone,addr:addr,memo:memo,
     additionalRequest:req,
     items:items,total:total,deliveryFee:0,
     deviceId:getDeviceId(),
