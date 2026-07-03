@@ -2180,14 +2180,11 @@ function _isWorkDateReserveTag(o){
   var wd=workDate||toISO(new Date());
   return !!o.additionalRequest&&o.additionalRequest.indexOf(wd+' 예약주문함')===0;
 }
-function _addreqWithReserveDate(order){
-  var text=order.additionalRequest||'';
-  if(order.reserveDate&&text.indexOf('예약주문함')>=0){
-    var p=order.reserveDate.split('-');
-    var mmdd=p.length>=3?(p[1]+'/'+p[2]):order.reserveDate;
-    text=text.replace('예약주문함','예약주문함 (예약일자: '+mmdd+')');
-  }
-  return text;
+function _highlightReserveDate(html,reserveDate){
+  if(!reserveDate||html.indexOf('예약주문함')<0)return html;
+  var p=reserveDate.split('-');
+  var mmdd=p.length>=3?(p[1]+'/'+p[2]):reserveDate;
+  return html.replace('예약주문함','예약주문함 <span style="color:#e53935;font-weight:700;">(예약일자: '+mmdd+')</span>');
 }
 function _isTodayReserveConfirmed(o){
   return o.status==='confirmed'&&_isWorkDateReserveTag(o);
@@ -2292,7 +2289,7 @@ function renderOrdersList(today,todayOrders){
       '<div class="order-li-main">'
         +'<div class="order-li-top"><span class="order-status status-'+order.status+'">'+statusLabel+'</span>'+(order.isReorder?'<span style="font-size:10px;font-weight:700;background:#e0d4f7;color:#5b21b6;border-radius:999px;padding:2px 7px;">재주문</span>':'')+(isNewAddReq?'<span style="font-size:10px;font-weight:700;background:#c8ecea;color:#044f52;border-radius:999px;padding:2px 7px;">💬새요청</span>':'')+'<span class="order-li-name">'+order.name+'</span><span class="order-li-time">'+(order.phone?fmtPhone(order.phone)+' · ':'')+fmtDateTime(order.createdDate||order.date,order.time)+'</span></div>'
         +'<div class="order-li-sum"><span class="order-li-sum-text">'+summary+'</span><span class="order-li-arrow">›</span></div>'
-        +(order.additionalRequest?'<div class="order-li-addreq">💬 '+_addreqWithReserveDate(order).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/[\n\r]+/g,'<br>')+'</div>':'')
+        +(order.additionalRequest?'<div class="order-li-addreq">💬 '+_highlightReserveDate(order.additionalRequest.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/[\n\r]+/g,'<br>'),order.reserveDate)+'</div>':'')
         +(order.adminReply?'<div class="order-li-reply">↩ '+order.adminReply.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/[\n\r]+/g,'<br>')+'</div>':'')
       +'</div>'
       +'<div class="order-li-right"><span class="order-li-total">'+order.total.toLocaleString()+'천원</span></div>';
@@ -2376,7 +2373,7 @@ function _buildAdminOrderCard(order){
     addWrap.className='addreq-row-wrap';
     var innerHtml='';
     if(order.additionalRequest){
-      var safeReq=_addreqWithReserveDate(order).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+      var safeReq=_highlightReserveDate(order.additionalRequest.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>'),order.reserveDate);
       var isNew=_isNewAddReq(order);
       var dotHtml=isNew?'<span class="addreq-new-dot" style="background:#086266;margin-right:2px;"></span>':'';
       innerHtml='<div class="addreq-text-row">'+dotHtml+safeReq+'</div>';
