@@ -546,9 +546,15 @@ select.reserve-info-inp{appearance:none;-webkit-appearance:none;background:#fff 
 
 <!-- 상단바 -->
 <div class="top-bar">
-  <div style="display:flex;align-items:center;gap:10px;">
-    <img class="top-bar-logo" src="온반_로고.png" alt="오늘의 반찬">
-    <div class="top-bar-sub">엄마의 정성처럼 따뜻한 마음과 온기를 담았습니다</div>
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+    <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+      <img class="top-bar-logo" src="온반_로고.png" alt="오늘의 반찬">
+      <div class="top-bar-sub">엄마의 정성처럼 따뜻한 마음과 온기를 담았습니다</div>
+    </div>
+    <button class="top-btn" onclick="window.open('고객페이지_사용매뉴얼.html','_blank')" style="flex-shrink:0;">
+      <svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
+      설명서
+    </button>
   </div>
   <div style="display:flex;gap:5px;align-items:center;justify-content:flex-end;">
     <button class="top-btn" onclick="goPage('list')">
@@ -563,10 +569,6 @@ select.reserve-info-inp{appearance:none;-webkit-appearance:none;background:#fff 
     <button class="top-btn" onclick="goPage('history')">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
       주문내역
-    </button>
-    <button class="top-btn" onclick="window.open('고객페이지_사용매뉴얼.html','_blank')">
-      <svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
-      설명서
     </button>
     <button class="top-btn" onclick="goPage('reserve')">
       <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
