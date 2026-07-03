@@ -2176,10 +2176,11 @@ function renderOrdersList(today,todayOrders){
     '<div class="order-stat"><div class="order-stat-num" style="color:#E9A826;">'+pending+'</div><div class="order-stat-lbl">대기중</div></div>'+
     '<div class="order-stat"><div class="order-stat-num" style="color:#1D9E75;">'+confirmed+'</div><div class="order-stat-lbl">주문접수</div></div>'+
     '<div class="order-stat"><div class="order-stat-num" style="color:#086266;">'+delivered+'</div><div class="order-stat-lbl">배송완료</div></div>'+
+    '<div class="order-stat"><div class="order-stat-num" style="color:#999;">'+cancelled+'</div><div class="order-stat-lbl">취소된주문</div></div>'+
     (reserve?'<div class="order-stat"><div class="order-stat-num" style="color:#6a1b9a;">'+reserve+'</div><div class="order-stat-lbl">예약주문</div></div>':'');
 
   // 필터 탭
-  var filterLabels=[['all','전체'],['pending','대기중'],['confirmed','주문접수'],['delivered','배송완료'],['cancelled','취소'],['예약주문','예약']];
+  var filterLabels=[['all','전체'],['pending','대기중'],['confirmed','주문접수'],['delivered','배송완료'],['cancelled','취소된주문'],['예약주문','예약주문']];
   document.getElementById('orderFilterTabs').innerHTML=filterLabels.map(function(f){
     return '<button class="order-filter-tab'+(orderFilter===f[0]?' active':'')+'" data-f="'+f[0]+'">'+f[1]+'</button>';
   }).join('');
@@ -2203,7 +2204,7 @@ function renderOrdersList(today,todayOrders){
   el.innerHTML='';
   filtered.forEach(function(order){
     var isNewAddReq=_isNewAddReq(order);
-    var statusText={pending:'대기중',confirmed:'주문접수',cancelled:'취소됨',delivered:'배송완료','예약주문':'예약주문'};
+    var statusText={pending:'대기중',confirmed:'주문접수',cancelled:'취소된주문',delivered:'배송완료','예약주문':'예약주문'};
     var itemSum=order.items.reduce(function(s,i){return s+(i.price||0)*(i.qty||1);},0);
     var summary=(order.items[0]?menuDisplayName(order.items[0].name,order.items[0].cat||_itemCat(order.items[0].name)):'')+(order.items.length>1?' 외 '+(order.items.length-1)+'건':'');
     var row=document.createElement('div');
@@ -2250,7 +2251,7 @@ function _buildAdminOrderCard(order){
       card.appendChild(newBadge);
     }
 
-    var statusText={'pending':'⏳ 대기중','confirmed':'✅ 주문접수','cancelled':'❌ 취소','delivered':'🚚 배송완료','예약주문':'📅 예약주문'};
+    var statusText={'pending':'⏳ 대기중','confirmed':'✅ 주문접수','cancelled':'❌ 취소된주문','delivered':'🚚 배송완료','예약주문':'📅 예약주문'};
     var statusClass={'pending':'status-pending','confirmed':'status-confirmed','cancelled':'status-cancelled','delivered':'status-delivered','예약주문':'status-예약주문'};
 
     var header=document.createElement('div');
