@@ -1630,7 +1630,7 @@ function renderReservedOrders(orders){
         +'<div class="order-li-sum"><span class="order-li-sum-text">'+summary+'</span><span class="order-li-arrow">›</span></div>'
       +'</div>'
       +'<div class="order-li-right"><span class="order-li-total">'+order.total.toLocaleString()+'천원</span></div>';
-    (function(oid){row.onclick=function(){openAdminOrderDetail(oid);};})(order.id);
+    (function(o){row.onclick=function(){openAdminOrderDetailDirect(o);};})(order);
     el.appendChild(row);
   });
 }
@@ -2082,6 +2082,7 @@ function switchPage(name){
     _datesCache=[];
     importAllMenusFromSheet(function(){renderAllMenus();});
     renderHistory();
+    if(_histSubTab==='reserved')loadReservedOrders();
   }
   if(name==='orders')renderOrders();
   if(name==='settings'){loadSettingsForm();renderCatSettings();}
@@ -2286,6 +2287,10 @@ function renderOrdersList(today,todayOrders){
 /* ── 주문 상세 팝업 ── */
 function openAdminOrderDetail(id){
   var order=_ordersCache[id];if(!order)return;
+  openAdminOrderDetailDirect(order);
+}
+function openAdminOrderDetailDirect(order){
+  if(!order)return;
   var content=document.getElementById('admOrderDetailContent');
   content.innerHTML='';
   content.appendChild(_buildAdminOrderCard(order));
