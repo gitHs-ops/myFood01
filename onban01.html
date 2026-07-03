@@ -815,6 +815,7 @@ function goPage(name){
   if(name==='payment')renderPayment();
   if(name==='history')renderHistory();
   if(name==='reserve'){loadReserveMenus();_renderReserveBar();}
+  else{var rsb=document.getElementById('reserveSubmitBar');if(rsb)rsb.remove();}
   // list 이탈 시 플로팅 버튼 숨김
   if(name!=='list'){
     var fw=document.getElementById('floatCartWrap');
@@ -1881,11 +1882,13 @@ function _doRenderHistory(el){
     var summary=(o.items[0]?menuDisplayName(o.items[0].name,o.items[0].cat||_itemCat(o.items[0].name)):'')+(o.items.length>1?' 외 '+(o.items.length-1)+'건':'');
     var reorderBadge=o.isReorder?'<span class="hist-li-badge reorder">재주문</span>':'';
     var editBadge=_pendingItemEdits[o.id]?'<span class="hist-li-badge edit">편집중</span>':'';
+    var isReserveOrder=o.status==='예약주문'||(!!o.additionalRequest&&o.additionalRequest.indexOf('예약주문함')>=0);
+    var reserveLabel=isReserveOrder?'<span style="color:#e53935;font-weight:700;font-size:11px;margin-left:4px;">예약주문</span>':'';
     var rowEl=document.createElement('div');
     rowEl.className='hist-li'+(_pendingItemEdits[o.id]?' editing':'');
     rowEl.innerHTML=
       '<div class="hist-li-main">'
-        +'<div class="hist-li-top"><span class="hist-status '+(_ORDER_STATUS_CLS[o.status]||'pending')+'">'+(_ORDER_STATUS_MAP[o.status]||'대기중')+'</span>'+reorderBadge+editBadge+'<span class="hist-li-dt">'+fmtDT(o.date,o.time)+'</span></div>'
+        +'<div class="hist-li-top"><span class="hist-status '+(_ORDER_STATUS_CLS[o.status]||'pending')+'">'+(_ORDER_STATUS_MAP[o.status]||'대기중')+'</span>'+reorderBadge+editBadge+'<span class="hist-li-dt">'+fmtDT(o.date,o.time)+'</span>'+reserveLabel+'</div>'
         +'<div class="hist-li-sum"><span class="hist-li-sum-text">'+summary+'</span><span class="hist-li-arrow">›</span></div>'
         +(o.additionalRequest?'<div class="hist-li-addreq">💬 '+o.additionalRequest.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/[\n\r]+/g,'<br>')+'</div>':'')
         +(o.adminReply?'<div class="hist-li-reply">↩ '+o.adminReply.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/[\n\r]+/g,'<br>')+'</div>':'')
@@ -1919,7 +1922,9 @@ function _buildOrderCard(o){
     var head=document.createElement('div');
     head.className='hist-head';
     var reorderBadge=o.isReorder?'<span style="font-size:10px;font-weight:700;background:#e0d4f7;color:#5b21b6;border-radius:999px;padding:2px 7px;margin-left:4px;">재주문</span>':'';
-    head.innerHTML='<span class="hist-date">'+fmtDT(o.date,o.time)+'</span>'
+    var isReserveOrderD=o.status==='예약주문'||(!!o.additionalRequest&&o.additionalRequest.indexOf('예약주문함')>=0);
+    var reserveLabelD=isReserveOrderD?'<span style="color:#e53935;font-weight:700;font-size:11px;margin-left:4px;">예약주문</span>':'';
+    head.innerHTML='<span class="hist-date">'+fmtDT(o.date,o.time)+'</span>'+reserveLabelD
       +'<span style="display:inline-flex;align-items:center;gap:3px;"><span class="hist-status '+(statusCls[o.status]||'pending')+'">'+(statusMap[o.status]||'대기중')+'</span>'+reorderBadge+'</span>';
     card.appendChild(head);
     // 아이템 목록
@@ -2593,7 +2598,7 @@ function _renderReserveBar(){
   bar.id='reserveSubmitBar';
   bar.innerHTML='<div class="reserve-submit-badge">'+cnt+'</div>'
     +'<button onclick="openReservePopup()"'+(cnt===0?' disabled style="opacity:.5;cursor:not-allowed;"':'')+'>예약 주문 신청하기</button>';
-  page.appendChild(bar);
+  document.body.appendChild(bar);   // 뷰포트 기준 진짜 플로팅 — 부모 컨테이너 영향 배제
 }
 function openReservePopup(){
   if(!Object.keys(_reserveSel).length){showToast('메뉴를 선택해주세요.');return;}
