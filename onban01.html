@@ -688,7 +688,7 @@ select.reserve-info-inp{appearance:none;-webkit-appearance:none;background:#fff 
         <button class="btn-addr-list" id="btnReserveAddrList" onclick="showAddrList('reserve')" disabled style="opacity:.4;cursor:not-allowed;">📋 목록</button>
       </div>
       <span class="reserve-info-lbl">배송 방법 *</span>
-      <select class="reserve-info-inp" id="reserveMemo">
+      <select class="reserve-info-inp" id="reserveMemo" onchange="_updateReserveTotal()">
         <option value="" disabled selected>배송방법 선택 (필수)</option>
         <option value="경비원실">경비원실</option>
         <option value="문앞">문앞</option>
@@ -2621,9 +2621,20 @@ function _reserveQty(id,delta){
   _updateReserveTotal();
 }
 function _updateReserveTotal(){
-  var total=Object.values(_reserveSel).reduce(function(s,it){return s+it.price*it.qty;},0);
+  var itemsTotal=Object.values(_reserveSel).reduce(function(s,it){return s+it.price*it.qty;},0);
+  var memo=(document.getElementById('reserveMemo')||{}).value||'';
+  var isPickup=memo==='매장픽업';
+  var hasDelivery=!isPickup&&!!memo;
+  var deliveryFee=(hasDelivery&&itemsTotal>=20)?1:0;
   var el=document.getElementById('reserveModalTotal');
-  if(el)el.innerHTML='<span>합계</span><span style="color:var(--teal)">'+comma(total)+'천원</span>';
+  if(!el)return;
+  var note='';
+  if(hasDelivery&&itemsTotal>0&&itemsTotal<20){
+    note='<div style="font-size:11px;color:#e53935;margin-top:4px;">⚠️ 2만원 미만은 매장 픽업만 가능해요</div>';
+  } else if(deliveryFee){
+    note='<div style="font-size:11px;color:#888;margin-top:4px;">배송비 1천원 포함</div>';
+  }
+  el.innerHTML='<span>합계</span><span style="color:var(--teal)">'+comma(itemsTotal+deliveryFee)+'천원</span>'+note;
 }
 function submitReserveOrder(){
   var name=(document.getElementById('reserveName').value||'').trim();
@@ -2641,14 +2652,19 @@ function submitReserveOrder(){
     return{menuId:it.id,name:it.name,cat:it.cat,qty:it.qty,price:it.price};
   });
   if(!items.length){showToast('메뉴를 선택해주세요.');return;}
-  var total=items.reduce(function(s,it){return s+it.price*it.qty;},0);
+  var itemsTotal=items.reduce(function(s,it){return s+it.price*it.qty;},0);
+  var isPickup=memo==='매장픽업';
+  if(!isPickup&&!addr){showToast('배송 주소를 입력해주세요.');return;}
+  if(!isPickup&&itemsTotal<20){showToast('2만원 미만 주문은 매장 픽업만 가능해요.');return;}
+  var deliveryFee=(!isPickup&&itemsTotal>=20)?1:0;
+  var total=itemsTotal+deliveryFee;
   var order={
     id:'RSV'+Date.now(),
     date:menuDate,
     time:new Date().toTimeString().slice(0,8),
     name:name,phone:phone,addr:addr,memo:memo,
     additionalRequest:(menuDate+' 예약주문함')+(req?' / '+req:''),
-    items:items,total:total,deliveryFee:0,
+    items:items,total:total,deliveryFee:deliveryFee,
     deviceId:getDeviceId(),
     status:'예약주문',
     reserveDate:reserveDate
