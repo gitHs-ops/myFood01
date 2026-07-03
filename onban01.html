@@ -48,11 +48,9 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 .date-refresh-countdown{font-size:12px;font-weight:700;color:#fff;background:rgba(8,98,102,.6);border-radius:20px;padding:3px 10px;white-space:nowrap;min-width:46px;text-align:center;flex-shrink:0;}
 
 /* ── 카테고리 탭 ── */
-.cat-tabs{
-  display:flex;gap:8px;padding:14px 16px 10px;
-  overflow-x:auto;scrollbar-width:none;
-}
-.cat-tabs::-webkit-scrollbar{display:none;}
+.cat-tabs{padding:10px 16px 8px;}
+.cat-tabs-row{display:flex;gap:8px;flex-wrap:wrap;}
+.cat-tabs-row.row2{justify-content:flex-end;margin-top:6px;}
 .cat-tab{
   flex-shrink:0;padding:6px 14px;border-radius:999px;
   font-size:13px;font-weight:500;border:1.5px solid #d6efee;
@@ -918,23 +916,28 @@ function renderCatTabs(){
   Object.keys(CAT_COLOR).forEach(function(c){
     if(allMenus.some(function(m){return m.cat===c;}))cats.push(c);
   });
-  var hasChild=allMenus.some(function(m){return m.child;});
+  if(allMenus.some(function(m){return m.child;}))cats.push('어린이');
   var tabs=document.getElementById('catTabs');
   tabs.innerHTML='';
-  cats.forEach(function(c){
+  var ROW1_MAX=5;
+  var row1cats=cats.slice(0,ROW1_MAX);
+  var row2cats=cats.slice(ROW1_MAX);
+  function makeBtn(c){
     var btn=document.createElement('button');
     btn.className='cat-tab'+(filterCat===c?' active':'');
     btn.textContent=c;
     btn.onclick=function(){setCat(c);};
-    tabs.appendChild(btn);
-  });
-  if(hasChild){
-    var btn=document.createElement('button');
-    btn.className='cat-tab'+(filterCat==='어린이'?' active':'');
-    btn.textContent='어린이';
-    btn.style.padding='6px 10px';
-    btn.onclick=function(){setCat('어린이');};
-    tabs.appendChild(btn);
+    return btn;
+  }
+  var row1=document.createElement('div');
+  row1.className='cat-tabs-row row1';
+  row1cats.forEach(function(c){row1.appendChild(makeBtn(c));});
+  tabs.appendChild(row1);
+  if(row2cats.length){
+    var row2=document.createElement('div');
+    row2.className='cat-tabs-row row2';
+    row2cats.forEach(function(c){row2.appendChild(makeBtn(c));});
+    tabs.appendChild(row2);
   }
 }
 function setCat(cat){filterCat=cat;renderCatTabs();renderMenuGrid();}
