@@ -2196,12 +2196,18 @@ function saveOrders(orders){}
 
 function renderOrders(){
   var today=workDate||toISO(new Date());
+  var realToday=toISO(new Date());
   var el=document.getElementById('orderList');
   el.innerHTML='<div style="text-align:center;padding:30px;color:#aaa;font-size:13px;">불러오는 중...</div>';
-  fetch(API_URL+'/api/orders?date='+encodeURIComponent(today),{cache:'no-store'})
-    .then(function(r){return r.json();})
-    .then(function(d){
-      var orders=d.orders||[];
+  Promise.all([
+    fetch(API_URL+'/api/orders?date='+encodeURIComponent(today),{cache:'no-store'}).then(function(r){return r.json();}),
+    fetch(API_URL+'/api/orders?addreqDate='+encodeURIComponent(realToday),{cache:'no-store'}).then(function(r){return r.json();})
+  ])
+    .then(function(results){
+      var byId={};
+      (results[0].orders||[]).forEach(function(o){byId[o.id]=o;});
+      (results[1].orders||[]).forEach(function(o){byId[o.id]=o;});
+      var orders=Object.values(byId);
       var oldCache=_ordersCache;
       _ordersCache={};
       orders.forEach(function(o){
@@ -2370,62 +2376,37 @@ function _buildAdminOrderCard(order){
     card.appendChild(addWrap);
 
     var _isReserveStatus=order.status==='예약주문'||(!!order.reserveDate&&order.status!=='confirmed'&&order.status!=='delivered'&&order.status!=='cancelled');
+    var primary=null;
     if(order.status==='pending'||_isReserveStatus){
-      var actions=document.createElement('div');
-      actions.className='order-actions';
-
-      var btnCfm=document.createElement('button');
-      btnCfm.className='btn-confirm-order';
-      btnCfm.textContent=_isReserveStatus?'✅ 예약 주문 접수':'✅ 주문 접수';
-      btnCfm.onclick=function(){confirmOrder(order.id);};
-
-      var btnDelR=document.createElement('button');
-      btnDelR.className='btn-cancel-order';
-      btnDelR.textContent='✕ 삭제';
-      btnDelR.onclick=function(){deleteOrder(order.id);};
-
-      var btnCnl=document.createElement('button');
-      btnCnl.className='btn-cancel-order';
-      btnCnl.textContent='닫기';
-      btnCnl.onclick=function(){closeAdminOrderDetail();};
-
-      actions.appendChild(btnCfm);
-      actions.appendChild(btnDelR);
-      actions.appendChild(btnCnl);
-      card.appendChild(actions);
+      primary={label:_isReserveStatus?'✅ 예약 주문 접수':'✅ 주문 접수',fn:confirmOrder};
+    }else if(order.status==='confirmed'){
+      primary={label:'✅ 배송완료',fn:deliverOrder};
     }
 
-    if(order.status==='confirmed'){
-      var actionsC=document.createElement('div');
-      actionsC.className='order-actions';
+    var actions=document.createElement('div');
+    actions.className='order-actions';
 
-      var btnDlv=document.createElement('button');
-      btnDlv.className='btn-confirm-order';
-      btnDlv.textContent='✅ 배송완료';
-      btnDlv.onclick=function(){deliverOrder(order.id);};
-
-      var btnCnlC=document.createElement('button');
-      btnCnlC.className='btn-cancel-order';
-      btnCnlC.textContent='닫기';
-      btnCnlC.onclick=function(){closeAdminOrderDetail();};
-
-      actionsC.appendChild(btnDlv);
-      actionsC.appendChild(btnCnlC);
-      card.appendChild(actionsC);
+    if(primary){
+      var btnPri=document.createElement('button');
+      btnPri.className='btn-confirm-order';
+      btnPri.textContent=primary.label;
+      btnPri.onclick=function(){primary.fn(order.id);};
+      actions.appendChild(btnPri);
     }
 
-    if(!(order.status==='pending'||_isReserveStatus)){
-      var actionsX=document.createElement('div');
-      actionsX.className='order-actions';
+    var btnDel=document.createElement('button');
+    btnDel.className='btn-cancel-order';
+    btnDel.textContent='✕ 삭제';
+    btnDel.onclick=function(){deleteOrder(order.id);};
+    actions.appendChild(btnDel);
 
-      var btnX=document.createElement('button');
-      btnX.className='btn-cancel-order';
-      btnX.textContent='✕ 삭제';
-      btnX.onclick=function(){deleteOrder(order.id);};
+    var btnCnl=document.createElement('button');
+    btnCnl.className='btn-cancel-order';
+    btnCnl.textContent='닫기';
+    btnCnl.onclick=function(){closeAdminOrderDetail();};
+    actions.appendChild(btnCnl);
 
-      actionsX.appendChild(btnX);
-      card.appendChild(actionsX);
-    }
+    card.appendChild(actions);
 
     return card;
 }

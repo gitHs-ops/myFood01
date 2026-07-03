@@ -407,17 +407,22 @@ app.post('/api/menu/:date/stock-adjust', async (req, res) => {
 // 주문 조회 (GET /api/orders?date=&phone=)
 app.get('/api/orders', async (req, res) => {
   try {
-    const { date, phone, name, deviceId, reserved, reservedFrom } = req.query;
+    const { date, phone, name, deviceId, reserved, reservedFrom, addreqDate } = req.query;
     let sql = 'SELECT * FROM orders WHERE 1=1';
     const params = [];
-    if (date)     { sql += ' AND date=?';      params.push(date); }
-    if (deviceId) { sql += ' AND device_id=?'; params.push(deviceId); }
-    else if (phone) { sql += ' AND phone=?';   params.push(phone); }
-    else if (name)  { sql += ' AND name=?';    params.push(name); }
-    if (reserved) {
-      sql += " AND reserve_date IS NOT NULL AND status='confirmed'";
-      if (reservedFrom) { sql += ' AND reserve_date >= ?'; params.push(reservedFrom); }
-      else               { sql += ' AND reserve_date >= CURDATE()'; }
+    if (addreqDate) {
+      sql += " AND status='confirmed' AND additional_request LIKE ?";
+      params.push(addreqDate + ' 예약주문함%');
+    } else {
+      if (date)     { sql += ' AND date=?';      params.push(date); }
+      if (deviceId) { sql += ' AND device_id=?'; params.push(deviceId); }
+      else if (phone) { sql += ' AND phone=?';   params.push(phone); }
+      else if (name)  { sql += ' AND name=?';    params.push(name); }
+      if (reserved) {
+        sql += " AND reserve_date IS NOT NULL AND status='confirmed'";
+        if (reservedFrom) { sql += ' AND reserve_date >= ?'; params.push(reservedFrom); }
+        else               { sql += ' AND reserve_date >= CURDATE()'; }
+      }
     }
     sql += reserved ? ' ORDER BY reserve_date ASC, created_at DESC' : ' ORDER BY created_at DESC';
     const [rows] = await pool.execute(sql, params);
