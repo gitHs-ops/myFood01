@@ -129,6 +129,45 @@
     opacity: 0.85;
     font-size: 12px;
   }
+  .thumb img { cursor: zoom-in; }
+  .lightbox {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    padding: 32px;
+  }
+  .lightbox.open { display: flex; }
+  .lightbox img {
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 10px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+  }
+  .lightbox-close {
+    position: absolute;
+    top: 20px;
+    right: 28px;
+    color: #fff;
+    font-size: 32px;
+    line-height: 1;
+    cursor: pointer;
+    background: none;
+    border: none;
+  }
+  .lightbox-name {
+    position: absolute;
+    bottom: 24px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+  }
 </style>
 </head>
 <body>
@@ -726,5 +765,32 @@
   <footer>
     감성소프트웨어 &middot; Onban Menu Gallery
   </footer>
+  <div class="lightbox" id="lightbox">
+    <button class="lightbox-close" onclick="closeLightbox()">&times;</button>
+    <img id="lightboxImg" src="" alt="">
+    <div class="lightbox-name" id="lightboxName"></div>
+  </div>
+  <script>
+    var lb = document.getElementById('lightbox');
+    var lbImg = document.getElementById('lightboxImg');
+    var lbName = document.getElementById('lightboxName');
+    document.querySelector('.grid').addEventListener('click', function(e){
+      var img = e.target.closest('.thumb img');
+      if (!img) return;
+      lbImg.src = img.src;
+      lbName.textContent = img.alt;
+      lb.classList.add('open');
+    });
+    lb.addEventListener('click', function(e){
+      if (e.target === lb) closeLightbox();
+    });
+    document.addEventListener('keydown', function(e){
+      if (e.key === 'Escape') closeLightbox();
+    });
+    function closeLightbox(){
+      lb.classList.remove('open');
+      lbImg.src = '';
+    }
+  </script>
 </body>
 </html>
