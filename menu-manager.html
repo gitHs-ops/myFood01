@@ -2179,7 +2179,7 @@ function renderOrdersList(today,todayOrders){
     (reserve?'<div class="order-stat"><div class="order-stat-num" style="color:#6a1b9a;">'+reserve+'</div><div class="order-stat-lbl">예약주문</div></div>':'');
 
   // 필터 탭
-  var filterLabels=[['all','전체'],['pending','대기중'],['confirmed','주문접수'],['delivered','배송완료'],['cancelled','취소'],['예약주문','📅예약']];
+  var filterLabels=[['all','전체'],['pending','대기중'],['confirmed','주문접수'],['delivered','배송완료'],['cancelled','취소'],['예약주문','예약']];
   document.getElementById('orderFilterTabs').innerHTML=filterLabels.map(function(f){
     return '<button class="order-filter-tab'+(orderFilter===f[0]?' active':'')+'" data-f="'+f[0]+'">'+f[1]+'</button>';
   }).join('');
