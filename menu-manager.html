@@ -1626,7 +1626,7 @@ function renderReservedOrders(orders){
     row.className='order-li confirmed';
     row.innerHTML=
       '<div class="order-li-main">'
-        +'<div class="order-li-top"><span class="order-status status-confirmed">✅ 접수완료</span><span style="font-size:10px;font-weight:700;background:#f3e5f5;color:#6a1b9a;border-radius:999px;padding:2px 7px;">📅 '+order.reserveDate+'</span><span class="order-li-name">'+order.name+'</span><span class="order-li-time">'+(order.phone?fmtPhone(order.phone):'')+'</span></div>'
+        +'<div class="order-li-top"><span class="order-status status-confirmed">✅ 접수완료</span><span style="font-size:10px;font-weight:700;background:#f3e5f5;color:#6a1b9a;border-radius:999px;padding:2px 7px;">📅 '+order.reserveDate+'</span><span class="order-li-name">'+order.name+'</span><span class="order-li-time">'+(order.phone?fmtPhone(order.phone)+' · ':'')+fmtDateTime(order.createdDate||order.date,order.time)+'</span></div>'
         +'<div class="order-li-sum"><span class="order-li-sum-text">'+summary+'</span><span class="order-li-arrow">›</span></div>'
       +'</div>'
       +'<div class="order-li-right"><span class="order-li-total">'+order.total.toLocaleString()+'천원</span></div>';
@@ -2570,15 +2570,21 @@ function deleteOrder(id){
   var remaining=Object.values(_ordersCache);
   var today=workDate||toISO(new Date());
   renderOrdersList(today,remaining);
+  if(_histSubTab==='reserved')loadReservedOrders();
   fetch(API_URL+'/api/orders/'+encodeURIComponent(id),{method:'DELETE'})
     .then(function(r){return r.json();})
     .then(function(d){
       if(d&&d.success){showToast('🗑 삭제 완료');}
-      else{showToast('⚠️ 삭제 실패: '+(d&&d.error||''));renderOrders();}
+      else{
+        showToast('⚠️ 삭제 실패: '+(d&&d.error||''));
+        renderOrders();
+        if(_histSubTab==='reserved')loadReservedOrders();
+      }
     })
     .catch(function(err){
       showToast('⚠️ 연결 오류: '+String(err).slice(0,60));
       renderOrders();
+      if(_histSubTab==='reserved')loadReservedOrders();
     });
 }
 
