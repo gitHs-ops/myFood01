@@ -1843,6 +1843,7 @@ function renderHistory(){
           if(go.adminReply!==undefined)all[i].adminReply=go.adminReply;
           if(go.replyAt!==undefined)all[i].replyAt=go.replyAt;
           if(go.additionalRequest!==undefined)all[i].additionalRequest=go.additionalRequest;
+          if(go.reserveDate!==undefined)all[i].reserveDate=go.reserveDate;
         } else {
           all.push(go);
         }
@@ -2325,7 +2326,7 @@ function reorder(order){
   }
   var deliveryFee=(!isPickup&&itemsTotal>=20)?1:0;
   var total=itemsTotal+deliveryFee;
-  var isReserveOrigin=order.status==='예약주문';
+  var isReserveOrigin=order.status==='예약주문'||!!order.reserveDate;
   var newOrder={
     id:'ORD'+Date.now(),
     date:toISO(new Date()),
