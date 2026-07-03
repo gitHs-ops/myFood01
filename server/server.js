@@ -407,14 +407,15 @@ app.post('/api/menu/:date/stock-adjust', async (req, res) => {
 // 주문 조회 (GET /api/orders?date=&phone=)
 app.get('/api/orders', async (req, res) => {
   try {
-    const { date, phone, name, deviceId } = req.query;
+    const { date, phone, name, deviceId, reserved } = req.query;
     let sql = 'SELECT * FROM orders WHERE 1=1';
     const params = [];
     if (date)     { sql += ' AND date=?';      params.push(date); }
     if (deviceId) { sql += ' AND device_id=?'; params.push(deviceId); }
     else if (phone) { sql += ' AND phone=?';   params.push(phone); }
     else if (name)  { sql += ' AND name=?';    params.push(name); }
-    sql += ' ORDER BY created_at DESC';
+    if (reserved) { sql += " AND reserve_date IS NOT NULL AND status='confirmed' AND reserve_date >= CURDATE()"; }
+    sql += reserved ? ' ORDER BY reserve_date ASC, created_at DESC' : ' ORDER BY created_at DESC';
     const [rows] = await pool.execute(sql, params);
     // DATETIME 컬럼 → Unix ms + 9h 보정
     const toTS = d => { if(!d)return null; const ms=d instanceof Date?d.getTime():new Date(String(d).replace(' ','T')).getTime(); return isNaN(ms)?null:ms+9*60*60*1000; };

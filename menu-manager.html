@@ -642,6 +642,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
     <div id="allCatLegend" class="legend" style="display:none;margin-bottom:4px;"></div>
     <div id="allFilterTabs" class="tabs" style="display:none;margin-bottom:8px;"></div>
     <div id="allMenuList" style="display:none;"></div>
+    <div id="reservedMenuList" style="display:none;"></div>
   </div>
 </div>
 
@@ -1558,28 +1559,78 @@ function renderHistSubTabs(){
   document.getElementById('histSubTabs').innerHTML=
     '<button class="tab'+(_histSubTab==='dates'?' active':'')+'" onclick="switchHistSubTab(\'dates\')">날짜별 메뉴 묶음</button>'
     +dropdown
-    +'<button class="tab'+(_histSubTab==='all'?' active':'')+'" onclick="switchHistSubTab(\'all\')">마스터 메뉴</button>';
+    +'<button class="tab'+(_histSubTab==='all'?' active':'')+'" onclick="switchHistSubTab(\'all\')">마스터 메뉴</button>'
+    +'<button class="tab'+(_histSubTab==='reserved'?' active':'')+'" onclick="switchHistSubTab(\'reserved\')">예약된 메뉴</button>';
 }
 function switchHistSubTab(tab){
   _histSubTab=tab;
   renderHistSubTabs();
   var ft=document.getElementById('allFilterTabs');
   var lg=document.getElementById('allCatLegend');
+  var rl=document.getElementById('reservedMenuList');
   if(tab==='dates'){
     document.getElementById('historyList').style.display='';
     document.getElementById('allMenuList').style.display='none';
+    if(rl)rl.style.display='none';
     if(ft)ft.style.display='none';
     if(lg)lg.style.display='none';
     renderHistory();
-  }else{
+  }else if(tab==='all'){
     document.getElementById('historyList').style.display='none';
+    if(rl)rl.style.display='none';
     if(ft)ft.style.display='none';
     if(lg)lg.style.display='';
     var el=document.getElementById('allMenuList');
     el.style.display='';
     el.innerHTML='<div style="text-align:center;padding:30px;color:#aaa;font-size:13px;">메뉴 창고에서 불러오는 중...</div>';
     importAllMenusFromSheet(function(){renderAllMenus();});  // 진입 시 시트에서 새로 가져오기
+  }else if(tab==='reserved'){
+    document.getElementById('historyList').style.display='none';
+    document.getElementById('allMenuList').style.display='none';
+    if(ft)ft.style.display='none';
+    if(lg)lg.style.display='none';
+    if(rl){
+      rl.style.display='';
+      rl.innerHTML='<div style="text-align:center;padding:30px;color:#aaa;font-size:13px;">불러오는 중...</div>';
+    }
+    loadReservedOrders();
   }
+}
+function loadReservedOrders(){
+  fetch(API_URL+'/api/orders?reserved=1',{cache:'no-store'})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var orders=d.orders||[];
+      orders.forEach(function(o){_ordersCache[o.id]=o;});
+      renderReservedOrders(orders);
+    })
+    .catch(function(){
+      var el=document.getElementById('reservedMenuList');
+      if(el)el.innerHTML='<div style="text-align:center;padding:30px;color:#f55;font-size:13px;">서버 연결 오류</div>';
+    });
+}
+function renderReservedOrders(orders){
+  var el=document.getElementById('reservedMenuList');
+  if(!el)return;
+  if(!orders.length){
+    el.innerHTML='<div class="order-empty">📭 오늘 이후 접수된 예약주문이 없어요.</div>';
+    return;
+  }
+  el.innerHTML='';
+  orders.forEach(function(order){
+    var itemSum=order.items.reduce(function(s,i){return s+(i.price||0)*(i.qty||1);},0);
+    var summary=(order.items[0]?menuDisplayName(order.items[0].name,order.items[0].cat||_itemCat(order.items[0].name)):'')+(order.items.length>1?' 외 '+(order.items.length-1)+'건':'');
+    var row=document.createElement('div');
+    row.className='order-li confirmed';
+    row.innerHTML=
+      '<div class="order-li-main">'
+        +'<div class="order-li-top"><span class="order-status status-confirmed">✅ 접수완료</span><span style="font-size:10px;font-weight:700;background:#f3e5f5;color:#6a1b9a;border-radius:999px;padding:2px 7px;">📅 '+order.reserveDate+'</span><span class="order-li-name">'+order.name+'</span><span class="order-li-time">'+(order.phone?fmtPhone(order.phone):'')+'</span></div>'
+        +'<div class="order-li-sum"><span class="order-li-sum-text">'+summary+'</span><span class="order-li-arrow">›</span></div>'
+      +'</div>'
+      +'<div class="order-li-right"><span class="order-li-total">'+order.total.toLocaleString()+'천원</span></div>';
+    (function(oid){row.onclick=function(){openAdminOrderDetail(oid);};})(order.id);
+    el.appendChild(row);
+  });
 }
 // allMenus 수정 → menus(일일) 실시간 동기화
 function syncAllMenuToMenus(m, oldName){
