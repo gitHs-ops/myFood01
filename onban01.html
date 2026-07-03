@@ -536,6 +536,8 @@ select.orderer-input{appearance:none;-webkit-appearance:none;background:#fff url
 .reserve-info-inp{width:100%;box-sizing:border-box;border:1.5px solid #cde8e7;border-radius:10px;padding:9px 12px;font-size:14px;font-family:inherit;outline:none;margin-bottom:8px;}
 .reserve-info-inp:focus{border-color:var(--teal);}
 select.reserve-info-inp{appearance:none;-webkit-appearance:none;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'%3E%3Cpolyline points='6 9 12 15 18 9' fill='none' stroke='%23666' stroke-width='2'/%3E%3C/svg%3E") no-repeat right 14px center/12px;cursor:pointer;}
+.reserve-addr-wrap{position:relative;margin-bottom:8px;}
+.reserve-addr-wrap .reserve-info-inp{margin-bottom:0;padding-right:72px;}
 .reserve-confirm-btn{display:block;width:calc(100% - 28px);margin:12px 14px 0;background:var(--teal);color:#fff;border:none;border-radius:14px;padding:13px 0;font-size:15px;font-weight:800;cursor:pointer;}
 .hist-status.reserve{background:#ede7f6;color:#6a1b9a;}
 </style>
@@ -677,13 +679,14 @@ select.reserve-info-inp{appearance:none;-webkit-appearance:none;background:#fff 
     <div class="reserve-modal-total" id="reserveModalTotal"></div>
     <div class="reserve-info-box">
       <span class="reserve-info-lbl">이름 *</span>
-      <input class="reserve-info-inp" id="reserveName" type="text" placeholder="이름을 입력해주세요" maxlength="20">
+      <input class="reserve-info-inp" id="reserveName" type="text" placeholder="이름을 입력해주세요" maxlength="20" oninput="_toggleReserveAddrListBtn()">
       <span class="reserve-info-lbl">전화번호 *</span>
-      <input class="reserve-info-inp" id="reservePhone" type="tel" placeholder="연락처를 입력해주세요" maxlength="20">
-      <span class="reserve-info-lbl">📅 예약 날짜 * <small style="color:#aaa;font-weight:400">(오늘로부터 1~7일)</small></span>
-      <input class="reserve-info-inp" id="reserveDateInput" type="date">
+      <input class="reserve-info-inp" id="reservePhone" type="tel" placeholder="연락처를 입력해주세요" maxlength="20" oninput="_toggleReserveAddrListBtn()">
       <span class="reserve-info-lbl">배송 주소</span>
-      <input class="reserve-info-inp" id="reserveAddr" type="text" placeholder="배송 주소 (픽업 외 필수)" maxlength="100">
+      <div class="reserve-addr-wrap">
+        <input class="reserve-info-inp" id="reserveAddr" type="text" placeholder="배송 주소 (픽업 외 필수)" maxlength="100">
+        <button class="btn-addr-list" id="btnReserveAddrList" onclick="showAddrList('reserve')" disabled style="opacity:.4;cursor:not-allowed;">📋 목록</button>
+      </div>
       <span class="reserve-info-lbl">배송 방법 *</span>
       <select class="reserve-info-inp" id="reserveMemo">
         <option value="" disabled selected>배송방법 선택 (필수)</option>
@@ -693,8 +696,10 @@ select.reserve-info-inp{appearance:none;-webkit-appearance:none;background:#fff 
         <option value="현관에서직접수령">현관에서 직접 수령</option>
         <option value="매장픽업">매장 픽업</option>
       </select>
+      <span class="reserve-info-lbl">📅 예약 날짜 * <small style="color:#aaa;font-weight:400">(오늘로부터 1~7일)</small></span>
+      <input class="reserve-info-inp" id="reserveDateInput" type="date">
       <span class="reserve-info-lbl">요청사항</span>
-      <input class="reserve-info-inp" id="reserveRequest" type="text" placeholder="자유롭게 입력하세요" maxlength="200">
+      <textarea class="reserve-info-inp" id="reserveRequest" placeholder="✏️ 자유롭게 입력하세요" rows="3" maxlength="200" style="resize:vertical;min-height:64px;font-size:13px;line-height:1.6;color:#333;"></textarea>
     </div>
     <button class="reserve-confirm-btn" onclick="submitReserveOrder()">예약 주문 신청하기</button>
   </div>
@@ -1416,13 +1421,16 @@ function _pickPickup(){
 // ── 배송 주소 목록 ──
 // ── 주소록 (customers_master) ─────────────────────────────────
 var _cachedMaster=null;
+var _addrTarget='orderer';
 
-function showAddrList(){
+function showAddrList(target){
+  _addrTarget=target||'orderer';
   document.getElementById('addrListOverlay').style.display='flex';
   if(_cachedMaster){
     _renderAddrFromCache(_cachedMaster);
   } else {
-    var phone=(document.getElementById('ordererPhone').value||'').replace(/[^0-9]/g,'');
+    var phoneId=_addrTarget==='reserve'?'reservePhone':'ordererPhone';
+    var phone=(document.getElementById(phoneId).value||'').replace(/[^0-9]/g,'');
     _loadAddrList(phone);
   }
 }
@@ -1570,8 +1578,10 @@ function _showAddrForm(c,replaceEl){
   }
 }
 function pickAddr(addr,memo){
-  document.getElementById('ordererAddr').value=addr;
-  if(memo!==undefined) document.getElementById('ordererMemo').value=memo;
+  var addrId=_addrTarget==='reserve'?'reserveAddr':'ordererAddr';
+  var memoId=_addrTarget==='reserve'?'reserveMemo':'ordererMemo';
+  document.getElementById(addrId).value=addr;
+  if(memo!==undefined) document.getElementById(memoId).value=memo;
   document.getElementById('addrListOverlay').style.display='none';
 }
 function closeAddrList(e){
@@ -2416,6 +2426,16 @@ function _toggleAddrListBtn(){
   btn.style.opacity=ok?'1':'0.4';
   btn.style.cursor=ok?'pointer':'not-allowed';
 }
+function _toggleReserveAddrListBtn(){
+  var name=(document.getElementById('reserveName').value||'').trim();
+  var phone=(document.getElementById('reservePhone').value||'').trim();
+  var btn=document.getElementById('btnReserveAddrList');
+  if(!btn) return;
+  var ok=!!(name&&phone);
+  btn.disabled=!ok;
+  btn.style.opacity=ok?'1':'0.4';
+  btn.style.cursor=ok?'pointer':'not-allowed';
+}
 // ══ 예약주문 ══
 function loadReserveMenus(){
   if(_reserveLoaded)return;
@@ -2543,6 +2563,25 @@ function openReservePopup(){
   if(rdi){rdi.min=_reserveDateMin;rdi.max=_reserveDateMax;if(!rdi.value)rdi.value=_reserveDateMin;}
   _renderReserveModalItems();
   document.getElementById('reserveOverlay').classList.add('open');
+  // 고객 정보 자동완성 (비어있을 때만)
+  var nEl=document.getElementById('reserveName');
+  var pEl=document.getElementById('reservePhone');
+  if(nEl&&!nEl.value&&pEl&&!pEl.value){
+    var did=getDeviceId();
+    fetch(API_URL+'/api/customers-master?device_id='+encodeURIComponent(did))
+      .then(function(r){return r.json();})
+      .then(function(d){
+        if(d.success&&d.items&&d.items.length){
+          var m=d.items[0];
+          _cachedMaster=m;
+          if(m.name) nEl.value=m.name;
+          if(m.phone) pEl.value=m.phone;
+          var aEl=document.getElementById('reserveAddr');
+          if(aEl&&m.addr1&&!aEl.value) aEl.value=m.addr1;
+          _toggleReserveAddrListBtn();
+        }
+      }).catch(function(){});
+  }
 }
 function closeReservePopup(){
   document.getElementById('reserveOverlay').classList.remove('open');
