@@ -2035,6 +2035,10 @@ function _buildOrderCard(o){
       btnReorder.className='hist-btn-reorder';
       btnReorder.id='btn-reorder-'+o.id;
       btnReorder.textContent='재주문';
+      if(!_pendingItemEdits[o.id]&&!_reorderActiveIds[o.id]){
+        btnReorder.disabled=true;
+        btnReorder.style.opacity='.45';
+      }
       (function(ord){btnReorder.onclick=function(){reorder(ord);};})(o);
       acts.appendChild(btnReorder);
       var btnCloseR=document.createElement('button');
