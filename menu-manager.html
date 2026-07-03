@@ -2176,13 +2176,12 @@ function ackAddReq(orderId){
   }).catch(function(){});
 }
 function _isNewAddReq(o){return !!(o.additionalRequest&&!o.addreqAcked&&o.status==='pending');}
-function _isTodayReserveConfirmed(o){
-  var todayStr=toISO(new Date());
-  return o.status==='confirmed'&&!!o.additionalRequest&&o.additionalRequest.indexOf(todayStr+' 예약주문함')===0;
-}
 function _isWorkDateReserveTag(o){
   var wd=workDate||toISO(new Date());
   return !!o.additionalRequest&&o.additionalRequest.indexOf(wd+' 예약주문함')===0;
+}
+function _isTodayReserveConfirmed(o){
+  return o.status==='confirmed'&&_isWorkDateReserveTag(o);
 }
 function updateAddReqBadge(orders){
   var count=(orders||[]).filter(function(o){return o.status==='pending'||_isNewAddReq(o);}).length;
@@ -2200,12 +2199,11 @@ function saveOrders(orders){}
 
 function renderOrders(){
   var today=workDate||toISO(new Date());
-  var realToday=toISO(new Date());
   var el=document.getElementById('orderList');
   el.innerHTML='<div style="text-align:center;padding:30px;color:#aaa;font-size:13px;">불러오는 중...</div>';
   Promise.all([
     fetch(API_URL+'/api/orders?date='+encodeURIComponent(today),{cache:'no-store'}).then(function(r){return r.json();}),
-    fetch(API_URL+'/api/orders?addreqDate='+encodeURIComponent(realToday),{cache:'no-store'}).then(function(r){return r.json();})
+    fetch(API_URL+'/api/orders?addreqDate='+encodeURIComponent(today),{cache:'no-store'}).then(function(r){return r.json();})
   ])
     .then(function(results){
       var byId={};
