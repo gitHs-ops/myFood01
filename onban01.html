@@ -2320,6 +2320,7 @@ function reorder(order){
   }
   var deliveryFee=(!isPickup&&itemsTotal>=20)?1:0;
   var total=itemsTotal+deliveryFee;
+  var isReserveOrigin=order.status==='예약주문';
   var newOrder={
     id:'ORD'+Date.now(),
     date:toISO(new Date()),
@@ -2327,8 +2328,9 @@ function reorder(order){
     name:order.name,phone:order.phone,addr:order.addr,
     memo:order.memo||'',
     items:order.items.map(function(i){return {menuId:(i.menuId!=null?i.menuId:null),name:i.name,qty:i.qty,price:i.price};}),
-    total:total,deliveryFee:deliveryFee,status:'pending',isReorder:true,
-    fromReserveOrder:order.status==='예약주문',
+    total:total,deliveryFee:deliveryFee,status:isReserveOrigin?'예약주문':'pending',isReorder:true,
+    fromReserveOrder:isReserveOrigin,
+    reserveDate:isReserveOrigin?(order.reserveDate||null):null,
     additionalRequest:order.additionalRequest||'',
     deviceId:getDeviceId()
   };
