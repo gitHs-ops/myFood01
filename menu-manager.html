@@ -2175,6 +2175,10 @@ function ackAddReq(orderId){
   }).catch(function(){});
 }
 function _isNewAddReq(o){return !!(o.additionalRequest&&!o.addreqAcked&&o.status==='pending');}
+function _isTodayReserveConfirmed(o){
+  var todayStr=toISO(new Date());
+  return o.status==='confirmed'&&!!o.additionalRequest&&o.additionalRequest.indexOf(todayStr+' 예약주문함')===0;
+}
 function updateAddReqBadge(orders){
   var count=(orders||[]).filter(function(o){return o.status==='pending'||_isNewAddReq(o);}).length;
   var el=document.getElementById('addreqBadge');
@@ -2223,7 +2227,7 @@ function renderOrdersList(today,todayOrders){
   var confirmed=todayOrders.filter(function(o){return o.status==='confirmed';}).length;
   var delivered=todayOrders.filter(function(o){return o.status==='delivered';}).length;
   var cancelled=todayOrders.filter(function(o){return o.status==='cancelled';}).length;
-  var reserve=todayOrders.filter(function(o){return o.status==='예약주문';}).length;
+  var reserve=todayOrders.filter(function(o){return o.status==='예약주문'||_isTodayReserveConfirmed(o);}).length;
   document.getElementById('orderStats').innerHTML=
     '<div class="order-stat"><div class="order-stat-num">'+todayOrders.length+'</div><div class="order-stat-lbl">전체</div></div>'+
     '<div class="order-stat"><div class="order-stat-num" style="color:#E9A826;">'+pending+'</div><div class="order-stat-lbl">대기중</div></div>'+
@@ -2248,7 +2252,10 @@ function renderOrdersList(today,todayOrders){
     if(bN!==aN)return bN-aN;
     return String(b.id).localeCompare(String(a.id));
   });
-  var filtered=orderFilter==='all'?todayOrders:todayOrders.filter(function(o){return o.status===orderFilter;});
+  var filtered=orderFilter==='all'?todayOrders:todayOrders.filter(function(o){
+    if(orderFilter==='예약주문')return o.status==='예약주문'||_isTodayReserveConfirmed(o);
+    return o.status===orderFilter;
+  });
   var el=document.getElementById('orderList');
   if(!filtered.length){
     el.innerHTML='<div class="order-empty">📭 '+( orderFilter==='all'?'오늘 접수된 주문이 없어요.':'해당 주문이 없어요.')+'</div>';
