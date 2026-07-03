@@ -459,7 +459,8 @@ app.post('/api/orders', async (req, res) => {
 
     const items  = order.items || [];
     const date   = order.date;
-    const isReserve = order.status === '예약주문' || !!order.fromReserveOrder;
+    const isReserve = order.status === '예약주문' || !!order.fromReserveOrder
+      || (!!order.additionalRequest && order.additionalRequest.indexOf('예약주문함') >= 0);
     const conn   = await pool.getConnection();
     await conn.beginTransaction();
     try {
@@ -521,7 +522,7 @@ app.put('/api/orders/:id/status', async (req, res) => {
     await conn.beginTransaction();
     try {
       const [rows] = await conn.execute(
-        'SELECT status, date, items, reserve_date FROM orders WHERE id=? FOR UPDATE', [req.params.id]
+        'SELECT status, date, items, reserve_date, additional_request FROM orders WHERE id=? FOR UPDATE', [req.params.id]
       );
       if (!rows.length) { await conn.rollback(); conn.release(); return err(res, '주문 없음', 404); }
 
@@ -533,7 +534,9 @@ app.put('/api/orders/:id/status', async (req, res) => {
       const nowCancelled = status === 'cancelled';
       const wasCancelled = prev === 'cancelled';
       const nowActive    = ['pending','confirmed','delivered'].includes(status);
-      const isReserveOrder = !!reserveDate; // 예약주문은 재고와 무관 — 모든 stock 조작 스킵
+      // 예약주문은 재고와 무관 — 모든 stock 조작 스킵
+      const isReserveOrder = !!reserveDate
+        || (!!rows[0].additional_request && rows[0].additional_request.indexOf('예약주문함') >= 0);
 
       // 예약주문 → confirmed: date를 reserve_date로 업데이트
       if (status === 'confirmed' && prev === '예약주문' && reserveDate) {
