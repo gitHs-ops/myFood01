@@ -2399,7 +2399,7 @@ function _buildAdminOrderCard(order){
       btnPri.textContent=primary.label;
       var todayStr=toISO(new Date());
       var reserveMismatch=!!order.reserveDate&&order.reserveDate!==workDate;
-      var notToday=workDate!==todayStr;
+      var notToday=!order.reserveDate&&workDate!==todayStr;
       var deliverBlocked=order.status==='confirmed'&&(reserveMismatch||notToday);
       if(deliverBlocked){
         btnPri.disabled=true;
