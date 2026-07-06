@@ -2177,18 +2177,15 @@ function ackAddReq(orderId){
   }).catch(function(){});
 }
 function _isNewAddReq(o){return !!(o.additionalRequest&&!o.addreqAcked&&o.status==='pending');}
-function _isWorkDateReserveTag(o){
-  var wd=workDate||toISO(new Date());
-  return !!o.additionalRequest&&o.additionalRequest.indexOf(wd+' 예약주문함')===0;
+// 예약주문 판별은 오직 reserve_date 유무로만 — status나 추가요청 텍스트는 사용하지 않음
+function _isReserveOrder(o){
+  return !!o.reserveDate;
 }
-function _highlightReserveDate(html,reserveDate){
-  if(!reserveDate||html.indexOf('예약주문함')<0)return html;
+function _reserveDateBadge(reserveDate){
+  if(!reserveDate)return '';
   var p=reserveDate.split('-');
   var mmdd=p.length>=3?(p[1]+'/'+p[2]):reserveDate;
-  return html.replace('예약주문함','예약주문함 <span style="color:#e53935;font-weight:700;">(예약일자: '+mmdd+')</span>');
-}
-function _isTodayReserveConfirmed(o){
-  return o.status==='confirmed'&&_isWorkDateReserveTag(o);
+  return '<span style="font-size:10px;font-weight:700;background:#f3e5f5;color:#6a1b9a;border-radius:999px;padding:2px 7px;margin-left:4px;">📅 '+mmdd+'</span>';
 }
 function updateAddReqBadge(orders){
   var count=(orders||[]).filter(function(o){return o.status==='pending'||_isNewAddReq(o);}).length;
@@ -2210,7 +2207,7 @@ function renderOrders(){
   el.innerHTML='<div style="text-align:center;padding:30px;color:#aaa;font-size:13px;">불러오는 중...</div>';
   Promise.all([
     fetch(API_URL+'/api/orders?date='+encodeURIComponent(today),{cache:'no-store'}).then(function(r){return r.json();}),
-    fetch(API_URL+'/api/orders?addreqDate='+encodeURIComponent(today),{cache:'no-store'}).then(function(r){return r.json();})
+    fetch(API_URL+'/api/orders?createdOn='+encodeURIComponent(today),{cache:'no-store'}).then(function(r){return r.json();})
   ])
     .then(function(results){
       var byId={};
@@ -2243,7 +2240,7 @@ function renderOrdersList(today,todayOrders){
   var confirmed=todayOrders.filter(function(o){return o.status==='confirmed';}).length;
   var delivered=todayOrders.filter(function(o){return o.status==='delivered';}).length;
   var cancelled=todayOrders.filter(function(o){return o.status==='cancelled';}).length;
-  var reserve=todayOrders.filter(function(o){return o.status==='예약주문'||_isTodayReserveConfirmed(o);}).length;
+  var reserve=todayOrders.filter(_isReserveOrder).length;
   document.getElementById('orderStats').innerHTML=
     '<div class="order-stat"><div class="order-stat-num">'+todayOrders.length+'</div><div class="order-stat-lbl">전체</div></div>'+
     '<div class="order-stat"><div class="order-stat-num" style="color:#E9A826;">'+pending+'</div><div class="order-stat-lbl">대기중</div></div>'+
@@ -2269,7 +2266,7 @@ function renderOrdersList(today,todayOrders){
     return String(b.id).localeCompare(String(a.id));
   });
   var filtered=orderFilter==='all'?todayOrders:todayOrders.filter(function(o){
-    if(orderFilter==='예약주문')return o.status==='예약주문'||_isTodayReserveConfirmed(o);
+    if(orderFilter==='예약주문')return _isReserveOrder(o);
     return o.status===orderFilter;
   });
   var el=document.getElementById('orderList');
@@ -2285,12 +2282,12 @@ function renderOrdersList(today,todayOrders){
     var summary=(order.items[0]?menuDisplayName(order.items[0].name,order.items[0].cat||_itemCat(order.items[0].name)):'')+(order.items.length>1?' 외 '+(order.items.length-1)+'건':'');
     var row=document.createElement('div');
     row.className='order-li '+order.status+(isNewAddReq?' addreq-new':'');
-    var statusLabel=(_isWorkDateReserveTag(order)?'예약/':'')+statusText[order.status];
+    var statusLabel=(_isReserveOrder(order)?'예약/':'')+statusText[order.status];
     row.innerHTML=
       '<div class="order-li-main">'
-        +'<div class="order-li-top"><span class="order-status status-'+order.status+'">'+statusLabel+'</span>'+(order.isReorder?'<span style="font-size:10px;font-weight:700;background:#e0d4f7;color:#5b21b6;border-radius:999px;padding:2px 7px;">재주문</span>':'')+(isNewAddReq?'<span style="font-size:10px;font-weight:700;background:#c8ecea;color:#044f52;border-radius:999px;padding:2px 7px;">💬새요청</span>':'')+'<span class="order-li-name">'+order.name+'</span><span class="order-li-time">'+(order.phone?fmtPhone(order.phone)+' · ':'')+fmtDateTime(order.createdDate||order.date,order.time)+'</span></div>'
+        +'<div class="order-li-top"><span class="order-status status-'+order.status+'">'+statusLabel+'</span>'+_reserveDateBadge(order.reserveDate)+(order.isReorder?'<span style="font-size:10px;font-weight:700;background:#e0d4f7;color:#5b21b6;border-radius:999px;padding:2px 7px;">재주문</span>':'')+(isNewAddReq?'<span style="font-size:10px;font-weight:700;background:#c8ecea;color:#044f52;border-radius:999px;padding:2px 7px;">💬새요청</span>':'')+'<span class="order-li-name">'+order.name+'</span><span class="order-li-time">'+(order.phone?fmtPhone(order.phone)+' · ':'')+fmtDateTime(order.createdDate||order.date,order.time)+'</span></div>'
         +'<div class="order-li-sum"><span class="order-li-sum-text">'+summary+'</span><span class="order-li-arrow">›</span></div>'
-        +(order.additionalRequest?'<div class="order-li-addreq">💬 '+_highlightReserveDate(order.additionalRequest.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/[\n\r]+/g,'<br>'),order.reserveDate)+'</div>':'')
+        +(order.additionalRequest?'<div class="order-li-addreq">💬 '+order.additionalRequest.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/[\n\r]+/g,'<br>')+'</div>':'')
         +(order.adminReply?'<div class="order-li-reply">↩ '+order.adminReply.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/&lt;br&gt;/gi,'<br>').replace(/[\n\r]+/g,'<br>')+'</div>':'')
       +'</div>'
       +'<div class="order-li-right"><span class="order-li-total">'+order.total.toLocaleString()+'천원</span></div>';
@@ -2337,7 +2334,7 @@ function _buildAdminOrderCard(order){
 
     var header=document.createElement('div');
     header.className='order-header';
-    var statusLabelC=(_isWorkDateReserveTag(order)?'예약/':'')+statusText[order.status];
+    var statusLabelC=(_isReserveOrder(order)?'예약/':'')+statusText[order.status];
     header.innerHTML='<div><div class="order-name">👤 '+order.name+(order.phone?' · '+fmtPhone(order.phone):'')+'</div>'+
       '<div class="order-time">'+fmtDateTime(order.createdDate||order.date,order.time)+'</div></div>'+
       '<div style="display:flex;align-items:center;gap:4px;">'+(order.isReorder?'<span style="font-size:10px;font-weight:700;background:#e0d4f7;color:#5b21b6;border-radius:999px;padding:2px 7px;">재주문</span>':'')+'<span style="font-size:11px;color:#888;">처리상태</span><span class="order-status '+statusClass[order.status]+'">'+statusLabelC+'</span></div>';
@@ -2374,7 +2371,7 @@ function _buildAdminOrderCard(order){
     addWrap.className='addreq-row-wrap';
     var innerHtml='';
     if(order.additionalRequest){
-      var safeReq=_highlightReserveDate(order.additionalRequest.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>'),order.reserveDate);
+      var safeReq=order.additionalRequest.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
       var isNew=_isNewAddReq(order);
       var dotHtml=isNew?'<span class="addreq-new-dot" style="background:#086266;margin-right:2px;"></span>':'';
       innerHtml='<div class="addreq-text-row">'+dotHtml+safeReq+'</div>';
@@ -2386,10 +2383,9 @@ function _buildAdminOrderCard(order){
     addWrap.innerHTML=innerHtml;
     card.appendChild(addWrap);
 
-    var _isReserveStatus=order.status==='예약주문'||(!!order.reserveDate&&order.status!=='confirmed'&&order.status!=='delivered'&&order.status!=='cancelled');
     var primary=null;
-    if(order.status==='pending'||_isReserveStatus){
-      primary={label:_isReserveStatus?'✅ 예약 주문 접수':'✅ 주문 접수',fn:confirmOrder};
+    if(order.status==='pending'){
+      primary={label:_isReserveOrder(order)?'✅ 예약 주문 접수':'✅ 주문 접수',fn:confirmOrder};
     }else if(order.status==='confirmed'){
       primary={label:'✅ 배송완료',fn:deliverOrder};
     }
@@ -2526,9 +2522,8 @@ function confirmOrder(id){
   var orders=getOrders();
   var o=_findOrder(orders,id);
   if(!o)return;
-  var wasReserve=o.status==='예약주문';
   o.status='confirmed';
-  if(wasReserve&&o.reserveDate)o.date=o.reserveDate;
+  if(o.reserveDate)o.date=o.reserveDate;
   saveOrders(orders);
   _reRenderFromCache();
   closeAdminOrderDetail();

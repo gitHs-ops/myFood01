@@ -407,12 +407,12 @@ app.post('/api/menu/:date/stock-adjust', async (req, res) => {
 // 주문 조회 (GET /api/orders?date=&phone=)
 app.get('/api/orders', async (req, res) => {
   try {
-    const { date, phone, name, deviceId, reserved, reservedFrom, addreqDate } = req.query;
+    const { date, phone, name, deviceId, reserved, reservedFrom, createdOn } = req.query;
     let sql = 'SELECT * FROM orders WHERE 1=1';
     const params = [];
-    if (addreqDate) {
-      sql += " AND status='confirmed' AND additional_request LIKE ?";
-      params.push(addreqDate + ' 예약주문함%');
+    if (createdOn) {
+      sql += " AND status='confirmed' AND reserve_date IS NOT NULL AND DATE(created_at)=?";
+      params.push(createdOn);
     } else {
       if (date)     { sql += ' AND date=?';      params.push(date); }
       if (deviceId) { sql += ' AND device_id=?'; params.push(deviceId); }
@@ -459,8 +459,7 @@ app.post('/api/orders', async (req, res) => {
 
     const items  = order.items || [];
     const date   = order.date;
-    const isReserve = order.status === '예약주문' || !!order.fromReserveOrder
-      || (!!order.additionalRequest && order.additionalRequest.indexOf('예약주문함') >= 0);
+    const isReserve = !!order.reserveDate;
     const conn   = await pool.getConnection();
     await conn.beginTransaction();
     try {
@@ -522,7 +521,7 @@ app.put('/api/orders/:id/status', async (req, res) => {
     await conn.beginTransaction();
     try {
       const [rows] = await conn.execute(
-        'SELECT status, date, items, reserve_date, additional_request FROM orders WHERE id=? FOR UPDATE', [req.params.id]
+        'SELECT status, date, items, reserve_date FROM orders WHERE id=? FOR UPDATE', [req.params.id]
       );
       if (!rows.length) { await conn.rollback(); conn.release(); return err(res, '주문 없음', 404); }
 
@@ -534,12 +533,11 @@ app.put('/api/orders/:id/status', async (req, res) => {
       const nowCancelled = status === 'cancelled';
       const wasCancelled = prev === 'cancelled';
       const nowActive    = ['pending','confirmed','delivered'].includes(status);
-      // 예약주문은 재고와 무관 — 모든 stock 조작 스킵
-      const isReserveOrder = !!reserveDate
-        || (!!rows[0].additional_request && rows[0].additional_request.indexOf('예약주문함') >= 0);
+      // 예약주문 판별은 오직 reserve_date 유무로만 — 재고와 무관하게 모든 stock 조작 스킵
+      const isReserveOrder = !!reserveDate;
 
-      // 예약주문 → confirmed: date를 reserve_date로 업데이트
-      if (status === 'confirmed' && prev === '예약주문' && reserveDate) {
+      // 예약주문(reserve_date 보유) → confirmed: date를 reserve_date로 업데이트
+      if (status === 'confirmed' && reserveDate) {
         orderDate = reserveDate;
         await conn.execute('UPDATE orders SET status=?, date=? WHERE id=?', [status, orderDate, req.params.id]);
       } else {

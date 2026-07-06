@@ -254,7 +254,7 @@
   <li>서버(<code>/api/orders?date=&deviceId=</code>)와 <code>localStorage.orders</code>를 병합 동기화한다.</li>
   <li>서버 항목으로 status·memo·adminReply·additionalRequest를 갱신하되 <strong>items(수량)는 로컬 편집본 유지</strong>.</li>
   <li>오늘자 "phantom 주문"(DB에 없는 로컬 전용 항목) 제거.</li>
-  <li>상태 뱃지: pending(대기중)·confirmed(주문접수)·delivered(배송완료)·cancelled(취소됨)·예약주문. status가 예약주문이거나 추가요청에 "예약주문함"이 포함되면 타임스탬프 뒤에 빨간색 "예약주문" 라벨을 추가로 표시.</li>
+  <li>상태 뱃지: pending(대기중)·confirmed(주문접수)·delivered(배송완료)·cancelled(취소됨). 예약주문은 별도 status 값을 쓰지 않고 <strong>일반 주문과 동일한 상태 흐름</strong>을 따르며, <code>reserveDate</code>(예약일자)가 존재하는지만으로 판별해 타임스탬프 뒤에 빨간색 "예약주문" 라벨을 추가로 표시.</li>
   <li>항목 클릭 → <code>openOrderDetail(id)</code> 상세 팝업(<code>_buildOrderCard</code>): 수량편집·삭제·배송방법수정·추가요청·재주문·취소.</li>
   <li>재주문 버튼(<code>btn-reorder-</code>)은 진입 시 스냅샷(<code>_snap</code>) 대비 실제 변경분이 없으면 기본 비활성화. 수량·항목·배송방법 변경 시에만 <code>_updateReorderBtnState</code>가 활성화하며, 값을 원복하면 다시 비활성화된다(추가요청 단독 수정은 활성화 대상 아님).</li>
 </ul>
@@ -266,7 +266,7 @@
   <li><strong>예약 주문 신청하기</strong> 클릭 → <code>openReservePopup()</code>: 예약 날짜 입력 범위를 <code>오늘+1일 ~ 오늘+7일</code>로 제한(<code>_reserveDateMin/Max</code>).</li>
   <li>입력 필드 순서·자동채움·주소 목록 로직은 주문자 정보 페이지(4.6)와 동일 컴포넌트를 공유하며, <code>_addrTarget</code>('orderer' | 'reserve') 전역값으로 대상 폼을 구분한다.</li>
   <li>배달료 로직은 4.6과 동일(2만원 미만 매장픽업만, 이상 시 +1천원) — <code>_updateReserveTotal()</code>에서 실시간 계산 반영.</li>
-  <li>신청(<code>submitReserveOrder</code>) 시 주문 객체: <code>id:'RSV'+ts, status:'예약주문', reserveDate, additionalRequest:(오늘날짜+' 예약주문함')+(요청사항 있으면 ' / '+요청사항)</code>.</li>
+  <li>신청(<code>submitReserveOrder</code>) 시 주문 객체: <code>id:'RSV'+ts, status:'pending'(일반 주문과 동일), reserveDate, additionalRequest:요청사항 원문 그대로</code>. 예약 여부는 오직 <code>reserveDate</code> 필드로만 판별하며, status나 추가요청 텍스트에 별도 표식을 넣지 않는다.</li>
 </ul>
 
 <hr>
@@ -360,10 +360,10 @@ settings (k-v 설정)                        access_log (접속 로그)
   <tr><th>컬럼</th><th>설명</th></tr>
   <tr><td>id</td><td>VARCHAR PK — 클라이언트 생성 <code>'ORD'+Date.now()</code>(일반) / <code>'RSV'+Date.now()</code>(예약주문)</td></tr>
   <tr><td>items</td><td>JSON — <code>[{menuId,name,qty,price}]</code></td></tr>
-  <tr><td>status</td><td>pending / confirmed / delivered / cancelled / <strong>예약주문</strong></td></tr>
+  <tr><td>status</td><td>pending / confirmed / delivered / cancelled — 예약주문도 <strong>동일한 값만 사용</strong>(전용 상태 없음), <code>reserve_date</code> 유무로만 예약 여부를 구분</td></tr>
   <tr><td>reserve_date</td><td>DATE NULL — 예약주문 전용 배송 희망일(오늘+1~7일). 접수(confirmed) 처리 시 <code>date</code> 컬럼이 이 값으로 갱신됨. 확정 이후에도 컬럼 자체는 유지되어 "이 주문이 예약 기원인지" 판별에 계속 사용됨</td></tr>
   <tr><td>memo</td><td>배송방법(레거시 ' / ' 인라인 노트는 마이그레이션으로 분리)</td></tr>
-  <tr><td>additional_request / addreq_acked</td><td>고객 추가요청 / 관리자 확인 플래그. 예약주문은 <code>"{신청일} 예약주문함"</code> 문구가 접두로 저장되어, <code>reserve_date</code>가 비어 있어도 텍스트로 예약 기원을 식별할 수 있는 2차 판별 근거로 쓰임</td></tr>
+  <tr><td>additional_request / addreq_acked</td><td>고객 추가요청 원문 / 관리자 확인 플래그. 예약주문 여부와 무관하게 사용자가 입력한 텍스트만 저장(예약 판별용 접두 문구를 넣지 않음)</td></tr>
   <tr><td>admin_reply / reply_at</td><td>관리자 답변 / 답변 시각(DATETIME). 답변 저장 시 줄바꿈은 <code>&lt;br&gt;</code> 마크업 문자열로 저장(줄바꿈 문자 아님)</td></tr>
   <tr><td>is_reorder</td><td>재주문 여부</td></tr>
   <tr><td>device_id</td><td>주문 디바이스(내역 조회 키)</td></tr>
@@ -395,9 +395,9 @@ settings (k-v 설정)                        access_log (접속 로그)
   <tr><th>메서드/경로</th><th>설명</th></tr>
   <tr><td><span class="badge badge-get">GET</span> <span class="tag-mono">/api/orders?date=&deviceId=</span></td><td>주문 조회. deviceId 우선, 없으면 phone/name. created_at DESC. 응답 각 항목에 <code>reserveDate</code>, <code>createdDate</code>(실제 생성일) 포함</td></tr>
   <tr><td><span class="badge badge-get">GET</span> <span class="tag-mono">/api/orders?reserved=1&reservedFrom=</span></td><td><strong>예약주문 전용 조회</strong> — <code>reserve_date IS NOT NULL AND status='confirmed' AND reserve_date&gt;=reservedFrom</code>. reserveDate ASC 정렬. 관리자 "메뉴 창고 &gt; 예약된 메뉴" 탭에서 사용</td></tr>
-  <tr><td><span class="badge badge-get">GET</span> <span class="tag-mono">/api/orders?addreqDate=</span></td><td>추가요청이 <code>"{날짜} 예약주문함"</code>으로 시작하고 status='confirmed'인 주문 조회. 접수 시 date가 예약일로 바뀌어 일반 date 조회에서 누락되는 당일 접수건을 보완 조회</td></tr>
-  <tr><td><span class="badge badge-post">POST</span> <span class="tag-mono">/api/orders</span></td><td>주문 생성 + <strong>트랜잭션 재고 차감</strong>. 기존 id면 status만 갱신. 재고부족 시 <code>{success:false,soldOut[]}</code>. <code>status==='예약주문'</code> 또는 <code>fromReserveOrder</code> 또는 <code>additionalRequest</code>에 "예약주문함" 포함 시 재고 검증을 전체 스킵</td></tr>
-  <tr><td><span class="badge badge-put">PUT</span> <span class="tag-mono">/api/orders/:id/status</span></td><td>상태 변경. active→cancelled 시 재고 복원, cancelled→active 시 재차감. <strong>단, reserve_date가 있거나 추가요청에 "예약주문함"이 포함되면 재고 조작을 전부 스킵</strong>. 예약주문 접수(confirmed) 시 date를 reserve_date로 갱신</td></tr>
+  <tr><td><span class="badge badge-get">GET</span> <span class="tag-mono">/api/orders?createdOn=</span></td><td><code>status='confirmed' AND reserve_date IS NOT NULL AND DATE(created_at)=createdOn</code>인 주문 조회. 접수 시 date가 예약일로 바뀌어 일반 date 조회에서 누락되는, 해당 일자에 신청된 접수완료 예약주문을 보완 조회</td></tr>
+  <tr><td><span class="badge badge-post">POST</span> <span class="tag-mono">/api/orders</span></td><td>주문 생성 + <strong>트랜잭션 재고 차감</strong>. 기존 id면 status만 갱신. 재고부족 시 <code>{success:false,soldOut[]}</code>. <code>order.reserveDate</code>가 있으면(=예약주문) 재고 검증을 전체 스킵</td></tr>
+  <tr><td><span class="badge badge-put">PUT</span> <span class="tag-mono">/api/orders/:id/status</span></td><td>상태 변경. active→cancelled 시 재고 복원, cancelled→active 시 재차감. <strong>단, reserve_date가 있으면 재고 조작을 전부 스킵</strong>. status가 confirmed로 바뀌고 reserve_date가 있으면 date를 reserve_date로 갱신</td></tr>
   <tr><td><span class="badge badge-put">PUT</span> <span class="tag-mono">/api/orders/:id/request</span></td><td>추가요청 저장</td></tr>
   <tr><td><span class="badge badge-put">PUT</span> <span class="tag-mono">/api/orders/:id/memo</span></td><td>배송방법 저장</td></tr>
   <tr><td><span class="badge badge-put">PUT</span> <span class="tag-mono">/api/orders/:id/reply</span></td><td>관리자 답변 저장(reply_at=NOW)</td></tr>
@@ -463,17 +463,11 @@ COMMIT → broadcast('order_new')</code></pre>
 <p><code>_startMenuAutoRefresh()</code>가 1초 인터벌로 카운트다운하여, 메뉴 목록이 활성이고 모달이 닫혀있고 탭이 보일 때 10초마다 <code>loadMenus(true)</code> 재조회. 사용자 활동(click/scroll/key/touch)이 있으면 카운트를 리셋(<code>_markMenuActivity</code>).</p>
 
 <h3>8.6 예약주문의 재고 예외 처리</h3>
-<p>예약주문은 <strong>배송 희망일이 미래</strong>이므로, 신청 시점 기준 재고 검증 대상에서 완전히 제외된다. 서버는 아래 조건 중 하나라도 참이면 재고 조작(차감/복원/재차감)을 전부 건너뛴다.</p>
-<ul>
-  <li><code>order.status === '예약주문'</code></li>
-  <li><code>order.fromReserveOrder === true</code> (재주문 경로에서 명시적으로 전달)</li>
-  <li><code>order.additionalRequest</code>에 <code>"예약주문함"</code> 문자열 포함(신청일+"예약주문함" 접두 규칙)</li>
-  <li>(상태 변경 API 한정) <code>reserve_date</code> 컬럼이 NULL이 아님</li>
-</ul>
-<div class="tip">💡 예약주문이 <strong>접수(confirmed)</strong>되면 status가 바뀌어 첫 번째 조건은 더 이상 성립하지 않지만, <code>reserve_date</code>와 추가요청 텍스트는 그대로 남아 있어 이후의 상태 변경(배송완료 처리 등)에서도 재고 예외가 계속 적용된다.</div>
+<p>예약주문은 <strong>배송 희망일이 미래</strong>이므로, 재고 검증 대상에서 완전히 제외된다. 예약주문 여부는 <strong>오직 <code>reserve_date</code> 컬럼이 NULL이 아닌지</strong>로만 판별하며, status 값이나 추가요청 텍스트는 판별에 전혀 관여하지 않는다(과거엔 status==='예약주문' / additionalRequest 텍스트 매칭도 병행했으나, 신호가 여러 개라 혼란을 유발해 <code>reserve_date</code> 단일 기준으로 정리함).</p>
+<div class="tip">💡 <code>reserve_date</code>는 접수(confirmed) 이후에도, 심지어 배송완료·취소 이후에도 컬럼값이 유지되므로, 주문의 생애주기 전체에서 예약 기원 판별이 흔들리지 않는다.</div>
 
 <h3>8.7 예약주문의 재주문(reorder) 승계</h3>
-<p>예약주문 원본(접수 완료로 status가 <code>confirmed</code>로 바뀐 것 포함)을 재주문하면, <code>reorder()</code>는 <code>order.status==='예약주문' || !!order.reserveDate</code>로 예약 기원을 판별해 새 주문에도 <code>status:'예약주문'</code>, <code>reserveDate</code>를 그대로 승계한다(재주문 결과가 일반 주문으로 바뀌지 않음). <code>reserveDate</code>는 <code>renderHistory()</code>의 서버 동기화 단계에서 로컬 캐시에도 반영되어, SSE 재렌더 이후에도 판별이 깨지지 않는다.</p>
+<p>예약주문 원본을 재주문하면, <code>reorder()</code>는 <code>!!order.reserveDate</code>만으로 예약 기원을 판별해 새 주문에도 <code>reserveDate</code>를 그대로 승계한다. 단, 새 주문의 <code>status</code>는 예약 여부와 무관하게 <strong>항상 일반 주문과 동일하게 <code>'pending'</code></strong>으로 생성된다 — 예약주문 전용 status는 존재하지 않으며, 처리 흐름(대기중→주문접수→배송완료) 자체가 일반 주문과 완전히 동일하다. <code>reserveDate</code>는 <code>renderHistory()</code>의 서버 동기화 단계에서 로컬 캐시에도 반영되어, SSE 재렌더 이후에도 판별이 깨지지 않는다.</p>
 
 <hr>
 
