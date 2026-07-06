@@ -507,19 +507,7 @@ COMMIT → broadcast('order_new')</code></pre>
 
 <!-- ════════════════ 11 ════════════════ -->
 <h2 id="s11">11. 데이터 정합성 · 마이그레이션</h2>
-<p>서버 기동 시 <code>initDB()</code>가 테이블을 생성(<code>CREATE TABLE IF NOT EXISTS</code>)하고, <code>settings</code> 테이블의 플래그 키로 <strong>1회성 마이그레이션</strong>을 멱등 실행한다.</p>
-<table>
-  <tr><th>플래그 키</th><th>작업</th></tr>
-  <tr><td><code>menu_id_migrated_v1</code></td><td>daily_menus를 menus 마스터로 정규화, menu_id 링크 연결</td></tr>
-  <tr><td><code>icon_col_v2 / icon_emoji_v1·v2</code></td><td>icon 컬럼 도입, img_url→icon 복사, icon을 이모지 전용으로 정규화</td></tr>
-  <tr><td><code>retry_img_v1·v2·v3</code></td><td>CSV(menu_image_list_retry.csv)로 img_url 보강</td></tr>
-  <tr><td><code>merge_dup_v1</code></td><td>+/&amp; 표기 중복 메뉴 병합(count 높은 쪽 유지, daily 참조 이전)</td></tr>
-  <tr><td><code>daily_no_imgurl_v1</code></td><td>daily_menus.img_url 제거(이미지는 마스터에서만 관리)</td></tr>
-  <tr><td><code>cm_*</code></td><td>customers_master: addr→addr1/2/3 분리, device_id 추가, phone UNIQUE 제약</td></tr>
-  <tr><td><code>drop_customers_v1</code></td><td>불용 customers 테이블 DROP</td></tr>
-  <tr><td><code>addreq_acked_migrated_v1</code></td><td>기존 추가요청 보유 주문 일괄 ack 처리</td></tr>
-</table>
-<div class="tip">💡 모든 마이그레이션은 <code>SELECT v FROM settings WHERE k=...</code>로 실행 여부를 확인 후 진행하고 완료 시 플래그를 기록하므로 재기동에 안전(멱등)하다.</div>
+<p>서버 기동 시 <code>initDB()</code>는 <code>CREATE TABLE IF NOT EXISTS</code>로 테이블을 생성한다. 과거에는 <code>settings</code> 테이블의 플래그 키로 스키마 변경·데이터 보정용 1회성 마이그레이션들(menu_id 정규화, icon 컬럼 도입, img_url 보강, 중복 메뉴 병합, customers_master 컬럼 정리 등)을 실행했으나, 운영 DB에 모두 반영 완료되어 <strong>더 이상 필요 없으므로 코드에서 전부 제거</strong>했다. 이후 스키마 변경이 필요하면 <code>CREATE TABLE</code> 정의 자체에 반영하거나, 필요 시점에 한해 별도 스크립트로 처리한다.</p>
 
 <h3>11.1 레거시 memo 분리</h3>
 <p>과거 <code>memo</code> 필드는 "배송방법 / 인라인노트" 형식이었다. 클라이언트 <code>_migrateLegacyMemo()</code>가 오늘자 주문에서 <code>' / '</code> 기준으로 분리하여 노트를 <code>additionalRequest</code>로 이관하고 memo는 배송방법만 남기며 DB도 동기화한다.</p>
