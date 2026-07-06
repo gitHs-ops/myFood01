@@ -2509,9 +2509,17 @@ function fmtDateTime(date, time){
     dow=DAYS[d.getDay()]+'요일';
   }
   var t=String(time||'');
+  var isPM=/오후|PM/i.test(t);
+  var isAM=/오전|AM/i.test(t);
   var m=t.match(/(\d{1,2}):(\d{2})(?::\d{2})?/);
   var hhmm='';
-  if(m){var h=parseInt(m[1]),mn=m[2],ap=h>=12?'PM':'AM',h12=h%12||12;hhmm=String(h12).padStart(2,'0')+':'+mn+' '+ap;}
+  if(m){
+    var h=parseInt(m[1]),mn=m[2];
+    if(isPM&&h!==12)h+=12;
+    if(isAM&&h===12)h=0;
+    var ap=h>=12?'PM':'AM',h12=h%12||12;
+    hhmm=String(h12).padStart(2,'0')+':'+mn+' '+ap;
+  }
   return mmdd+(dow?' '+dow:'')+(hhmm?' '+hhmm:'');
 }
 
