@@ -1891,7 +1891,7 @@ function _doRenderHistory(el){
         +'<div class="hist-li-top"><span class="hist-status '+(_ORDER_STATUS_CLS[o.status]||'pending')+'">'+(_ORDER_STATUS_MAP[o.status]||'대기중')+'</span>'+reorderBadge+editBadge+'<span class="hist-li-dt">'+fmtDT(o.date,o.time)+'</span>'+reserveLabel+'</div>'
         +'<div class="hist-li-sum"><span class="hist-li-sum-text">'+summary+'</span><span class="hist-li-arrow">›</span></div>'
         +(o.additionalRequest?'<div class="hist-li-addreq">💬 '+o.additionalRequest.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/[\n\r]+/g,'<br>')+'</div>':'')
-        +(o.adminReply?'<div class="hist-li-reply">↩ '+o.adminReply.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/[\n\r]+/g,'<br>')+'</div>':'')
+        +(o.adminReply?'<div class="hist-li-reply">↩ '+o.adminReply.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/&lt;br&gt;/gi,'<br>').replace(/[\n\r]+/g,'<br>')+'</div>':'')
       +'</div>'
       +'<div class="hist-li-right"><span class="hist-li-total">'+comma(total)+'천원</span></div>';
     (function(oid){rowEl.onclick=function(){openOrderDetail(oid);};})(o.id);
