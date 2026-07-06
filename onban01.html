@@ -536,7 +536,9 @@ select.orderer-input{appearance:none;-webkit-appearance:none;background:#fff url
 select.reserve-info-inp{appearance:none;-webkit-appearance:none;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'%3E%3Cpolyline points='6 9 12 15 18 9' fill='none' stroke='%23666' stroke-width='2'/%3E%3C/svg%3E") no-repeat right 14px center/12px;cursor:pointer;}
 .reserve-addr-wrap{position:relative;margin-bottom:8px;}
 .reserve-addr-wrap .reserve-info-inp{margin-bottom:0;padding-right:72px;}
-.reserve-confirm-btn{display:block;width:calc(100% - 28px);margin:0 14px;background:var(--teal);color:#fff;border:none;border-radius:14px;padding:13px 0;font-size:15px;font-weight:800;cursor:pointer;position:sticky;bottom:16px;}
+.reserve-btn-row{display:flex;gap:8px;margin:0 14px;position:sticky;bottom:16px;}
+.reserve-confirm-btn{flex:2;background:var(--teal);color:#fff;border:none;border-radius:14px;padding:13px 0;font-size:15px;font-weight:800;cursor:pointer;}
+.reserve-close-btn{flex:1;background:#fff;color:var(--red);border:1.5px solid #f5c0c0;border-radius:14px;padding:13px 0;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;}
 .hist-status.reserve{background:#ede7f6;color:#6a1b9a;}
 </style>
 </head>
@@ -674,7 +676,7 @@ select.reserve-info-inp{appearance:none;-webkit-appearance:none;background:#fff 
 <div class="reserve-overlay" id="reserveOverlay" onclick="if(event.target===this)closeReservePopup()">
   <div class="reserve-modal">
     <div class="reserve-modal-head">
-      <span class="reserve-modal-title">📅 예약 주문 목록</span>
+      <span class="reserve-modal-title">예약주문</span>
       <button class="reserve-modal-close" onclick="closeReservePopup()">✕</button>
     </div>
     <div class="reserve-modal-items" id="reserveModalItems"></div>
@@ -704,7 +706,10 @@ select.reserve-info-inp{appearance:none;-webkit-appearance:none;background:#fff 
       <span class="reserve-info-lbl">요청사항</span>
       <textarea class="reserve-info-inp" id="reserveRequest" placeholder="✏️ 자유롭게 입력하세요" rows="3" maxlength="200" style="resize:vertical;min-height:64px;font-size:13px;line-height:1.6;color:#333;"></textarea>
     </div>
-    <button class="reserve-confirm-btn" onclick="submitReserveOrder()">예약 주문 신청하기</button>
+    <div class="reserve-btn-row">
+      <button class="reserve-confirm-btn" onclick="submitReserveOrder()">저장</button>
+      <button class="reserve-close-btn" onclick="closeReservePopup()">닫기</button>
+    </div>
   </div>
 </div>
 
@@ -2731,7 +2736,7 @@ function submitReserveOrder(){
   })
   .catch(function(){showToast('저장 중 오류가 발생했어요.');})
   .finally(function(){
-    if(btn){btn.disabled=false;btn.textContent='예약 주문 신청하기';}
+    if(btn){btn.disabled=false;btn.textContent='저장';}
   });
 }
 
