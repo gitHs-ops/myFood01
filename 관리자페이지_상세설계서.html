@@ -329,7 +329,7 @@ function switchPage(name) {
 
 <h4>주문 목록 필터 탭 (<code>orderFilterTabs</code>)</h4>
 <p>전체 / 대기중 / 주문접수 / 배송완료 / 취소된주문 / 예약주문 탭으로 필터링. 각 탭에 건수 배지 표시. <strong>예약주문</strong> 탭은 통계 카드와 동일 조건(원본 예약주문 + 작업일자 접수완료건)으로 필터링되어, 접수 처리된 예약주문도 계속 이 탭에서 확인 가능하다.</p>
-<p>예약 관련 주문의 상태 라벨은 목록·상세 팝업 모두에서 앞에 빨간 <strong>예약/</strong> 접두어가 붙는다(예: "예약/주문접수").</p>
+<p>예약 관련 주문의 상태 라벨은 목록·상세 팝업 모두에서 앞에 빨간 <strong>예약주문 / </strong> 접두어가 붙는다(예: "예약주문 / 주문접수"). 목록 행에는 예약 날짜 전용 배지(<code>_reserveDateBadge</code>, 📅 MM/DD)도 함께 표시된다.</p>
 
 <h4>추가 요청 뱃지 (<code>addreqBadge</code>)</h4>
 <p>주문 목록 중 <code>additionalRequest</code>가 있고 <code>addreqAcked === false</code>인 건수를 탭 상단 빨간 뱃지로 표시. 해당 주문 카드는 <code>addreq-new</code> 클래스로 붉은 테두리 + 맥박 애니메이션.</p>
@@ -372,7 +372,7 @@ function switchPage(name) {
   <tr><td>예약 날짜 배지</td><td><code>reserveDate</code>가 있으면 "📅 예약 날짜: YYYY-MM-DD" 배지를 헤더 하단에 표시. 목록 행에도 동일 정보를 담은 소형 배지(<code>_reserveDateBadge</code>) 표시</td></tr>
   <tr><td>관리자 답변</td><td>기존 답변 표시. 텍스트에어리어 + [답변 저장] 버튼 (<code>sendAdminReply()</code>)</td></tr>
   <tr><td>액션 버튼 행</td><td>상태와 무관하게 <strong>[주요 액션(있으면)] [✕ 삭제] [닫기]</strong> 한 줄로 통일. 대기중/예약주문은 [접수], 주문접수는 [배송완료]가 주요 액션. 배송완료/취소된주문은 주요 액션 없이 [삭제][닫기]만 표시</td></tr>
-  <tr><td>배송완료 버튼 제약</td><td>예약주문 접수건은 <strong>작업일자가 예약 날짜와 같고, 작업일자가 실제 오늘일 때만</strong> 활성화. 조건 미충족 시 회색 비활성화 + 사유 안내 토스트</td></tr>
+  <tr><td>배송완료 버튼 제약</td><td>예약주문 접수건은 <strong>작업일자가 예약 날짜와 같을 때만</strong> 활성화(실제 오늘 날짜 여부는 무관). 예약주문이 아닌 일반 주문은 <strong>작업일자가 실제 오늘일 때만</strong> 활성화. 조건 미충족 시 회색 비활성화 + 사유 안내 토스트</td></tr>
   <tr><td>삭제 버튼</td><td>상태 무관하게 항상 노출(과거엔 취소 상태 전용이었음). <code>DELETE /api/orders/:id</code></td></tr>
 </table>
 
@@ -398,7 +398,7 @@ function switchPage(name) {
 <table>
   <tr><th>사용처</th><th>판별 함수/조건</th></tr>
   <tr><td>주문접수 버튼 라벨("✅ 예약 주문 접수" vs "✅ 주문 접수")</td><td><code>_isReserveOrder(order)</code></td></tr>
-  <tr><td>예약주문 필터·통계·상태 라벨(예약/주문접수 등)</td><td><code>_isReserveOrder(o)</code></td></tr>
+  <tr><td>예약주문 필터·통계·상태 라벨(예약주문 / 주문접수 등)</td><td><code>_isReserveOrder(o)</code></td></tr>
   <tr><td>배송완료 버튼 활성 조건, 재주문 시 예약 승계</td><td><code>order.reserveDate</code> 값 직접 참조</td></tr>
 </table>
 <p><strong>✅ 주문 접수</strong> 처리 시 <code>confirmOrder()</code>가 <code>PUT /api/orders/:id/status {status:'confirmed'}</code>를 호출하며, 서버는 <code>status==='confirmed' && reserve_date 존재</code> 조건에서 <code>date</code> 컬럼을 <code>reserve_date</code> 값으로 갱신한다(이전 상태 값과 무관하게 동작).</p>
