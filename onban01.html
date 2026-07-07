@@ -592,6 +592,7 @@ select.reserve-info-inp{appearance:none;-webkit-appearance:none;background:#fff 
 <!-- ════ 페이지: 메뉴 목록 ════ -->
 <div id="page-list" class="page active">
   <div class="date-banner" id="dateBanner"><span id="dateBannerText">&#128197; 오늘의 메뉴</span><span id="dateRefreshCountdown" class="date-refresh-countdown">🔄 10</span></div>
+  <div id="menuListEventCard"></div>
   <div class="cat-tabs" id="catTabs"></div>
   <div class="menu-grid" id="menuGrid"></div>
   <div class="no-menu" id="noMenu" style="display:none;">
@@ -2514,17 +2515,21 @@ function loadReserveEvent(){
   .catch(function(){});
 }
 function _renderReserveEventCard(){
-  var el=document.getElementById('reserveEventCard');
-  if(!el)return;
-  if(!_reserveEventData){el.innerHTML='';return;}
+  var reserveEl=document.getElementById('reserveEventCard');
+  var listEl=document.getElementById('menuListEventCard');
+  if(!_reserveEventData){
+    if(reserveEl)reserveEl.innerHTML='';
+    if(listEl)listEl.innerHTML='';
+    return;
+  }
   var ev=_reserveEventData;
   var safeDesc=(ev.desc||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  el.innerHTML='<div class="reserve-event-card" onclick="_selectReserveEvent()">'
-    +'<div class="reserve-event-badge">🎉 예약 이벤트</div>'
+  var body='<div class="reserve-event-badge">🎉 예약 이벤트</div>'
     +'<div class="reserve-event-name">'+ev.name+'</div>'
     +(safeDesc?'<div class="reserve-event-desc">'+safeDesc+'</div>':'')
-    +'<div class="reserve-event-foot"><span class="reserve-event-price">'+comma(Number(ev.price)||0)+'천원</span><span class="reserve-event-deadline">~'+fmtDate(ev.deadline)+' 까지</span></div>'
-    +'</div>';
+    +'<div class="reserve-event-foot"><span class="reserve-event-price">'+comma(Number(ev.price)||0)+'천원</span><span class="reserve-event-deadline">~'+fmtDate(ev.deadline)+' 까지</span></div>';
+  if(reserveEl)reserveEl.innerHTML='<div class="reserve-event-card" onclick="_selectReserveEvent()">'+body+'</div>';
+  if(listEl)listEl.innerHTML='<div class="reserve-event-card" style="margin:10px 12px;" onclick="_selectReserveEventFromList()">'+body+'</div>';
 }
 function fmtDate(iso){
   var p=(iso||'').split('-');
@@ -2536,6 +2541,11 @@ function _selectReserveEvent(){
   _renderReserveList();
   _renderReserveBar();
   openReservePopup();
+}
+function _selectReserveEventFromList(){
+  if(!_reserveEventData)return;
+  goPage('reserve');
+  _selectReserveEvent();
 }
 function loadReserveMenus(){
   loadReserveEvent();
@@ -2800,6 +2810,7 @@ function submitReserveOrder(){
 window.onload=function(){
   _revertStaleItemEdits();   // 직전 세션의 재주문 미처리 항목편집 원복(물리적 반영 방지)
   loadMenus();
+  loadReserveEvent();
   _startMenuAutoRefresh();
   _startSSE();
 };
