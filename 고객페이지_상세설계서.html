@@ -509,13 +509,13 @@ COMMIT → broadcast('order_new')</code></pre>
 <!-- ════════════════ 10 ════════════════ -->
 <h2 id="s10">10. 외부 시스템 연동</h2>
 <h3>10.1 SMS / 카카오 알림톡</h3>
-<p>Google Apps Script Web App을 프록시로 사용한다. 발송 토글(<code>_sendSettings</code>)은 <code>/api/settings</code>에서 로드하여 ON일 때만 발송.</p>
+<p>Google Apps Script Web App을 프록시로 사용한다(<code>gasUrl</code>은 서버 DB <code>settings</code>에만 저장, 서버 코드에서만 조회 — 프론트엔드에 노출되지 않음). 발송 토글(<code>smsEnabled/alimtalkEnabled</code>)은 <code>/api/settings</code>에서 로드하여 ON일 때만 발송.</p>
 <table>
   <tr><th>함수</th><th>용도</th><th>대상</th></tr>
-  <tr><td><code>sendSMS(phone,msg)</code></td><td>SMS(솔라피)</td><td>관리자 새주문/재주문 알림(고정 010-2698-9056 + 설정 연락처)</td></tr>
-  <tr><td><code>sendAlimtalk(phone,tplId,vars,fallback)</code></td><td>카카오 알림톡</td><td>고객 — 주문접수/취소/재주문(템플릿 ID별)</td></tr>
+  <tr><td><code>_sms(phone,msg,url,ns)</code></td><td>SMS(GAS 경유)</td><td>관리자 새주문/재주문 알림 — 수신 번호는 DB <code>settings.adminPhone</code>/<code>deliveryPhone</code>에서 동적 조회(하드코딩 없음)</td></tr>
+  <tr><td><code>_alimtalk(phone,tplId,vars,fallback,url,ns)</code></td><td>카카오 알림톡</td><td>고객 — 주문접수/취소/재주문(템플릿 ID별)</td></tr>
 </table>
-<div class="warn">⚠ <strong>보안 주의</strong>: 프론트엔드 소스에 Apps Script URL·관리자 전화번호·계좌 기본값이 하드코딩되어 있다. 공개 페이지이므로 노출 가능. → 민감정보는 서버 프록시화 및 토큰 검증 권장(12장 참조).</div>
+<div class="note">📌 <strong>보안 점검 결과(해결됨)</strong>: 과거에는 Apps Script URL·관리자 전화번호·계좌 기본값이 프론트엔드에 하드코딩되어 있었으나, 현재는 모두 서버 DB <code>settings</code> 테이블에서 동적으로 조회하도록 정리되었다. <code>gasUrl</code>·<code>adminPhone</code>·<code>deliveryPhone</code>은 서버 코드(server.js)에서만 다루고 클라이언트에는 응답하지 않으며, 계좌 정보(<code>BANK</code>)는 초기값이 빈 문자열로 항상 <code>/api/settings</code> 조회 결과로 채워진다.</div>
 
 <h3>10.2 결제</h3>
 <p>온라인 PG 미사용. <strong>계좌이체 수동 결제</strong> — 결제화면에서 계좌 안내 후 고객이 직접 이체, 관리자가 입금 확인 시 상태를 confirmed로 변경.</p>
@@ -544,7 +544,7 @@ COMMIT → broadcast('order_new')</code></pre>
 <h3>12.2 식별된 위험 및 개선 권고</h3>
 <table>
   <tr><th>위험</th><th>현황</th><th>권고</th></tr>
-  <tr><td>민감정보 노출</td><td>Apps Script URL·관리자 전화·계좌 기본값이 클라이언트에 하드코딩</td><td>서버 프록시화, 환경변수/시트 조회로 일원화, 토큰 검증</td></tr>
+  <tr><td>민감정보 노출</td><td>Apps Script URL·관리자 전화·계좌 기본값 모두 DB settings 조회로 전환 완료(클라이언트 미노출) — <strong>해결됨</strong></td><td>완료. 관리자 비밀번호(ADMIN_PW)·ImgBB API Key는 여전히 JS 소스 평문이므로 별도 개선 필요(관리자 상세설계서 13장 참조)</td></tr>
   <tr><td>API 인증 부재</td><td>모든 API가 무인증. 주문 변경·삭제도 누구나 호출 가능</td><td>최소한 device_id 소유 검증, 관리자 API 분리·인증</td></tr>
   <tr><td>CORS 전면 허용</td><td><code>app.use(cors())</code> 와일드카드</td><td>허용 origin 화이트리스트</td></tr>
   <tr><td>device_id 생성 함수 이원화</td><td><code>getDeviceId</code>/<code>_getDeviceId</code> 형식 불일치</td><td>UUID v4 단일 함수로 통일</td></tr>
