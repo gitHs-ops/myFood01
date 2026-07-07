@@ -460,6 +460,21 @@ app.post('/api/orders', async (req, res) => {
     const items  = order.items || [];
     const date   = order.date;
     const isReserve = !!order.reserveDate;
+    const isEventOrder = items.some(it => it.menuId === 'EVENT');
+
+    // 같은 전화번호로 같은 날짜에 동일 예약 이벤트를 중복 신청하는 것을 방지
+    if (isEventOrder && order.reserveDate && order.phone) {
+      const [dupRows] = await pool.execute(
+        `SELECT items FROM orders WHERE phone=? AND reserve_date=? AND status!='cancelled'`,
+        [order.phone, order.reserveDate]
+      );
+      const hasDup = dupRows.some(r => {
+        const its = typeof r.items === 'string' ? JSON.parse(r.items) : (r.items || []);
+        return its.some(it => it.menuId === 'EVENT');
+      });
+      if (hasDup) return err(res, '이미 같은 날짜로 예약 이벤트를 신청하셨어요.', 409);
+    }
+
     const conn   = await pool.getConnection();
     await conn.beginTransaction();
     try {
