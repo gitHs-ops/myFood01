@@ -16,6 +16,10 @@
   .stat-badge { background:rgba(255,255,255,0.18); border:1px solid rgba(255,255,255,0.4); border-radius:20px; padding:6px 16px; font-size:13px; color:#fff; backdrop-filter:blur(4px); }
   .search-box { max-width:400px; margin:18px auto 0; }
   .search-box input { width:100%; padding:10px 16px; border-radius:20px; border:none; font-family:'Pretendard',sans-serif; font-size:14px; outline:none; }
+  .cat-filter { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-top:14px; }
+  .cat-btn { background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.4); border-radius:20px; padding:6px 16px; font-size:13px; font-weight:600; color:#fff; cursor:pointer; font-family:'Pretendard',sans-serif; transition:background .15s; }
+  .cat-btn:hover { background:rgba(255,255,255,0.28); }
+  .cat-btn.active { background:#fff; color:#086266; border-color:#fff; }
   .grid { max-width:1200px; margin:0 auto; display:grid; grid-template-columns:repeat(5,1fr); gap:18px; }
   .card { background:#fff; border-radius:14px; overflow:hidden; box-shadow:0 4px 14px rgba(0,0,0,0.12); transition:transform .18s ease, box-shadow .18s ease; }
   .card:hover { transform:translateY(-4px); box-shadow:0 10px 22px rgba(0,0,0,0.18); }
@@ -34,12 +38,20 @@
 <body>
   <header>
     <h1>🍱 온반(Onban) 메뉴 이미지 갤러리</h1>
-    <p>힉스필드 AI로 생성한 메뉴 이미지 모음 &middot; 통일된 브랜드 스타일</p>
     <div class="stats">
       <span class="stat-badge">총 649개 메뉴</span>
       <span class="stat-badge">5열 그리드</span>
     </div>
     <div class="search-box"><input type="text" id="searchInput" placeholder="메뉴명 검색..."></div>
+    <div class="cat-filter" id="catFilter">
+      <button class="cat-btn active" data-cat="전체">전체</button>
+      <button class="cat-btn" data-cat="메인">메인</button>
+      <button class="cat-btn" data-cat="한우">한우</button>
+      <button class="cat-btn" data-cat="한돈">한돈</button>
+      <button class="cat-btn" data-cat="반찬">반찬</button>
+      <button class="cat-btn" data-cat="김치">김치</button>
+      <button class="cat-btn" data-cat="밀키트">밀키트</button>
+    </div>
   </header>
   <div class="grid" id="grid">
       <div class="card">
@@ -4590,11 +4602,25 @@
   <script>
     const input = document.getElementById('searchInput');
     const cards = document.querySelectorAll('.card');
-    input.addEventListener('input', () => {
+    const catBtns = document.querySelectorAll('.cat-btn');
+    let activeCat = '전체';
+    function applyFilter() {
       const q = input.value.trim().toLowerCase();
       cards.forEach(c => {
         const name = c.querySelector('.name').textContent.toLowerCase();
-        c.style.display = name.includes(q) ? '' : 'none';
+        const cat = c.querySelector('.cat').textContent;
+        const matchName = name.includes(q);
+        const matchCat = activeCat === '전체' || cat === activeCat;
+        c.style.display = (matchName && matchCat) ? '' : 'none';
+      });
+    }
+    input.addEventListener('input', applyFilter);
+    catBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        catBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        activeCat = btn.dataset.cat;
+        applyFilter();
       });
     });
   </script>
