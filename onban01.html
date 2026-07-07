@@ -710,7 +710,7 @@ select.reserve-info-inp{appearance:none;-webkit-appearance:none;background:#fff 
         <option value="현관에서직접수령">현관에서 직접 수령</option>
         <option value="매장픽업">매장 픽업</option>
       </select>
-      <span class="reserve-info-lbl">📅 예약 날짜 * <small style="color:#aaa;font-weight:400">(오늘로부터 1~7일)</small></span>
+      <span class="reserve-info-lbl">📅 예약 날짜 * <small id="reserveDateHint" style="color:#aaa;font-weight:400">(오늘로부터 1~7일)</small></span>
       <input class="reserve-info-inp" id="reserveDateInput" type="date">
       <span class="reserve-info-lbl">요청사항</span>
       <textarea class="reserve-info-inp" id="reserveRequest" placeholder="✏️ 자유롭게 입력하세요" rows="3" maxlength="200" style="resize:vertical;min-height:64px;font-size:13px;line-height:1.6;color:#333;"></textarea>
@@ -2529,10 +2529,11 @@ function _renderReserveEventCard(){
     +(safeDesc?'<div class="reserve-event-desc">'+safeDesc+'</div>':'')
     +'<div class="reserve-event-foot"><span class="reserve-event-price">'+comma(Number(ev.price)||0)+'천원</span><span class="reserve-event-deadline">~'+fmtDate(ev.deadline)+' 까지</span></div>';
   if(reserveEl)reserveEl.innerHTML='<div class="reserve-event-card" onclick="_selectReserveEvent()">'+body+'</div>';
-  // 메뉴 목록 페이지에서는 배지+설명만 한 줄로 요약 표시, 클릭 시 상세 팝업(예약 팝업) 바로 표시
+  // 메뉴 목록 페이지에서는 배지+설명+기한만 한 줄로 요약 표시, 클릭 시 상세 팝업(예약 팝업) 바로 표시
   var compactBody='<div style="display:flex;align-items:center;gap:8px;">'
     +'<span class="reserve-event-badge" style="margin-bottom:0;flex-shrink:0;">🎉 예약 이벤트</span>'
-    +'<span class="reserve-event-name" style="margin-bottom:0;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+safeDesc+'</span>'
+    +'<span class="reserve-event-name" style="margin-bottom:0;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;">'+safeDesc+'</span>'
+    +'<span class="reserve-event-deadline" style="flex-shrink:0;">~'+fmtDate(ev.deadline)+' 까지</span>'
     +'</div>';
   if(listEl)listEl.innerHTML='<div class="reserve-event-card" style="margin:10px 12px;padding:12px 16px;" onclick="_selectReserveEvent()">'+compactBody+'</div>';
 }
@@ -2670,10 +2671,14 @@ function openReservePopup(){
   if(!Object.keys(_reserveSel).length){showToast('메뉴를 선택해주세요.');return;}
   _reserveDateMin=toISO(new Date(new Date().getTime()+24*60*60*1000));
   _reserveDateMax=toISO(new Date(new Date().getTime()+7*24*60*60*1000));
-  // 예약 이벤트가 선택되어 있으면 예약일자는 이벤트 기한일 이후로만 허용
+  var hintEl=document.getElementById('reserveDateHint');
+  // 예약 이벤트가 선택되어 있으면 예약일자는 이벤트 기한일 이후 1주일까지만 허용
   if(_reserveSel['EVENT']&&_reserveEventData&&_reserveEventData.deadline){
-    if(_reserveEventData.deadline>_reserveDateMin)_reserveDateMin=_reserveEventData.deadline;
-    if(_reserveDateMin>_reserveDateMax)_reserveDateMax=_reserveDateMin;
+    _reserveDateMin=_reserveEventData.deadline;
+    _reserveDateMax=toISO(new Date(new Date(_reserveEventData.deadline+'T00:00:00').getTime()+7*24*60*60*1000));
+    if(hintEl)hintEl.textContent='('+fmtDate(_reserveDateMin)+'부터 1주일 이내)';
+  }else if(hintEl){
+    hintEl.textContent='(오늘로부터 1~7일)';
   }
   var rdi=document.getElementById('reserveDateInput');
   if(rdi){rdi.min=_reserveDateMin;rdi.max=_reserveDateMax;if(!rdi.value||rdi.value<_reserveDateMin)rdi.value=_reserveDateMin;}
@@ -2759,7 +2764,11 @@ function submitReserveOrder(){
   if(!name){showToast('이름을 입력해주세요.');return;}
   if(!phone){showToast('전화번호를 입력해주세요.');return;}
   if(!reserveDate){showToast('예약 날짜를 선택해주세요.');return;}
-  if(reserveDate<_reserveDateMin||reserveDate>_reserveDateMax){showToast('예약 날짜는 내일부터 7일 이내로 선택해주세요.');return;}
+  if(reserveDate<_reserveDateMin||reserveDate>_reserveDateMax){
+    var isEvt=!!(_reserveSel['EVENT']&&_reserveEventData&&_reserveEventData.deadline);
+    showToast(isEvt?('예약 날짜는 '+fmtDate(_reserveDateMin)+'부터 1주일 이내로 선택해주세요.'):'예약 날짜는 내일부터 7일 이내로 선택해주세요.');
+    return;
+  }
   if(!memo){showToast('배송 방법을 선택해주세요.');return;}
   var items=Object.values(_reserveSel).map(function(it){
     return{menuId:it.id,name:it.name,cat:it.cat,qty:it.qty,price:it.price};
