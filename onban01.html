@@ -2660,8 +2660,13 @@ function openReservePopup(){
   if(!Object.keys(_reserveSel).length){showToast('메뉴를 선택해주세요.');return;}
   _reserveDateMin=toISO(new Date(new Date().getTime()+24*60*60*1000));
   _reserveDateMax=toISO(new Date(new Date().getTime()+7*24*60*60*1000));
+  // 예약 이벤트가 선택되어 있으면 예약일자는 이벤트 기한일 이후로만 허용
+  if(_reserveSel['EVENT']&&_reserveEventData&&_reserveEventData.deadline){
+    if(_reserveEventData.deadline>_reserveDateMin)_reserveDateMin=_reserveEventData.deadline;
+    if(_reserveDateMin>_reserveDateMax)_reserveDateMax=_reserveDateMin;
+  }
   var rdi=document.getElementById('reserveDateInput');
-  if(rdi){rdi.min=_reserveDateMin;rdi.max=_reserveDateMax;if(!rdi.value)rdi.value=_reserveDateMin;}
+  if(rdi){rdi.min=_reserveDateMin;rdi.max=_reserveDateMax;if(!rdi.value||rdi.value<_reserveDateMin)rdi.value=_reserveDateMin;}
   _renderReserveModalItems();
   document.getElementById('reserveOverlay').classList.add('open');
   // 고객 정보 자동완성 (비어있을 때만)
