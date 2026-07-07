@@ -2529,7 +2529,10 @@ function _renderReserveEventCard(){
     +(safeDesc?'<div class="reserve-event-desc">'+safeDesc+'</div>':'')
     +'<div class="reserve-event-foot"><span class="reserve-event-price">'+comma(Number(ev.price)||0)+'천원</span><span class="reserve-event-deadline">~'+fmtDate(ev.deadline)+' 까지</span></div>';
   if(reserveEl)reserveEl.innerHTML='<div class="reserve-event-card" onclick="_selectReserveEvent()">'+body+'</div>';
-  if(listEl)listEl.innerHTML='<div class="reserve-event-card" style="margin:10px 12px;" onclick="_selectReserveEventFromList()">'+body+'</div>';
+  // 메뉴 목록 페이지에서는 배지+제목만 요약 표시, 클릭 시 예약주문 페이지에서 상세 확인
+  var compactBody='<div class="reserve-event-badge">🎉 예약 이벤트</div>'
+    +'<div class="reserve-event-name" style="margin-bottom:0;">'+ev.name+'</div>';
+  if(listEl)listEl.innerHTML='<div class="reserve-event-card" style="margin:10px 12px;" onclick="goPage(\'reserve\')">'+compactBody+'</div>';
 }
 function fmtDate(iso){
   var p=(iso||'').split('-');
@@ -2541,11 +2544,6 @@ function _selectReserveEvent(){
   _renderReserveList();
   _renderReserveBar();
   openReservePopup();
-}
-function _selectReserveEventFromList(){
-  if(!_reserveEventData)return;
-  goPage('reserve');
-  _selectReserveEvent();
 }
 function loadReserveMenus(){
   loadReserveEvent();
