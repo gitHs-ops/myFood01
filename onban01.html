@@ -2529,10 +2529,12 @@ function _renderReserveEventCard(){
     +(safeDesc?'<div class="reserve-event-desc">'+safeDesc+'</div>':'')
     +'<div class="reserve-event-foot"><span class="reserve-event-price">'+comma(Number(ev.price)||0)+'천원</span><span class="reserve-event-deadline">~'+fmtDate(ev.deadline)+' 까지</span></div>';
   if(reserveEl)reserveEl.innerHTML='<div class="reserve-event-card" onclick="_selectReserveEvent()">'+body+'</div>';
-  // 메뉴 목록 페이지에서는 배지+제목만 요약 표시, 클릭 시 예약주문 페이지에서 상세 확인
-  var compactBody='<div class="reserve-event-badge">🎉 예약 이벤트</div>'
-    +'<div class="reserve-event-name" style="margin-bottom:0;">'+ev.name+'</div>';
-  if(listEl)listEl.innerHTML='<div class="reserve-event-card" style="margin:10px 12px;" onclick="goPage(\'reserve\')">'+compactBody+'</div>';
+  // 메뉴 목록 페이지에서는 배지+제목만 한 줄로 요약 표시, 클릭 시 상세 팝업(예약 팝업) 바로 표시
+  var compactBody='<div style="display:flex;align-items:center;gap:8px;">'
+    +'<span class="reserve-event-badge" style="margin-bottom:0;flex-shrink:0;">🎉 예약 이벤트</span>'
+    +'<span class="reserve-event-name" style="margin-bottom:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+ev.name+'</span>'
+    +'</div>';
+  if(listEl)listEl.innerHTML='<div class="reserve-event-card" style="margin:10px 12px;padding:12px 16px;" onclick="_selectReserveEvent()">'+compactBody+'</div>';
 }
 function fmtDate(iso){
   var p=(iso||'').split('-');
