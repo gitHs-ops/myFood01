@@ -2524,18 +2524,15 @@ function _renderReserveEventCard(){
   }
   var ev=_reserveEventData;
   var safeDesc=(ev.desc||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  var body='<div class="reserve-event-badge">🎉 예약 이벤트</div>'
-    +'<div class="reserve-event-name">'+ev.name+'</div>'
-    +(safeDesc?'<div class="reserve-event-desc">'+safeDesc+'</div>':'')
-    +'<div class="reserve-event-foot"><span class="reserve-event-price">'+comma(Number(ev.price)||0)+'천원</span><span class="reserve-event-deadline">~'+fmtDate(ev.deadline)+' 까지</span></div>';
-  if(reserveEl)reserveEl.innerHTML='<div class="reserve-event-card" onclick="_selectReserveEvent()">'+body+'</div>';
-  // 메뉴 목록 페이지에서는 배지+설명+기한만 한 줄로 요약 표시, 클릭 시 상세 팝업(예약 팝업) 바로 표시
+  // 배지+설명+기한을 한 줄로 요약 표시 — 메뉴 페이지·예약주문 페이지 공통, 클릭 시 상세 팝업(예약 팝업) 바로 표시
   var compactBody='<div style="display:flex;align-items:center;gap:8px;">'
     +'<span class="reserve-event-badge" style="margin-bottom:0;flex-shrink:0;">🎉 예약 이벤트</span>'
     +'<span class="reserve-event-name" style="margin-bottom:0;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;">'+safeDesc+'</span>'
     +'<span class="reserve-event-deadline" style="flex-shrink:0;">~'+fmtDate(ev.deadline)+' 까지</span>'
     +'</div>';
-  if(listEl)listEl.innerHTML='<div class="reserve-event-card" style="margin:10px 12px;padding:12px 16px;" onclick="_selectReserveEvent()">'+compactBody+'</div>';
+  var cardHtml='<div class="reserve-event-card" style="margin:10px 12px;padding:12px 16px;" onclick="_selectReserveEvent()">'+compactBody+'</div>';
+  if(reserveEl)reserveEl.innerHTML=cardHtml;
+  if(listEl)listEl.innerHTML=cardHtml;
 }
 function fmtDate(iso){
   var p=(iso||'').split('-');
