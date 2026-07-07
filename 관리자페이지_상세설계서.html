@@ -476,7 +476,17 @@ function switchPage(name) {
   <tr><td>SMS 발송 ON/OFF</td><td><code>smsEnabled</code></td><td>DB settings</td><td><code>saveSendSettings()</code></td></tr>
   <tr><td>알림톡 발송 ON/OFF</td><td><code>alimtalkEnabled</code></td><td>DB settings</td><td><code>saveSendSettings()</code></td></tr>
   <tr><td>카테고리 목록</td><td><code>categories</code></td><td>DB settings + localStorage</td><td><code>saveCatSettings()</code></td></tr>
+  <tr><td>예약 이벤트</td><td><code>reserveEvent</code> ({name,desc,price,deadline})</td><td>DB settings만(localStorage 미사용)</td><td><code>saveReserveEvent() / loadReserveEventForm() / clearReserveEvent()</code></td></tr>
 </table>
+
+<h4>예약 이벤트 관리</h4>
+<p>고객 화면(오늘의 메뉴·예약주문 페이지)에 노출되는 특별 예약 카드를 설정한다. 다른 설정 항목과 달리 <strong>localStorage 캐시를 쓰지 않고</strong> <code>apiFetch/apiPost</code>로 <code>/api/settings</code>를 직접 읽고 쓴다.</p>
+<ul>
+  <li><code>loadReserveEventForm()</code>: 설정 탭 진입 시 <code>GET /api/settings</code>로 <code>reserveEvent</code>를 읽어 폼(이벤트 메뉴명·설명·가격·예약 기한)에 채움.</li>
+  <li><code>saveReserveEvent()</code>: 폼 값을 <code>POST /api/settings {reserveEvent:{...}}</code>로 저장. 이벤트 메뉴명이 비어 있으면 고객 화면 카드가 노출되지 않음.</li>
+  <li><code>clearReserveEvent()</code>: 확인창 후 폼을 비우고 <code>saveReserveEvent()</code>를 호출해 서버 값도 함께 초기화.</li>
+  <li>고객 화면에서는 <code>deadline</code>이 지나면 카드가 자동으로 숨겨지고, 예약 신청 시 예약 날짜는 <strong>deadline ~ deadline+7일</strong> 범위로만 선택 가능하며, 같은 전화번호+같은 예약일자로 중복 신청 시 서버가 거부한다(자세한 내용은 고객 상세설계서 4.10·8.8절 참고).</li>
+</ul>
 
 <h4>설정 저장 흐름 (<code>syncSettingsToSheet()</code>)</h4>
 <div class="seq">

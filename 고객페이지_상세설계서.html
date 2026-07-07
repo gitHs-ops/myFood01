@@ -251,10 +251,11 @@
 
 <h3>4.8 주문 내역 페이지 (<code>renderHistory</code> → <code>_doRenderHistory</code>)</h3>
 <ul>
-  <li>서버(<code>/api/orders?date=&deviceId=</code>)와 <code>localStorage.orders</code>를 병합 동기화한다.</li>
-  <li>서버 항목으로 status·memo·adminReply·additionalRequest를 갱신하되 <strong>items(수량)는 로컬 편집본 유지</strong>.</li>
-  <li>오늘자 "phantom 주문"(DB에 없는 로컬 전용 항목) 제거.</li>
-  <li>상태 뱃지: pending(대기중)·confirmed(주문접수)·delivered(배송완료)·cancelled(취소됨). 예약주문은 별도 status 값을 쓰지 않고 <strong>일반 주문과 동일한 상태 흐름</strong>을 따르며, <code>reserveDate</code>(예약일자)가 존재하는지만으로 판별해 타임스탬프 뒤에 빨간색 "예약주문" 라벨을 추가로 표시.</li>
+  <li><code>/api/orders?date=&deviceId=</code>(오늘자)와 <code>/api/orders?deviceId=&reservedForDevice=1</code>(이 기기의 예약일자 보유 주문 전체)을 <code>Promise.all</code>로 병렬 조회해 id 기준 병합한 뒤 <code>localStorage.orders</code>와 동기화한다. 예약주문이 접수(confirmed)되면 서버가 <code>date</code>를 예약일자로 갱신해 첫 번째 조회만으로는 누락되므로, 두 번째 조회로 보완한다.</li>
+  <li>서버 항목으로 status·memo·adminReply·additionalRequest·reserveDate·date를 갱신하되 <strong>items(수량)는 로컬 편집본 유지</strong>.</li>
+  <li>오늘자 "phantom 주문"(DB에 없는 로컬 전용 항목) 제거 — 예약일자 보유 항목은 date가 오늘이 아니므로 이 제거 대상에서 자연히 제외됨.</li>
+  <li>목록 표시 필터: <code>o.date===menuDate || !!o.reserveDate</code> — 오늘자 주문뿐 아니라 예약일자가 미래로 바뀐 접수완료 예약주문/예약이벤트도 함께 표시.</li>
+  <li>상태 뱃지: pending(대기중)·confirmed(주문접수)·delivered(배송완료)·cancelled(취소됨). 예약주문은 별도 status 값을 쓰지 않고 <strong>일반 주문과 동일한 상태 흐름</strong>을 따르며, <code>reserveDate</code>(예약일자)가 존재하는지만으로 판별해 타임스탬프 뒤에 빨간색 "예약주문 (MM/DD)" 라벨을 추가로 표시.</li>
   <li>항목 클릭 → <code>openOrderDetail(id)</code> 상세 팝업(<code>_buildOrderCard</code>): 수량편집·삭제·배송방법수정·추가요청·재주문·취소.</li>
   <li>재주문 버튼(<code>btn-reorder-</code>)은 진입 시 스냅샷(<code>_snap</code>) 대비 실제 변경분이 없으면 기본 비활성화. 수량·항목·배송방법 변경 시에만 <code>_updateReorderBtnState</code>가 활성화하며, 값을 원복하면 다시 비활성화된다(추가요청 단독 수정은 활성화 대상 아님).</li>
 </ul>
@@ -267,6 +268,15 @@
   <li>입력 필드 순서·자동채움·주소 목록 로직은 주문자 정보 페이지(4.6)와 동일 컴포넌트를 공유하며, <code>_addrTarget</code>('orderer' | 'reserve') 전역값으로 대상 폼을 구분한다.</li>
   <li>배달료 로직은 4.6과 동일(2만원 미만 매장픽업만, 이상 시 +1천원) — <code>_updateReserveTotal()</code>에서 실시간 계산 반영.</li>
   <li>신청(<code>submitReserveOrder</code>) 시 주문 객체: <code>id:'RSV'+ts, status:'pending'(일반 주문과 동일), reserveDate, additionalRequest:요청사항 원문 그대로</code>. 예약 여부는 오직 <code>reserveDate</code> 필드로만 판별하며, status나 추가요청 텍스트에 별도 표식을 넣지 않는다.</li>
+</ul>
+
+<h3>4.10 예약 이벤트 카드 (<code>loadReserveEvent</code> / <code>_renderReserveEventCard</code>)</h3>
+<ul>
+  <li>데이터 저장 위치: 별도 테이블 없이 <code>settings</code> k-v(<code>/api/settings</code>)의 <code>reserveEvent</code> 키에 <code>{name, desc, price, deadline}</code> JSON으로 저장(관리자 설정 화면에서 입력).</li>
+  <li><code>loadReserveEvent()</code>가 <code>window.onload</code>와 <code>loadReserveMenus()</code> 양쪽에서 호출되어, 메뉴 목록 페이지·예약주문 페이지 어디서 진입해도 최신 이벤트 정보를 반영한다. <code>deadline</code>이 오늘보다 과거면 <code>_reserveEventData=null</code>로 카드가 숨겨진다.</li>
+  <li>카드 마크업은 <code>_renderReserveEventCard()</code> 한 곳에서 생성해 <code>#menuListEventCard</code>(오늘의 메뉴 페이지)와 <code>#reserveEventCard</code>(예약주문 페이지) 두 컨테이너에 동일하게 주입한다(배지+설명+기한 한 줄 요약, 두 위치 스타일 통일).</li>
+  <li>카드 클릭 → <code>_selectReserveEvent()</code>: <code>_reserveSel['EVENT']</code>에 <code>{id:'EVENT', name, cat:'이벤트', price, qty:1}</code>을 추가하고 즉시 <code>openReservePopup()</code> 호출. <code>#reserveOverlay</code>가 <code>position:fixed</code> 전역 오버레이라 페이지 이동 없이 어떤 화면에서 클릭하든 바로 예약 팝업이 뜬다.</li>
+  <li><strong>예약 날짜 범위 특례</strong>: <code>openReservePopup()</code>에서 <code>_reserveSel['EVENT']</code>가 있으면 <code>_reserveDateMin=이벤트 deadline</code>, <code>_reserveDateMax=deadline+7일</code>로 재계산한다(일반 예약주문의 "오늘+1~7일"과 다른 규칙). 날짜 입력 힌트(<code>#reserveDateHint</code>)와 유효성 오류 문구도 이벤트 여부에 따라 동적으로 바뀐다.</li>
 </ul>
 
 <hr>
@@ -397,7 +407,8 @@ settings (k-v 설정)                        access_log (접속 로그)
   <tr><td><span class="badge badge-get">GET</span> <span class="tag-mono">/api/orders?date=&deviceId=</span></td><td>주문 조회. deviceId 우선, 없으면 phone/name. created_at DESC. 응답 각 항목에 <code>reserveDate</code>, <code>createdDate</code>(실제 생성일) 포함</td></tr>
   <tr><td><span class="badge badge-get">GET</span> <span class="tag-mono">/api/orders?reserved=1&reservedFrom=</span></td><td><strong>예약주문 전용 조회</strong> — <code>reserve_date IS NOT NULL AND status='confirmed' AND reserve_date&gt;=reservedFrom</code>. reserveDate ASC 정렬. 관리자 "메뉴 창고 &gt; 예약된 메뉴" 탭에서 사용</td></tr>
   <tr><td><span class="badge badge-get">GET</span> <span class="tag-mono">/api/orders?createdOn=</span></td><td><code>status='confirmed' AND reserve_date IS NOT NULL AND DATE(created_at)=createdOn</code>인 주문 조회. 접수 시 date가 예약일로 바뀌어 일반 date 조회에서 누락되는, 해당 일자에 신청된 접수완료 예약주문을 보완 조회</td></tr>
-  <tr><td><span class="badge badge-post">POST</span> <span class="tag-mono">/api/orders</span></td><td>주문 생성 + <strong>트랜잭션 재고 차감</strong>. 기존 id면 status만 갱신. 재고부족 시 <code>{success:false,soldOut[]}</code>. <code>order.reserveDate</code>가 있으면(=예약주문) 재고 검증을 전체 스킵</td></tr>
+  <tr><td><span class="badge badge-get">GET</span> <span class="tag-mono">/api/orders?deviceId=&reservedForDevice=1</span></td><td><code>device_id=deviceId AND reserve_date IS NOT NULL</code>(status·date 무관) 조회. 고객 주문내역이 접수 후 date가 예약일자(미래)로 바뀐 자신의 예약주문/예약이벤트를 계속 확인할 수 있도록 <code>renderHistory()</code>에서 오늘자 조회와 병렬 호출 후 병합</td></tr>
+  <tr><td><span class="badge badge-post">POST</span> <span class="tag-mono">/api/orders</span></td><td>주문 생성 + <strong>트랜잭션 재고 차감</strong>. 기존 id면 status만 갱신. 재고부족 시 <code>{success:false,soldOut[]}</code>. <code>order.reserveDate</code>가 있으면(=예약주문) 재고 검증을 전체 스킵. 항목에 <code>menuId==='EVENT'</code>(예약 이벤트)가 포함되면, 같은 phone+reserve_date로 취소되지 않은 이벤트 주문이 이미 있는지 검사해 중복 시 <code>409</code> 에러 반환</td></tr>
   <tr><td><span class="badge badge-put">PUT</span> <span class="tag-mono">/api/orders/:id/status</span></td><td>상태 변경. active→cancelled 시 재고 복원, cancelled→active 시 재차감. <strong>단, reserve_date가 있으면 재고 조작을 전부 스킵</strong>. status가 confirmed로 바뀌고 reserve_date가 있으면 date를 reserve_date로 갱신</td></tr>
   <tr><td><span class="badge badge-put">PUT</span> <span class="tag-mono">/api/orders/:id/request</span></td><td>추가요청 저장</td></tr>
   <tr><td><span class="badge badge-put">PUT</span> <span class="tag-mono">/api/orders/:id/memo</span></td><td>배송방법 저장</td></tr>
@@ -412,7 +423,7 @@ settings (k-v 설정)                        access_log (접속 로그)
   <tr><th>메서드/경로</th><th>설명</th></tr>
   <tr><td><span class="badge badge-get">GET</span> <span class="tag-mono">/api/customers-master?device_id=|phone=</span></td><td>device_id만 있으면 기기 자동인식, phone 있으면 device_id 자동 보강</td></tr>
   <tr><td><span class="badge badge-post">POST</span> / <span class="badge badge-put">PUT</span> / <span class="badge badge-del">DELETE</span> <span class="tag-mono">/api/customers-master/:id</span></td><td>주소록 UPSERT(phone UNIQUE)·수정·삭제</td></tr>
-  <tr><td><span class="badge badge-get">GET</span> / <span class="badge badge-post">POST</span> <span class="tag-mono">/api/settings</span></td><td>k-v 설정 로드/저장(계좌·발송토글 등). JSON 자동 직렬화</td></tr>
+  <tr><td><span class="badge badge-get">GET</span> / <span class="badge badge-post">POST</span> <span class="tag-mono">/api/settings</span></td><td>k-v 설정 로드/저장(계좌·발송토글·예약 이벤트<code>reserveEvent</code> 등). JSON 자동 직렬화</td></tr>
   <tr><td><span class="badge badge-get">GET</span> <span class="tag-mono">/api/events</span></td><td>SSE 연결(text/event-stream)</td></tr>
   <tr><td><span class="badge badge-get">GET</span> <span class="tag-mono">/health</span></td><td>헬스체크 <code>{ok:true}</code></td></tr>
   <tr><td><span class="badge badge-post">POST</span> <span class="tag-mono">/api/log</span></td><td>접속 로그 기록</td></tr>
@@ -470,6 +481,12 @@ COMMIT → broadcast('order_new')</code></pre>
 <h3>8.7 예약주문의 재주문(reorder) 승계</h3>
 <p>예약주문 원본을 재주문하면, <code>reorder()</code>는 <code>!!order.reserveDate</code>만으로 예약 기원을 판별해 새 주문에도 <code>reserveDate</code>를 그대로 승계한다. 단, 새 주문의 <code>status</code>는 예약 여부와 무관하게 <strong>항상 일반 주문과 동일하게 <code>'pending'</code></strong>으로 생성된다 — 예약주문 전용 status는 존재하지 않으며, 처리 흐름(대기중→주문접수→배송완료) 자체가 일반 주문과 완전히 동일하다. <code>reserveDate</code>는 <code>renderHistory()</code>의 서버 동기화 단계에서 로컬 캐시에도 반영되어, SSE 재렌더 이후에도 판별이 깨지지 않는다.</p>
 
+<h3>8.8 예약 이벤트 날짜 범위·중복 신청 방지</h3>
+<ul>
+  <li><strong>날짜 범위</strong>: <code>_reserveSel['EVENT']</code>가 선택된 상태로 <code>openReservePopup()</code>이 호출되면 <code>_reserveDateMin=이벤트 deadline</code>, <code>_reserveDateMax=deadline+7일</code>로 재계산된다. 일반 예약주문(오늘+1~7일)과 달리 이벤트의 예약 가능일은 <strong>기한일 이후 1주일</strong>로 별도 규칙을 따른다.</li>
+  <li><strong>중복 방지</strong>: <code>POST /api/orders</code>에서 <code>items</code>에 <code>menuId==='EVENT'</code> 항목이 있으면, 같은 <code>phone</code>+같은 <code>reserve_date</code>로 <code>status!='cancelled'</code>인 기존 이벤트 주문이 있는지 조회한다(항목의 <code>menuId</code>를 JS에서 JSON 파싱 후 비교). 발견되면 INSERT 이전에 <code>409</code>로 거부 — 같은 고객이 같은 이벤트를 같은 날짜로 중복 신청하는 것을 막는다. 다른 날짜거나 일반 메뉴 예약은 이 검사 대상이 아니다.</li>
+</ul>
+
 <hr>
 
 <!-- ════════════════ 9 ════════════════ -->
@@ -508,9 +525,6 @@ COMMIT → broadcast('order_new')</code></pre>
 <!-- ════════════════ 11 ════════════════ -->
 <h2 id="s11">11. 데이터 정합성 · 마이그레이션</h2>
 <p>서버 기동 시 <code>initDB()</code>는 <code>CREATE TABLE IF NOT EXISTS</code>로 테이블을 생성한다. 과거에는 <code>settings</code> 테이블의 플래그 키로 스키마 변경·데이터 보정용 1회성 마이그레이션들(menu_id 정규화, icon 컬럼 도입, img_url 보강, 중복 메뉴 병합, customers_master 컬럼 정리 등)을 실행했으나, 운영 DB에 모두 반영 완료되어 <strong>더 이상 필요 없으므로 코드에서 전부 제거</strong>했다. 이후 스키마 변경이 필요하면 <code>CREATE TABLE</code> 정의 자체에 반영하거나, 필요 시점에 한해 별도 스크립트로 처리한다.</p>
-
-<h3>11.1 레거시 memo 분리</h3>
-<p>과거 <code>memo</code> 필드는 "배송방법 / 인라인노트" 형식이었다. 클라이언트 <code>_migrateLegacyMemo()</code>가 오늘자 주문에서 <code>' / '</code> 기준으로 분리하여 노트를 <code>additionalRequest</code>로 이관하고 memo는 배송방법만 남기며 DB도 동기화한다.</p>
 
 <hr>
 
