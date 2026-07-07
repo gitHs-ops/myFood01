@@ -407,12 +407,16 @@ app.post('/api/menu/:date/stock-adjust', async (req, res) => {
 // 주문 조회 (GET /api/orders?date=&phone=)
 app.get('/api/orders', async (req, res) => {
   try {
-    const { date, phone, name, deviceId, reserved, reservedFrom, createdOn } = req.query;
+    const { date, phone, name, deviceId, reserved, reservedFrom, createdOn, reservedForDevice } = req.query;
     let sql = 'SELECT * FROM orders WHERE 1=1';
     const params = [];
     if (createdOn) {
       sql += " AND status='confirmed' AND reserve_date IS NOT NULL AND DATE(created_at)=?";
       params.push(createdOn);
+    } else if (reservedForDevice && deviceId) {
+      // 고객 주문내역용 — 예약일자로 date가 미래로 바뀐 주문도 기기 기준으로 조회
+      sql += ' AND device_id=? AND reserve_date IS NOT NULL';
+      params.push(deviceId);
     } else {
       if (date)     { sql += ' AND date=?';      params.push(date); }
       if (deviceId) { sql += ' AND device_id=?'; params.push(deviceId); }

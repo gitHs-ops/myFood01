@@ -1850,13 +1850,20 @@ function _migrateLegacyMemo(all){
 function renderHistory(){
   var el=document.getElementById('historyContent');
   el.innerHTML='<div style="text-align:center;padding:40px;color:#aaa;font-size:13px;">불러오는 중...</div>';
-  fetch(API_URL+'/api/orders?date='+encodeURIComponent(menuDate)+'&deviceId='+encodeURIComponent(getDeviceId()),{cache:'no-store'})
-  .then(function(r){return r.json();})
-  .then(function(data){
-    if(data.success&&Array.isArray(data.orders)){
+  var did=getDeviceId();
+  Promise.all([
+    fetch(API_URL+'/api/orders?date='+encodeURIComponent(menuDate)+'&deviceId='+encodeURIComponent(did),{cache:'no-store'}).then(function(r){return r.json();}),
+    fetch(API_URL+'/api/orders?deviceId='+encodeURIComponent(did)+'&reservedForDevice=1',{cache:'no-store'}).then(function(r){return r.json();})
+  ])
+  .then(function(results){
+    var byId={};
+    (results[0].success&&Array.isArray(results[0].orders)?results[0].orders:[]).forEach(function(o){byId[o.id]=o;});
+    (results[1].success&&Array.isArray(results[1].orders)?results[1].orders:[]).forEach(function(o){byId[o.id]=o;});
+    var fetched=Object.values(byId);
+    if(fetched.length||results[0].success){
       var all=JSON.parse(localStorage.getItem('orders')||'[]');
       var dbIds={};
-      data.orders.forEach(function(go){
+      fetched.forEach(function(go){
         dbIds[go.id]=true;
         var i=all.findIndex(function(o){return o.id===go.id;});
         if(i>=0){
@@ -1867,6 +1874,7 @@ function renderHistory(){
           if(go.replyAt!==undefined)all[i].replyAt=go.replyAt;
           if(go.additionalRequest!==undefined)all[i].additionalRequest=go.additionalRequest;
           if(go.reserveDate!==undefined)all[i].reserveDate=go.reserveDate;
+          if(go.date!==undefined)all[i].date=go.date;
         } else {
           all.push(go);
         }
@@ -1888,7 +1896,7 @@ var _ORDER_STATUS_CLS={pending:'pending',confirmed:'confirmed',delivered:'delive
 function _doRenderHistory(el){
   el.innerHTML='';
   var all=JSON.parse(localStorage.getItem('orders')||'[]');
-  var orders=all.filter(function(o){return o.date===menuDate;});
+  var orders=all.filter(function(o){return o.date===menuDate||!!o.reserveDate;});
   if(!orders.length){
     var label=new Date(menuDate+'T00:00:00').toLocaleDateString('ko-KR',{month:'long',day:'numeric'});
     el.innerHTML='<div class="hist-empty"><span>📋</span><p>'+label+' 주문 내역이 없어요.</p></div>';
