@@ -1904,7 +1904,7 @@ function _doRenderHistory(el){
     var reorderBadge=o.isReorder?'<span class="hist-li-badge reorder">재주문</span>':'';
     var editBadge=_pendingItemEdits[o.id]?'<span class="hist-li-badge edit">편집중</span>':'';
     var isReserveOrder=!!o.reserveDate;
-    var reserveLabel=isReserveOrder?'<span style="color:#e53935;font-weight:700;font-size:11px;margin-left:4px;">예약주문</span>':'';
+    var reserveLabel=isReserveOrder?'<span style="color:#e53935;font-weight:700;font-size:11px;margin-left:4px;">예약주문 '+fmtDate(o.reserveDate)+'</span>':'';
     var rowEl=document.createElement('div');
     rowEl.className='hist-li'+(_pendingItemEdits[o.id]?' editing':'');
     rowEl.innerHTML=
@@ -1944,7 +1944,7 @@ function _buildOrderCard(o){
     head.className='hist-head';
     var reorderBadge=o.isReorder?'<span style="font-size:10px;font-weight:700;background:#e0d4f7;color:#5b21b6;border-radius:999px;padding:2px 7px;margin-left:4px;">재주문</span>':'';
     var isReserveOrderD=!!o.reserveDate;
-    var reserveLabelD=isReserveOrderD?'<span style="color:#e53935;font-weight:700;font-size:11px;margin-left:4px;">예약주문</span>':'';
+    var reserveLabelD=isReserveOrderD?'<span style="color:#e53935;font-weight:700;font-size:11px;margin-left:4px;">예약주문 '+fmtDate(o.reserveDate)+'</span>':'';
     head.innerHTML='<span class="hist-date">'+fmtDT(o.date,o.time)+'</span>'+reserveLabelD
       +'<span style="display:inline-flex;align-items:center;gap:3px;"><span class="hist-status '+(statusCls[o.status]||'pending')+'">'+(statusMap[o.status]||'대기중')+'</span>'+reorderBadge+'</span>';
     card.appendChild(head);
