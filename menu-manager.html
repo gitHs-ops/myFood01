@@ -599,6 +599,32 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
     <div class="setting-saved" id="settingSaved4">✓ 저장되었습니다</div>
   </div>
   <div class="setting-card">
+    <div class="setting-title">🎉 예약 이벤트 관리</div>
+    <p style="font-size:12px;color:#aaa;margin-bottom:12px;">예약주문 페이지 상단에 노출되는 특별 이벤트 카드입니다. 이벤트 메뉴명을 비워두고 저장하면 노출되지 않습니다.</p>
+    <div class="setting-row">
+      <span class="setting-label">이벤트 메뉴명</span>
+      <input class="setting-input" type="text" id="cfgEventName" placeholder="예) 여름 특선 삼계탕">
+    </div>
+    <div class="setting-row">
+      <span class="setting-label">메뉴 설명</span>
+      <textarea class="setting-input" id="cfgEventDesc" rows="3" style="resize:vertical;" placeholder="이벤트 메뉴 소개"></textarea>
+    </div>
+    <div class="setting-row">
+      <span class="setting-label">메뉴 가격</span>
+      <input class="setting-input" type="number" id="cfgEventPrice" min="0" placeholder="천원 단위">
+      <span style="font-size:13px;color:#888;">천원</span>
+    </div>
+    <div class="setting-row">
+      <span class="setting-label">예약 기한</span>
+      <input class="setting-input" type="date" id="cfgEventDeadline">
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn-setting-save" onclick="saveReserveEvent()">저장</button>
+      <button class="btn-setting-save" style="background:#aaa;" onclick="clearReserveEvent()">비우기</button>
+    </div>
+    <div class="setting-saved" id="settingSavedEvent">✓ 저장되었습니다</div>
+  </div>
+  <div class="setting-card">
     <div class="setting-title">🏷 카테고리 관리</div>
     <div id="catSettingList"></div>
     <button class="btn-add-bank" onclick="addNewCat()" style="margin-top:8px;">+ 카테고리 추가</button>
@@ -2873,6 +2899,40 @@ function saveSendSettings(){
   });
 }
 
+/* ── 예약 이벤트 관리 ── */
+function loadReserveEventForm(){
+  apiFetch('/api/settings',function(err,d){
+    if(err||!d||!d.success||!d.data)return;
+    var ev=d.data.reserveEvent||{};
+    document.getElementById('cfgEventName').value=ev.name||'';
+    document.getElementById('cfgEventDesc').value=ev.desc||'';
+    document.getElementById('cfgEventPrice').value=ev.price||'';
+    document.getElementById('cfgEventDeadline').value=ev.deadline||'';
+  });
+}
+function saveReserveEvent(){
+  var ev={
+    name:document.getElementById('cfgEventName').value.trim(),
+    desc:document.getElementById('cfgEventDesc').value.trim(),
+    price:Number(document.getElementById('cfgEventPrice').value)||0,
+    deadline:document.getElementById('cfgEventDeadline').value||''
+  };
+  apiPost('/api/settings',{reserveEvent:ev},function(err,d){
+    if(err||!d||d.success===false){showToast('⚠️ 저장 실패');return;}
+    var el=document.getElementById('settingSavedEvent');
+    el.style.display='block';
+    setTimeout(function(){el.style.display='none';},2000);
+  });
+}
+function clearReserveEvent(){
+  if(!confirm('예약 이벤트를 비울까요?'))return;
+  document.getElementById('cfgEventName').value='';
+  document.getElementById('cfgEventDesc').value='';
+  document.getElementById('cfgEventPrice').value='';
+  document.getElementById('cfgEventDeadline').value='';
+  saveReserveEvent();
+}
+
 /* ── 카테고리 관리 ── */
 var _editingCats=null;
 function renderCatSettings(){
@@ -2984,6 +3044,7 @@ function loadSettingsForm(){
   }
   fillForm();
   loadSettingsFromSheet(function(ok){if(ok)fillForm();});
+  loadReserveEventForm();
 }
 
 /* ════ 메뉴 내보내기 (현재 날짜 메모리 → MySQL 재저장) ════ */

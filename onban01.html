@@ -490,6 +490,13 @@ select.orderer-input{appearance:none;-webkit-appearance:none;background:#fff url
 .order-summary-total-lbl{font-size:14px;font-weight:700;color:#555;}
 .order-summary-total-amt{font-size:20px;font-weight:800;color:#086266;}
 /* ── 예약주문 페이지 ── */
+.reserve-event-card{margin:10px 12px 0;background:linear-gradient(135deg,#086266,#1D9E75);border-radius:14px;padding:16px 18px;cursor:pointer;box-shadow:0 4px 14px rgba(8,98,102,.28);}
+.reserve-event-badge{display:inline-block;background:rgba(255,255,255,.2);color:#fff;font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;margin-bottom:8px;}
+.reserve-event-name{color:#fff;font-size:16px;font-weight:800;margin-bottom:4px;}
+.reserve-event-desc{color:rgba(255,255,255,.85);font-size:12.5px;line-height:1.5;margin-bottom:10px;white-space:pre-line;}
+.reserve-event-foot{display:flex;align-items:center;justify-content:space-between;}
+.reserve-event-price{color:#fff;font-size:15px;font-weight:800;}
+.reserve-event-deadline{color:rgba(255,255,255,.85);font-size:11.5px;font-weight:600;}
 .reserve-search-wrap{padding:8px 12px 4px;}
 .reserve-search-inp{width:100%;box-sizing:border-box;border:1.5px solid #cde8e7;border-radius:12px;padding:9px 14px 9px 36px;font-size:14px;font-family:inherit;outline:none;background:#f8fdfd url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='15' height='15' viewBox='0 0 24 24' fill='none' stroke='%23aaa' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") no-repeat 11px center/15px;}
 .reserve-search-inp:focus{border-color:var(--teal);background-color:#fff;}
@@ -665,6 +672,7 @@ select.reserve-info-inp{appearance:none;-webkit-appearance:none;background:#fff 
 <!-- ════ 페이지: 예약 주문 ════ -->
 <div id="page-reserve" class="page">
   <div class="section-title">📅 예약 주문</div>
+  <div id="reserveEventCard"></div>
   <div class="reserve-search-wrap">
     <input type="text" id="reserveSearch" class="reserve-search-inp" placeholder="메뉴명 검색..." oninput="_setReserveSearch(this.value)">
   </div>
@@ -2494,7 +2502,43 @@ function _toggleReserveAddrListBtn(){
   btn.style.cursor=ok?'pointer':'not-allowed';
 }
 // ══ 예약주문 ══
+var _reserveEventData=null;
+function loadReserveEvent(){
+  fetch(API_URL+'/api/settings',{cache:'no-store'})
+  .then(function(r){return r.json();})
+  .then(function(d){
+    var ev=(d&&d.success&&d.data&&d.data.reserveEvent)||null;
+    _reserveEventData=(ev&&ev.name&&ev.deadline&&ev.deadline>=toISO(new Date()))?ev:null;
+    _renderReserveEventCard();
+  })
+  .catch(function(){});
+}
+function _renderReserveEventCard(){
+  var el=document.getElementById('reserveEventCard');
+  if(!el)return;
+  if(!_reserveEventData){el.innerHTML='';return;}
+  var ev=_reserveEventData;
+  var safeDesc=(ev.desc||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  el.innerHTML='<div class="reserve-event-card" onclick="_selectReserveEvent()">'
+    +'<div class="reserve-event-badge">🎉 예약 이벤트</div>'
+    +'<div class="reserve-event-name">'+ev.name+'</div>'
+    +(safeDesc?'<div class="reserve-event-desc">'+safeDesc+'</div>':'')
+    +'<div class="reserve-event-foot"><span class="reserve-event-price">'+comma(Number(ev.price)||0)+'천원</span><span class="reserve-event-deadline">~'+fmtDate(ev.deadline)+' 까지</span></div>'
+    +'</div>';
+}
+function fmtDate(iso){
+  var p=(iso||'').split('-');
+  return p.length>=3?(p[1]+'/'+p[2]):(iso||'');
+}
+function _selectReserveEvent(){
+  if(!_reserveEventData)return;
+  _reserveSel['EVENT']={id:'EVENT',name:_reserveEventData.name,cat:'이벤트',price:Number(_reserveEventData.price)||0,qty:1};
+  _renderReserveList();
+  _renderReserveBar();
+  openReservePopup();
+}
 function loadReserveMenus(){
+  loadReserveEvent();
   if(_reserveLoaded)return;
   document.getElementById('reserveMenuList').innerHTML=
     '<div style="text-align:center;padding:40px;color:#aaa;font-size:13px;">마스터 메뉴 불러오는 중...</div>';
