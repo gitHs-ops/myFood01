@@ -2761,7 +2761,14 @@ window.onload=function(){
   loadMenus(false,function(){
     if(_openMenuName){
       var m=allMenus.find(function(x){return x.name===_openMenuName;});
-      if(m)showMenuModal(m.id);
+      if(m){
+        // 기존 메뉴 페이지의 '장바구니 담기'와 동일하게 즉시 담고 주문 처리로 바로 진행
+        var ex=cart.find(function(c){return c.name===m.name;});
+        if(ex){ex.qty++;}
+        else{cart.push({menuId:(m.menuId!=null?m.menuId:null),name:m.name,cat:m.cat||'',price:m.price,qty:1,imgUrl:m.imgUrl||null,child:m.child,checked:true});}
+        updateCartCount();
+        goPage('cart');
+      }
     }
   });
   if(_openReserveName){
