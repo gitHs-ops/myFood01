@@ -20,7 +20,7 @@
   .today-status { max-width:600px; margin:12px auto 0; text-align:center; color:#fff; font-size:13px; opacity:0.9; }
   .soldout-badge { position:absolute; top:8px; left:8px; background:rgba(0,0,0,0.65); color:#fff; font-size:11px; font-weight:700; padding:3px 8px; border-radius:8px; }
   .search-box { max-width:520px; margin:18px auto 0; display:flex; gap:8px; align-items:center; }
-  .search-input-wrap { position:relative; flex:1; min-width:0; }
+  .search-input-wrap { position:relative; flex:0 1 130px; min-width:0; }
   .search-input-wrap input { width:100%; padding:10px 38px 10px 16px; border-radius:20px; border:none; font-family:'Pretendard',sans-serif; font-size:14px; outline:none; box-sizing:border-box; }
   .search-icon { position:absolute; right:14px; top:50%; transform:translateY(-50%); font-size:15px; opacity:0.55; pointer-events:none; }
   .search-box .today-btn { flex-shrink:0; white-space:nowrap; }
@@ -65,6 +65,7 @@
         <span class="search-icon">🔍</span>
       </div>
       <button class="stat-badge today-btn" id="todayBtn">📅 오늘의 메뉴</button>
+      <button class="stat-badge today-btn" id="reserveBtn">📝 예약주문</button>
     </div>
     <div class="cat-filter" id="catFilter">
       <button class="cat-btn active" data-cat="전체">전체</button>
@@ -4761,6 +4762,10 @@
           applyTodayView();
         })
         .catch(() => { todayStatus.textContent = '오늘의 메뉴를 불러오지 못했어요.'; });
+    });
+
+    document.getElementById('reserveBtn').addEventListener('click', () => {
+      window.location.href = 'onban01.html?goto=reserve';
     });
   </script>
 </body>

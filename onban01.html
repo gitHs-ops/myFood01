@@ -2826,13 +2826,16 @@ function submitReserveOrder(){
 window.onload=function(){
   _revertStaleItemEdits();   // 직전 세션의 재주문 미처리 항목편집 원복(물리적 반영 방지)
   // 이미지 갤러리 등 외부 페이지에서 특정 메뉴 상세를 바로 열도록 딥링크 지원
-  var _openMenuName=new URLSearchParams(window.location.search).get('openMenu');
+  var _urlParams=new URLSearchParams(window.location.search);
+  var _openMenuName=_urlParams.get('openMenu');
+  var _gotoPage=_urlParams.get('goto');
   loadMenus(false,function(){
     if(_openMenuName){
       var m=allMenus.find(function(x){return x.name===_openMenuName;});
       if(m)showMenuModal(m.id);
     }
   });
+  if(_gotoPage)goPage(_gotoPage);   // 예) 갤러리 '예약주문' 버튼 → 예약주문 페이지로 바로 이동(기존 기능 그대로 재사용)
   loadReserveEvent();
   _startMenuAutoRefresh();
   _startSSE();
