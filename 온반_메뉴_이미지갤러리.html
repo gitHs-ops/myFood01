@@ -30,7 +30,8 @@
   .search-icon { position:absolute; right:14px; top:50%; transform:translateY(-50%); font-size:15px; opacity:0.55; pointer-events:none; }
   .search-box .today-btn { flex-shrink:0; white-space:nowrap; }
   .search-all-label { font-size:12px; color:rgba(255,255,255,0.85); white-space:nowrap; flex-shrink:0; }
-  .cat-filter { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; align-items:center; margin-top:14px; }
+  .search-line { max-width:1200px; margin:10px auto 0; display:flex; gap:8px; align-items:center; justify-content:flex-start; }
+  .cat-filter { max-width:1200px; margin:14px auto 0; display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-start; align-items:center; }
   .cat-btn { background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.4); border-radius:20px; padding:6px 16px; font-size:13px; font-weight:600; color:#fff; cursor:pointer; font-family:'Pretendard',sans-serif; transition:background .15s; }
   .cat-btn:hover { background:rgba(255,255,255,0.28); }
   .cat-btn.active { background:#fff; color:#086266; border-color:#fff; }
@@ -70,7 +71,6 @@
     <div class="header-top">
       <div class="header-title">
         <img src="온반_로고.png" alt="온반" class="header-logo">
-        <h1>이미지 갤러리</h1>
       </div>
       <a href="onban01.html" class="header-list-link">📋 일일메뉴 목록으로 가기</a>
     </div>
@@ -87,6 +87,8 @@
       <button class="cat-btn" data-cat="반찬">반찬</button>
       <button class="cat-btn" data-cat="김치">김치</button>
       <button class="cat-btn" data-cat="밀키트">밀키트</button>
+    </div>
+    <div class="search-line">
       <span class="search-all-label">전체 검색</span>
       <div class="search-input-wrap">
         <input type="text" id="searchInput" placeholder="메뉴명 검색...">
@@ -4787,7 +4789,7 @@
         .then(r => r.json())
         .then(d => {
           if (!d.success || !Array.isArray(d.menus) || !d.menus.length) {
-            todayStatus.textContent = '오늘 등록된 메뉴가 없어요.';
+            todayStatus.style.display = 'none';
             return;
           }
           todayMap = new Map();
