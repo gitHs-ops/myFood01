@@ -4622,6 +4622,7 @@
         </div>
       </div>
   </div>
+  <div id="emptyState" style="display:none;text-align:center;color:#fff;font-size:14px;padding:60px 20px;">🔍 조건에 맞는 메뉴가 없어요.</div>
   <footer>감성소프트웨어 &middot; Onban Menu Gallery</footer>
 
   <div class="modal-overlay" id="modalOverlay">
@@ -4642,14 +4643,18 @@
     let activeCat = '전체';
     function applyFilter() {
       const q = input.value.trim().toLowerCase();
+      let visibleCount = 0;
       cards.forEach(c => {
         const name = c.querySelector('.name').textContent;
         const cat = c.querySelector('.cat').textContent;
         const matchName = name.toLowerCase().includes(q);
         const matchCat = activeCat === '전체' || cat === activeCat;
-        const matchToday = !todayMode || (todayMap && todayMap.has(name));
-        c.style.display = (matchName && matchCat && matchToday) ? '' : 'none';
+        const matchToday = q ? true : (!todayMode || (todayMap && todayMap.has(name)));
+        const show = matchName && matchCat && matchToday;
+        c.style.display = show ? '' : 'none';
+        if (show) visibleCount++;
       });
+      document.getElementById('emptyState').style.display = visibleCount ? 'none' : '';
     }
     input.addEventListener('input', applyFilter);
     catBtns.forEach(btn => {
