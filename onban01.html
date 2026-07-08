@@ -29,6 +29,7 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 }
 .top-bar h1{font-size:18px;font-weight:900;color:#fff;letter-spacing:-.3px;}
 .top-bar-logo{height:40px;display:block;mix-blend-mode:lighten;flex-shrink:0;}
+.top-bar-logo.from-gallery{cursor:pointer;}
 .top-bar-sub{font-size:13px;color:rgba(255,255,255,.7);font-weight:400;letter-spacing:-.2px;}
 .cart-btn{display:none;}/* 구 cart-btn 숨김 — top-btn으로 대체 */
 .cart-count{
@@ -372,7 +373,6 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 .hist-li-arrow{font-size:20px;color:#ccc;}
 .hist-li-addreq{font-size:11px;color:#086266;word-break:break-all;margin-top:3px;line-height:1.5;}
 .hist-li-reply{font-size:11px;color:#b8860b;word-break:break-all;margin-top:1px;line-height:1.5;}
-.hist-li-cancel{padding:4px 10px;border-radius:8px;font-size:11px;font-weight:700;border:1.5px solid #f5c0c0;background:#fff;color:var(--red);cursor:pointer;font-family:inherit;white-space:nowrap;}
 /* ── 주문 상세 팝업 ── */
 .order-detail-overlay{position:fixed;inset:0;background:rgba(0,0,0,.52);z-index:600;display:none;align-items:flex-start;justify-content:center;padding:18px 8px 40px;overflow-y:auto;}
 .order-detail-overlay.open{display:flex;}
@@ -426,6 +426,7 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 .hist-btn-cancel{flex:1;padding:10px;border-radius:9px;font-size:13px;font-weight:700;border:1.5px solid #f5c0c0;background:#fff;color:var(--red);cursor:pointer;}
 .hist-btn-reorder{flex:1;padding:10px;border-radius:9px;font-size:13px;font-weight:700;border:none;background:var(--teal);color:#fff;cursor:pointer;}
 .hist-btn-delete{flex:1;padding:10px;border-radius:9px;font-size:13px;font-weight:700;border:1.5px solid #f5a623;background:#fff;color:#f5a623;cursor:pointer;}
+.hist-btn-order-cancel{flex:1;padding:10px;border-radius:9px;font-size:13px;font-weight:700;border:1.5px solid #f5c0c0;background:#fff;color:var(--red);cursor:pointer;}
 /* ── 추가 요청 ── */
 .extra-req-wrap{padding:0 14px 12px;}
 .extra-req-btn{width:100%;padding:9px;border-radius:9px;font-size:13px;font-weight:700;border:1.5px dashed #cde8e7;background:#f9fffe;color:#086266;cursor:pointer;font-family:inherit;transition:background .15s;}
@@ -519,7 +520,7 @@ select.orderer-input{appearance:none;-webkit-appearance:none;background:#fff url
 .reserve-pager button:disabled{opacity:.35;cursor:not-allowed;}
 .reserve-pager span{font-size:12px;color:#888;}
 .reserve-submit-bar{position:fixed;bottom:0;left:0;right:0;background:var(--teal);padding:10px 14px;z-index:200;display:flex;align-items:center;gap:10px;}
-.reserve-submit-bar button{flex:1;background:#fff;color:var(--teal);border:none;border-radius:20px;padding:10px 0;font-size:14px;font-weight:800;cursor:pointer;}
+.reserve-submit-bar button{flex:1;background:var(--amber);color:#1a1a1a;border:none;border-radius:20px;padding:10px 0;font-size:14px;font-weight:800;cursor:pointer;}
 .reserve-submit-badge{background:#e05;color:#fff;border-radius:50%;width:22px;height:22px;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 /* ── 예약주문 팝업 ── */
 .reserve-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:flex-end;justify-content:center;}
@@ -555,7 +556,7 @@ select.reserve-info-inp{appearance:none;-webkit-appearance:none;background:#fff 
 <div class="top-bar">
   <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
     <div style="display:flex;align-items:center;gap:10px;min-width:0;">
-      <img class="top-bar-logo" src="온반_로고.png" alt="오늘의 반찬">
+      <img class="top-bar-logo" id="topBarLogo" src="온반_로고.png" alt="오늘의 반찬">
       <div class="top-bar-sub" style="display:none;">엄마의 정성처럼 따뜻한 마음과 온기를 담았습니다</div>
     </div>
     <div style="display:flex;gap:5px;align-items:center;flex-shrink:0;">
@@ -1927,13 +1928,6 @@ function _doRenderHistory(el){
       +'</div>'
       +'<div class="hist-li-right"><span class="hist-li-total">'+comma(total)+'천원</span></div>';
     (function(oid){rowEl.onclick=function(){openOrderDetail(oid);};})(o.id);
-    if(o.status==='pending'||o.status==='예약주문'){
-      var cancelBtn=document.createElement('button');
-      cancelBtn.className='hist-li-cancel';
-      cancelBtn.textContent='주문취소';
-      (function(oid){cancelBtn.onclick=function(e){e.stopPropagation();cancelHistOrder(oid);};})(o.id);
-      rowEl.querySelector('.hist-li-right').appendChild(cancelBtn);
-    }
     listWrap.appendChild(rowEl);
   });
   el.appendChild(listWrap);
@@ -2068,6 +2062,13 @@ function _buildOrderCard(o){
       btnCloseD.onclick=function(){closeOrderDetail();};
       acts.appendChild(btnCloseD);
     } else if(o.status!=='delivered'){
+      if(o.status==='pending'){
+        var btnOrderCancel=document.createElement('button');
+        btnOrderCancel.className='hist-btn-order-cancel';
+        btnOrderCancel.textContent='주문취소';
+        (function(oid){btnOrderCancel.onclick=function(){cancelHistOrder(oid);};})(o.id);
+        acts.appendChild(btnOrderCancel);
+      }
       var btnReorder=document.createElement('button');
       btnReorder.className='hist-btn-reorder';
       btnReorder.id='btn-reorder-'+o.id;
@@ -2840,6 +2841,11 @@ window.onload=function(){
   var _openMenuName=_urlParams.get('openMenu');
   var _gotoPage=_urlParams.get('goto');
   var _openReserveName=_urlParams.get('openReserve');
+  if(/온반_메뉴_이미지갤러리\.html/.test(document.referrer)){
+    var _logoEl=document.getElementById('topBarLogo');
+    _logoEl.classList.add('from-gallery');
+    _logoEl.onclick=function(){window.location.href='온반_메뉴_이미지갤러리.html';};
+  }
   loadMenus(false,function(){
     if(_openMenuName){
       var m=allMenus.find(function(x){return x.name===_openMenuName;});
