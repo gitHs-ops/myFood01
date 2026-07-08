@@ -4686,6 +4686,8 @@
     const catFilter = document.getElementById('catFilter');
     let todayMode = false;
     let todayMap = null; // name -> {price, stock, cat}
+    let reserveMode = false;
+    const reserveBtn = document.getElementById('reserveBtn');
 
     function todayISO() {
       const kst = new Date(Date.now() + 9 * 60 * 60 * 1000);
@@ -4698,6 +4700,9 @@
         const info = todayMap && todayMap.get(name);
         if (info && info.stock <= 0) return; // 품절 클릭 무시
         window.location.href = 'onban01.html?openMenu=' + encodeURIComponent(name);
+      } else if (reserveMode) {
+        // '예약 주문 신청하기'와 동일한 기능 — 예약주문 페이지에서 해당 항목을 바로 선택해 팝업까지 오픈
+        window.location.href = 'onban01.html?openReserve=' + encodeURIComponent(name);
       } else {
         openModal(card);
       }
@@ -4744,6 +4749,7 @@
 
     todayBtn.addEventListener('click', () => {
       if (todayMode) { exitTodayMode(); return; }
+      if (reserveMode) exitReserveMode();
       todayStatus.style.display = 'block';
       todayStatus.textContent = '오늘의 메뉴를 불러오는 중...';
       fetch(API_URL + '/api/menu/' + todayISO(), { cache: 'no-store' })
@@ -4764,8 +4770,18 @@
         .catch(() => { todayStatus.textContent = '오늘의 메뉴를 불러오지 못했어요.'; });
     });
 
-    document.getElementById('reserveBtn').addEventListener('click', () => {
-      window.location.href = 'onban01.html?goto=reserve';
+    function exitReserveMode() {
+      reserveMode = false;
+      reserveBtn.classList.remove('active');
+      todayStatus.style.display = 'none';
+    }
+    reserveBtn.addEventListener('click', () => {
+      if (reserveMode) { exitReserveMode(); return; }
+      if (todayMode) exitTodayMode();
+      reserveMode = true;
+      reserveBtn.classList.add('active');
+      todayStatus.style.display = 'block';
+      todayStatus.textContent = '메뉴를 클릭하면 해당 메뉴로 예약 주문 신청하기 팝업이 바로 열립니다.';
     });
   </script>
 </body>

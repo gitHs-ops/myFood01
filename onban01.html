@@ -820,7 +820,7 @@ function showSoldOutModal(soldOut){
     +'</div>';
   document.body.appendChild(overlay);
 }
-function goPage(name){
+function goPage(name,cb){
   // 주문내역에서 항목(수량·삭제)을 편집한 뒤 재주문 미처리로 이탈 시 경고 + 원복
   var onHistory=document.getElementById('page-history').classList.contains('active');
   if(onHistory&&name!=='history'&&name!=='payment'&&_hasPendingItemEdits()){
@@ -836,8 +836,8 @@ function goPage(name){
   if(name==='order')renderOrder();
   if(name==='payment')renderPayment();
   if(name==='history')renderHistory();
-  if(name==='reserve'){loadReserveMenus();_renderReserveBar();}
-  else{var rsb=document.getElementById('reserveSubmitBar');if(rsb)rsb.remove();}
+  if(name==='reserve'){loadReserveMenus(cb);_renderReserveBar();}
+  else{var rsb=document.getElementById('reserveSubmitBar');if(rsb)rsb.remove();if(cb)cb();}
   // list 이탈 시 플로팅 버튼 숨김
   if(name!=='list'){
     var fw=document.getElementById('floatCartWrap');
@@ -2548,6 +2548,15 @@ function fmtDate(iso){
   var p=(iso||'').split('-');
   return p.length>=3?(p[1]+'/'+p[2]):(iso||'');
 }
+// 갤러리 등 외부 페이지에서 특정 메뉴로 바로 예약 신청 팝업을 열 때 사용 — "예약 주문 신청하기"와 동일 기능 재사용
+function _selectReserveItemByName(name){
+  var m=_reserveAllMenus.find(function(x){return x.name===name;});
+  if(!m)return;
+  _reserveSel[m.menuId]={id:m.menuId,name:m.name,cat:m.cat,price:Number(m.price)||0,qty:1};
+  _renderReserveList();
+  _renderReserveBar();
+  openReservePopup();
+}
 function _selectReserveEvent(){
   if(!_reserveEventData)return;
   _reserveSel['EVENT']={id:'EVENT',name:_reserveEventData.name,cat:'이벤트',price:Number(_reserveEventData.price)||0,qty:1};
@@ -2555,9 +2564,9 @@ function _selectReserveEvent(){
   _renderReserveBar();
   openReservePopup();
 }
-function loadReserveMenus(){
+function loadReserveMenus(cb){
   loadReserveEvent();
-  if(_reserveLoaded)return;
+  if(_reserveLoaded){if(cb)cb();return;}
   document.getElementById('reserveMenuList').innerHTML=
     '<div style="text-align:center;padding:40px;color:#aaa;font-size:13px;">마스터 메뉴 불러오는 중...</div>';
   fetch(API_URL+'/api/menu/all',{cache:'no-store'})
@@ -2567,6 +2576,7 @@ function loadReserveMenus(){
       _reserveAllMenus=d.menus;
       _reserveLoaded=true;
       renderReservePage();
+      if(cb)cb();
     } else {
       document.getElementById('reserveMenuList').innerHTML=
         '<div style="text-align:center;padding:40px;color:#e05;font-size:13px;">메뉴를 불러오지 못했어요.</div>';
@@ -2829,13 +2839,19 @@ window.onload=function(){
   var _urlParams=new URLSearchParams(window.location.search);
   var _openMenuName=_urlParams.get('openMenu');
   var _gotoPage=_urlParams.get('goto');
+  var _openReserveName=_urlParams.get('openReserve');
   loadMenus(false,function(){
     if(_openMenuName){
       var m=allMenus.find(function(x){return x.name===_openMenuName;});
       if(m)showMenuModal(m.id);
     }
   });
-  if(_gotoPage)goPage(_gotoPage);   // 예) 갤러리 '예약주문' 버튼 → 예약주문 페이지로 바로 이동(기존 기능 그대로 재사용)
+  if(_openReserveName){
+    // 갤러리 '예약주문' 모드에서 항목 클릭 → 예약주문 페이지 진입과 동시에 '예약 주문 신청하기' 팝업까지 자동 오픈
+    goPage('reserve',function(){_selectReserveItemByName(_openReserveName);});
+  }else if(_gotoPage){
+    goPage(_gotoPage);   // 예) 갤러리 '예약주문' 버튼 → 예약주문 페이지로 바로 이동(기존 기능 그대로 재사용)
+  }
   loadReserveEvent();
   _startMenuAutoRefresh();
   _startSSE();
