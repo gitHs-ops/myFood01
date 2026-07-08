@@ -2427,7 +2427,7 @@ function _toggleReserveAddrListBtn(){
 // ══ 예약주문 ══
 var _reserveEventData=null;
 function loadReserveEvent(){
-  fetch(API_URL+'/api/settings',{cache:'no-store'})
+  return fetch(API_URL+'/api/settings',{cache:'no-store'})
   .then(function(r){return r.json();})
   .then(function(d){
     var ev=(d&&d.success&&d.data&&d.data.reserveEvent)||null;
@@ -2751,6 +2751,7 @@ window.onload=function(){
   var _openMenuName=_urlParams.get('openMenu');
   var _gotoPage=_urlParams.get('goto');
   var _openReserveName=_urlParams.get('openReserve');
+  var _openReserveEvent=_urlParams.get('openReserveEvent');
   var _refDecoded=document.referrer;
   try{_refDecoded=decodeURIComponent(_refDecoded);}catch(e){}
   if(/온반_메뉴_이미지갤러리\.html/.test(_refDecoded)){
@@ -2771,7 +2772,10 @@ window.onload=function(){
       }
     }
   });
-  if(_openReserveName){
+  if(_openReserveEvent){
+    // 갤러리 예약 이벤트 카드 클릭 → 예약주문 페이지 진입과 동시에 이벤트 신청 팝업 자동 오픈
+    goPage('reserve',function(){loadReserveEvent().then(function(){_selectReserveEvent();});});
+  }else if(_openReserveName){
     // 갤러리 '예약주문' 모드에서 항목 클릭 → 예약주문 페이지 진입과 동시에 '예약 주문 신청하기' 팝업까지 자동 오픈
     goPage('reserve',function(){_selectReserveItemByName(_openReserveName);});
   }else if(_gotoPage){
