@@ -60,12 +60,12 @@
     <h1>🍱 온반(Onban) 메뉴 이미지 갤러리</h1>
     <div id="todayStatus" class="today-status" style="display:none;"></div>
     <div class="search-box">
+      <button class="stat-badge today-btn" id="todayBtn">📅 오늘의 메뉴</button>
+      <button class="stat-badge today-btn" id="reserveBtn">📝 예약주문</button>
       <div class="search-input-wrap">
         <input type="text" id="searchInput" placeholder="메뉴명 검색...">
         <span class="search-icon">🔍</span>
       </div>
-      <button class="stat-badge today-btn" id="todayBtn">📅 오늘의 메뉴</button>
-      <button class="stat-badge today-btn" id="reserveBtn">📝 예약주문</button>
     </div>
     <div class="cat-filter" id="catFilter">
       <button class="cat-btn active" data-cat="전체">전체</button>
@@ -4643,11 +4643,12 @@
     function applyFilter() {
       const q = input.value.trim().toLowerCase();
       cards.forEach(c => {
-        const name = c.querySelector('.name').textContent.toLowerCase();
+        const name = c.querySelector('.name').textContent;
         const cat = c.querySelector('.cat').textContent;
-        const matchName = name.includes(q);
+        const matchName = name.toLowerCase().includes(q);
         const matchCat = activeCat === '전체' || cat === activeCat;
-        c.style.display = (matchName && matchCat) ? '' : 'none';
+        const matchToday = !todayMode || (todayMap && todayMap.has(name));
+        c.style.display = (matchName && matchCat && matchToday) ? '' : 'none';
       });
     }
     input.addEventListener('input', applyFilter);
@@ -4715,8 +4716,7 @@
         const info = todayMap.get(name);
         const oldBadge = c.querySelector('.soldout-badge');
         if (oldBadge) oldBadge.remove();
-        if (!info) { c.style.display = 'none'; return; }
-        c.style.display = '';
+        if (!info) { c.style.opacity = ''; return; }
         c.querySelector('.price').textContent = info.price + '천원';
         if (info.stock <= 0) {
           const b = document.createElement('span');
@@ -4728,6 +4728,7 @@
           c.style.opacity = '';
         }
       });
+      applyFilter();
     }
 
     function exitTodayMode() {
@@ -4763,7 +4764,6 @@
           d.menus.forEach(m => todayMap.set(m.name, { price: Number(m.price) || 0, stock: Number(m.stock) || 0, cat: m.cat || '기타' }));
           todayMode = true;
           todayBtn.classList.add('active');
-          catFilter.style.display = 'none';
           todayStatus.textContent = '오늘 판매 중인 메뉴 ' + todayMap.size + '개 — 메뉴를 클릭하면 주문 페이지로 이동합니다.';
           applyTodayView();
         })
@@ -4780,9 +4780,10 @@
       if (todayMode) exitTodayMode();
       reserveMode = true;
       reserveBtn.classList.add('active');
-      todayStatus.style.display = 'block';
-      todayStatus.textContent = '메뉴를 클릭하면 해당 메뉴로 예약 주문 신청하기 팝업이 바로 열립니다.';
     });
+
+    // 첫 화면 = 로딩이 빠른 '오늘의 메뉴' 모드로 바로 시작
+    todayBtn.click();
   </script>
 </body>
 </html>
