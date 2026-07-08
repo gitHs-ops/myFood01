@@ -2841,7 +2841,9 @@ window.onload=function(){
   var _openMenuName=_urlParams.get('openMenu');
   var _gotoPage=_urlParams.get('goto');
   var _openReserveName=_urlParams.get('openReserve');
-  if(/온반_메뉴_이미지갤러리\.html/.test(document.referrer)){
+  var _refDecoded=document.referrer;
+  try{_refDecoded=decodeURIComponent(_refDecoded);}catch(e){}
+  if(/온반_메뉴_이미지갤러리\.html/.test(_refDecoded)){
     var _logoEl=document.getElementById('topBarLogo');
     _logoEl.classList.add('from-gallery');
     _logoEl.onclick=function(){window.location.href='온반_메뉴_이미지갤러리.html';};
