@@ -14,6 +14,11 @@
   header p { margin-top:8px; font-size:14px; opacity:0.92; }
   .stats { display:inline-flex; gap:10px; margin-top:14px; flex-wrap:wrap; justify-content:center; }
   .stat-badge { background:rgba(255,255,255,0.18); border:1px solid rgba(255,255,255,0.4); border-radius:20px; padding:6px 16px; font-size:13px; color:#fff; backdrop-filter:blur(4px); }
+  .today-btn { cursor:pointer; font-family:'Pretendard',sans-serif; font-weight:700; transition:background .15s; }
+  .today-btn:hover { background:rgba(255,255,255,0.3); }
+  .today-btn.active { background:#fff; color:#086266; border-color:#fff; }
+  .today-status { max-width:600px; margin:12px auto 0; text-align:center; color:#fff; font-size:13px; opacity:0.9; }
+  .soldout-badge { position:absolute; top:8px; left:8px; background:rgba(0,0,0,0.65); color:#fff; font-size:11px; font-weight:700; padding:3px 8px; border-radius:8px; }
   .search-box { max-width:400px; margin:18px auto 0; }
   .search-box input { width:100%; padding:10px 16px; border-radius:20px; border:none; font-family:'Pretendard',sans-serif; font-size:14px; outline:none; }
   .cat-filter { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-top:14px; }
@@ -23,16 +28,28 @@
   .grid { max-width:1200px; margin:0 auto; display:grid; grid-template-columns:repeat(5,1fr); gap:18px; }
   .card { background:#fff; border-radius:14px; overflow:hidden; box-shadow:0 4px 14px rgba(0,0,0,0.12); transition:transform .18s ease, box-shadow .18s ease; }
   .card:hover { transform:translateY(-4px); box-shadow:0 10px 22px rgba(0,0,0,0.18); }
-  .thumb { width:100%; aspect-ratio:1/1; background:#f2f2f2; overflow:hidden; }
+  .thumb { position:relative; width:100%; aspect-ratio:1/1; background:#f2f2f2; overflow:hidden; }
   .thumb img { width:100%; height:100%; object-fit:cover; display:block; }
   .info { padding:12px 14px 14px; }
   .name { font-size:14px; font-weight:700; color:#0b3c3e; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .meta { display:flex; justify-content:space-between; align-items:center; margin-top:6px; font-size:12px; }
   .cat { background:#eef7f6; color:#086266; border-radius:8px; padding:2px 8px; font-weight:600; }
   .price { color:#b8860b; font-weight:700; }
+  .card { cursor:pointer; }
   @media (max-width:980px) { .grid { grid-template-columns:repeat(3,1fr); } }
   @media (max-width:600px) { .grid { grid-template-columns:repeat(2,1fr); } header h1 { font-size:22px; } }
   footer { max-width:1200px; margin:32px auto 0; text-align:center; color:#fff; opacity:0.85; font-size:12px; }
+  .modal-overlay { display:none; position:fixed; inset:0; background:rgba(8,20,20,0.75); z-index:999; align-items:center; justify-content:center; padding:24px; }
+  .modal-overlay.open { display:flex; }
+  .modal-box { background:#fff; border-radius:16px; max-width:420px; width:100%; overflow:hidden; box-shadow:0 12px 40px rgba(0,0,0,0.35); position:relative; }
+  .modal-close { position:absolute; top:10px; right:10px; width:32px; height:32px; border-radius:50%; background:rgba(0,0,0,0.45); color:#fff; border:none; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:1; }
+  .modal-img { width:100%; aspect-ratio:1/1; background:#f2f2f2; }
+  .modal-img img { width:100%; height:100%; object-fit:cover; display:block; }
+  .modal-info { padding:18px 20px 22px; }
+  .modal-name { font-size:19px; font-weight:700; color:#0b3c3e; margin-bottom:8px; }
+  .modal-meta { display:flex; align-items:center; gap:10px; }
+  .modal-meta .cat { font-size:13px; }
+  .modal-meta .price { font-size:17px; }
 </style>
 </head>
 <body>
@@ -41,7 +58,9 @@
     <div class="stats">
       <span class="stat-badge">총 649개 메뉴</span>
       <span class="stat-badge">5열 그리드</span>
+      <button class="stat-badge today-btn" id="todayBtn">📅 오늘의 메뉴</button>
     </div>
+    <div id="todayStatus" class="today-status" style="display:none;"></div>
     <div class="search-box"><input type="text" id="searchInput" placeholder="메뉴명 검색..."></div>
     <div class="cat-filter" id="catFilter">
       <button class="cat-btn active" data-cat="전체">전체</button>
@@ -4599,6 +4618,18 @@
       </div>
   </div>
   <footer>감성소프트웨어 &middot; Onban Menu Gallery</footer>
+
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal-box">
+      <button class="modal-close" id="modalClose">&times;</button>
+      <div class="modal-img"><img id="modalImg" src="" alt=""></div>
+      <div class="modal-info">
+        <div class="modal-name" id="modalName"></div>
+        <div class="modal-meta"><span class="cat" id="modalCat"></span><span class="price" id="modalPrice"></span></div>
+      </div>
+    </div>
+  </div>
+
   <script>
     const input = document.getElementById('searchInput');
     const cards = document.querySelectorAll('.card');
@@ -4622,6 +4653,110 @@
         activeCat = btn.dataset.cat;
         applyFilter();
       });
+    });
+
+    const modalOverlay = document.getElementById('modalOverlay');
+    const modalImg = document.getElementById('modalImg');
+    const modalName = document.getElementById('modalName');
+    const modalCat = document.getElementById('modalCat');
+    const modalPrice = document.getElementById('modalPrice');
+    function openModal(card) {
+      const img = card.querySelector('.thumb img');
+      modalImg.src = img.src;
+      modalImg.alt = img.alt;
+      modalName.textContent = card.querySelector('.name').textContent;
+      modalCat.textContent = card.querySelector('.cat').textContent;
+      modalPrice.textContent = card.querySelector('.price').textContent;
+      modalOverlay.classList.add('open');
+    }
+    function closeModal() { modalOverlay.classList.remove('open'); }
+    document.getElementById('modalClose').addEventListener('click', closeModal);
+    modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeModal(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+
+    // ── 오늘의 메뉴 모드 ──
+    const API_URL = 'https://myfood01-production.up.railway.app';
+    const todayBtn = document.getElementById('todayBtn');
+    const todayStatus = document.getElementById('todayStatus');
+    const catFilter = document.getElementById('catFilter');
+    let todayMode = false;
+    let todayMap = null; // name -> {price, stock, cat}
+
+    function todayISO() {
+      const kst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+      return kst.toISOString().slice(0, 10);
+    }
+
+    function cardClick(card) {
+      const name = card.querySelector('.name').textContent;
+      if (todayMode) {
+        const info = todayMap && todayMap.get(name);
+        if (info && info.stock <= 0) return; // 품절 클릭 무시
+        window.location.href = 'onban01.html?openMenu=' + encodeURIComponent(name);
+      } else {
+        openModal(card);
+      }
+    }
+    cards.forEach(c => c.addEventListener('click', () => cardClick(c)));
+
+    function applyTodayView() {
+      cards.forEach(c => {
+        const name = c.querySelector('.name').textContent;
+        const info = todayMap.get(name);
+        const oldBadge = c.querySelector('.soldout-badge');
+        if (oldBadge) oldBadge.remove();
+        if (!info) { c.style.display = 'none'; return; }
+        c.style.display = '';
+        c.querySelector('.price').textContent = info.price + '천원';
+        if (info.stock <= 0) {
+          const b = document.createElement('span');
+          b.className = 'soldout-badge';
+          b.textContent = '품절';
+          c.querySelector('.thumb').appendChild(b);
+          c.style.opacity = '0.55';
+        } else {
+          c.style.opacity = '';
+        }
+      });
+    }
+
+    function exitTodayMode() {
+      todayMode = false;
+      todayBtn.classList.remove('active');
+      todayStatus.style.display = 'none';
+      catFilter.style.display = '';
+      input.value = '';
+      cards.forEach(c => {
+        c.style.opacity = '';
+        const b = c.querySelector('.soldout-badge');
+        if (b) b.remove();
+      });
+      activeCat = '전체';
+      catBtns.forEach(b => b.classList.remove('active'));
+      catBtns[0].classList.add('active');
+      applyFilter();
+    }
+
+    todayBtn.addEventListener('click', () => {
+      if (todayMode) { exitTodayMode(); return; }
+      todayStatus.style.display = 'block';
+      todayStatus.textContent = '오늘의 메뉴를 불러오는 중...';
+      fetch(API_URL + '/api/menu/' + todayISO(), { cache: 'no-store' })
+        .then(r => r.json())
+        .then(d => {
+          if (!d.success || !Array.isArray(d.menus) || !d.menus.length) {
+            todayStatus.textContent = '오늘 등록된 메뉴가 없어요.';
+            return;
+          }
+          todayMap = new Map();
+          d.menus.forEach(m => todayMap.set(m.name, { price: Number(m.price) || 0, stock: Number(m.stock) || 0, cat: m.cat || '기타' }));
+          todayMode = true;
+          todayBtn.classList.add('active');
+          catFilter.style.display = 'none';
+          todayStatus.textContent = '오늘 판매 중인 메뉴 ' + todayMap.size + '개 — 메뉴를 클릭하면 주문 페이지로 이동합니다.';
+          applyTodayView();
+        })
+        .catch(() => { todayStatus.textContent = '오늘의 메뉴를 불러오지 못했어요.'; });
     });
   </script>
 </body>
