@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>온반 메뉴 이미지 갤러리</title>
+<title>이미지 갤러리</title>
 <style>
   @font-face { font-family:'Pretendard'; src:url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/woff2/Pretendard-Regular.woff2') format('woff2'); font-weight:400; }
   @font-face { font-family:'Pretendard'; src:url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/woff2/Pretendard-Bold.woff2') format('woff2'); font-weight:700; }
@@ -30,7 +30,7 @@
   .search-icon { position:absolute; right:14px; top:50%; transform:translateY(-50%); font-size:15px; opacity:0.55; pointer-events:none; }
   .search-box .today-btn { flex-shrink:0; white-space:nowrap; }
   .search-all-label { font-size:12px; color:rgba(255,255,255,0.85); white-space:nowrap; flex-shrink:0; }
-  .cat-filter { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-top:14px; }
+  .cat-filter { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; align-items:center; margin-top:14px; }
   .cat-btn { background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.4); border-radius:20px; padding:6px 16px; font-size:13px; font-weight:600; color:#fff; cursor:pointer; font-family:'Pretendard',sans-serif; transition:background .15s; }
   .cat-btn:hover { background:rgba(255,255,255,0.28); }
   .cat-btn.active { background:#fff; color:#086266; border-color:#fff; }
@@ -66,7 +66,7 @@
     <div class="header-top">
       <div class="header-title">
         <img src="온반_로고.png" alt="온반" class="header-logo">
-        <h1>온반(Onban) 메뉴 이미지 갤러리</h1>
+        <h1>이미지 갤러리</h1>
       </div>
       <a href="onban01.html" class="header-list-link">📋 일일메뉴 목록으로 가기</a>
     </div>
@@ -74,11 +74,6 @@
     <div class="search-box">
       <button class="stat-badge today-btn" id="todayBtn">📅 오늘의 메뉴</button>
       <button class="stat-badge today-btn" id="reserveBtn">📝 예약주문</button>
-      <span class="search-all-label">전체 검색</span>
-      <div class="search-input-wrap">
-        <input type="text" id="searchInput" placeholder="메뉴명 검색...">
-        <span class="search-icon">🔍</span>
-      </div>
     </div>
     <div class="cat-filter" id="catFilter">
       <button class="cat-btn active" data-cat="전체">전체</button>
@@ -88,6 +83,11 @@
       <button class="cat-btn" data-cat="반찬">반찬</button>
       <button class="cat-btn" data-cat="김치">김치</button>
       <button class="cat-btn" data-cat="밀키트">밀키트</button>
+      <span class="search-all-label">전체 검색</span>
+      <div class="search-input-wrap">
+        <input type="text" id="searchInput" placeholder="메뉴명 검색...">
+        <span class="search-icon">🔍</span>
+      </div>
     </div>
   </header>
   <div class="grid" id="grid">
