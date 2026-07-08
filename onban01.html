@@ -359,7 +359,6 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 .hist-list{padding:0 14px;}
 .hist-li{display:flex;align-items:center;gap:10px;background:#fff;border-radius:14px;box-shadow:var(--shadow);padding:12px 14px;margin-bottom:10px;cursor:pointer;transition:transform .1s,box-shadow .15s;}
 .hist-li:active{transform:scale(.99);}
-.hist-li.editing{border:1.5px solid #E9A826;}
 .hist-li-main{flex:1;min-width:0;}
 .hist-li-top{display:flex;align-items:center;gap:5px;margin-bottom:5px;flex-wrap:wrap;}
 .hist-li-dt{font-size:11px;color:var(--light);}
@@ -367,7 +366,6 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 .hist-li-sum-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .hist-li-badge{font-size:10px;font-weight:700;border-radius:999px;padding:2px 7px;}
 .hist-li-badge.reorder{background:#e0d4f7;color:#5b21b6;}
-.hist-li-badge.edit{background:#fff3cd;color:#856404;}
 .hist-li-right{display:flex;align-items:center;gap:4px;flex-shrink:0;}
 .hist-li-total{font-size:14px;font-weight:800;color:var(--teal);}
 .hist-li-arrow{font-size:20px;color:#ccc;}
@@ -822,14 +820,6 @@ function showSoldOutModal(soldOut){
   document.body.appendChild(overlay);
 }
 function goPage(name,cb){
-  // 주문내역에서 항목(수량·삭제)을 편집한 뒤 재주문 미처리로 이탈 시 경고 + 원복
-  var onHistory=document.getElementById('page-history').classList.contains('active');
-  if(onHistory&&name!=='history'&&name!=='payment'&&_hasPendingItemEdits()){
-    if(!confirm('편집한 주문 항목이 있어요.\n\n재주문(다시 주문) 처리를 하지 않으면 삭제·수량 변경이 무시되고 원래 상태로 됩니다.\n그래도 이동하시겠어요?')){
-      return;   // 머무름
-    }
-    _revertPendingItemEdits();   // 이동 강행 시 항목 원복(물리적 반영 아님)
-  }
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
   document.getElementById('page-'+name).classList.add('active');
   window.scrollTo(0,0);
@@ -1914,14 +1904,13 @@ function _doRenderHistory(el){
     var total=itemsSum+deliveryFee;
     var summary=(o.items[0]?menuDisplayName(o.items[0].name,o.items[0].cat||_itemCat(o.items[0].name)):'')+(o.items.length>1?' 외 '+(o.items.length-1)+'건':'');
     var reorderBadge=o.isReorder?'<span class="hist-li-badge reorder">재주문</span>':'';
-    var editBadge=_pendingItemEdits[o.id]?'<span class="hist-li-badge edit">편집중</span>':'';
     var isReserveOrder=!!o.reserveDate;
     var reserveLabel=isReserveOrder?'<span style="color:#e53935;font-weight:700;font-size:11px;margin-left:4px;">예약주문 '+fmtDate(o.reserveDate)+'</span>':'';
     var rowEl=document.createElement('div');
-    rowEl.className='hist-li'+(_pendingItemEdits[o.id]?' editing':'');
+    rowEl.className='hist-li';
     rowEl.innerHTML=
       '<div class="hist-li-main">'
-        +'<div class="hist-li-top"><span class="hist-status '+(_ORDER_STATUS_CLS[o.status]||'pending')+'">'+(_ORDER_STATUS_MAP[o.status]||'대기중')+'</span>'+reorderBadge+editBadge+'<span class="hist-li-dt">'+fmtDT(o.date,o.time)+'</span>'+reserveLabel+'</div>'
+        +'<div class="hist-li-top"><span class="hist-status '+(_ORDER_STATUS_CLS[o.status]||'pending')+'">'+(_ORDER_STATUS_MAP[o.status]||'대기중')+'</span>'+reorderBadge+'<span class="hist-li-dt">'+fmtDT(o.date,o.time)+'</span>'+reserveLabel+'</div>'
         +'<div class="hist-li-sum"><span class="hist-li-sum-text">'+summary+'</span><span class="hist-li-arrow">›</span></div>'
         +(o.additionalRequest?'<div class="hist-li-addreq">💬 '+o.additionalRequest.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/[\n\r]+/g,'<br>')+'</div>':'')
         +(o.adminReply?'<div class="hist-li-reply">↩ '+o.adminReply.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/&lt;br&gt;/gi,'<br>').replace(/[\n\r]+/g,'<br>')+'</div>':'')
@@ -1970,7 +1959,7 @@ function _buildOrderCard(o){
       pr.id='histprice-'+o.id+'-'+key;
       pr.textContent=comma(item.price*item.qty)+'천원';
       row.appendChild(nm);
-      if(!isFinished){
+      if(o.status==='pending'){
         var qtyCtrl=document.createElement('div');
         qtyCtrl.className='hist-item-qty-ctrl';
         var qm=document.createElement('button'); qm.textContent='-';
@@ -2061,29 +2050,29 @@ function _buildOrderCard(o){
       btnCloseD.textContent='닫기';
       btnCloseD.onclick=function(){closeOrderDetail();};
       acts.appendChild(btnCloseD);
-    } else if(o.status!=='delivered'){
-      if(o.status==='pending'){
-        var btnOrderCancel=document.createElement('button');
-        btnOrderCancel.className='hist-btn-order-cancel';
-        btnOrderCancel.textContent='주문취소';
-        (function(oid){btnOrderCancel.onclick=function(){cancelHistOrder(oid);};})(o.id);
-        acts.appendChild(btnOrderCancel);
-      }
+    } else if(o.status==='pending'){
+      var btnOrderCancel=document.createElement('button');
+      btnOrderCancel.className='hist-btn-order-cancel';
+      btnOrderCancel.textContent='주문취소';
+      (function(oid){btnOrderCancel.onclick=function(){cancelHistOrder(oid);};})(o.id);
+      acts.appendChild(btnOrderCancel);
       var btnReorder=document.createElement('button');
       btnReorder.className='hist-btn-reorder';
-      btnReorder.id='btn-reorder-'+o.id;
       btnReorder.textContent='재주문';
-      if(!_pendingItemEdits[o.id]&&!_reorderActiveIds[o.id]){
-        btnReorder.disabled=true;
-        btnReorder.style.opacity='.45';
-      }
-      (function(ord){btnReorder.onclick=function(){reorder(ord);};})(o);
+      btnReorder.disabled=true;
+      btnReorder.style.opacity='.45';
       acts.appendChild(btnReorder);
       var btnCloseR=document.createElement('button');
       btnCloseR.className='hist-btn-cancel';
       btnCloseR.textContent='닫기';
       btnCloseR.onclick=function(){closeOrderDetail();};
       acts.appendChild(btnCloseR);
+    } else if(o.status==='confirmed'){
+      var btnCloseC=document.createElement('button');
+      btnCloseC.className='hist-btn-cancel';
+      btnCloseC.textContent='닫기';
+      btnCloseC.onclick=function(){closeOrderDetail();};
+      acts.appendChild(btnCloseC);
     }
     card.appendChild(acts);
   return card;
@@ -2103,20 +2092,8 @@ function openOrderDetail(id){
   modal.appendChild(closeBtn);
   modal.appendChild(_buildOrderCard(o));
   document.getElementById('orderDetailOverlay').classList.add('open');
-  // 편집된 주문이면 재주문 버튼 활성 상태 복원
-  Object.keys(_reorderActiveIds).forEach(function(rid){
-    var b=document.getElementById('btn-reorder-'+rid);
-    if(b){b.disabled=false;b.style.opacity='';}
-  });
 }
-// 팝업 닫기 — 미확정 항목편집 있으면 경고 후 원복
 function closeOrderDetail(){
-  if(_hasPendingItemEdits()){
-    if(!confirm('편집한 주문 항목이 있어요.\n\n재주문(다시 주문) 처리를 하지 않으면 삭제·수량 변경이 무시되고 원래 상태로 됩니다.\n그래도 닫으시겠어요?')){
-      return;
-    }
-    _revertPendingItemEdits();
-  }
   _closeOrderDetailUI();
   renderHistory();
 }
@@ -2143,6 +2120,9 @@ function _updateHistTotal(id){
   }
   var df=(!isPickup&&itemsSum>=20)?1:0;
   var total=itemsSum+df;
+  o.total=total;
+  o.deliveryFee=df;
+  localStorage.setItem('orders',JSON.stringify(ords));
   var cardEl=document.getElementById('histcard-'+id);
   if(cardEl)cardEl.dataset.deliveryFee=df;
   var feeEl=document.getElementById('histfee-'+id);
@@ -2156,7 +2136,6 @@ function histEditQty(orderId,itemName,d){
   if(!o)return;
   var item=o.items.find(function(i){return i.name===itemName;});
   if(!item)return;
-  _snapOrig(o);
   item.qty=Math.max(1,item.qty+d);
   var key=itemName.replace(/\s/g,'_');
   var qEl=document.getElementById('histqty-'+orderId+'-'+key);
@@ -2165,88 +2144,31 @@ function histEditQty(orderId,itemName,d){
   if(pEl)pEl.textContent=comma(item.price*item.qty)+'천원';
   localStorage.setItem('orders',JSON.stringify(orders));
   _updateHistTotal(orderId);
-  _updateReorderBtnState(orderId);
+  _saveOrderItems(orderId);
 }
-// 재주문 버튼 활성 상태 — SSE 재렌더(DOM 초기화)에도 유실되지 않도록 영구 보관
-var _reorderActiveIds={};
-// 원본(_snap)과 현재값을 비교해 실제 변경 여부 판단 — 되돌리면 다시 비활성화
-function _hasRealChange(ord){
-  if(!ord||!ord._snap)return false;
-  var snap=ord._snap;
-  if((ord.memo||'')!==(snap.memo||''))return true;
-  var a=ord.items||[],b=snap.items||[];
-  if(a.length!==b.length)return true;
-  for(var i=0;i<a.length;i++){
-    var bi=b.find(function(x){return x.name===a[i].name;});
-    if(!bi||bi.qty!==a[i].qty)return true;
-  }
-  return false;
-}
-function _updateReorderBtnState(id){
-  var orders=JSON.parse(localStorage.getItem('orders')||'[]');
-  var ord=orders.find(function(o){return o.id===id;});
-  var changed=_hasRealChange(ord);
-  if(changed){_reorderActiveIds[id]=true;_pendingItemEdits[id]=true;}
-  else{delete _reorderActiveIds[id];delete _pendingItemEdits[id];}
-  var btn=document.getElementById('btn-reorder-'+id);
-  if(btn){btn.disabled=!changed;btn.style.opacity=changed?'':'.45';}
-}
-// 주문내역 항목(수량·삭제) 편집 — 재주문 처리 전까지는 미확정(물리적 반영 아님)
-var _pendingItemEdits={};
 var _detailOrderId=null;
-function _hasPendingItemEdits(){return _detailOrderId?!!_pendingItemEdits[_detailOrderId]:Object.keys(_pendingItemEdits).length>0;}
-// 미확정 항목편집을 원본(_snap.items)으로 되돌림 (재주문 안 하고 이탈/새로고침 시)
-function _revertPendingItemEdits(){
+// 수량/삭제 편집 결과를 재주문 확정 절차 없이 즉시 서버 DB에 반영
+function _saveOrderItems(id){
   var orders=JSON.parse(localStorage.getItem('orders')||'[]');
-  var changed=false;
-  orders.forEach(function(o){
-    if(_pendingItemEdits[o.id]&&o._snap&&o._snap.items){
-      o.items=o._snap.items;   // 항목만 원복(메모·요청은 서버 반영분 유지)
-      delete o._snap;
-      delete _reorderActiveIds[o.id];
-      changed=true;
-    }
-  });
-  if(changed)localStorage.setItem('orders',JSON.stringify(orders));
-  _pendingItemEdits={};
-}
-// 새로고침/재진입 시 직전 세션의 미확정 항목편집을 모두 원복
-function _revertStaleItemEdits(){
-  var orders=JSON.parse(localStorage.getItem('orders')||'[]');
-  var changed=false;
-  orders.forEach(function(o){
-    if(o._snap&&o._snap.items){
-      o.items=o._snap.items;
-      delete o._snap;
-      changed=true;
-    }
-  });
-  if(changed)localStorage.setItem('orders',JSON.stringify(orders));
-  _pendingItemEdits={};
-}
-// 편집 시작 시 원본 값 1회 스냅샷 — 재주문 시 원본을 원래값으로 복원하기 위함
-function _snapOrig(ord){
-  if(ord&&!ord._snap){
-    ord._snap={
-      items:ord.items.map(function(i){return {menuId:(i.menuId!=null?i.menuId:null),name:i.name,qty:i.qty,price:i.price};}),
-      memo:ord.memo||'',
-      additionalRequest:ord.additionalRequest||''
-    };
-  }
+  var o=orders.find(function(o){return o.id===id;});
+  if(!o)return;
+  fetch(API_URL+'/api/orders/'+encodeURIComponent(id)+'/items',{
+    method:'PUT',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({items:o.items,total:o.total,memo:o.memo||''})
+  }).catch(function(){});
 }
 function histDelItem(orderId,itemName){
   var orders=JSON.parse(localStorage.getItem('orders')||'[]');
   var o=orders.find(function(o){return o.id===orderId;});
   if(!o)return;
   if(o.items.length<=1){showToast('최소 1개 항목이 필요합니다.');return;}
-  _snapOrig(o);
   o.items=o.items.filter(function(i){return i.name!==itemName;});
   var key=itemName.replace(/\s/g,'_');
   var row=document.getElementById('histrow-'+orderId+'-'+key);
   if(row)row.remove();
   localStorage.setItem('orders',JSON.stringify(orders));
   _updateHistTotal(orderId);
-  _updateReorderBtnState(orderId);
+  _saveOrderItems(orderId);
 }
 /* ── 주문 내역 배송방법/추가요청 편집 ── */
 function _histMemoHtml(id,text){
@@ -2306,12 +2228,10 @@ function histSaveMemo(id){
   if(text!=='매장픽업'&&itemsTotal<20){
     showToast('⚠️ 2만원 미만은 매장픽업만 가능해요.');return;
   }
-  _snapOrig(ord);
   ord.memo=text;
   localStorage.setItem('orders',JSON.stringify(ords));
   document.getElementById('histmemo-'+id).innerHTML=_histMemoHtml(id,text);
   _updateHistTotal(id);
-  _updateReorderBtnState(id);
   fetch(API_URL+'/api/orders/'+encodeURIComponent(id)+'/memo',{
     method:'PUT',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({memo:text})
@@ -2339,7 +2259,7 @@ function histSaveExtra(id){
   var text=ta?ta.value.trim():'';
   var ords=JSON.parse(localStorage.getItem('orders')||'[]');
   var ord=ords.find(function(o){return o.id===id;});
-  if(ord){_snapOrig(ord);ord.additionalRequest=text;localStorage.setItem('orders',JSON.stringify(ords));}
+  if(ord){ord.additionalRequest=text;localStorage.setItem('orders',JSON.stringify(ords));}
   document.getElementById('histextra-'+id).innerHTML=_histExtraHtml(id,text);
   fetch(API_URL+'/api/orders/'+encodeURIComponent(id)+'/request',{
     method:'PUT',headers:{'Content-Type':'application/json'},
@@ -2400,20 +2320,11 @@ function reorder(order){
   // 기존 주문 취소 처리 (원래 상태 기억 — 재고 부족 시 롤백용)
   var orig=orders.find(function(o){return o.id===order.id;});
   var origStatus=orig?orig.status:'pending';
-  var origSnap=orig?orig._snap:null;
   if(orig){
-    // 편집 전 원본값으로 되돌린 뒤 취소 처리 (취소된 주문은 최초 주문 내용 유지)
-    if(origSnap){
-      orig.items=origSnap.items;
-      orig.memo=origSnap.memo;
-      orig.additionalRequest=origSnap.additionalRequest;
-      delete orig._snap;
-    }
     orig.status='cancelled';
   }
   orders.unshift(newOrder);
   localStorage.setItem('orders',JSON.stringify(orders));
-  delete _pendingItemEdits[order.id];   // 재주문으로 편집 확정 → 미확정 해제
 
   // 취소 → 신규 주문 순서 보장 (재고: 복원 후 차감)
   fetch(API_URL+'/api/orders/'+encodeURIComponent(order.id)+'/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'cancelled'})})
@@ -2835,7 +2746,6 @@ function submitReserveOrder(){
 }
 
 window.onload=function(){
-  _revertStaleItemEdits();   // 직전 세션의 재주문 미처리 항목편집 원복(물리적 반영 방지)
   // 이미지 갤러리 등 외부 페이지에서 특정 메뉴 상세를 바로 열도록 딥링크 지원
   var _urlParams=new URLSearchParams(window.location.search);
   var _openMenuName=_urlParams.get('openMenu');

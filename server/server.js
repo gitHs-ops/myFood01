@@ -596,6 +596,20 @@ app.put('/api/orders/:id/status', async (req, res) => {
   } catch(e) { err(res, e.message); }
 });
 
+// 주문 항목(수량·삭제) 저장 (PUT /api/orders/:id/items) — 대기중 주문 직접 수정
+app.put('/api/orders/:id/items', async (req, res) => {
+  try {
+    const { items, total, memo } = req.body;
+    if (memo !== undefined) {
+      await pool.execute('UPDATE orders SET items=?, total=?, memo=? WHERE id=?', [JSON.stringify(items||[]), total||0, memo||'', req.params.id]);
+    } else {
+      await pool.execute('UPDATE orders SET items=?, total=? WHERE id=?', [JSON.stringify(items||[]), total||0, req.params.id]);
+    }
+    broadcast('order_items', { orderId: req.params.id });
+    ok(res);
+  } catch(e) { err(res, e.message); }
+});
+
 // 추가요청 저장 (PUT /api/orders/:id/request)
 app.put('/api/orders/:id/request', async (req, res) => {
   try {
