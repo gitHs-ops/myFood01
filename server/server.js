@@ -596,17 +596,79 @@ app.put('/api/orders/:id/status', async (req, res) => {
   } catch(e) { err(res, e.message); }
 });
 
-// 주문 항목(수량·삭제) 저장 (PUT /api/orders/:id/items) — 대기중 주문 직접 수정
+// 주문 항목(수량·삭제) 저장 (PUT /api/orders/:id/items) — 대기중 주문만 직접 수정, 재고 검증 후 합계는 서버가 재계산
 app.put('/api/orders/:id/items', async (req, res) => {
   try {
-    const { items, total, memo } = req.body;
-    if (memo !== undefined) {
-      await pool.execute('UPDATE orders SET items=?, total=?, memo=? WHERE id=?', [JSON.stringify(items||[]), total||0, memo||'', req.params.id]);
-    } else {
-      await pool.execute('UPDATE orders SET items=?, total=? WHERE id=?', [JSON.stringify(items||[]), total||0, req.params.id]);
-    }
-    broadcast('order_items', { orderId: req.params.id });
-    ok(res);
+    const { items, memo } = req.body;
+    if (!Array.isArray(items) || !items.length) return err(res, '항목 없음', 400);
+
+    const conn = await pool.getConnection();
+    await conn.beginTransaction();
+    try {
+      const [rows] = await conn.execute(
+        'SELECT status, date, items, memo, reserve_date FROM orders WHERE id=? FOR UPDATE', [req.params.id]
+      );
+      if (!rows.length) { await conn.rollback(); conn.release(); return err(res, '주문 없음', 404); }
+      if (rows[0].status !== 'pending') { await conn.rollback(); conn.release(); return err(res, '대기중 주문만 수정할 수 있어요.', 409); }
+
+      const orderDate  = toKSTDateStr(rows[0].date) || rows[0].date;
+      const oldItems   = typeof rows[0].items === 'string' ? JSON.parse(rows[0].items) : (rows[0].items || []);
+      const isReserve  = !!rows[0].reserve_date;
+      const findOld = item => oldItems.find(i => item.menuId != null ? i.menuId === item.menuId : i.name === item.name);
+
+      if (!isReserve) {
+        // 재고 확인 (기존 수량 대비 증가분만, FOR UPDATE — 동시 주문 직렬화)
+        const soldOut = [];
+        for (const item of items) {
+          const delta = (item.qty || 1) - (findOld(item) ? (findOld(item).qty || 0) : 0);
+          if (delta <= 0) continue;
+          const byId = item.menuId != null;
+          const [stockRows] = await conn.execute(
+            byId ? 'SELECT stock FROM daily_menus WHERE date=? AND menu_id=? FOR UPDATE'
+                 : 'SELECT stock FROM daily_menus WHERE date=? AND name=? FOR UPDATE',
+            [orderDate, byId ? item.menuId : item.name]
+          );
+          const stock = stockRows.length ? stockRows[0].stock : 0;
+          if (stock < delta) soldOut.push({ name: item.name, available: stock });
+        }
+        if (soldOut.length) { await conn.rollback(); conn.release(); return res.json({ success: false, soldOut }); }
+
+        // 증가/감소분 재고 반영
+        for (const item of items) {
+          const delta = (item.qty || 1) - (findOld(item) ? (findOld(item).qty || 0) : 0);
+          if (delta === 0) continue;
+          const byId = item.menuId != null;
+          await conn.execute(
+            byId ? 'UPDATE daily_menus SET stock = GREATEST(stock - ?, 0) WHERE date=? AND menu_id=?'
+                 : 'UPDATE daily_menus SET stock = GREATEST(stock - ?, 0) WHERE date=? AND name=?',
+            [delta, orderDate, byId ? item.menuId : item.name]
+          );
+        }
+        // 완전히 삭제된 항목은 재고 복원
+        for (const oldItem of oldItems) {
+          const byId = oldItem.menuId != null;
+          const stillExists = items.some(i => byId ? i.menuId === oldItem.menuId : i.name === oldItem.name);
+          if (stillExists) continue;
+          await conn.execute(
+            byId ? 'UPDATE daily_menus SET stock = stock + ? WHERE date=? AND menu_id=?'
+                 : 'UPDATE daily_menus SET stock = stock + ? WHERE date=? AND name=?',
+            [oldItem.qty || 1, orderDate, byId ? oldItem.menuId : oldItem.name]
+          );
+        }
+      }
+
+      // 합계는 클라이언트 값을 신뢰하지 않고 서버가 재계산
+      const finalMemo   = memo !== undefined ? (memo || '') : (rows[0].memo || '');
+      const itemsSum    = items.reduce((s, i) => s + (i.price || 0) * (i.qty || 1), 0);
+      const isPickup    = finalMemo.startsWith('매장픽업');
+      const deliveryFee = (!isPickup && itemsSum >= 20) ? 1 : 0;
+      const total       = itemsSum + deliveryFee;
+
+      await conn.execute('UPDATE orders SET items=?, total=?, memo=? WHERE id=?', [JSON.stringify(items), total, finalMemo, req.params.id]);
+      await conn.commit(); conn.release();
+      broadcast('order_items', { orderId: req.params.id });
+      ok(res, { total });
+    } catch(e) { await conn.rollback(); conn.release(); throw e; }
   } catch(e) { err(res, e.message); }
 });
 
