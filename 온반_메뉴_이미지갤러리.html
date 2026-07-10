@@ -85,7 +85,7 @@
       <button class="cat-btn" data-cat="밀키트">밀키트</button>
     </div>
     <div class="search-line">
-      <span class="search-all-label">전체 검색</span>
+      <span class="search-all-label" id="searchAllLabel">전체 검색</span>
       <div class="search-input-wrap">
         <input type="text" id="searchInput" placeholder="메뉴명 검색...">
         <span class="search-icon">🔍</span>
@@ -4662,6 +4662,7 @@
     const catBtns = document.querySelectorAll('.cat-btn');
     let activeCat = '전체';
     function applyFilter() {
+      document.getElementById('searchAllLabel').textContent = activeCat + ' 검색';
       const q = input.value.trim().toLowerCase();
       let visibleCount = 0;
       cards.forEach(c => {
