@@ -728,6 +728,7 @@ function menuDisplayName(name,cat){
 }
 function _validUrl(u){return(u&&u!=='ERROR'&&u.startsWith('http'))?u:null;}
 function _isPexels(u){return!!(u&&u.startsWith('https://images.pexels.com/photos'));}
+function _isAiImg(u){return!!(u&&u.startsWith('https://d8j0ntlcm91z4.cloudfront.net'));}
 function _itemCat(name){var m=allMenus.find(function(x){return x.name===name;});return m?m.cat:'';}
 (function(){try{var s=localStorage.getItem('onban_categories');if(s){JSON.parse(s).forEach(function(c){CAT_COLOR[c.name]=c.color;});}}catch(e){}})();
 // 계좌 정보는 localStorage를 쓰지 않고 항상 구글시트에서 조회 (결제화면 진입 시 갱신).
@@ -1036,7 +1037,7 @@ function showMenuModal(id){
   var imgWrap=document.createElement('div');
   imgWrap.className='menu-modal-img';
   var _modalImg=_validUrl(m.imgUrl)||_validUrl(m.icon);
-  if(_modalImg){var img=document.createElement('img');img.src=_modalImg;img.alt=m.name;img.onerror=function(){imgWrap.textContent=getMenuEmoji(m.name,m.cat);};imgWrap.appendChild(img);if(_isPexels(_modalImg)){var _b=document.createElement('span');_b.className='tmp-img-badge';_b.textContent='임시 이미지';imgWrap.appendChild(_b);}}
+  if(_modalImg){var img=document.createElement('img');img.src=_modalImg;img.alt=m.name;img.onerror=function(){imgWrap.textContent=getMenuEmoji(m.name,m.cat);};imgWrap.appendChild(img);if(_isPexels(_modalImg)){var _b=document.createElement('span');_b.className='tmp-img-badge';_b.textContent='임시 이미지';imgWrap.appendChild(_b);}if(_isAiImg(_modalImg)){var _ab=document.createElement('span');_ab.className='tmp-img-badge';_ab.textContent='실제 제품과 다를 수 있습니다';imgWrap.appendChild(_ab);}}
   else{imgWrap.textContent=getMenuEmoji(m.name,m.cat);}
   // 닫기 버튼
   var closeBtn=document.createElement('button');

@@ -57,8 +57,9 @@
   .modal-overlay.open { display:flex; }
   .modal-box { background:#fff; border-radius:16px; max-width:420px; width:100%; overflow:hidden; box-shadow:0 12px 40px rgba(0,0,0,0.35); position:relative; }
   .modal-close { position:absolute; top:10px; right:10px; width:32px; height:32px; border-radius:50%; background:rgba(0,0,0,0.45); color:#fff; border:none; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:1; }
-  .modal-img { width:100%; aspect-ratio:1/1; background:#f2f2f2; }
+  .modal-img { position:relative; width:100%; aspect-ratio:1/1; background:#f2f2f2; }
   .modal-img img { width:100%; height:100%; object-fit:cover; display:block; }
+  .ai-img-badge { position:absolute; bottom:12px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,.82); color:#fff; font-size:12px; font-weight:800; padding:5px 14px; border-radius:20px; letter-spacing:.2px; pointer-events:none; box-shadow:0 2px 8px rgba(0,0,0,.4); white-space:nowrap; }
   .modal-info { padding:18px 20px 22px; }
   .modal-name { font-size:19px; font-weight:700; color:#0b3c3e; margin-bottom:8px; }
   .modal-meta { display:flex; align-items:center; gap:10px; }
@@ -8239,7 +8240,7 @@
   <div class="modal-overlay" id="modalOverlay">
     <div class="modal-box">
       <button class="modal-close" id="modalClose">&times;</button>
-      <div class="modal-img"><img id="modalImg" src="" alt=""></div>
+      <div class="modal-img"><img id="modalImg" src="" alt=""><span class="ai-img-badge" id="modalAiBadge" style="display:none;">실제 제품과 다를 수 있습니다</span></div>
       <div class="modal-info">
         <div class="modal-name" id="modalName"></div>
         <div class="modal-meta"><span class="cat" id="modalCat"></span><span class="price" id="modalPrice"></span></div>
@@ -8287,13 +8288,16 @@
 
     const modalOverlay = document.getElementById('modalOverlay');
     const modalImg = document.getElementById('modalImg');
+    const modalAiBadge = document.getElementById('modalAiBadge');
     const modalName = document.getElementById('modalName');
     const modalCat = document.getElementById('modalCat');
     const modalPrice = document.getElementById('modalPrice');
+    function isAiImg(src) { return !!(src && src.startsWith('https://d8j0ntlcm91z4.cloudfront.net')); }
     function openModal(card) {
       const img = card.querySelector('.thumb img');
       modalImg.src = img.src;
       modalImg.alt = img.alt;
+      modalAiBadge.style.display = isAiImg(img.src) ? '' : 'none';
       modalName.textContent = card.querySelector('.name').textContent;
       modalCat.textContent = card.querySelector('.cat').textContent;
       modalPrice.textContent = card.querySelector('.price').textContent;
