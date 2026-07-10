@@ -417,6 +417,7 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 .hist-btn-cancel{flex:1;padding:10px;border-radius:9px;font-size:13px;font-weight:700;border:1.5px solid #f5c0c0;background:#fff;color:var(--red);cursor:pointer;}
 .hist-btn-delete{flex:1;padding:10px;border-radius:9px;font-size:13px;font-weight:700;border:1.5px solid #f5a623;background:#fff;color:#f5a623;cursor:pointer;}
 .hist-btn-order-cancel{flex:1;padding:10px;border-radius:9px;font-size:13px;font-weight:700;border:1.5px solid #f5c0c0;background:#fff;color:var(--red);cursor:pointer;}
+.hist-btn-save{flex:1;padding:10px;border-radius:9px;font-size:13px;font-weight:700;border:none;background:var(--teal);color:#fff;cursor:pointer;}
 /* ── 추가 요청 ── */
 .extra-req-wrap{padding:0 14px 12px;}
 .extra-req-btn{width:100%;padding:9px;border-radius:9px;font-size:13px;font-weight:700;border:1.5px dashed #cde8e7;background:#f9fffe;color:#086266;cursor:pointer;font-family:inherit;transition:background .15s;}
@@ -2034,6 +2035,11 @@ function _buildOrderCard(o){
       btnOrderCancel.textContent='주문취소';
       (function(oid){btnOrderCancel.onclick=function(){cancelHistOrder(oid);};})(o.id);
       acts.appendChild(btnOrderCancel);
+      var btnSave=document.createElement('button');
+      btnSave.className='hist-btn-save';
+      btnSave.textContent='저장';
+      (function(oid){btnSave.onclick=function(){histSaveItemsNow(oid);};})(o.id);
+      acts.appendChild(btnSave);
       var btnCloseR=document.createElement('button');
       btnCloseR.className='hist-btn-cancel';
       btnCloseR.textContent='닫기';
@@ -2141,6 +2147,12 @@ function _doSaveOrderItems(id){
     _saveInFlight[id]=false;
     if(_saveQueued[id]){_saveQueued[id]=false;_doSaveOrderItems(id);}
   });
+}
+// '저장' 버튼 — 디바운스 대기 없이 바로 저장하고 확인 토스트 표시
+function histSaveItemsNow(id){
+  clearTimeout(_saveTimers[id]);
+  _doSaveOrderItems(id);
+  showToast('저장되었습니다.');
 }
 function histDelItem(orderId,itemName){
   var orders=JSON.parse(localStorage.getItem('orders')||'[]');
