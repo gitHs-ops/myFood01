@@ -291,13 +291,6 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
   white-space:nowrap;z-index:99999;
 }
 .toast.show{opacity:1;transform:translate(-50%,-50%);}
-.soldout-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:900;display:flex;align-items:center;justify-content:center;padding:24px;}
-.soldout-modal{background:#fff;border-radius:20px;width:100%;max-width:360px;padding:28px 24px 20px;text-align:center;animation:modalSlideUp .22s ease;}
-.soldout-icon{font-size:44px;margin-bottom:8px;}
-.soldout-title{font-size:17px;font-weight:800;color:#d32f2f;margin-bottom:14px;}
-.soldout-items{text-align:left;background:#fff5f5;border-radius:10px;padding:12px 14px;margin-bottom:18px;font-size:13px;color:#444;line-height:1.9;}
-.soldout-items span{font-weight:700;color:#d32f2f;}
-.soldout-ok{width:100%;padding:13px;background:#086266;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;}
 .no-menu{text-align:center;padding:60px 20px;color:var(--light);}
 .no-menu span{font-size:48px;display:block;margin-bottom:12px;}
 /* ── 주문자 정보 입력 ── */
@@ -422,7 +415,6 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 .hist-req-cancel{flex:1;padding:7px;border-radius:8px;border:1.5px solid #ddd;background:#fff;color:#666;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
 .hist-req-save{flex:1;padding:7px;border-radius:8px;border:none;background:#086266;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
 .hist-btn-cancel{flex:1;padding:10px;border-radius:9px;font-size:13px;font-weight:700;border:1.5px solid #f5c0c0;background:#fff;color:var(--red);cursor:pointer;}
-.hist-btn-reorder{flex:1;padding:10px;border-radius:9px;font-size:13px;font-weight:700;border:none;background:var(--teal);color:#fff;cursor:pointer;}
 .hist-btn-delete{flex:1;padding:10px;border-radius:9px;font-size:13px;font-weight:700;border:1.5px solid #f5a623;background:#fff;color:#f5a623;cursor:pointer;}
 .hist-btn-order-cancel{flex:1;padding:10px;border-radius:9px;font-size:13px;font-weight:700;border:1.5px solid #f5c0c0;background:#fff;color:var(--red);cursor:pointer;}
 /* ── 추가 요청 ── */
@@ -804,20 +796,6 @@ function showToast(msg){
   t.textContent=msg;t.classList.add('show');
   clearTimeout(t._t);
   t._t=setTimeout(function(){t.classList.remove('show');},2000);
-}
-function showSoldOutModal(soldOut){
-  var overlay=document.createElement('div');
-  overlay.className='soldout-overlay';
-  var rows=soldOut.map(function(s){
-    return '<div>• '+s.name+' — 남은 재고 <span>'+s.available+'개</span></div>';
-  }).join('');
-  overlay.innerHTML='<div class="soldout-modal">'
-    +'<div class="soldout-icon">🚫</div>'
-    +'<div class="soldout-title">재주문 실패 — 재고 부족</div>'
-    +'<div class="soldout-items">'+rows+'</div>'
-    +'<button class="soldout-ok" onclick="this.closest(\'.soldout-overlay\').remove()">확인</button>'
-    +'</div>';
-  document.body.appendChild(overlay);
 }
 function goPage(name,cb){
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
@@ -2056,12 +2034,6 @@ function _buildOrderCard(o){
       btnOrderCancel.textContent='주문취소';
       (function(oid){btnOrderCancel.onclick=function(){cancelHistOrder(oid);};})(o.id);
       acts.appendChild(btnOrderCancel);
-      var btnReorder=document.createElement('button');
-      btnReorder.className='hist-btn-reorder';
-      btnReorder.textContent='재주문';
-      btnReorder.disabled=true;
-      btnReorder.style.opacity='.45';
-      acts.appendChild(btnReorder);
       var btnCloseR=document.createElement('button');
       btnCloseR.className='hist-btn-cancel';
       btnCloseR.textContent='닫기';
@@ -2300,85 +2272,6 @@ function cancelHistOrder(orderId){
   showToast('주문이 취소됐습니다.');
   _closeOrderDetailUI();
   renderHistory();
-}
-function reorder(order){
-  // 항상 localStorage 최신 데이터 사용 (SSE 재렌더 후에도 정확한 수량·배송비 반영)
-  var fresh=JSON.parse(localStorage.getItem('orders')||'[]').find(function(o){return o.id===order.id;});
-  if(fresh){
-    order=fresh;
-  }
-  if(!confirm('이 내용으로 다시 주문하시겠어요?'))return;
-  var itemsTotal=order.items.reduce(function(s,i){return s+i.price*i.qty;},0);
-  var isPickup=(order.memo||'').startsWith('매장픽업');
-  if(!isPickup&&itemsTotal<20){
-    showToast('2만원 미만 주문은 매장 픽업만 가능해요. 재주문이 취소됩니다.');
-    return;
-  }
-  var deliveryFee=(!isPickup&&itemsTotal>=20)?1:0;
-  var total=itemsTotal+deliveryFee;
-  var isReserveOrigin=!!order.reserveDate;
-  var newOrder={
-    id:'ORD'+Date.now(),
-    date:toISO(new Date()),
-    time:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}),
-    name:order.name,phone:order.phone,addr:order.addr,
-    memo:order.memo||'',
-    items:order.items.map(function(i){return {menuId:(i.menuId!=null?i.menuId:null),name:i.name,qty:i.qty,price:i.price};}),
-    total:total,deliveryFee:deliveryFee,status:'pending',isReorder:true,
-    reserveDate:isReserveOrigin?(order.reserveDate||null):null,
-    additionalRequest:order.additionalRequest||'',
-    deviceId:getDeviceId()
-  };
-  var orders=JSON.parse(localStorage.getItem('orders')||'[]');
-  // 기존 주문 취소 처리 (원래 상태 기억 — 재고 부족 시 롤백용)
-  var orig=orders.find(function(o){return o.id===order.id;});
-  var origStatus=orig?orig.status:'pending';
-  if(orig){
-    orig.status='cancelled';
-  }
-  orders.unshift(newOrder);
-  localStorage.setItem('orders',JSON.stringify(orders));
-
-  // 취소 → 신규 주문 순서 보장 (재고: 복원 후 차감)
-  fetch(API_URL+'/api/orders/'+encodeURIComponent(order.id)+'/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'cancelled'})})
-    .catch(function(){})
-    .then(function(){
-      return fetch(API_URL+'/api/orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:newOrder})});
-    })
-    .then(function(r){return r.json();})
-    .then(function(d){
-      if(!d.success&&d.soldOut){
-        // 재고 부족 — localStorage에서 newOrder·원본 주문 모두 제거
-        // (renderHistory가 DB에서 원본 items 포함 복원)
-        var ords=JSON.parse(localStorage.getItem('orders')||'[]');
-        ords=ords.filter(function(o){return o.id!==newOrder.id&&o.id!==order.id;});
-        localStorage.setItem('orders',JSON.stringify(ords));
-        // 서버 원래 주문 상태 복원 → 완료 후 화면 갱신
-        fetch(API_URL+'/api/orders/'+encodeURIComponent(order.id)+'/status',{
-          method:'PUT',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({status:origStatus})
-        }).catch(function(){}).then(function(){
-          _closeOrderDetailUI();
-          renderHistory();
-          showSoldOutModal(d.soldOut);
-        });
-        return;
-      }
-      // 원본 주문 DB값 복원 — 편집 중 동기화된 memo·추가요청을 최초값으로 되돌림
-      if(origSnap){
-        fetch(API_URL+'/api/orders/'+encodeURIComponent(order.id)+'/memo',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({memo:origSnap.memo})}).catch(function(){});
-        fetch(API_URL+'/api/orders/'+encodeURIComponent(order.id)+'/request',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:origSnap.additionalRequest})}).catch(function(){});
-      }
-      if(newOrder.additionalRequest){
-        fetch(API_URL+'/api/orders/'+encodeURIComponent(newOrder.id)+'/request',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:newOrder.additionalRequest})}).catch(function(){});
-      }
-      loadMenus(true);
-      lastOrderTotal=total;
-      cart=[];orderItems=[];updateCartCount();
-      _closeOrderDetailUI();
-      goPage('payment');
-    })
-    .catch(function(){});
 }
 
 /* ── SSE 실시간 동기화 ── */
