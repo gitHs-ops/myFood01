@@ -2757,6 +2757,7 @@ window.onload=function(){
   if(/온반_메뉴_이미지갤러리\.html/.test(_refDecoded)){
     var _logoEl=document.getElementById('topBarLogo');
     _logoEl.classList.add('from-gallery');
+    _logoEl.title='이전 페이지로 돌아가기';
     _logoEl.onclick=function(){window.location.href='온반_메뉴_이미지갤러리.html';};
   }
   loadMenus(false,function(){
