@@ -10,9 +10,9 @@
 <script>
 (function(){
   var ADMIN_PW='onban@1dl34';   // ← 비밀번호 변경 위치
-  if(sessionStorage.getItem('onban_admin_auth')==='1')return;
+  if(localStorage.getItem('onban_admin_auth')==='1')return;
   var input=prompt('관리자 비밀번호를 입력하세요');
-  if(input===ADMIN_PW){sessionStorage.setItem('onban_admin_auth','1');}
+  if(input===ADMIN_PW){localStorage.setItem('onban_admin_auth','1');}
   else{alert('접근 권한이 없습니다.');location.replace('onban.html');}
 })();
 </script>
