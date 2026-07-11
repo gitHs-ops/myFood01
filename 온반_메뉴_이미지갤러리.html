@@ -9556,6 +9556,7 @@
         catBtns.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         activeCat = btn.dataset.cat;
+        input.value = '';
         applyFilter();
       });
     });
