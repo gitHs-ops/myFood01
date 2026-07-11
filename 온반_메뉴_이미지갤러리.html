@@ -8262,13 +8262,13 @@
         const cat = c.querySelector('.cat').textContent;
         const matchName = name.toLowerCase().includes(q);
         const matchCat = activeCat === '전체' || cat === activeCat;
-        const matchToday = q ? true : (!todayMode || (todayMap && todayMap.has(name)));
+        const matchToday = (q || activeCat !== '전체') ? true : (!todayMode || (todayMap && todayMap.has(name)));
         const show = matchName && matchCat && matchToday;
         c.style.display = show ? '' : 'none';
         if (show) visibleCount++;
       });
       document.getElementById('emptyState').style.display = visibleCount ? 'none' : '';
-      if (q) {
+      if (q || activeCat !== '전체') {
         todayBtn.classList.remove('active');
         reserveBtn.classList.remove('active');
       } else {
