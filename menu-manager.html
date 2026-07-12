@@ -1201,7 +1201,9 @@ function addMenu(){
   renderAll();
 }
 function deleteMenu(id){
-  if(!confirm('이 메뉴를 삭제할까요?'))return;
+  var target=menus.find(function(m){return m.id===id;});
+  if(!target)return;
+  if(!confirm('['+target.name+'] 메뉴를 삭제할까요?'))return;
   menus=menus.filter(function(m){return m.id!==id;});
   renderAll();
   saveMenus(workDate,function(ok){
