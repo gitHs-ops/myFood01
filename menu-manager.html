@@ -1084,8 +1084,8 @@ function loadMenus(iso){
     })
     .catch(function(){});
 }
-function saveMenus(iso){
-  exportMenuToSheet(iso,function(){});
+function saveMenus(iso,cb){
+  exportMenuToSheet(iso,function(ok){if(cb)cb(ok);});
   if(_datesCache.length&&_datesCache.indexOf(iso)<0){_datesCache.unshift(iso);_datesCache.sort(function(a,b){return b.localeCompare(a);});}
 }
 function _updateSaveBtn(){
@@ -1174,7 +1174,15 @@ function addMenu(){
   closeAcList();
   renderAll();
 }
-function deleteMenu(id){if(!confirm('이 메뉴를 삭제할까요?'))return;menus=menus.filter(function(m){return m.id!==id;});saveMenus(workDate);renderAll();}
+function deleteMenu(id){
+  if(!confirm('이 메뉴를 삭제할까요?'))return;
+  menus=menus.filter(function(m){return m.id!==id;});
+  renderAll();
+  saveMenus(workDate,function(ok){
+    if(ok) loadMenus(workDate);
+    else showToast('⚠️ 삭제 반영 실패 — 다시 시도해주세요.');
+  });
+}
 function changeStock(id,d){var m=menus.find(function(x){return x.id===id;});if(!m)return;m.stock=Math.max(-1,(m.stock||0)+d);touch(m);save();renderMenuList();renderStats();}
 function startEditPrice(id){document.getElementById('pd_'+id).style.display='none';var inp=document.getElementById('pi_'+id);inp.style.display='inline-block';inp.focus();inp.select();}
 function commitPrice(id){var inp=document.getElementById('pi_'+id);var val=parseInt(inp.value)||0;var m=menus.find(function(x){return x.id===id;});if(m){m.price=val;touch(m);save();}var disp=document.getElementById('pd_'+id);if(disp){disp.textContent=val.toLocaleString()+'천원';disp.style.display='';}inp.style.display='none';renderKakao();}
