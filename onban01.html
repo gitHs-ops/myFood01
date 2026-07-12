@@ -1304,7 +1304,7 @@ function renderOrdererPage(){
           var pEl=document.getElementById('ordererPhone');
           var aEl=document.getElementById('ordererAddr');
           if(nEl&&m.name) nEl.value=m.name;
-          if(pEl&&m.phone) pEl.value=m.phone;
+          if(pEl&&m.phone) pEl.value=formatPhone(m.phone);
           if(aEl&&m.addr1) aEl.value=m.addr1;
         }
         _toggleAddrListBtn();
@@ -1362,7 +1362,7 @@ function renderOrdererPage(){
     var directReq=(document.getElementById('ordererDirectReq').value||'').trim();
     ordererInfo={
       name:name,
-      phone:document.getElementById('ordererPhone').value.trim(),
+      phone:document.getElementById('ordererPhone').value.replace(/[^0-9]/g,''),
       addr:document.getElementById('ordererAddr').value.trim(),
       memo:memo,                       // 배송방법만 저장
       additionalRequest:directReq      // 요청사항은 추가요청사항으로 통일
@@ -2551,7 +2551,7 @@ function openReservePopup(){
           var m=d.items[0];
           _cachedMaster=m;
           if(m.name) nEl.value=m.name;
-          if(m.phone) pEl.value=m.phone;
+          if(m.phone) pEl.value=formatPhone(m.phone);
           var aEl=document.getElementById('reserveAddr');
           if(aEl&&m.addr1&&!aEl.value) aEl.value=m.addr1;
           _toggleReserveAddrListBtn();
@@ -2611,7 +2611,7 @@ function _updateReserveTotal(){
 }
 function submitReserveOrder(){
   var name=(document.getElementById('reserveName').value||'').trim();
-  var phone=(document.getElementById('reservePhone').value||'').trim();
+  var phone=(document.getElementById('reservePhone').value||'').replace(/[^0-9]/g,'');
   var reserveDate=(document.getElementById('reserveDateInput').value||'').trim();
   var addr=(document.getElementById('reserveAddr').value||'').trim();
   var memo=(document.getElementById('reserveMemo').value||'').trim();
