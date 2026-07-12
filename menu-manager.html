@@ -537,9 +537,35 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
     <div id="bankList"></div>
     <button class="btn-add-bank" onclick="toggleBankForm()">+ 계좌 추가</button>
     <div class="bank-form" id="bankForm">
-      <div class="setting-row">
+      <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:6px;">
         <span class="setting-label">은행명</span>
-        <input class="setting-input" type="text" id="newBankName" placeholder="예) 국민은행">
+        <select class="setting-input" id="newBankName" onchange="_onBankNameChange()">
+          <option value="">선택하세요</option>
+          <option value="국민은행">국민은행</option>
+          <option value="신한은행">신한은행</option>
+          <option value="우리은행">우리은행</option>
+          <option value="하나은행">하나은행</option>
+          <option value="농협은행">농협은행</option>
+          <option value="기업은행">기업은행</option>
+          <option value="우체국">우체국</option>
+          <option value="새마을금고">새마을금고</option>
+          <option value="신협">신협</option>
+          <option value="카카오뱅크">카카오뱅크</option>
+          <option value="토스뱅크">토스뱅크</option>
+          <option value="케이뱅크">케이뱅크</option>
+          <option value="SC제일은행">SC제일은행</option>
+          <option value="씨티은행">씨티은행</option>
+          <option value="부산은행">부산은행</option>
+          <option value="대구은행">대구은행</option>
+          <option value="광주은행">광주은행</option>
+          <option value="전북은행">전북은행</option>
+          <option value="경남은행">경남은행</option>
+          <option value="제주은행">제주은행</option>
+          <option value="산업은행">산업은행</option>
+          <option value="수협은행">수협은행</option>
+          <option value="기타">기타(직접입력)</option>
+        </select>
+        <input class="setting-input" type="text" id="newBankNameCustom" placeholder="은행명 직접 입력" style="display:none;">
       </div>
       <div class="setting-row">
         <span class="setting-label">예금주</span>
@@ -2803,12 +2829,20 @@ function saveSettings(){
 }
 
 var _editBankIdx=-1;
+function _onBankNameChange(){
+  var sel=document.getElementById('newBankName');
+  var custom=document.getElementById('newBankNameCustom');
+  custom.style.display=sel.value==='기타'?'block':'none';
+  if(sel.value==='기타')custom.focus();
+}
 function toggleBankForm(){
   var f=document.getElementById('bankForm');
   f.style.display=f.style.display==='block'?'none':'block';
   if(f.style.display==='block'){
     _editBankIdx=-1;
     document.getElementById('newBankName').value='';
+    document.getElementById('newBankNameCustom').value='';
+    document.getElementById('newBankNameCustom').style.display='none';
     document.getElementById('newBankHolder').value='';
     document.getElementById('newBankAccount').value='';
     document.getElementById('bankFormBtn').textContent='추가';
@@ -2818,7 +2852,18 @@ function editBank(i){
   var banks=getBanks();
   var b=banks[i];
   _editBankIdx=i;
-  document.getElementById('newBankName').value=b.name;
+  var sel=document.getElementById('newBankName');
+  var custom=document.getElementById('newBankNameCustom');
+  var known=b.name&&Array.prototype.some.call(sel.options,function(o){return o.value===b.name;});
+  if(known){
+    sel.value=b.name;
+    custom.style.display='none';
+    custom.value='';
+  }else{
+    sel.value='기타';
+    custom.style.display='block';
+    custom.value=b.name;
+  }
   document.getElementById('newBankHolder').value=b.holder;
   document.getElementById('newBankAccount').value=b.account;
   document.getElementById('bankFormBtn').textContent='수정';
@@ -2826,7 +2871,8 @@ function editBank(i){
 }
 
 function addBank(){
-  var name=document.getElementById('newBankName').value.trim();
+  var sel=document.getElementById('newBankName');
+  var name=sel.value==='기타'?document.getElementById('newBankNameCustom').value.trim():sel.value;
   var holder=document.getElementById('newBankHolder').value.trim();
   var account=document.getElementById('newBankAccount').value.trim();
   if(!name||!holder||!account){alert('모든 항목을 입력해주세요.');return;}
