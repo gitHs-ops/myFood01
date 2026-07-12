@@ -2755,11 +2755,18 @@ function loadSettingsFromSheet(cb){
   });
 }
 
+function formatPhone(p){
+  p=(p||'').replace(/[^0-9]/g,'');
+  if(p.length===11) return p.replace(/(\d{3})(\d{4})(\d{4})/,'$1-$2-$3');
+  if(p.length===10) return p.indexOf('02')===0?p.replace(/(\d{2})(\d{4})(\d{4})/,'$1-$2-$3'):p.replace(/(\d{3})(\d{3})(\d{4})/,'$1-$2-$3');
+  if(p.length===9) return p.replace(/(\d{2})(\d{3})(\d{4})/,'$1-$2-$3');
+  return p;
+}
 function saveAdminInfo(){
   var s={
-    phone:document.getElementById('cfgAdminPhone').value.trim(),
+    phone:document.getElementById('cfgAdminPhone').value.replace(/[^0-9]/g,''),
     email:document.getElementById('cfgAdminEmail').value.trim(),
-    deliveryPhone:document.getElementById('cfgDeliveryPhone').value.trim()
+    deliveryPhone:document.getElementById('cfgDeliveryPhone').value.replace(/[^0-9]/g,'')
   };
   localStorage.setItem(ADMIN_KEY,JSON.stringify(s));
   var el=document.getElementById('settingSaved3');el.style.display='block';
@@ -2937,6 +2944,9 @@ var _editingCats=null;
 function renderCatSettings(){
   var cats=getCats();
   _editingCats=cats.map(function(c){return {name:c.name,color:c.color};});
+  _renderCatRows();
+}
+function _renderCatRows(){
   document.getElementById('catSettingList').innerHTML=_editingCats.map(function(c,i){
     return '<div class="setting-row" style="gap:6px;">'
       +'<input type="color" value="'+c.color+'" style="width:34px;height:34px;border:none;border-radius:6px;cursor:pointer;padding:2px;" onchange="_editingCats['+i+'].color=this.value">'
@@ -2948,9 +2958,9 @@ function renderCatSettings(){
 function addNewCat(){
   if(!_editingCats)_editingCats=getCats().map(function(c){return {name:c.name,color:c.color};});
   _editingCats.push({name:'새 카테고리',color:'#888888'});
-  renderCatSettings();
+  _renderCatRows();
 }
-function removeCatRow(i){_editingCats.splice(i,1);renderCatSettings();}
+function removeCatRow(i){_editingCats.splice(i,1);_renderCatRows();}
 function saveCatSettings(){
   if(!_editingCats)return;
   var cats=_editingCats.filter(function(c){return c.name;});
@@ -3036,9 +3046,9 @@ function loadSettingsForm(){
     document.getElementById('cfgSmsEnabled').checked      = s.smsEnabled!==false;
     document.getElementById('cfgAlimtalkEnabled').checked = s.alimtalkEnabled!==false;
     var a=getAdminInfo();
-    document.getElementById('cfgAdminPhone').value=a.phone;
+    document.getElementById('cfgAdminPhone').value=formatPhone(a.phone);
     document.getElementById('cfgAdminEmail').value=a.email;
-    document.getElementById('cfgDeliveryPhone').value=a.deliveryPhone||'';
+    document.getElementById('cfgDeliveryPhone').value=formatPhone(a.deliveryPhone||'');
     renderBankList();
   }
   fillForm();

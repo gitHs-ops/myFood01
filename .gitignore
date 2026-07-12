@@ -1,1 +1,14 @@
 *.txt
+
+# 1회성 유틸리티 스크립트/데이터 (웹 서비스 운용과 무관)
+generate_menu_images_full.py
+retry_error_menus.py
+menu_data.json
+메뉴데이터.json
+menu_image_list*.csv
+server/migrate_icon.js
+update_master_images.js
+update_master_images_v2.js
+
+# 로컬 도구 설정
+.claude/
