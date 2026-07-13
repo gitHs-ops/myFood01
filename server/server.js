@@ -317,7 +317,9 @@ app.get('/api/menu/:date', async (req, res) => {
 app.post('/api/menu/daily', async (req, res) => {
   try {
     const list = req.body.data || req.body;
-    if (!Array.isArray(list) || !list.length) return err(res, '데이터 없음', 400);
+    const clearDate = req.body.date || null;
+    if (!Array.isArray(list)) return err(res, '데이터 없음', 400);
+    if (!list.length && !clearDate) return err(res, '데이터 없음', 400);
 
     // 날짜별로 그룹화
     const byDate = {};
@@ -325,6 +327,8 @@ app.post('/api/menu/daily', async (req, res) => {
       if (!byDate[m.date]) byDate[m.date] = [];
       byDate[m.date].push(m);
     });
+    // 목록이 비어도 date가 지정되면 해당 날짜를 빈 목록으로 저장(전체 삭제) 허용
+    if (clearDate && !byDate[clearDate]) byDate[clearDate] = [];
 
     const conn = await pool.getConnection();
     await conn.beginTransaction();

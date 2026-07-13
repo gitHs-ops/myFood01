@@ -1203,7 +1203,6 @@ function addMenu(){
 function deleteMenu(id){
   var target=menus.find(function(m){return m.id===id;});
   if(!target)return;
-  if(menus.length<=1){showToast('⚠️ 마지막 메뉴는 삭제할 수 없어요. 최소 1개는 남아있어야 해요.');return;}
   if(!confirm('['+target.name+'] 메뉴를 삭제할까요?'))return;
   menus=menus.filter(function(m){return m.id!==id;});
   renderAll();
@@ -1602,8 +1601,12 @@ function saveToday(){
 }
 function exportMenuToSheet(date,cb){
   var objs=menus.map(function(m){return{date:date,menuId:m.menuId||null,name:m.name,cat:m.cat,price:m.price,stock:m.stock,child:m.child?1:0,imgUrl:m.imgUrl||'',desc:m.desc||''};});
-  if(!objs.length){if(cb)cb(false);return;}
-  apiPost('/api/menu/daily',objs,function(err,d){if(cb)cb(!err&&d&&d.success!==false);});
+  var ctrl=new AbortController();
+  var timer=setTimeout(function(){ctrl.abort();},30000);
+  fetch(API_URL+'/api/menu/daily',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:objs,date:date}),signal:ctrl.signal})
+    .then(function(r){clearTimeout(timer);return r.json();})
+    .then(function(d){if(cb)cb(!!(d&&d.success!==false));})
+    .catch(function(){clearTimeout(timer);if(cb)cb(false);});
 }
 var _histYM='전체';
 function renderHistSubTabs(){
