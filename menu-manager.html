@@ -342,8 +342,10 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
 .setting-input{flex:1;padding:10px 12px;border:1.5px solid #cde8e7;border-radius:8px;font-size:14px;font-family:inherit;outline:none;}
 .setting-input:focus{border-color:#086266;}
 .btn-setting-save{background:#086266;color:#fff;border:none;border-radius:8px;padding:11px 20px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;width:100%;margin-top:6px;}
-/* 플로팅 저장 버튼 */
-#floatSaveBtn{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:90;background:#086266;color:#fff;border:none;border-radius:50px;padding:13px 22px;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;box-shadow:0 4px 18px rgba(8,98,102,.35);transition:background .2s,box-shadow .2s;}
+/* 플로팅 저장/삭제 버튼 */
+#floatBtnRow{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:90;display:flex;gap:10px;}
+#floatSaveBtn{background:#086266;color:#fff;border:none;border-radius:50px;padding:13px 22px;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;box-shadow:0 4px 18px rgba(8,98,102,.35);transition:background .2s,box-shadow .2s;}
+#floatDeleteBtn{background:#c0392b;color:#fff;border:none;border-radius:50px;padding:13px 22px;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;box-shadow:0 4px 18px rgba(192,57,43,.35);transition:background .2s,box-shadow .2s;}
 .setting-saved{color:#1D9E75;font-size:13px;font-weight:700;text-align:center;margin-top:8px;display:none;}
 /* 발송 ON/OFF 토글 */
 .send-toggle-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid #f0f5f5;}
@@ -466,7 +468,10 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
   <button class="nav-tab" onclick="switchPage('history')"><span class="ti">🗄</span><span class="tl">메뉴 창고</span></button>
   <button class="nav-tab" onclick="switchPage('settings')"><span class="ti">⚙</span><span class="tl">설정</span></button>
 </div>
-<button id="floatSaveBtn" onclick="saveToday()">💾 일일 메뉴 저장</button>
+<div id="floatBtnRow">
+  <button id="floatSaveBtn" onclick="saveToday()">💾 일일 메뉴 저장</button>
+  <button id="floatDeleteBtn" onclick="deleteToday()">🗑 일일 메뉴 삭제</button>
+</div>
 <div id="page-manage" class="page active">
   <div class="card"><div class="stats-grid" id="statsGrid"></div></div>
   <div class="card">
@@ -1115,13 +1120,25 @@ function saveMenus(iso,cb){
   if(_datesCache.length&&_datesCache.indexOf(iso)<0){_datesCache.unshift(iso);_datesCache.sort(function(a,b){return b.localeCompare(a);});}
 }
 function _updateSaveBtn(){
-  var btn=document.getElementById('floatSaveBtn');
-  if(!btn)return;
+  var row=document.getElementById('floatBtnRow');
+  if(!row)return;
   var onSavePage=document.getElementById('page-manage').classList.contains('active');
-  // 팝업/오버레이가 열려 있으면 플로팅 저장 버튼 숨김 (모달과 겹침 방지)
+  // 팝업/오버레이가 열려 있으면 플로팅 저장/삭제 버튼 숨김 (모달과 겹침 방지)
   var anyOverlayOpen=document.querySelector('.cal-overlay.open, .img-overlay.open, .menu-edit-overlay.open')!=null;
-  btn.style.display=(onSavePage&&!anyOverlayOpen)?'block':'none';
-  btn.classList.remove('dirty');
+  row.style.display=(onSavePage&&!anyOverlayOpen)?'flex':'none';
+  document.getElementById('floatSaveBtn').classList.remove('dirty');
+}
+function deleteToday(){
+  if(!menus.length){showToast('이미 비어있어요.');return;}
+  if(!confirm(fmtDate(workDate)+'의 메뉴 '+menus.length+'개를 전부 삭제할까요?'))return;
+  menus=[];
+  renderAll();
+  _menuDirty=true;
+  saveMenus(workDate,function(ok){
+    _menuDirty=false;
+    if(ok){showToast('🗑 일일 메뉴 전체 삭제 완료');loadMenus(workDate);}
+    else showToast('⚠️ 삭제 반영 실패 — 다시 시도해주세요.');
+  });
 }
 // 오버레이(.open) 변화 감지 → 플로팅 저장 버튼 가시성 동기화
 function _watchOverlaysForSaveBtn(){
