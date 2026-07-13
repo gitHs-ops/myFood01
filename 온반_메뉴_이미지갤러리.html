@@ -9651,6 +9651,19 @@
       applyFilter();
     }
 
+    function showGalleryToast(msg) {
+      var t = document.getElementById('gallery-toast');
+      if (!t) {
+        t = document.createElement('div');
+        t.id = 'gallery-toast';
+        t.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:999px;font-size:13px;opacity:0;transition:opacity .3s;z-index:9999;white-space:nowrap;';
+        document.body.appendChild(t);
+      }
+      t.textContent = msg;
+      t.style.opacity = '1';
+      clearTimeout(t._hideTimer);
+      t._hideTimer = setTimeout(() => { t.style.opacity = '0'; }, 2000);
+    }
     todayBtn.addEventListener('click', () => {
       if (todayMode) { exitTodayMode(); return; }
       if (reserveMode) exitReserveMode();
@@ -9659,16 +9672,15 @@
       fetch(API_URL + '/api/menu/' + todayISO(), { cache: 'no-store' })
         .then(r => r.json())
         .then(d => {
-          if (!d.success || !Array.isArray(d.menus) || !d.menus.length) {
-            todayStatus.style.display = 'none';
-            return;
-          }
+          todayStatus.style.display = 'none';
           todayMap = new Map();
-          d.menus.forEach(m => todayMap.set(m.name, { price: Number(m.price) || 0, stock: Number(m.stock) || 0, cat: m.cat || '기타' }));
+          if (d.success && Array.isArray(d.menus)) {
+            d.menus.forEach(m => todayMap.set(m.name, { price: Number(m.price) || 0, stock: Number(m.stock) || 0, cat: m.cat || '기타' }));
+          }
           todayMode = true;
           todayBtn.classList.add('active');
-          todayStatus.style.display = 'none';
           applyTodayView();
+          if (!todayMap.size) showGalleryToast('📅 오늘 등록된 메뉴가 없어요.');
         })
         .catch(() => { todayStatus.textContent = '오늘의 메뉴를 불러오지 못했어요.'; });
     });
