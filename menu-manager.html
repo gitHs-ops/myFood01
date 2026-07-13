@@ -1203,10 +1203,13 @@ function addMenu(){
 function deleteMenu(id){
   var target=menus.find(function(m){return m.id===id;});
   if(!target)return;
+  if(menus.length<=1){showToast('⚠️ 마지막 메뉴는 삭제할 수 없어요. 최소 1개는 남아있어야 해요.');return;}
   if(!confirm('['+target.name+'] 메뉴를 삭제할까요?'))return;
   menus=menus.filter(function(m){return m.id!==id;});
   renderAll();
+  _menuDirty=true;
   saveMenus(workDate,function(ok){
+    _menuDirty=false;
     if(ok) loadMenus(workDate);
     else showToast('⚠️ 삭제 반영 실패 — 다시 시도해주세요.');
   });
@@ -2554,9 +2557,10 @@ function _reRenderFromCache(){
 function fmtPhone(p){
   if(!p)return '';
   var d=String(p).replace(/[^0-9]/g,'');
-  if(d.length===10&&d.charAt(0)!=='0')d='0'+d;
+  if(d.length===10&&d.charAt(0)!=='0'&&d.indexOf('02')!==0)d='0'+d;
   if(d.length===11)return d.slice(0,3)+'-'+d.slice(3,7)+'-'+d.slice(7);
-  if(d.length===10)return d.slice(0,3)+'-'+d.slice(3,6)+'-'+d.slice(6);
+  if(d.length===10)return d.indexOf('02')===0?d.slice(0,2)+'-'+d.slice(2,6)+'-'+d.slice(6):d.slice(0,3)+'-'+d.slice(3,6)+'-'+d.slice(6);
+  if(d.length===9)return d.slice(0,2)+'-'+d.slice(2,5)+'-'+d.slice(5);
   return p;
 }
 
@@ -2791,13 +2795,6 @@ function loadSettingsFromSheet(cb){
   });
 }
 
-function formatPhone(p){
-  p=(p||'').replace(/[^0-9]/g,'');
-  if(p.length===11) return p.replace(/(\d{3})(\d{4})(\d{4})/,'$1-$2-$3');
-  if(p.length===10) return p.indexOf('02')===0?p.replace(/(\d{2})(\d{4})(\d{4})/,'$1-$2-$3'):p.replace(/(\d{3})(\d{3})(\d{4})/,'$1-$2-$3');
-  if(p.length===9) return p.replace(/(\d{2})(\d{3})(\d{4})/,'$1-$2-$3');
-  return p;
-}
 function saveAdminInfo(){
   var s={
     phone:document.getElementById('cfgAdminPhone').value.replace(/[^0-9]/g,''),
@@ -2856,15 +2853,16 @@ function editBank(i){
   _editBankIdx=i;
   var sel=document.getElementById('newBankName');
   var custom=document.getElementById('newBankNameCustom');
-  var known=b.name&&Array.prototype.some.call(sel.options,function(o){return o.value===b.name;});
+  var name=b.name||'';
+  var known=name&&name!=='기타'&&Array.prototype.some.call(sel.options,function(o){return o.value===name;});
   if(known){
-    sel.value=b.name;
+    sel.value=name;
     custom.style.display='none';
     custom.value='';
   }else{
     sel.value='기타';
     custom.style.display='block';
-    custom.value=b.name;
+    custom.value=name;
   }
   document.getElementById('newBankHolder').value=b.holder;
   document.getElementById('newBankAccount').value=b.account;
@@ -3102,9 +3100,9 @@ function loadSettingsForm(){
     document.getElementById('cfgSmsEnabled').checked      = s.smsEnabled!==false;
     document.getElementById('cfgAlimtalkEnabled').checked = s.alimtalkEnabled!==false;
     var a=getAdminInfo();
-    document.getElementById('cfgAdminPhone').value=formatPhone(a.phone);
+    document.getElementById('cfgAdminPhone').value=fmtPhone(a.phone);
     document.getElementById('cfgAdminEmail').value=a.email;
-    document.getElementById('cfgDeliveryPhone').value=formatPhone(a.deliveryPhone||'');
+    document.getElementById('cfgDeliveryPhone').value=fmtPhone(a.deliveryPhone||'');
     renderBankList();
   }
   fillForm();
