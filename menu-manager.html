@@ -2754,6 +2754,18 @@ function startOrderPolling(){startSSE();}
 
 /* ════ 설정 ════ */
 var API_URL='https://myfood01-production.up.railway.app';
+// 관리자 전용 API 인증 — 서버 ADMIN_TOKEN 환경변수와 반드시 같은 값이어야 함(상단 ADMIN_PW와 동일 값 권장)
+var ADMIN_API_TOKEN='onban@1dl34';
+(function(){
+  var _origFetch=window.fetch;
+  window.fetch=function(url,opts){
+    opts=opts||{};
+    if(typeof url==='string'&&url.indexOf(API_URL)===0){
+      opts=Object.assign({},opts,{headers:Object.assign({},opts.headers,{'X-Admin-Token':ADMIN_API_TOKEN})});
+    }
+    return _origFetch(url,opts);
+  };
+})();
 var SETTINGS_KEY='onban_settings';
 var BANKS_KEY='onban_banks';
 

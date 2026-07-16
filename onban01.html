@@ -2275,7 +2275,7 @@ function deleteHistOrder(orderId){
   if(!confirm('취소된 주문을 목록에서 삭제할까요?'))return;
   var orders=JSON.parse(localStorage.getItem('orders')||'[]');
   localStorage.setItem('orders',JSON.stringify(orders.filter(function(o){return o.id!==orderId;})));
-  fetch(API_URL+'/api/orders/'+encodeURIComponent(orderId),{method:'DELETE'}).catch(function(){});
+  fetch(API_URL+'/api/orders/'+encodeURIComponent(orderId)+'?deviceId='+encodeURIComponent(getDeviceId()),{method:'DELETE'}).catch(function(){});
   _closeOrderDetailUI();
   renderHistory();
 }
@@ -2287,7 +2287,7 @@ function cancelHistOrder(orderId){
   o.status='cancelled';
   localStorage.setItem('orders',JSON.stringify(orders));
   // API 상태 업데이트 (관리자 동기화)
-  fetch(API_URL+'/api/orders/'+encodeURIComponent(orderId)+'/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'cancelled'})})
+  fetch(API_URL+'/api/orders/'+encodeURIComponent(orderId)+'/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'cancelled',deviceId:getDeviceId()})})
     .then(function(){loadMenus(true);}).catch(function(){});
   showToast('주문이 취소됐습니다.');
   _closeOrderDetailUI();

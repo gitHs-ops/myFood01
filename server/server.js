@@ -44,6 +44,15 @@ const pool = mysql.createPool({
 
 const ok  = (res, data={}) => res.json({ success: true,  ...data });
 const err = (res, msg, status=500) => res.status(status).json({ success: false, error: msg });
+
+// ── 관리자 인증 ─────────────────────────────────────────────
+// Railway 환경변수 ADMIN_TOKEN 설정 필요. 관리자 전용 API는 X-Admin-Token 헤더로 검증.
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN;
+function requireAdmin(req, res, next) {
+  if (!ADMIN_TOKEN) return err(res, '서버에 ADMIN_TOKEN이 설정되지 않았습니다.', 500);
+  if (req.headers['x-admin-token'] !== ADMIN_TOKEN) return err(res, '인증이 필요합니다.', 401);
+  next();
+}
 const toKSTDateStr = d => {
   if (!d) return null;
   if (d instanceof Date) { const kst=new Date(d.getTime()+9*60*60*1000); return kst.toISOString().slice(0,10); }
@@ -163,7 +172,7 @@ app.get('/health', (req, res) => res.json({ ok: true }));
 // ══════════════════════════════════════════════════════════════
 
 // 전체 메뉴 저장 (parse_onban_menu.py → POST /api/menu/all)
-app.post('/api/menu/all', async (req, res) => {
+app.post('/api/menu/all', requireAdmin, async (req, res) => {
   try {
     const list = req.body.data || req.body;
     if (!Array.isArray(list) || !list.length) return err(res, '데이터 없음', 400);
@@ -210,7 +219,7 @@ app.post('/api/menu/all', async (req, res) => {
 
 // 마스터 병합 (POST /api/menu/master/merge)
 // source를 target으로 합침: daily_menus를 target으로 재연결 후 source 삭제
-app.post('/api/menu/master/merge', async (req, res) => {
+app.post('/api/menu/master/merge', requireAdmin, async (req, res) => {
   try {
     const body = req.body.data || req.body;
     const sourceId = body.sourceId || 0, sourceName = body.sourceName || '';
@@ -239,7 +248,7 @@ app.post('/api/menu/master/merge', async (req, res) => {
 
 // 마스터 단건 삭제 (POST /api/menu/master/delete)
 // force:true 이면 daily_menus에서도 제거 후 강제 삭제
-app.post('/api/menu/master/delete', async (req, res) => {
+app.post('/api/menu/master/delete', requireAdmin, async (req, res) => {
   try {
     const body = req.body.data || req.body;
     const id = body.id || 0, name = body.name || '';
@@ -314,7 +323,7 @@ app.get('/api/menu/:date', async (req, res) => {
 });
 
 // 날짜별 메뉴 일괄 저장 (POST /api/menu/daily)
-app.post('/api/menu/daily', async (req, res) => {
+app.post('/api/menu/daily', requireAdmin, async (req, res) => {
   try {
     const list = req.body.data || req.body;
     const clearDate = req.body.date || null;
@@ -370,7 +379,7 @@ app.post('/api/menu/daily', async (req, res) => {
 });
 
 // 특정 날짜 재고 업데이트 (PUT /api/menu/:date/stock)
-app.put('/api/menu/:date/stock', async (req, res) => {
+app.put('/api/menu/:date/stock', requireAdmin, async (req, res) => {
   try {
     const { name, stock, menuId } = req.body;
     const byId = menuId != null;
@@ -384,7 +393,7 @@ app.put('/api/menu/:date/stock', async (req, res) => {
 });
 
 // 재고 증감 (POST /api/menu/:date/stock-adjust)  delta = +N/-N
-app.post('/api/menu/:date/stock-adjust', async (req, res) => {
+app.post('/api/menu/:date/stock-adjust', requireAdmin, async (req, res) => {
   try {
     const items = req.body.items || [];
     if (!items.length) return ok(res);
@@ -412,6 +421,10 @@ app.post('/api/menu/:date/stock-adjust', async (req, res) => {
 app.get('/api/orders', async (req, res) => {
   try {
     const { date, phone, name, deviceId, reserved, reservedFrom, createdOn, reservedForDevice } = req.query;
+    // deviceId로 본인 기기 범위 조회는 고객 자유 허용, 그 외(날짜 전체조회 등 관리자용)는 인증 필요
+    if (!deviceId) {
+      if (!ADMIN_TOKEN || req.headers['x-admin-token'] !== ADMIN_TOKEN) return err(res, '인증이 필요합니다.', 401);
+    }
     let sql = 'SELECT * FROM orders WHERE 1=1';
     const params = [];
     if (createdOn) {
@@ -537,16 +550,26 @@ app.post('/api/orders', async (req, res) => {
 // 주문 상태 변경 (PUT /api/orders/:id/status) — 취소 시 재고 복원
 app.put('/api/orders/:id/status', async (req, res) => {
   try {
-    const { status } = req.body;
+    const { status, deviceId } = req.body;
     if (!status) return err(res, '상태 없음', 400);
+    const isAdmin = !!ADMIN_TOKEN && req.headers['x-admin-token'] === ADMIN_TOKEN;
 
     const conn = await pool.getConnection();
     await conn.beginTransaction();
     try {
       const [rows] = await conn.execute(
-        'SELECT status, date, items, reserve_date FROM orders WHERE id=? FOR UPDATE', [req.params.id]
+        'SELECT status, date, items, reserve_date, device_id FROM orders WHERE id=? FOR UPDATE', [req.params.id]
       );
       if (!rows.length) { await conn.rollback(); conn.release(); return err(res, '주문 없음', 404); }
+
+      // 관리자가 아니면 본인 기기의 대기중 주문을 취소하는 경우만 허용 (그 외 상태변경은 관리자 전용)
+      if (!isAdmin) {
+        const ownsOrder = deviceId && rows[0].device_id && deviceId === rows[0].device_id;
+        if (status !== 'cancelled' || rows[0].status !== 'pending' || !ownsOrder) {
+          await conn.rollback(); conn.release();
+          return err(res, '인증이 필요합니다.', 401);
+        }
+      }
 
       const prev        = rows[0].status;
       let   orderDate   = toKSTDateStr(rows[0].date) || rows[0].date;
@@ -697,7 +720,7 @@ app.put('/api/orders/:id/memo', async (req, res) => {
 });
 
 // 추가요청 확인 처리 (PUT /api/orders/:id/addreq-ack)
-app.put('/api/orders/:id/addreq-ack', async (req, res) => {
+app.put('/api/orders/:id/addreq-ack', requireAdmin, async (req, res) => {
   try {
     await pool.execute('UPDATE orders SET addreq_acked=1 WHERE id=?', [req.params.id]);
     broadcast('order_ack', { orderId: req.params.id });
@@ -706,7 +729,7 @@ app.put('/api/orders/:id/addreq-ack', async (req, res) => {
 });
 
 // 관리자 답변 저장 (PUT /api/orders/:id/reply)
-app.put('/api/orders/:id/reply', async (req, res) => {
+app.put('/api/orders/:id/reply', requireAdmin, async (req, res) => {
   try {
     const { text } = req.body;
     await pool.execute(
@@ -733,6 +756,14 @@ app.put('/api/orders/:id/reply', async (req, res) => {
 // 주문 삭제 (DELETE /api/orders/:id)
 app.delete('/api/orders/:id', async (req, res) => {
   try {
+    const isAdmin = !!ADMIN_TOKEN && req.headers['x-admin-token'] === ADMIN_TOKEN;
+    if (!isAdmin) {
+      const deviceId = (req.query.deviceId || '').trim();
+      const [rows] = await pool.execute('SELECT status, device_id FROM orders WHERE id=?', [req.params.id]);
+      if (!rows.length) return err(res, '주문 없음', 404);
+      const ownsOrder = deviceId && rows[0].device_id && deviceId === rows[0].device_id;
+      if (rows[0].status !== 'cancelled' || !ownsOrder) return err(res, '인증이 필요합니다.', 401);
+    }
     const [r] = await pool.execute('DELETE FROM orders WHERE id=?', [req.params.id]);
     if (r.affectedRows === 0) return err(res, '주문 없음', 404);
     broadcast('order_delete', { orderId: req.params.id });
@@ -748,6 +779,9 @@ app.get('/api/customers-master', async (req, res) => {
     // phone은 항상 숫자만 (저장 시 정규화 보장)
     const phone = (req.query.phone||'').replace(/[^0-9]/g,'');
     const deviceId = (req.query.device_id||'').trim();
+    const isAdmin = !!ADMIN_TOKEN && req.headers['x-admin-token'] === ADMIN_TOKEN;
+    // 본인 조회(phone 또는 device_id)만 인증 없이 허용 — 전체 조회는 관리자만
+    if (!phone && !deviceId && !isAdmin) return err(res, '인증이 필요합니다.', 401);
 
     // device_id만 있으면 기기 자동 인식
     if(deviceId && !phone){
@@ -811,7 +845,7 @@ app.put('/api/customers-master/:id', async (req, res) => {
 });
 
 // DELETE /api/customers-master/:id
-app.delete('/api/customers-master/:id', async (req, res) => {
+app.delete('/api/customers-master/:id', requireAdmin, async (req, res) => {
   try {
     await pool.execute('DELETE FROM customers_master WHERE id=?',[req.params.id]);
     ok(res);
@@ -835,7 +869,7 @@ app.get('/api/settings', async (req, res) => {
 });
 
 // 설정 저장 (POST /api/settings)
-app.post('/api/settings', async (req, res) => {
+app.post('/api/settings', requireAdmin, async (req, res) => {
   try {
     const data = req.body.data || req.body;
     const conn = await pool.getConnection();
