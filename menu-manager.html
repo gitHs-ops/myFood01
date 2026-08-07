@@ -777,6 +777,16 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
     <button style="margin-top:10px;width:100%;background:#eee;color:#555;border:none;border-radius:10px;padding:9px;font-size:13px;cursor:pointer;" onclick="closeHistLoadModal()">취소</button>
   </div>
 </div>
+<!-- 주문취소 확인 모달 -->
+<div class="cal-overlay" id="cancelOrderConfirmOverlay" style="z-index:1000;" onclick="if(event.target===this)closeCancelOrderConfirm()">
+  <div style="background:#fff;border-radius:16px;padding:24px;width:280px;text-align:center;" onclick="event.stopPropagation()">
+    <div style="font-size:15px;font-weight:700;color:#1a1a1a;margin-bottom:18px;">이 주문을 취소할까요?</div>
+    <div style="display:flex;gap:10px;">
+      <button style="flex:1;background:#eee;color:#555;border:none;border-radius:10px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;" onclick="closeCancelOrderConfirm()">아니오</button>
+      <button style="flex:1;background:#e53935;color:#fff;border:none;border-radius:10px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;" onclick="_doCancelOrder()">네, 취소할게요</button>
+    </div>
+  </div>
+</div>
 <!-- 마스터 미등록 메뉴 안내 모달 -->
 <div class="cal-overlay" id="orphanOverlay" onclick="if(event.target===this)closeOrphanModal()">
   <div style="background:#fff;border-radius:16px;padding:22px;width:320px;max-width:93vw;max-height:80vh;display:flex;flex-direction:column;" onclick="event.stopPropagation()">
@@ -2644,8 +2654,19 @@ function deliverOrder(id){
     .then(function(){renderOrders();}).catch(function(){});
 }
 
+var _cancelOrderId=null;
 function cancelOrder(id){
-  if(!confirm('이 주문을 취소할까요?'))return;
+  _cancelOrderId=id;
+  document.getElementById('cancelOrderConfirmOverlay').classList.add('open');
+}
+function closeCancelOrderConfirm(){
+  document.getElementById('cancelOrderConfirmOverlay').classList.remove('open');
+  _cancelOrderId=null;
+}
+function _doCancelOrder(){
+  var id=_cancelOrderId;
+  closeCancelOrderConfirm();
+  if(!id)return;
   var orders=getOrders();
   var o=_findOrder(orders,id);
   if(!o)return;

@@ -2279,8 +2279,19 @@ function deleteHistOrder(orderId){
   _closeOrderDetailUI();
   renderHistory();
 }
+var _cancelHistOrderId=null;
 function cancelHistOrder(orderId){
-  if(!confirm('주문을 취소할까요?'))return;
+  _cancelHistOrderId=orderId;
+  document.getElementById('cancelOrderConfirmOverlay').style.display='flex';
+}
+function closeCancelHistOrderConfirm(){
+  document.getElementById('cancelOrderConfirmOverlay').style.display='none';
+  _cancelHistOrderId=null;
+}
+function _doCancelHistOrder(){
+  var orderId=_cancelHistOrderId;
+  closeCancelHistOrderConfirm();
+  if(!orderId)return;
   var orders=JSON.parse(localStorage.getItem('orders')||'[]');
   var o=orders.find(function(o){return o.id===orderId;});
   if(!o)return;
@@ -2717,6 +2728,17 @@ window.onload=function(){
 <!-- 주문 상세 팝업 -->
 <div class="order-detail-overlay" id="orderDetailOverlay" onclick="if(event.target===this)closeOrderDetail()">
   <div class="order-detail-modal" id="orderDetailModal"></div>
+</div>
+
+<!-- 주문취소 확인 모달 -->
+<div id="cancelOrderConfirmOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9998;align-items:center;justify-content:center;" onclick="if(event.target===this)closeCancelHistOrderConfirm()">
+  <div style="background:#fff;border-radius:16px;padding:24px;width:280px;max-width:85vw;text-align:center;" onclick="event.stopPropagation()">
+    <div style="font-size:15px;font-weight:700;color:#1a1a1a;margin-bottom:18px;">주문을 취소할까요?</div>
+    <div style="display:flex;gap:10px;">
+      <button style="flex:1;background:#eee;color:#555;border:none;border-radius:10px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;" onclick="closeCancelHistOrderConfirm()">아니오</button>
+      <button style="flex:1;background:#e53935;color:#fff;border:none;border-radius:10px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;" onclick="_doCancelHistOrder()">네, 취소할게요</button>
+    </div>
+  </div>
 </div>
 
 <!-- 배송 주소 목록 모달 -->
