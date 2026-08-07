@@ -1637,28 +1637,6 @@ function _notifyOutOfStock(list){
   goPage('list');
 }
 
-// ── 재주문: 과거 주문의 항목을 오늘 장바구니에 다시 담기 ──
-var _reorderFlag=false;
-function reorderFromHistory(orderId){
-  var orders=JSON.parse(localStorage.getItem('orders')||'[]');
-  var o=orders.find(function(x){return x.id===orderId;});
-  if(!o)return;
-  var addedCount=0,skipped=[];
-  o.items.forEach(function(item){
-    var m=allMenus.find(function(x){return x.name===item.name;});
-    if(!m){skipped.push(item.name);return;}
-    var ex=cart.find(function(c){return c.name===m.name;});
-    if(ex){ex.qty+=item.qty||1;}
-    else{cart.push({menuId:(m.menuId!=null?m.menuId:null),name:m.name,cat:m.cat||'',price:m.price,qty:item.qty||1,imgUrl:m.imgUrl||null,child:m.child,checked:true});}
-    addedCount++;
-  });
-  updateCartCount();
-  if(!addedCount){showToast('오늘은 담을 수 있는 메뉴가 없어요.');return;}
-  showToast(skipped.length?('일부는 오늘 판매하지 않아 제외했어요: '+skipped.join(', ')):'장바구니에 담았어요!');
-  _reorderFlag=true;
-  closeOrderDetail();
-  goPage('cart');
-}
 // ── 주문 저장 + SMS 발송 (서버 재고 차감 포함) ──
 function saveOrder(cb){
   var total=orderItems.reduce(function(s,c){return s+c.price*c.qty;},0)+_deliveryFee;
@@ -1675,10 +1653,8 @@ function saveOrder(cb){
     deliveryFee:_deliveryFee,
     additionalRequest:ordererInfo.additionalRequest||'',
     deviceId:getDeviceId(),
-    status:'pending',
-    isReorder:_reorderFlag
+    status:'pending'
   };
-  _reorderFlag=false;
 
   fetch(API_URL+'/api/orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:order})})
     .then(function(r){return r.json();})
@@ -2052,11 +2028,6 @@ function _buildOrderCard(o){
     var acts=document.createElement('div');
     acts.className='hist-actions';
     if(o.status==='cancelled'){
-      var btnReorderC=document.createElement('button');
-      btnReorderC.className='hist-btn-save';
-      btnReorderC.textContent='🔄 재주문';
-      (function(oid){btnReorderC.onclick=function(){reorderFromHistory(oid);};})(o.id);
-      acts.appendChild(btnReorderC);
       var btnDel=document.createElement('button');
       btnDel.className='hist-btn-delete';
       btnDel.textContent='삭제';
@@ -2067,17 +2038,6 @@ function _buildOrderCard(o){
       btnCloseD.textContent='닫기';
       btnCloseD.onclick=function(){closeOrderDetail();};
       acts.appendChild(btnCloseD);
-    } else if(o.status==='delivered'){
-      var btnReorderD=document.createElement('button');
-      btnReorderD.className='hist-btn-save';
-      btnReorderD.textContent='🔄 재주문';
-      (function(oid){btnReorderD.onclick=function(){reorderFromHistory(oid);};})(o.id);
-      acts.appendChild(btnReorderD);
-      var btnCloseDv=document.createElement('button');
-      btnCloseDv.className='hist-btn-cancel';
-      btnCloseDv.textContent='닫기';
-      btnCloseDv.onclick=function(){closeOrderDetail();};
-      acts.appendChild(btnCloseDv);
     } else if(o.status==='pending'){
       var btnOrderCancel=document.createElement('button');
       btnOrderCancel.className='hist-btn-order-cancel';
