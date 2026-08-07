@@ -1140,18 +1140,21 @@ function toISO(d){var kst=new Date(d.getTime()+9*60*60*1000);return kst.getUTCFu
 function fmtDate(iso){var d=new Date(iso+'T00:00:00');var s=d.toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'short'});return iso===toISO(new Date())?s+' (오늘)':s;}
 function loadMenus(iso){
   _menuDirty=false;
-  menus=[];
   fetch(API_URL+'/api/menu/'+iso)
-    .then(function(res){return res.ok?res.json():null;})
-    .then(function(d){
-      if(d&&d.menus&&d.menus.length){
-        var idx=Date.now();
-        // baseStock — 불러온 시점의 재고. 저장할 때 서버가 "관리자가 바꾼 만큼"만 반영하는 기준값
-        menus=d.menus.map(function(m){var o=Object.assign({id:idx++,stock:m.stock||0},m);o.baseStock=(m.stock==null?0:Number(m.stock));return o;});
-        renderAll();
-      }
+    .then(function(res){
+      if(res.ok)return res.json();
+      // 404 = 그 날짜에 메뉴가 없는 정상 상태(전부 삭제한 직후 등) → 빈 목록으로 취급
+      if(res.status===404)return {menus:[]};
+      throw new Error('HTTP '+res.status);
     })
-    .catch(function(){});
+    .then(function(d){
+      var idx=Date.now();
+      // baseStock — 불러온 시점의 재고. 저장할 때 서버가 "관리자가 바꾼 만큼"만 반영하는 기준값
+      menus=(d&&d.menus)?d.menus.map(function(m){var o=Object.assign({id:idx++,stock:m.stock||0},m);o.baseStock=(m.stock==null?0:Number(m.stock));return o;}):[];
+      // 비어 있어도 반드시 다시 그린다 — 예전엔 여기서 건너뛰어 삭제해도 화면이 그대로였다
+      renderAll();
+    })
+    .catch(function(){});   // 통신 실패 시엔 화면을 건드리지 않는다
 }
 function saveMenus(iso,cb){
   exportMenuToSheet(iso,function(ok){if(cb)cb(ok);});
@@ -1174,7 +1177,11 @@ function deleteToday(){
     _menuDirty=true;
     saveMenus(workDate,function(ok){
       _menuDirty=false;
-      if(ok){showToast('🗑 일일 메뉴 전체 삭제 완료');loadMenus(workDate);}
+      if(ok){
+        showToast('🗑 일일 메뉴 전체 삭제 완료');
+        loadMenus(workDate);        // 메뉴 목록·통계·카카오 문구 다시 그리기
+        fetchHistoryFromSheet();    // 날짜 목록에서도 빠지도록 다시 받기
+      }
       else showToast('⚠️ 삭제 반영 실패 — 다시 시도해주세요.');
     });
   });
