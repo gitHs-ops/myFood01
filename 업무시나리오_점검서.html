@@ -178,12 +178,12 @@ flowchart TB
 <div class="scn-h">A-2. 카카오 발송 텍스트 생성 → 파싱 역등록</div>
 <div class="scn-b">
 <p>업주는 <strong>카카오 발송</strong> 탭에서 생성된 텍스트를 복사해 카카오 비즈니스 채널로 1000명에게 보냅니다. 반대로 카톡 텍스트를 붙여넣어 일일 메뉴를 만드는 기능도 있습니다 — <span class="fn">parseKakaoToMenu()</span> <code>menu-manager.html:1608</code>.</p>
-<div class="risk">
-<div class="risk-t"><span class="tag t-p1">P1-1</span> 카톡 파싱 등록은 그날 메뉴를 전부 지우고 새로 만든다</div>
+<div class="risk p2">
+<div class="risk-t"><span class="tag t-ok">종결</span> P1-1 카톡 파싱 재등록 — 업무 지침으로 처리(코드 수정 안 함)</div>
 <dl>
-<dt>어디서</dt><dd><code>menu-manager.html:1643</code> — <code>menus=parsed.map(...)</code>로 <strong>기존 배열을 통째로 교체</strong>합니다. 확인창에 "(기존 메뉴는 초기화됩니다)"라고 쓰여 있긴 합니다.</dd>
-<dt>위험</dt><dd>이미 주문이 들어온 날짜에 이 버튼을 누르면 <code>daily_menus</code>가 재생성되면서 <strong>재고가 설정 기본값으로 초기화</strong>되고, 파싱된 메뉴는 <code>menuId</code>가 없어 이름으로만 매칭됩니다. 이름이 한 글자라도 다르면 기존 주문과 연결이 끊깁니다. P0-1과 겹쳐 사고가 커집니다.</dd>
-<dt>수정</dt><dd>해당 날짜에 <strong>주문이 1건이라도 있으면</strong> 파싱 등록 버튼을 막거나, 확인창 문구를 "이 날짜에 이미 주문 N건이 있습니다. 재고가 초기화됩니다"로 강하게 바꿉니다.</dd>
+<dt>무엇이었나</dt><dd><code>menu-manager.html:1650</code>의 <code>menus=parsed.map(...)</code>가 그날 목록을 통째로 갈아엎으면서 <strong>재고를 설정 기본값으로 되돌립니다.</strong> 파싱된 메뉴에는 <code>baseStock</code>이 없어 P0-1의 재고 보존이 적용되지 않습니다(서버가 "새로 추가한 메뉴"로 판단).</dd>
+<dt>왜 고치지 않나</dt><dd>업주 판단 — ①주문이 들어온 뒤 파싱을 다시 누르는 일은 <strong>사전 업무 지침으로 막습니다.</strong> ②설령 눌러도 <strong>재고는 무시해도 됩니다.</strong> 반찬가게는 계속 만들어 내므로 재고가 고정 수량이 아니고, 업주가 수시로 갱신하는 값입니다. 초기화되더라도 곧 업주가 실물 기준으로 다시 맞춥니다.</dd>
+<dt>남는 것</dt><dd>재고와 무관한 부작용 하나는 <strong>코드로 고쳤습니다</strong> — 파싱된 메뉴는 <code>menuId</code> 없이 이름으로 마스터를 찾는데, 마스터 고유키는 (이름 + 카테고리)입니다. 실제로 <strong>동명 마스터가 9건</strong> 있어(부대찌개·동태탕·낙지연포탕 등 메인/밀키트 짝) 엉뚱한 쪽에 연결되면 카테고리·사진이 뒤바뀔 수 있었습니다. 조회 조건에 카테고리를 더해 해결했습니다.</dd>
 </dl>
 </div>
 </div>
@@ -240,12 +240,14 @@ sequenceDiagram
 </dl>
 </div>
 
-<div class="risk">
-<div class="risk-t"><span class="tag t-p1">P1-2</span> 서버가 결제 금액을 검산하지 않는다</div>
+<div class="risk" style="border-left-color:var(--ok);background:#f4fbf7;">
+<div class="risk-t"><span class="tag t-ok">해결</span> P1-2 서버가 결제 금액을 검산하지 않던 문제</div>
 <dl>
-<dt>어디서</dt><dd><code>server.js:536</code> — <code>POST /api/orders</code>는 화면이 보낸 <code>order.total</code>을 <strong>그대로 저장</strong>합니다. 반면 주문 수정 API(<code>server.js:687-692</code>)는 <strong>서버가 다시 계산</strong>합니다. 같은 금액인데 경로에 따라 신뢰도가 다릅니다.</dd>
-<dt>결과</dt><dd>화면 값이 틀리거나 조작되면 그대로 DB에 남고, 고객에게 안내되는 입금액도 그 값입니다. 업주는 입금액이 안 맞는 이유를 찾지 못합니다. 2만원 미만 배달 차단·배송비도 전부 화면에서만 검사하므로 서버는 통과시킵니다.</dd>
-<dt>수정</dt><dd>주문 수정 API에 이미 있는 계산 로직(<code>itemsSum</code> + 픽업 여부 + 배송비)을 함수로 빼서 <code>POST /api/orders</code>에서도 호출, 화면 값과 다르면 서버 값으로 덮습니다.</dd>
+<dt>무엇이었나</dt><dd><code>POST /api/orders</code>가 화면이 보낸 <code>order.total</code>을 <strong>그대로 저장</strong>했습니다. 주문 수정 API는 서버가 다시 계산하는데(주석에도 "클라이언트 값을 신뢰하지 않고"라고 적혀 있음) <strong>생성 경로만 빠져 있었습니다.</strong> 총액뿐 아니라 <code>items</code> 안의 <code>price</code>도 화면 값이라, 합계만 재계산해서는 부족했습니다.</dd>
+<dt>어떻게 고쳤나</dt><dd><strong>단가를 DB에서 다시 읽어</strong> 합계를 계산합니다. 조회 순서는 그날 노출 메뉴(<code>menu_id</code>) → 마스터(<code>menu_id</code>) → 그날 노출 메뉴(이름)이며, 예약주문은 오늘 목록에 없어도 <strong>마스터 단가로 검산</strong>됩니다. 예약 이벤트처럼 어디에도 없는 항목만 화면 값을 그대로 둡니다. 배송비(매장픽업 아니고 2만원 이상 → 1천원)도 서버가 판정합니다.</dd>
+<dt>화면 값과 다르면</dt><dd><strong>서버 값으로 저장하되 기록을 남깁니다</strong>(<code>console.warn</code>, Railway 로그에서 확인). 조용히 덮기만 하면 화면 계산 버그를 영영 못 찾고, 주문을 거부하면 정상 고객이 막히기 때문입니다. 알림 문구에도 검산된 금액이 쓰입니다.</dd>
+<dt>검증</dt><dd>정상 주문 · 단가 조작 · 총액 조작 · 매장픽업 · 2만원 미만 배달 · menuId 없는 구버전 · 예약주문 · 예약 이벤트 8가지 경우를 실제로 실행해 전부 통과했습니다.</dd>
+<dt>남긴 선택지</dt><dd>2만원 미만 배달을 <strong>서버가 거부하도록</strong> 막지는 않았습니다. 화면이 이미 막고 있어 정상 고객은 여기 걸리지 않지만, 재오픈 직후에 주문이 거부되는 쪽이 더 위험하다고 판단했습니다. 금액은 정확히 저장되므로 업주가 접수 단계에서 판단할 수 있습니다.</dd>
 </dl>
 </div>
 
@@ -490,8 +492,8 @@ flowchart LR
 <h3>P1 — 오픈 직후</h3>
 <table>
 <tr><th style="width:8%">번호</th><th style="width:34%">내용</th><th>위치</th></tr>
-<tr><td><span class="tag t-p1">P1-1</span></td><td>카톡 파싱 등록이 주문 있는 날의 재고를 초기화</td><td><code>menu-manager.html:1643</code></td></tr>
-<tr><td><span class="tag t-p1">P1-2</span></td><td>서버가 주문 금액을 검산하지 않음</td><td><code>server.js:536</code></td></tr>
+<tr><td><span class="tag t-ok">종결</span></td><td><s>카톡 파싱 등록이 주문 있는 날의 재고를 초기화</s> → <strong>업무 지침으로 처리</strong>(재고는 어차피 수시 갱신). 동명 마스터 오연결만 코드로 수정</td><td><code>menu-manager.html:1650</code></td></tr>
+<tr><td><span class="tag t-ok">해결</span></td><td><s>서버가 주문 금액을 검산하지 않음</s> → <strong>단가·배송비를 서버가 DB에서 재계산</strong></td><td><code>server.js</code> POST /api/orders</td></tr>
 <tr><td><span class="tag t-p1">P1-3</span></td><td>알림톡·SMS 실패가 조용히 묻힘 (P0-6이 안 드러난 원인)</td><td><code>server.js:82,113,149</code></td></tr>
 <tr><td><span class="tag t-p1">P1-4</span></td><td><s>입금 여부를 기록·집계할 자리가 없음</s> → <strong>집계 표시 완료</strong>(미입금 합계·묻힌 주문 경고). 입금자명 기록은 이월</td><td>스키마 <code>server.js:949</code></td></tr>
 <tr><td><span class="tag t-p1">P1-5</span></td><td>상태 변경이 서버 실패를 무시하고 성공으로 표시</td><td><code>menu-manager.html:2695,2709,2739</code></td></tr>
