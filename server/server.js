@@ -82,11 +82,34 @@ async function _getNotifySettings() {
   rows.forEach(r => { s[r.k] = r.v; });
   return s;
 }
+// 발송 결과를 settings.lastNotify 에 남긴다.
+// 예전에는 실패해도 아무 기록이 없어서, 알림이 안 나가는 것을 몇 달간 아무도 몰랐다.
+// 전화번호는 뒤 4자리만 남긴다.
+async function _recordNotify(obj, key) {
+  try {
+    const v = JSON.stringify(Object.assign({ at: new Date().toISOString() }, obj));
+    await pool.execute(
+      'INSERT INTO settings (k,v) VALUES (?,?) ON DUPLICATE KEY UPDATE v=?',
+      [key || 'lastNotify', v, v]
+    );
+  } catch(e) {}
+}
+function _mask(p) { const s = String(p||''); return s ? '****' + s.slice(-4) : '(없음)'; }
+
 function _gasCall(url, params) {
   const qs = Object.entries(params)
     .map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
     .join('&');
-  fetch(url + '?' + qs, { redirect: 'follow' }).catch(() => {});
+  fetch(url + '?' + qs, { redirect: 'follow' })
+    .then(r => r.text().then(t => ({ status: r.status, body: t.slice(0, 300) })))
+    .then(r => _recordNotify({
+      step: 'sent', action: params.action || 'sms', to: _mask(params.receiver),
+      httpStatus: r.status, response: r.body
+    }))
+    .catch(e => _recordNotify({
+      step: 'failed', action: params.action || 'sms', to: _mask(params.receiver),
+      error: String((e && e.message) || e)
+    }));
 }
 function _sms(phone, msg, url, ns) {
   if (!phone || !msg || !url) return;
@@ -94,8 +117,12 @@ function _sms(phone, msg, url, ns) {
   _gasCall(url, { receiver: String(phone).replace(/[^0-9]/g,''), msg });
 }
 function _alimtalk(phone, tplId, vars, fallback, url, ns) {
-  if (!phone || !url) return;
-  if (String(ns.alimtalkEnabled ?? 'true') === 'false') return;
+  // 왜 안 나갔는지 알 수 있도록 건너뛴 이유도 남긴다
+  if (!phone) { _recordNotify({ step: 'skipped', reason: '주문에 전화번호가 없음' }); return; }
+  if (!url)   { _recordNotify({ step: 'skipped', reason: 'settings.gasUrl 이 비어 있음' }); return; }
+  if (String(ns.alimtalkEnabled ?? 'true') === 'false') {
+    _recordNotify({ step: 'skipped', reason: 'alimtalkEnabled 가 false' }); return;
+  }
   _gasCall(url, { action: 'alimtalk', receiver: phone, tplId, vars: JSON.stringify(vars), msg: fallback || '' });
 }
 // 고객 알림톡을 "어느 시점에" 보낼지 — settings.notifyEvents 배열로 제어.
@@ -139,6 +166,15 @@ function _notifyStatus(orderId, status) {
     try {
       const ns  = await _getNotifySettings();
       const url = (ns.gasUrl || '').trim();
+      // 어떤 주문의 어떤 상태에서 알림을 시도했는지 따로 남긴다 —
+      // 발송 기록(lastNotify)과 짝을 맞춰 보면 어디서 끊겼는지 알 수 있다
+      _recordNotify({
+        orderId, status,
+        gasUrl: !!url,
+        alimtalkEnabled: String(ns.alimtalkEnabled ?? 'true') !== 'false',
+        notifyEvents: ns.notifyEvents || '(미설정→기본 delivered)',
+        allowed: _notifyAllowed(ns, status)
+      }, 'lastNotifyTrigger');
       if (!url) return;
       const [[o]] = await pool.execute(
         'SELECT phone,name,total,addr,memo,additional_request,items FROM orders WHERE id=?', [orderId]
@@ -193,7 +229,7 @@ app.get('/api/events', (req, res) => {
 
 // ── 헬스체크 ────────────────────────────────────────────────
 // build 표식 — 설정을 바꾸기 전에 배포가 실제로 반영됐는지 확인하는 용도
-app.get('/health', (req, res) => res.json({ ok: true, build: 'price-check-1' }));
+app.get('/health', (req, res) => res.json({ ok: true, build: 'notify-log-1' }));
 
 // ══════════════════════════════════════════════════════════════
 // 메뉴 창고 (등록된모든메뉴)
