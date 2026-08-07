@@ -2487,7 +2487,7 @@ function _buildAdminOrderCard(order){
     var statusLabelC=(_isReserveOrder(order)?'예약주문 / ':'')+statusText[order.status];
     header.innerHTML='<div><div class="order-name">👤 '+order.name+(order.phone?' · '+fmtPhone(order.phone):'')+'</div>'+
       '<div class="order-time">'+fmtDateTime(order.createdDate||order.date,order.time)+'</div></div>'+
-      '<div style="display:flex;align-items:center;gap:4px;">'+(order.isReorder?'<span style="font-size:10px;font-weight:700;background:#e0d4f7;color:#5b21b6;border-radius:999px;padding:2px 7px;">재주문</span>':'')+'<span style="font-size:11px;color:#888;">처리상태</span><span class="order-status '+statusClass[order.status]+'">'+statusLabelC+'</span></div>';
+      '<div style="display:flex;align-items:center;gap:4px;"><span style="font-size:11px;color:#888;">처리상태</span><span class="order-status '+statusClass[order.status]+'">'+statusLabelC+'</span></div>';
     card.appendChild(header);
 
     if(order.reserveDate){
@@ -2752,7 +2752,9 @@ function cancelOrder(id){
 }
 
 function deleteOrder(id){
-  showConfirm('이 주문을 삭제할까요?',function(){
+  var _o=_ordersCache[id];
+  var _delMsg=(_o&&_o.status==='confirmed')?'주문 취소가 아니고 데이터를 삭제합니다.\n정말 삭제할까요?':'이 주문을 삭제할까요?';
+  showConfirm(_delMsg,function(){
     closeAdminOrderDetail();
     delete _ordersCache[id];
     var remaining=Object.values(_ordersCache);

@@ -1891,14 +1891,13 @@ function _doRenderHistory(el){
     var deliveryFee=(!isPickupMemo&&itemsSum>=20)?1:0;
     var total=itemsSum+deliveryFee;
     var summary=(o.items[0]?menuDisplayName(o.items[0].name,o.items[0].cat||_itemCat(o.items[0].name)):'')+(o.items.length>1?' 외 '+(o.items.length-1)+'건':'');
-    var reorderBadge=o.isReorder?'<span class="hist-li-badge reorder">재주문</span>':'';
     var isReserveOrder=!!o.reserveDate;
     var reserveLabel=isReserveOrder?'<span style="color:#e53935;font-weight:700;font-size:11px;margin-left:4px;">예약주문 '+fmtDate(o.reserveDate)+'</span>':'';
     var rowEl=document.createElement('div');
     rowEl.className='hist-li';
     rowEl.innerHTML=
       '<div class="hist-li-main">'
-        +'<div class="hist-li-top"><span class="hist-status '+(_ORDER_STATUS_CLS[o.status]||'pending')+'">'+(_ORDER_STATUS_MAP[o.status]||'대기중')+'</span>'+reorderBadge+'<span class="hist-li-dt">'+fmtDT(o.date,o.time)+'</span>'+reserveLabel+'</div>'
+        +'<div class="hist-li-top"><span class="hist-status '+(_ORDER_STATUS_CLS[o.status]||'pending')+'">'+(_ORDER_STATUS_MAP[o.status]||'대기중')+'</span><span class="hist-li-dt">'+fmtDT(o.date,o.time)+'</span>'+reserveLabel+'</div>'
         +'<div class="hist-li-sum"><span class="hist-li-sum-text">'+summary+'</span><span class="hist-li-arrow">›</span></div>'
         +(o.additionalRequest?'<div class="hist-li-addreq">💬 '+o.additionalRequest.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/[\n\r]+/g,'<br>')+'</div>':'')
         +(o.adminReply?'<div class="hist-li-reply">↩ '+o.adminReply.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/&lt;br&gt;/gi,'<br>').replace(/[\n\r]+/g,'<br>')+'</div>':'')
@@ -1924,11 +1923,10 @@ function _buildOrderCard(o){
     // 헤더
     var head=document.createElement('div');
     head.className='hist-head';
-    var reorderBadge=o.isReorder?'<span style="font-size:10px;font-weight:700;background:#e0d4f7;color:#5b21b6;border-radius:999px;padding:2px 7px;margin-left:4px;">재주문</span>':'';
     var isReserveOrderD=!!o.reserveDate;
     var reserveLabelD=isReserveOrderD?'<span style="color:#e53935;font-weight:700;font-size:11px;margin-left:4px;">예약주문 '+fmtDate(o.reserveDate)+'</span>':'';
     head.innerHTML='<span class="hist-date">'+fmtDT(o.date,o.time)+'</span>'+reserveLabelD
-      +'<span style="display:inline-flex;align-items:center;gap:3px;"><span class="hist-status '+(statusCls[o.status]||'pending')+'">'+(statusMap[o.status]||'대기중')+'</span>'+reorderBadge+'</span>';
+      +'<span style="display:inline-flex;align-items:center;gap:3px;"><span class="hist-status '+(statusCls[o.status]||'pending')+'">'+(statusMap[o.status]||'대기중')+'</span></span>';
     card.appendChild(head);
     // 아이템 목록
     var body=document.createElement('div');
@@ -2084,7 +2082,7 @@ function closeOrderDetail(){
   _closeOrderDetailUI();
   renderHistory();
 }
-// 팝업 UI만 닫기(가드 없이) — 재주문/취소/삭제 확정 후 사용
+// 팝업 UI만 닫기(가드 없이) — 취소/삭제 확정 후 사용
 function _closeOrderDetailUI(){
   _detailOrderId=null;
   document.getElementById('orderDetailOverlay').classList.remove('open');
@@ -2134,7 +2132,7 @@ function histEditQty(orderId,itemName,d){
   _saveOrderItems(orderId);
 }
 var _detailOrderId=null;
-// 수량/삭제 편집 결과를 재주문 확정 절차 없이 서버 DB에 반영
+// 수량/삭제 편집 결과를 별도 확정 절차 없이 서버 DB에 바로 반영
 // 연속 클릭 시 요청이 겹쳐 순서가 뒤바뀌는 것을 막기 위해 디바운스 + 직렬화 처리
 var _saveTimers={};
 var _saveInFlight={};
