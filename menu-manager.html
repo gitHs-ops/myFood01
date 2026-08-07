@@ -2526,10 +2526,25 @@ function _buildAdminOrderCard(order){
       actions.appendChild(btnPri);
     }
 
+    if(order.status==='pending'){
+      var btnCancelOrder=document.createElement('button');
+      btnCancelOrder.className='btn-cancel-order';
+      btnCancelOrder.textContent='주문취소';
+      btnCancelOrder.onclick=function(){cancelOrder(order.id);};
+      actions.appendChild(btnCancelOrder);
+    }
+
     var btnDel=document.createElement('button');
     btnDel.className='btn-cancel-order';
     btnDel.textContent='✕ 삭제';
-    btnDel.onclick=function(){deleteOrder(order.id);};
+    if(order.status==='pending'){
+      btnDel.disabled=true;
+      btnDel.style.opacity='.45';
+      btnDel.style.cursor='not-allowed';
+      btnDel.title='대기중 주문은 삭제할 수 없어요. 먼저 주문취소를 눌러주세요.';
+    }else{
+      btnDel.onclick=function(){deleteOrder(order.id);};
+    }
     actions.appendChild(btnDel);
 
     var btnCnl=document.createElement('button');
