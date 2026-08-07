@@ -753,7 +753,7 @@ app.put('/api/orders/:id/reply', requireAdmin, async (req, res) => {
   } catch(e) { err(res, e.message); }
 });
 
-// 주문 삭제 (DELETE /api/orders/:id) — 대기중은 삭제 불가, 접수완료 삭제 시 재고 복원
+// 주문 삭제 (DELETE /api/orders/:id) — 대기중은 삭제 불가. 재고는 건드리지 않음(취소는 별도 API가 복원 담당)
 app.delete('/api/orders/:id', async (req, res) => {
   try {
     const isAdmin = !!ADMIN_TOKEN && req.headers['x-admin-token'] === ADMIN_TOKEN;
@@ -761,7 +761,7 @@ app.delete('/api/orders/:id', async (req, res) => {
     await conn.beginTransaction();
     try {
       const [rows] = await conn.execute(
-        'SELECT status, date, items, reserve_date, device_id FROM orders WHERE id=? FOR UPDATE', [req.params.id]
+        'SELECT status, device_id FROM orders WHERE id=? FOR UPDATE', [req.params.id]
       );
       if (!rows.length) { await conn.rollback(); conn.release(); return err(res, '주문 없음', 404); }
 
@@ -775,22 +775,6 @@ app.delete('/api/orders/:id', async (req, res) => {
       } else if (rows[0].status === 'pending') {
         await conn.rollback(); conn.release();
         return err(res, '대기중 주문은 삭제할 수 없어요. 먼저 주문취소를 해주세요.', 409);
-      }
-
-      // 접수완료(confirmed) 주문 삭제 시 재고 복원 — 예약주문은 애초에 재고 미차감이라 제외,
-      // 배송완료/취소된 주문은 그대로 삭제(취소는 취소 시점에 이미 복원됨, 배송완료는 재고 반영 그대로 유지)
-      const isReserveOrder = !!rows[0].reserve_date;
-      if (rows[0].status === 'confirmed' && !isReserveOrder) {
-        const items = typeof rows[0].items === 'string' ? JSON.parse(rows[0].items) : (rows[0].items || []);
-        const orderDate = toKSTDateStr(rows[0].date) || rows[0].date;
-        for (const item of items) {
-          const byId = item.menuId != null;
-          await conn.execute(
-            byId ? 'UPDATE daily_menus SET stock = stock + ? WHERE date=? AND menu_id=?'
-                 : 'UPDATE daily_menus SET stock = stock + ? WHERE date=? AND name=?',
-            [item.qty || 1, orderDate, byId ? item.menuId : item.name]
-          );
-        }
       }
 
       const [r] = await conn.execute('DELETE FROM orders WHERE id=?', [req.params.id]);

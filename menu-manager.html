@@ -2526,7 +2526,7 @@ function _buildAdminOrderCard(order){
       actions.appendChild(btnPri);
     }
 
-    if(order.status==='pending'){
+    if(order.status==='pending'||order.status==='confirmed'){
       var btnCancelOrder=document.createElement('button');
       btnCancelOrder.className='btn-cancel-order';
       btnCancelOrder.textContent='주문취소';
@@ -2714,7 +2714,6 @@ function cancelOrder(id){
 
 function deleteOrder(id){
   showConfirm('이 주문을 삭제할까요?',function(){
-    var o=_ordersCache[id];
     closeAdminOrderDetail();
     delete _ordersCache[id];
     var remaining=Object.values(_ordersCache);
@@ -2728,8 +2727,6 @@ function deleteOrder(id){
       .then(function(d){
         if(d&&d.success){
           showToast('🗑 삭제 완료');
-          // 접수완료 주문 삭제는 서버가 재고를 복원하므로 화면도 갱신
-          if(o&&o.status==='confirmed'&&o.date===workDate)loadMenus(workDate);
           if(_histSubTab==='reserved')loadReservedOrders();
         }
         else{
