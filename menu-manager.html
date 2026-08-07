@@ -15,9 +15,13 @@ var ONBAN_ADMIN_KEY='onban@1234';
   // 로그인 유지 값을 비밀번호에 묶는다 — 비밀번호를 바꾸면 기존에 로그인돼 있던 기기도 다시 물어본다
   var AUTH_VAL='ok_'+ONBAN_ADMIN_KEY;
   if(localStorage.getItem('onban_admin_auth')===AUTH_VAL)return;
-  var input=prompt('관리자 비밀번호를 입력하세요');
+  // 모바일 키보드가 뒤에 공백을 붙이거나 붙여넣기에 공백이 딸려오는 경우가 있어 다듬어서 비교
+  var input=(prompt('관리자 비밀번호를 입력하세요 (영문 모드로 전환 후 입력)')||'').trim();
   if(input===ONBAN_ADMIN_KEY){localStorage.setItem('onban_admin_auth',AUTH_VAL);}
-  else{alert('접근 권한이 없습니다.');location.replace('onban.html');}
+  else{
+    alert(input?'비밀번호가 다릅니다.\n키보드가 한글 모드가 아닌지 확인해주세요.':'접근 권한이 없습니다.');
+    location.replace('onban.html');
+  }
 })();
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
