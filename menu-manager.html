@@ -2698,33 +2698,34 @@ function cancelOrder(id){
 }
 
 function deleteOrder(id){
-  if(!confirm('이 주문을 삭제할까요?'))return;
-  closeAdminOrderDetail();
-  delete _ordersCache[id];
-  var remaining=Object.values(_ordersCache);
-  var today=workDate||toISO(new Date());
-  renderOrdersList(today,remaining);
-  // 예약된 메뉴 탭이면 서버 응답 기다리지 않고 즉시 해당 행 제거
-  var rrow=document.getElementById('reservedRow_'+id);
-  if(rrow)rrow.remove();
-  fetch(API_URL+'/api/orders/'+encodeURIComponent(id),{method:'DELETE'})
-    .then(function(r){return r.json();})
-    .then(function(d){
-      if(d&&d.success){
-        showToast('🗑 삭제 완료');
-        if(_histSubTab==='reserved')loadReservedOrders();
-      }
-      else{
-        showToast('⚠️ 삭제 실패: '+(d&&d.error||''));
+  showConfirm('이 주문을 삭제할까요?',function(){
+    closeAdminOrderDetail();
+    delete _ordersCache[id];
+    var remaining=Object.values(_ordersCache);
+    var today=workDate||toISO(new Date());
+    renderOrdersList(today,remaining);
+    // 예약된 메뉴 탭이면 서버 응답 기다리지 않고 즉시 해당 행 제거
+    var rrow=document.getElementById('reservedRow_'+id);
+    if(rrow)rrow.remove();
+    fetch(API_URL+'/api/orders/'+encodeURIComponent(id),{method:'DELETE'})
+      .then(function(r){return r.json();})
+      .then(function(d){
+        if(d&&d.success){
+          showToast('🗑 삭제 완료');
+          if(_histSubTab==='reserved')loadReservedOrders();
+        }
+        else{
+          showToast('⚠️ 삭제 실패: '+(d&&d.error||''));
+          renderOrders();
+          if(_histSubTab==='reserved')loadReservedOrders();
+        }
+      })
+      .catch(function(err){
+        showToast('⚠️ 연결 오류: '+String(err).slice(0,60));
         renderOrders();
         if(_histSubTab==='reserved')loadReservedOrders();
-      }
-    })
-    .catch(function(err){
-      showToast('⚠️ 연결 오류: '+String(err).slice(0,60));
-      renderOrders();
-      if(_histSubTab==='reserved')loadReservedOrders();
-    });
+      });
+  });
 }
 
 
