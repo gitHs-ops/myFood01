@@ -1859,6 +1859,13 @@ function renderHistory(){
           all.push(go);
         }
       });
+      if(/[?&]debug=1/.test(location.search)){
+        var _staleRes=all.filter(function(o){return !!o.reserveDate&&!dbIds[o.id];});
+        alert('deviceId: '+did
+          +'\nlocalStorage 예약건: '+all.filter(function(o){return !!o.reserveDate;}).map(function(o){return o.id+'('+o.reserveDate+')';}).join(', ')
+          +'\n서버(results[1]) 응답건: '+((results[1].orders||[]).map(function(o){return o.id+'('+o.reserveDate+')';}).join(', ')||'없음')
+          +'\nDB에 없어 삭제될 예정: '+(_staleRes.map(function(o){return o.id;}).join(', ')||'없음'));
+      }
       // phantom 주문 제거 (DB에 없는 localStorage 전용 항목) — 오늘자 주문 + 예약주문(reservedForDevice로 전량 조회됨) 대상
       // 예약주문이 아닌 과거 일반 주문은 위 두 조회 범위 밖이라 그대로 유지
       all=all.filter(function(o){var relevant=(o.date===menuDate)||!!o.reserveDate;return !relevant||dbIds[o.id];});
