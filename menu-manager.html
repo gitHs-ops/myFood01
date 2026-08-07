@@ -2851,6 +2851,77 @@ function _sseSetUI(state){
   else lbl.textContent='🔄 연결중';
 }
 
+/* ════ 새 주문 알림 (소리 · 진동 · 탭 제목) ════ */
+/* 화면을 보고 있지 않아도 새 주문을 알아챌 수 있게 한다.
+   소리는 오디오 파일 없이 코드로 만들어 정적 호스팅에서도 그대로 동작한다. */
+var _audioCtx=null;
+function _unlockAudio(){
+  if(_audioCtx)return;
+  try{
+    var AC=window.AudioContext||window.webkitAudioContext;
+    if(!AC)return;
+    _audioCtx=new AC();
+    if(_audioCtx.state==='suspended')_audioCtx.resume();
+  }catch(e){}
+}
+// 브라우저는 사용자가 화면을 한 번 건드리기 전에는 소리를 막는다 → 첫 조작 때 미리 열어둔다
+['click','touchstart','keydown'].forEach(function(ev){
+  document.addEventListener(ev,_unlockAudio,{once:true});
+});
+
+function _chime(startAt){
+  // '딩-동' 두 음
+  [[880,0],[1174.7,0.18]].forEach(function(p){
+    var osc=_audioCtx.createOscillator();
+    var gain=_audioCtx.createGain();
+    osc.type='sine';
+    osc.frequency.value=p[0];
+    var t0=_audioCtx.currentTime+startAt+p[1];
+    gain.gain.setValueAtTime(0.0001,t0);
+    gain.gain.exponentialRampToValueAtTime(0.35,t0+0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001,t0+0.45);
+    osc.connect(gain);gain.connect(_audioCtx.destination);
+    osc.start(t0);osc.stop(t0+0.5);
+  });
+}
+function _playNewOrderSound(){
+  try{
+    if(!_audioCtx)_unlockAudio();
+    if(!_audioCtx)return;
+    if(_audioCtx.state==='suspended')_audioCtx.resume();
+    _chime(0);_chime(0.7);          // 두 번 울려 놓치지 않게
+    if(navigator.vibrate)navigator.vibrate([200,100,200]);
+  }catch(e){}
+}
+
+var _origTitle=document.title;
+var _titleTimer=null;
+var _newOrderCount=0;
+function _startTitleBlink(){
+  _newOrderCount++;
+  if(_titleTimer)return;
+  var on=false;
+  _titleTimer=setInterval(function(){
+    on=!on;
+    document.title=on?('🔔 새 주문 '+_newOrderCount+'건!'):_origTitle;
+  },900);
+}
+function _stopTitleBlink(){
+  if(_titleTimer){clearInterval(_titleTimer);_titleTimer=null;}
+  _newOrderCount=0;
+  document.title=_origTitle;
+}
+// 화면으로 돌아오거나 아무 곳이나 누르면 알림 해제
+document.addEventListener('visibilitychange',function(){if(!document.hidden)_stopTitleBlink();});
+window.addEventListener('focus',_stopTitleBlink);
+document.addEventListener('click',_stopTitleBlink);
+
+function _notifyNewOrder(){
+  _playNewOrderSound();
+  _startTitleBlink();
+  showToast('🔔 새 주문이 들어왔어요!');
+}
+
 function startSSE(){
   if(_sse){_sse.close();_sse=null;}
   if(_sseReconnectTimer){clearTimeout(_sseReconnectTimer);_sseReconnectTimer=null;}
@@ -2861,6 +2932,10 @@ function startSSE(){
   };
   _sse.onmessage=function(e){
     try{
+      var msg=null;
+      try{msg=JSON.parse(e.data);}catch(_){}
+      // 새 주문일 때만 알린다 (상태변경·수정 등 나머지 신호는 조용히 다시 그리기만)
+      if(msg&&msg.type==='order_new')_notifyNewOrder();
       _debouncedRenderOrders();
     }catch(ex){}
   };
