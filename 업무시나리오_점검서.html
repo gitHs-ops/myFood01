@@ -445,10 +445,25 @@ flowchart LR
 <tr><td><span class="tag t-p0">P0-3</span></td><td>접수완료(=입금확인) 확인창 없음 → 오터치가 곧 배송</td><td><code>menu-manager.html:2695</code></td><td>3줄</td></tr>
 <tr><td><span class="tag t-p0">P0-4</span></td><td>관리자 비밀번호·API 토큰이 공개 소스에 평문</td><td><code>menu-manager.html:12,2858</code> <code>index.html:9</code></td><td>아래 별도 설명</td></tr>
 <tr><td><span class="tag t-p0">P0-5</span></td><td>설정 조회 API가 인증 없이 문자 발송 주소·연락처를 공개</td><td><code>server.js:875</code></td><td>서버 ~10줄</td></tr>
-<tr style="background:#fff5f4;"><td><span class="tag t-p0">P0-6</span></td><td><strong>알림톡·SMS가 하나도 발송되지 않고 있음</strong> (미수정)</td><td><code>settings.gasUrl</code> 부재 + 키 이름 불일치</td><td>설정 1건 + 서버 1줄</td></tr>
+<tr><td><span class="tag t-p0">P0-6</span></td><td>알림톡·SMS가 하나도 발송되지 않고 있음</td><td><code>settings.gasUrl</code> 부재 + 키 이름 불일치</td><td>설정 1건 + 서버 1줄</td></tr>
 </table>
-<div class="note" style="background:#fdf0ee;">
-<strong>P0-6은 아직 수정하지 않았습니다.</strong> GAS 배포 URL 값이 있어야 하고, 알림을 어디까지 되살릴지(고객 알림톡·업주 SMS) 업주 확인이 필요해 보류했습니다. 나머지 P0 5건은 모두 수정 완료입니다.
+<div class="note" style="background:#eefbf4;border-left:5px solid var(--ok);">
+<strong>P0-6도 해결됐습니다 — 다만 "전부 되살리기"가 아니라 업주 방침에 맞춘 형태입니다.</strong>
+<ul style="margin:8px 0 0 20px;">
+<li><strong>고객 알림톡은 배송완료 때만</strong> 보냅니다. 주문 시점에 카톡이 가면 고객이 그 대화방에서 답장해 <strong>옛 주문 방식으로 되돌아가기</strong> 때문입니다(업주 판단). <code>settings.notifyEvents</code> 배열로 시점을 제어하며 현재 값은 <code>["delivered"]</code>입니다. 여기에 <code>confirmed</code>·<code>cancelled</code>·<code>reply</code>·<code>order</code>를 넣으면 그 시점도 함께 발송됩니다.</li>
+<li><strong>업주 SMS와 배송업체 SMS는 쓰지 않습니다</strong>(<code>smsEnabled=false</code>). 업주는 관리자 화면의 변화를 보고 대응하는 방식을 택했습니다.</li>
+<li>그래서 <strong>관리자 화면이 새 주문을 아는 유일한 경로</strong>가 됐고, 아래 두 가지를 새로 넣었습니다.</li>
+</ul>
+</div>
+
+<div class="risk" style="border-left-color:var(--ok);background:#f4fbf7;">
+<div class="risk-t"><span class="tag t-ok">보완</span> 알림 문자를 안 쓰는 대신 넣은 장치 두 가지</div>
+<dl>
+<dt>새 주문 소리·진동·탭 제목 알림</dt>
+<dd>실시간 신호 중 <code>order_new</code>가 왔을 때만 '딩-동' 소리를 두 번 울리고, 지원 기기에서는 진동하며, 브라우저 탭 제목이 <code>🔔 새 주문 N건!</code>으로 깜빡입니다. 소리는 오디오 파일 없이 코드로 만들어 정적 호스팅에서도 그대로 동작합니다. <strong>주의:</strong> 브라우저는 사용자가 화면을 한 번 건드리기 전에는 소리를 막으므로, 관리자 화면에 들어와 아무것도 누르지 않으면 첫 알림이 안 울릴 수 있습니다.</dd>
+<dt>묻힌 주문 경고 + 미입금 합계</dt>
+<dd>소리는 <strong>화면을 열어둔 동안만</strong> 울립니다. 브라우저를 닫아둔 사이의 주문은 여전히 놓칠 수 있으므로, 지난 날짜에 대기중으로 남은 주문을 <code>GET /api/orders/pending-summary</code>로 집계해 주문 화면 상단에 <strong>"처리 안 된 지난 주문 N건"</strong> 경고를 띄웁니다. 해당 날짜로 바로 이동하는 버튼도 함께 나옵니다. 대기중 통계에는 <strong>미입금 합계 금액</strong>을 표시해, 마감 전에 이 숫자만 확인하면 됩니다. (P1-4·P2-2 해소)</dd>
+</dl>
 </div>
 
 <div class="risk p0">
@@ -478,7 +493,7 @@ flowchart LR
 <tr><td><span class="tag t-p1">P1-1</span></td><td>카톡 파싱 등록이 주문 있는 날의 재고를 초기화</td><td><code>menu-manager.html:1643</code></td></tr>
 <tr><td><span class="tag t-p1">P1-2</span></td><td>서버가 주문 금액을 검산하지 않음</td><td><code>server.js:536</code></td></tr>
 <tr><td><span class="tag t-p1">P1-3</span></td><td>알림톡·SMS 실패가 조용히 묻힘 (P0-6이 안 드러난 원인)</td><td><code>server.js:82,113,149</code></td></tr>
-<tr><td><span class="tag t-p1">P1-4</span></td><td>입금 여부를 기록·집계할 자리가 없음</td><td>스키마 <code>server.js:949</code></td></tr>
+<tr><td><span class="tag t-p1">P1-4</span></td><td><s>입금 여부를 기록·집계할 자리가 없음</s> → <strong>집계 표시 완료</strong>(미입금 합계·묻힌 주문 경고). 입금자명 기록은 이월</td><td>스키마 <code>server.js:949</code></td></tr>
 <tr><td><span class="tag t-p1">P1-5</span></td><td>상태 변경이 서버 실패를 무시하고 성공으로 표시</td><td><code>menu-manager.html:2695,2709,2739</code></td></tr>
 <tr><td><span class="tag t-p1">P1-6</span></td><td>카톡 주문 수기 등록 화면 없음 → 재고 어긋남</td><td>기능 부재</td></tr>
 </table>
