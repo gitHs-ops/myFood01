@@ -787,6 +787,18 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
     </div>
   </div>
 </div>
+<!-- 카카오 파싱 등록 방식 선택 모달 -->
+<div class="cal-overlay" id="importParsedConfirmOverlay" style="z-index:1000;" onclick="if(event.target===this)closeImportParsedConfirm()">
+  <div style="background:#fff;border-radius:16px;padding:24px;width:280px;text-align:center;" onclick="event.stopPropagation()">
+    <div style="font-size:15px;font-weight:700;color:#1a1a1a;margin-bottom:6px;">파싱된 메뉴 등록</div>
+    <p style="font-size:13px;color:#666;margin-bottom:18px;">현재 목록에 어떻게 적용할까요?</p>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-add" style="flex:1;font-size:14px;" onclick="_doImportParsed(true)">추가</button>
+      <button class="btn" style="flex:1;background:#086266;color:#fff;border:none;border-radius:10px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;" onclick="_doImportParsed(false)">전체교체</button>
+    </div>
+    <button style="margin-top:10px;width:100%;background:#eee;color:#555;border:none;border-radius:10px;padding:9px;font-size:13px;cursor:pointer;" onclick="closeImportParsedConfirm()">취소</button>
+  </div>
+</div>
 <!-- 마스터 미등록 메뉴 안내 모달 -->
 <div class="cal-overlay" id="orphanOverlay" onclick="if(event.target===this)closeOrphanModal()">
   <div style="background:#fff;border-radius:16px;padding:22px;width:320px;max-width:93vw;max-height:80vh;display:flex;flex-direction:column;" onclick="event.stopPropagation()">
@@ -2242,8 +2254,17 @@ function parseKakao(){
 }
 function importParsed(){
   if(!parsedMenus.length)return;
-  var add=menus.length>0?confirm('현재 목록에 추가할까요?\n확인=추가 / 취소=전체교체'):false;
-
+  if(menus.length>0){
+    document.getElementById('importParsedConfirmOverlay').classList.add('open');
+  }else{
+    _doImportParsed(false);
+  }
+}
+function closeImportParsedConfirm(){
+  document.getElementById('importParsedConfirmOverlay').classList.remove('open');
+}
+function _doImportParsed(add){
+  closeImportParsedConfirm();
   var items, skipped=[];
   if(add){
     // 기존 메뉴 이름+카테고리 목록
