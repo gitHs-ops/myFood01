@@ -1147,7 +1147,7 @@ function _watchOverlaysForSaveBtn(){
   var obs=new MutationObserver(function(){_updateSaveBtn();});
   overlays.forEach(function(o){obs.observe(o,{attributes:true,attributeFilter:['class']});});
 }
-function save(){_menuDirty=true;saveMenus(workDate);_updateSaveBtn();}
+function save(){_menuDirty=true;_updateSaveBtn();saveMenus(workDate,function(){_menuDirty=false;_updateSaveBtn();});}
 
 var _menuPollTimer=null;
 function _startMenuSSE(date){
@@ -1699,19 +1699,20 @@ function renderReservedOrders(orders){
   var el=document.getElementById('reservedMenuList');
   if(!el)return;
   if(!orders.length){
-    el.innerHTML='<div class="order-empty">📭 작업일자 이후 접수된 예약주문이 없어요.</div>';
+    el.innerHTML='<div class="order-empty">📭 작업일자 이후 예약주문이 없어요.</div>';
     return;
   }
   el.innerHTML='';
+  var statusText={pending:'⏳ 대기중',confirmed:'✅ 접수완료',delivered:'🚚 배송완료',cancelled:'❌ 취소'};
   orders.forEach(function(order){
     var itemSum=order.items.reduce(function(s,i){return s+(i.price||0)*(i.qty||1);},0);
     var summary=(order.items[0]?menuDisplayName(order.items[0].name,order.items[0].cat||_itemCat(order.items[0].name)):'')+(order.items.length>1?' 외 '+(order.items.length-1)+'건':'');
     var row=document.createElement('div');
-    row.className='order-li confirmed';
+    row.className='order-li '+order.status;
     row.id='reservedRow_'+order.id;
     row.innerHTML=
       '<div class="order-li-main">'
-        +'<div class="order-li-top"><span class="order-status status-confirmed">✅ 접수완료</span><span style="font-size:10px;font-weight:700;background:#f3e5f5;color:#6a1b9a;border-radius:999px;padding:2px 7px;">📅 '+order.reserveDate+'</span><span class="order-li-name">'+order.name+'</span><span class="order-li-time">'+(order.phone?fmtPhone(order.phone)+' · ':'')+fmtDateTime(order.createdDate||order.date,order.time)+'</span></div>'
+        +'<div class="order-li-top"><span class="order-status status-'+order.status+'">'+(statusText[order.status]||order.status)+'</span><span style="font-size:10px;font-weight:700;background:#f3e5f5;color:#6a1b9a;border-radius:999px;padding:2px 7px;">📅 '+order.reserveDate+'</span><span class="order-li-name">'+order.name+'</span><span class="order-li-time">'+(order.phone?fmtPhone(order.phone)+' · ':'')+fmtDateTime(order.createdDate||order.date,order.time)+'</span></div>'
         +'<div class="order-li-sum"><span class="order-li-sum-text">'+summary+'</span><span class="order-li-arrow">›</span></div>'
       +'</div>'
       +'<div class="order-li-right"><span class="order-li-total">'+order.total.toLocaleString()+'천원</span></div>';
@@ -2291,7 +2292,8 @@ function renderOrders(){
   el.innerHTML='<div style="text-align:center;padding:30px;color:#aaa;font-size:13px;">불러오는 중...</div>';
   Promise.all([
     fetch(API_URL+'/api/orders?date='+encodeURIComponent(today),{cache:'no-store'}).then(function(r){return r.json();}),
-    fetch(API_URL+'/api/orders?createdOn='+encodeURIComponent(today),{cache:'no-store'}).then(function(r){return r.json();})
+    fetch(API_URL+'/api/orders?createdOn='+encodeURIComponent(today),{cache:'no-store'}).then(function(r){return r.json();}),
+    fetch(API_URL+'/api/orders?reserved=1',{cache:'no-store'}).then(function(r){return r.json();})
   ])
     .then(function(results){
       var byId={};
@@ -2306,6 +2308,11 @@ function renderOrders(){
           o.replyAt  =oldCache[o.id].replyAt||0;
         }
         _ordersCache[o.id]=o;
+      });
+      // 예약주문 탭 전용: 작업일자와 무관하게 취소되지 않은 예약주문 전체를 캐시에 보강
+      // (전체/대기중 등 통계·목록은 todayOrders 그대로 사용, 아래서 orders만 넘김)
+      (results[2].orders||[]).forEach(function(o){
+        if(!_ordersCache[o.id])_ordersCache[o.id]=o;
       });
       renderOrdersList(today,orders);
     })
@@ -2349,10 +2356,9 @@ function renderOrdersList(today,todayOrders){
     if(bN!==aN)return bN-aN;
     return String(b.id).localeCompare(String(a.id));
   });
-  var filtered=orderFilter==='all'?todayOrders:todayOrders.filter(function(o){
-    if(orderFilter==='예약주문')return _isReserveOrder(o);
-    return o.status===orderFilter;
-  });
+  var filtered=orderFilter==='all'?todayOrders
+    :orderFilter==='예약주문'?getOrders().filter(_isReserveOrder).sort(function(a,b){return (a.reserveDate||'').localeCompare(b.reserveDate||'');})
+    :todayOrders.filter(function(o){return o.status===orderFilter;});
   var el=document.getElementById('orderList');
   if(!filtered.length){
     el.innerHTML='<div class="order-empty">📭 '+( orderFilter==='all'?'오늘 접수된 주문이 없어요.':'해당 주문이 없어요.')+'</div>';
@@ -2688,7 +2694,7 @@ function showToast(msg){
   if(!existing){
     existing=document.createElement('div');
     existing.id='mgr-toast';
-    existing.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,calc(-50% + 10px));background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:999px;font-size:13px;opacity:0;transition:all .3s;z-index:9999;white-space:nowrap;';
+    existing.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,calc(-50% + 10px));background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:999px;font-size:13px;opacity:0;transition:all .3s;z-index:9999;white-space:nowrap;pointer-events:none;';
     document.body.appendChild(existing);
   }
   existing.textContent=msg;

@@ -440,7 +440,7 @@ app.get('/api/orders', async (req, res) => {
       else if (phone) { sql += ' AND phone=?';   params.push(phone); }
       else if (name)  { sql += ' AND name=?';    params.push(name); }
       if (reserved) {
-        sql += " AND reserve_date IS NOT NULL AND status='confirmed'";
+        sql += " AND reserve_date IS NOT NULL AND status<>'cancelled'";
         if (reservedFrom) { sql += ' AND reserve_date >= ?'; params.push(reservedFrom); }
         else               { sql += ' AND reserve_date >= CURDATE()'; }
       }

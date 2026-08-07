@@ -416,7 +416,7 @@ function switchPage(name) {
   <tr><th>서브탭</th><th>함수</th><th>설명</th></tr>
   <tr><td>📅 날짜별 이력</td><td><code>switchHistSubTab('dates')</code></td><td>과거 일일 메뉴 날짜 목록. 날짜 카드 클릭 → 미리보기/불러오기</td></tr>
   <tr><td>🗂 전체 마스터 메뉴</td><td><code>switchHistSubTab('all')</code></td><td>menus 테이블 전체 목록. 카테고리 필터 + 페이지네이션(10개) + 다중선택</td></tr>
-  <tr><td>📅 예약된 메뉴</td><td><code>switchHistSubTab('reserved')</code> → <code>loadReservedOrders()</code></td><td><code>GET /api/orders?reserved=1&reservedFrom=workDate</code> 조회. 작업일자 이후로 접수 완료된 예약주문만 목록 표시</td></tr>
+  <tr><td>📅 예약된 메뉴</td><td><code>switchHistSubTab('reserved')</code> → <code>loadReservedOrders()</code></td><td><code>GET /api/orders?reserved=1&reservedFrom=workDate</code> 조회. 작업일자 이후로 취소되지 않은 예약주문(대기중·접수완료·배송완료) 전체를 상태 배지와 함께 목록 표시</td></tr>
 </table>
 
 <h4>예약된 메뉴 탭 상세</h4>
@@ -763,7 +763,8 @@ var _pollTimer = setInterval(function(){
   <tr><th>메서드</th><th>경로</th><th>관리자 사용처</th><th>비고</th></tr>
   <tr><td><span class="badge badge-get">GET</span></td><td><code>/api/orders?date=</code></td><td>renderOrders()</td><td>날짜별 주문 조회. 응답에 <code>reserveDate</code>, <code>createdDate</code> 포함</td></tr>
   <tr><td><span class="badge badge-get">GET</span></td><td><code>/api/orders?createdOn=</code></td><td>renderOrders()</td><td>date= 조회와 병렬 호출. 작업일자에 신청·접수 완료된 예약주문(reserve_date 존재) 보완 조회 후 병합</td></tr>
-  <tr><td><span class="badge badge-get">GET</span></td><td><code>/api/orders?reserved=1&reservedFrom=</code></td><td>loadReservedOrders()</td><td>메뉴 창고 &gt; 예약된 메뉴 탭 전용. reservedFrom 이후 접수완료건만 조회</td></tr>
+  <tr><td><span class="badge badge-get">GET</span></td><td><code>/api/orders?reserved=1</code></td><td>renderOrders()</td><td>reservedFrom 생략 시 서버가 오늘 이후로 기본 적용. "예약주문" 필터 탭 전용 — <code>_ordersCache</code>에만 보강하고 전체/대기중 등 통계에는 포함 안 함(작업일자와 무관하게 취소되지 않은 예약주문 전부를 찾기 위함)</td></tr>
+  <tr><td><span class="badge badge-get">GET</span></td><td><code>/api/orders?reserved=1&reservedFrom=</code></td><td>loadReservedOrders()</td><td>메뉴 창고 &gt; 예약된 메뉴 탭 전용. reservedFrom 이후 취소되지 않은 예약주문 전체 조회(2026-08 수정 — 이전엔 접수완료건만 조회되어 미확정 예약주문이 누락됐음)</td></tr>
   <tr><td><span class="badge badge-put">PUT</span></td><td><code>/api/orders/:id/status</code></td><td>confirmOrder / deliverOrder / cancelOrder</td><td>서버 알림 자동 발송. 예약주문 접수(confirmed) 시 date를 reserve_date로 갱신, 재고 조작은 예약주문 조건에서 전부 스킵</td></tr>
   <tr><td><span class="badge badge-put">PUT</span></td><td><code>/api/orders/:id/reply</code></td><td>sendAdminReply()</td><td>관리자 답변 저장 + 알림톡. 줄바꿈은 <code>&lt;br&gt;</code> 마크업으로 저장</td></tr>
   <tr><td><span class="badge badge-put">PUT</span></td><td><code>/api/orders/:id/addreq-ack</code></td><td>ackAddreq(), sendAdminReply()</td><td>추가 요청 확인 처리</td></tr>
