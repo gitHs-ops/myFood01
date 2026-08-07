@@ -2992,10 +2992,25 @@ var ADMIN_API_TOKEN=ONBAN_ADMIN_KEY;
   var _origFetch=window.fetch;
   window.fetch=function(url,opts){
     opts=opts||{};
-    if(typeof url==='string'&&url.indexOf(API_URL)===0){
+    var isApi=(typeof url==='string'&&url.indexOf(API_URL)===0);
+    if(isApi){
       opts=Object.assign({},opts,{headers:Object.assign({},opts.headers,{'X-Admin-Token':ADMIN_API_TOKEN})});
     }
-    return _origFetch(url,opts);
+    var p=_origFetch(url,opts);
+    if(!isApi)return p;
+    // 서버 재배포 중에는 JSON 대신 오류 HTML이 온다. 그대로 두면 화면마다
+    // "Unexpected token '<'" 같은 알아볼 수 없는 메시지가 뜨므로 여기서 한 번에 바꾼다.
+    return p.then(function(r){
+      try{
+        var _json=r.json.bind(r);
+        r.json=function(){
+          return _json().catch(function(){
+            throw new Error('서버가 잠시 응답하지 않아요. 30초쯤 뒤 다시 시도해주세요.');
+          });
+        };
+      }catch(e){}
+      return r;
+    });
   };
 })();
 var SETTINGS_KEY='onban_settings';
