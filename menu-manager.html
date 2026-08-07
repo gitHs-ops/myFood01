@@ -3003,9 +3003,11 @@ var ADMIN_API_TOKEN=ONBAN_ADMIN_KEY;
     return p.then(function(r){
       try{
         var _json=r.json.bind(r);
+        var _path=url.replace(API_URL,'');
         r.json=function(){
           return _json().catch(function(){
-            throw new Error('서버가 잠시 응답하지 않아요. 30초쯤 뒤 다시 시도해주세요.');
+            // 상태코드와 경로를 남긴다 — 다음에 같은 일이 생기면 어느 요청이 문제였는지 알 수 있다
+            throw new Error('서버 응답을 읽지 못했어요 ('+r.status+' '+_path+'). 잠시 후 다시 시도해주세요.');
           });
         };
       }catch(e){}
