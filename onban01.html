@@ -1859,8 +1859,9 @@ function renderHistory(){
           all.push(go);
         }
       });
-      // 오늘자 phantom 주문 제거 (DB에 없는 localStorage 전용 항목)
-      all=all.filter(function(o){return o.date!==menuDate||dbIds[o.id];});
+      // phantom 주문 제거 (DB에 없는 localStorage 전용 항목) — 오늘자 주문 + 예약주문(reservedForDevice로 전량 조회됨) 대상
+      // 예약주문이 아닌 과거 일반 주문은 위 두 조회 범위 밖이라 그대로 유지
+      all=all.filter(function(o){var relevant=(o.date===menuDate)||!!o.reserveDate;return !relevant||dbIds[o.id];});
       _migrateLegacyMemo(all);   // 레거시 memo 인라인 노트 → additionalRequest 이관
       localStorage.setItem('orders',JSON.stringify(all));
     }
@@ -2272,37 +2273,44 @@ function histSaveExtra(id){
   }).catch(function(){});
 }
 function deleteHistOrder(orderId){
-  if(!confirm('취소된 주문을 목록에서 삭제할까요?'))return;
-  var orders=JSON.parse(localStorage.getItem('orders')||'[]');
-  localStorage.setItem('orders',JSON.stringify(orders.filter(function(o){return o.id!==orderId;})));
-  fetch(API_URL+'/api/orders/'+encodeURIComponent(orderId)+'?deviceId='+encodeURIComponent(getDeviceId()),{method:'DELETE'}).catch(function(){});
-  _closeOrderDetailUI();
-  renderHistory();
+  showConfirm('취소된 주문을 목록에서 삭제할까요?',function(){
+    var orders=JSON.parse(localStorage.getItem('orders')||'[]');
+    localStorage.setItem('orders',JSON.stringify(orders.filter(function(o){return o.id!==orderId;})));
+    fetch(API_URL+'/api/orders/'+encodeURIComponent(orderId)+'?deviceId='+encodeURIComponent(getDeviceId()),{method:'DELETE'}).catch(function(){});
+    _closeOrderDetailUI();
+    renderHistory();
+  });
 }
-var _cancelHistOrderId=null;
+var _genericConfirmCb=null;
+function showConfirm(msg,onYes,yesLabel){
+  document.getElementById('genericConfirmMsg').textContent=msg;
+  document.getElementById('genericConfirmYesBtn').textContent=yesLabel||'네';
+  _genericConfirmCb=onYes;
+  document.getElementById('genericConfirmOverlay').style.display='flex';
+}
+function closeGenericConfirm(){
+  document.getElementById('genericConfirmOverlay').style.display='none';
+  _genericConfirmCb=null;
+}
+function _genericConfirmYes(){
+  var cb=_genericConfirmCb;
+  closeGenericConfirm();
+  if(cb)cb();
+}
 function cancelHistOrder(orderId){
-  _cancelHistOrderId=orderId;
-  document.getElementById('cancelOrderConfirmOverlay').style.display='flex';
-}
-function closeCancelHistOrderConfirm(){
-  document.getElementById('cancelOrderConfirmOverlay').style.display='none';
-  _cancelHistOrderId=null;
-}
-function _doCancelHistOrder(){
-  var orderId=_cancelHistOrderId;
-  closeCancelHistOrderConfirm();
-  if(!orderId)return;
-  var orders=JSON.parse(localStorage.getItem('orders')||'[]');
-  var o=orders.find(function(o){return o.id===orderId;});
-  if(!o)return;
-  o.status='cancelled';
-  localStorage.setItem('orders',JSON.stringify(orders));
-  // API 상태 업데이트 (관리자 동기화)
-  fetch(API_URL+'/api/orders/'+encodeURIComponent(orderId)+'/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'cancelled',deviceId:getDeviceId()})})
-    .then(function(){loadMenus(true);}).catch(function(){});
-  showToast('주문이 취소됐습니다.');
-  _closeOrderDetailUI();
-  renderHistory();
+  showConfirm('주문을 취소할까요?',function(){
+    var orders=JSON.parse(localStorage.getItem('orders')||'[]');
+    var o=orders.find(function(o){return o.id===orderId;});
+    if(!o)return;
+    o.status='cancelled';
+    localStorage.setItem('orders',JSON.stringify(orders));
+    // API 상태 업데이트 (관리자 동기화)
+    fetch(API_URL+'/api/orders/'+encodeURIComponent(orderId)+'/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'cancelled',deviceId:getDeviceId()})})
+      .then(function(){loadMenus(true);}).catch(function(){});
+    showToast('주문이 취소됐습니다.');
+    _closeOrderDetailUI();
+    renderHistory();
+  },'네, 취소할게요');
 }
 
 /* ── SSE 실시간 동기화 ── */
@@ -2730,13 +2738,13 @@ window.onload=function(){
   <div class="order-detail-modal" id="orderDetailModal"></div>
 </div>
 
-<!-- 주문취소 확인 모달 -->
-<div id="cancelOrderConfirmOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9998;align-items:center;justify-content:center;" onclick="if(event.target===this)closeCancelHistOrderConfirm()">
+<!-- 공용 확인 모달 (삭제/취소 등 — 네이티브 confirm() 대체) -->
+<div id="genericConfirmOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9998;align-items:center;justify-content:center;" onclick="if(event.target===this)closeGenericConfirm()">
   <div style="background:#fff;border-radius:16px;padding:24px;width:280px;max-width:85vw;text-align:center;" onclick="event.stopPropagation()">
-    <div style="font-size:15px;font-weight:700;color:#1a1a1a;margin-bottom:18px;">주문을 취소할까요?</div>
+    <div id="genericConfirmMsg" style="font-size:15px;font-weight:700;color:#1a1a1a;margin-bottom:18px;white-space:pre-line;"></div>
     <div style="display:flex;gap:10px;">
-      <button style="flex:1;background:#eee;color:#555;border:none;border-radius:10px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;" onclick="closeCancelHistOrderConfirm()">아니오</button>
-      <button style="flex:1;background:#e53935;color:#fff;border:none;border-radius:10px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;" onclick="_doCancelHistOrder()">네, 취소할게요</button>
+      <button style="flex:1;background:#eee;color:#555;border:none;border-radius:10px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;" onclick="closeGenericConfirm()">아니오</button>
+      <button id="genericConfirmYesBtn" style="flex:1;background:#e53935;color:#fff;border:none;border-radius:10px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;" onclick="_genericConfirmYes()">네</button>
     </div>
   </div>
 </div>
