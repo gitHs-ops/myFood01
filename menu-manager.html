@@ -1017,35 +1017,41 @@ function saveNewMasterMenu(){
   if(!name){alert('메뉴명을 입력해주세요.');return;}
   if(!price){alert('금액을 입력해주세요.');return;}
   var ts=Date.now();
-  var newMaster;
   var existingIdx=allMenus.findIndex(function(m){return (m.name||'').trim()===name&&(m.cat||'').trim()===cat;});
-  if(existingIdx>=0){
-    if(!confirm('['+name+'] ('+cat+') 이(가) 이미 메뉴 창고에 있어요.\n그래도 업데이트할까요?'))return;
-    newMaster=allMenus[existingIdx];
-    newMaster.cat=cat;newMaster.price=price;newMaster.child=child;newMaster.desc=desc;newMaster.updatedAt=ts;
-  }else{
-    newMaster={id:ts,menuId:null,name:name,cat:cat,price:price,stock:0,child:child,desc:desc,imgUrl:null,count:0,updatedAt:ts};
-    allMenus.push(newMaster);
+  function _doSaveNewMaster(){
+    var newMaster;
+    if(existingIdx>=0){
+      newMaster=allMenus[existingIdx];
+      newMaster.cat=cat;newMaster.price=price;newMaster.child=child;newMaster.desc=desc;newMaster.updatedAt=ts;
+    }else{
+      newMaster={id:ts,menuId:null,name:name,cat:cat,price:price,stock:0,child:child,desc:desc,imgUrl:null,count:0,updatedAt:ts};
+      allMenus.push(newMaster);
+    }
+    var _savedDesc=desc;
+    apiPost('/api/menu/all',deduplicateByName(allMenus),function(e,d){
+      if(e||(d&&!d.success))showToast('⚠️ 마스터 저장 실패: '+(d&&d.error||'서버 오류'));
+    });
+    document.getElementById('newMenuOverlay').classList.remove('open');
+    document.getElementById('menuName').value=name;
+    document.getElementById('menuPrice').value=price;
+    document.getElementById('menuStock').value=stock;
+    document.getElementById('menuCat').value=cat;
+    document.getElementById('menuChild').checked=child;
+    document.getElementById('menuDesc').value=_savedDesc;
+    _addMenuMode='select';
+    _addMenuMasterId=newMaster.id;
+    var editBtn=document.getElementById('addMasterEditBtn');
+    if(editBtn)editBtn.style.display='flex';
+    var box=document.getElementById('addMenuImgPreview');
+    if(box)box.textContent='사진';
+    checkDup(name);
+    showToast('['+name+'] 마스터 등록 완료! 재고 확인 후 오늘 메뉴에 추가하세요.');
   }
-  var _savedDesc=desc;
-  apiPost('/api/menu/all',deduplicateByName(allMenus),function(e,d){
-    if(e||(d&&!d.success))showToast('⚠️ 마스터 저장 실패: '+(d&&d.error||'서버 오류'));
-  });
-  document.getElementById('newMenuOverlay').classList.remove('open');
-  document.getElementById('menuName').value=name;
-  document.getElementById('menuPrice').value=price;
-  document.getElementById('menuStock').value=stock;
-  document.getElementById('menuCat').value=cat;
-  document.getElementById('menuChild').checked=child;
-  document.getElementById('menuDesc').value=_savedDesc;
-  _addMenuMode='select';
-  _addMenuMasterId=newMaster.id;
-  var editBtn=document.getElementById('addMasterEditBtn');
-  if(editBtn)editBtn.style.display='flex';
-  var box=document.getElementById('addMenuImgPreview');
-  if(box)box.textContent='사진';
-  checkDup(name);
-  showToast('['+name+'] 마스터 등록 완료! 재고 확인 후 오늘 메뉴에 추가하세요.');
+  if(existingIdx>=0){
+    showConfirm('['+name+'] ('+cat+') 이(가) 이미 메뉴 창고에 있어요.\n그래도 업데이트할까요?',_doSaveNewMaster,'업데이트할게요');
+  }else{
+    _doSaveNewMaster();
+  }
 }
 function openAddMasterEdit(){
   if(!_addMenuMasterId)return;
@@ -1205,28 +1211,32 @@ function addMenu(){
   if(!name){alert('메뉴명을 입력해주세요.');return;}
   if(!price){alert('금액을 입력해주세요.');return;}
   if(cat==='전체'){alert('카테고리를 선택해주세요.');return;}
+  function _doAddMenu(){
+    var _ref=allMenus.find(function(m){return (m.name||'').trim()===name;});
+    if(_addMenuMode==='new'&&!_ref){
+      var _newM={id:Date.now(),menuId:null,name:name,cat:cat,price:price,stock:0,child:child,desc:desc,imgUrl:null,icon:null,count:0,updatedAt:Date.now()};
+      allMenus.push(_newM);_ref=_newM;
+      saveAllMenus();
+    }
+    menus.push({id:Date.now(),menuId:_ref?_ref.menuId:null,name:name,price:price,stock:stock,cat:cat,child:child,desc:desc,imgUrl:(_ref&&_ref.imgUrl)?_ref.imgUrl:null,icon:(_ref&&_ref.icon)?_ref.icon:null,updatedAt:Date.now()});
+    save();
+    document.getElementById('menuName').value='';
+    document.getElementById('menuPrice').value='';
+    document.getElementById('menuStock').value=getSettings().stock||0;
+    document.getElementById('menuChild').checked=false;
+    document.getElementById('menuDesc').value='';
+    document.getElementById('dupWarn').classList.remove('show');
+    _addMenuMode='select';_addMenuMasterId=null;
+    _updateAddMenuImg();
+    closeAcList();
+    renderAll();
+  }
   // 현재 목록 중복 확인
   if(menus.some(function(m){return m.name.trim()===name;})){
-    if(!confirm('['+name+']이(가) 이미 목록에 있어요.\n그래도 추가할까요?'))return;
+    showConfirm('['+name+']이(가) 이미 목록에 있어요.\n그래도 추가할까요?',_doAddMenu,'추가할게요');
+  }else{
+    _doAddMenu();
   }
-  var _ref=allMenus.find(function(m){return (m.name||'').trim()===name;});
-  if(_addMenuMode==='new'&&!_ref){
-    var _newM={id:Date.now(),menuId:null,name:name,cat:cat,price:price,stock:0,child:child,desc:desc,imgUrl:null,icon:null,count:0,updatedAt:Date.now()};
-    allMenus.push(_newM);_ref=_newM;
-    saveAllMenus();
-  }
-  menus.push({id:Date.now(),menuId:_ref?_ref.menuId:null,name:name,price:price,stock:stock,cat:cat,child:child,desc:desc,imgUrl:(_ref&&_ref.imgUrl)?_ref.imgUrl:null,icon:(_ref&&_ref.icon)?_ref.icon:null,updatedAt:Date.now()});
-  save();
-  document.getElementById('menuName').value='';
-  document.getElementById('menuPrice').value='';
-  document.getElementById('menuStock').value=getSettings().stock||0;
-  document.getElementById('menuChild').checked=false;
-  document.getElementById('menuDesc').value='';
-  document.getElementById('dupWarn').classList.remove('show');
-  _addMenuMode='select';_addMenuMasterId=null;
-  _updateAddMenuImg();
-  closeAcList();
-  renderAll();
 }
 function deleteMenu(id){
   var target=menus.find(function(m){return m.id===id;});
@@ -1618,12 +1628,12 @@ function parseKakaoToMenu(){
   });
 
   if(!parsed.length){showToast('파싱된 메뉴가 없습니다. 텍스트 형식을 확인해주세요.');return;}
-  if(!confirm(parsed.length+'개 메뉴를 일일 메뉴로 등록할까요?\n(기존 메뉴는 초기화됩니다)'))return;
-
-  menus=parsed.map(function(m){return Object.assign({id:Date.now()+Math.random()},m,{updatedAt:Date.now()});});
-  save();
-  renderAll();
-  showToast(menus.length+'개 메뉴가 등록되었습니다.');
+  showConfirm(parsed.length+'개 메뉴를 일일 메뉴로 등록할까요?\n(기존 메뉴는 초기화됩니다)',function(){
+    menus=parsed.map(function(m){return Object.assign({id:Date.now()+Math.random()},m,{updatedAt:Date.now()});});
+    save();
+    renderAll();
+    showToast(menus.length+'개 메뉴가 등록되었습니다.');
+  },'등록할게요');
 }
 var _histLoadDate=null,_histSubTab='dates';
 function saveToday(){
@@ -1957,7 +1967,7 @@ function doMerge(targetId,sourceId){
   var target=allMenus.find(function(m){return m.id===targetId;});
   var source=allMenus.find(function(m){return m.id===sourceId;});
   if(!target||!source){showToast('메뉴를 찾을 수 없어요.');return;}
-  if(!confirm("'"+source.name+"' 을(를) '"+target.name+"' 으로 합칠까요?\n'"+source.name+"' 은(는) 삭제됩니다."))return;
+  showConfirm("'"+source.name+"' 을(를) '"+target.name+"' 으로 합칠까요?\n'"+source.name+"' 은(는) 삭제됩니다.",function(){
   apiPost('/api/menu/master/merge',{
     sourceId:source.menuId||0,sourceName:source.name,
     targetId:target.menuId||0,targetName:target.name
@@ -1969,6 +1979,7 @@ function doMerge(targetId,sourceId){
     closeMergeModal();
     importAllMenusFromSheet(function(){renderAllMenus();});  // 서버 최신 상태 재동기화
     showToast("'"+source.name+"' → '"+target.name+"' 병합 완료!");
+  });
   });
 }
 function confirmSendToToday(mode){
@@ -2163,38 +2174,44 @@ function confirmOrphanSave(){
   _applyImportToToday(ctx.date,ctx.mode,ctx.imported);
 }
 function switchPage(name){
+  function _doSwitchPage(){
+    document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
+    document.querySelectorAll('.nav-tab').forEach(function(t){t.classList.remove('active');});
+    document.getElementById('page-'+name).classList.add('active');
+    var tabs=['manage','kakao','orders','history','settings'];
+    var idx=tabs.indexOf(name);
+    if(idx>=0)document.querySelectorAll('.nav-tab')[idx].classList.add('active');
+    var dateBtn=document.getElementById('dateDisplayBtn');
+    if(name==='orders'){dateBtn.textContent=fmtDate(workDate);dateBtn.style.opacity='';}
+    else{dateBtn.textContent=fmtDate(workDate);dateBtn.style.opacity='';}
+    if(name==='manage'){
+      _clearAddForm();
+      // 진입 시 완전 리프레시 — 서버에서 마스터(자동완성·사진)와 일자별 메뉴 최신 로드
+      importAllMenusFromSheet(function(){ loadMenus(workDate); });
+    }
+    if(name==='kakao')renderKakao();
+    if(name==='history'){
+      _datesCache=[];
+      importAllMenusFromSheet(function(){renderAllMenus();});
+      renderHistory();
+      if(_histSubTab==='reserved')loadReservedOrders();
+    }
+    if(name==='orders')renderOrders();
+    if(name==='settings'){loadSettingsForm();renderCatSettings();}
+    _updateSaveBtn();
+  }
   if(name!=='manage'){
     var nameInput=document.getElementById('menuName');
     var formHasInput=nameInput&&nameInput.value.trim();
     if(_menuDirty||formHasInput){
-      if(!confirm('편집한 내용을 저장하지 않았어요.\n그냥 이동할까요?'))return;
-      _menuDirty=false;
+      showConfirm('편집한 내용을 저장하지 않았어요.\n그냥 이동할까요?',function(){
+        _menuDirty=false;
+        _doSwitchPage();
+      },'이동할게요');
+      return;
     }
   }
-  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
-  document.querySelectorAll('.nav-tab').forEach(function(t){t.classList.remove('active');});
-  document.getElementById('page-'+name).classList.add('active');
-  var tabs=['manage','kakao','orders','history','settings'];
-  var idx=tabs.indexOf(name);
-  if(idx>=0)document.querySelectorAll('.nav-tab')[idx].classList.add('active');
-  var dateBtn=document.getElementById('dateDisplayBtn');
-  if(name==='orders'){dateBtn.textContent=fmtDate(workDate);dateBtn.style.opacity='';}
-  else{dateBtn.textContent=fmtDate(workDate);dateBtn.style.opacity='';}
-  if(name==='manage'){
-    _clearAddForm();
-    // 진입 시 완전 리프레시 — 서버에서 마스터(자동완성·사진)와 일자별 메뉴 최신 로드
-    importAllMenusFromSheet(function(){ loadMenus(workDate); });
-  }
-  if(name==='kakao')renderKakao();
-  if(name==='history'){
-    _datesCache=[];
-    importAllMenusFromSheet(function(){renderAllMenus();});
-    renderHistory();
-    if(_histSubTab==='reserved')loadReservedOrders();
-  }
-  if(name==='orders')renderOrders();
-  if(name==='settings'){loadSettingsForm();renderCatSettings();}
-  _updateSaveBtn();
+  _doSwitchPage();
 }
 function guessCategory(name){if(/밀키트/.test(name))return '밀키트';if(/김치|깍두기|깻잎|열무|소박이|겉절이|쪽파/.test(name))return '김치';if(/국|탕|찌개|전골|찜|구이|볶음밥|덮밥|스테이크|육전|수육|갈비|삼겹|닭|오리|아구|조개/.test(name))return '메인';if(/조림|무침|볶음|샐러드|나물|장조림|스프|뭇국|미역국/.test(name))return '반찬';return '기타';}
 function parseKakao(){
@@ -2669,16 +2686,17 @@ function confirmOrder(id){
 
 
 function deliverOrder(id){
-  if(!confirm('배송완료로 변경할까요?'))return;
-  var orders=getOrders();
-  var o=_findOrder(orders,id);
-  if(!o)return;
-  o.status='delivered';
-  saveOrders(orders);
-  _reRenderFromCache();
-  closeAdminOrderDetail();
-  fetch(API_URL+'/api/orders/'+encodeURIComponent(id)+'/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'delivered'})})
-    .then(function(){renderOrders();}).catch(function(){});
+  showConfirm('배송완료로 변경할까요?',function(){
+    var orders=getOrders();
+    var o=_findOrder(orders,id);
+    if(!o)return;
+    o.status='delivered';
+    saveOrders(orders);
+    _reRenderFromCache();
+    closeAdminOrderDetail();
+    fetch(API_URL+'/api/orders/'+encodeURIComponent(id)+'/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'delivered'})})
+      .then(function(){renderOrders();}).catch(function(){});
+  });
 }
 
 var _genericConfirmCb=null;
@@ -3079,12 +3097,13 @@ function saveReserveEvent(){
   });
 }
 function clearReserveEvent(){
-  if(!confirm('예약 이벤트를 비울까요?'))return;
-  document.getElementById('cfgEventName').value='';
-  document.getElementById('cfgEventDesc').value='';
-  document.getElementById('cfgEventPrice').value='';
-  document.getElementById('cfgEventDeadline').value='';
-  saveReserveEvent();
+  showConfirm('예약 이벤트를 비울까요?',function(){
+    document.getElementById('cfgEventName').value='';
+    document.getElementById('cfgEventDesc').value='';
+    document.getElementById('cfgEventPrice').value='';
+    document.getElementById('cfgEventDeadline').value='';
+    saveReserveEvent();
+  },'비울게요');
 }
 
 /* ── 카테고리 관리 ── */
@@ -3254,13 +3273,14 @@ function importFromSheet(mode){
         imported.forEach(function(m){var k=(m.name||'').trim()+'|'+(m.cat||'').trim();if(seen[k])dupCount++;else{seen[k]=true;uniqCount++;}});
         confirmMsg=uniqCount+'개 메뉴로 현재 목록을 대체할까요?'+(dupCount?' (중복 제외 '+dupCount+'개)':'');
       }
-      if(!confirm(confirmMsg))return;
-      var addedCount=applyImportedMenus(imported,mode);
-      save();renderAll();
-      res.style.color='#1D9E75';
-      res.textContent='✅ '+addedCount+'개 가져오기 완료!';
-      showToast(date+' 메뉴 '+addedCount+'개 가져왔습니다!');
-      setTimeout(function(){switchPage('manage');},800);
+      showConfirm(confirmMsg,function(){
+        var addedCount=applyImportedMenus(imported,mode);
+        save();renderAll();
+        res.style.color='#1D9E75';
+        res.textContent='✅ '+addedCount+'개 가져오기 완료!';
+        showToast(date+' 메뉴 '+addedCount+'개 가져왔습니다!');
+        setTimeout(function(){switchPage('manage');},800);
+      },'가져올게요');
     })
     .catch(function(e){
       res.style.color='#e05';
