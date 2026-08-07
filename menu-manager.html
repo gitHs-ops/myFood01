@@ -2707,7 +2707,7 @@ function fmtDateTime(date, time){
 
 
 function confirmOrder(id){
-  showConfirm('입금을 확인하셨나요?\n\n접수완료를 누르면 배송업체에 배송 요청 문자가 바로 나가고, 고객에게도 알림톡이 갑니다. 발송된 문자는 취소할 수 없어요.',function(){
+  showConfirm('입금을 확인하셨나요?\n\n접수완료로 바꾸면 고객에게 접수 알림이 나가고, 되돌릴 수 없어요.',function(){
     var orders=getOrders();
     var o=_findOrder(orders,id);
     if(!o)return;

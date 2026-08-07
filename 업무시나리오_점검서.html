@@ -249,11 +249,22 @@ sequenceDiagram
 </dl>
 </div>
 
+<div class="risk p0">
+<div class="risk-t"><span class="tag t-p0">P0-6</span> 알림톡·SMS가 하나도 나가지 않고 있다 (2026-08-08 발견)</div>
+<dl>
+<dt>확인된 사실</dt><dd>운영 DB의 <code>settings</code> 테이블에 <strong><code>gasUrl</code> 키가 아예 없습니다.</strong> <span class="fn">_getNotifySettings()</span>(<code>server.js:70-77</code>)가 이 값을 읽어오는데, 없으면 <span class="fn">_notifyOrder</span>·<span class="fn">_notifyStatus</span>·관리자 답변 알림이 모두 <code>if (!url) return;</code>에서 <strong>즉시 빠져나갑니다</strong>(<code>:99</code>, <code>:121</code>, <code>:766</code>).</dd>
+<dt>왜 이렇게 됐나</dt><dd><code>gasUrl</code>을 <strong>저장하는 코드가 어디에도 없습니다.</strong> 관리자 설정 화면의 <span class="fn">syncSettingsToSheet()</span>는 <code>stock·smsEnabled·alimtalkEnabled·phone·email·deliveryPhone·banks</code>만 보내고, GAS 주소를 입력하는 칸 자체가 화면에 없습니다. 과거 프런트에 하드코딩돼 있던 것을 서버 DB로 옮기는 과정에서 <strong>값을 옮겨 심는 단계가 빠진 것</strong>으로 보입니다. (설계서에는 <span class="fn">saveSendSettings()</span>가 <code>gasUrl</code>을 저장한다고 적혀 있으나 실제 함수는 발송 토글 두 개만 저장합니다 — 문서가 코드와 다릅니다.)</dd>
+<dt>키 이름도 어긋나 있다</dt><dd>관리자 화면은 업주 번호를 <code>phone</code>으로 저장하는데 서버는 <code>adminPhone</code>을 찾습니다(<code>server.js:72,108</code>). 따라서 <code>gasUrl</code>을 채워 넣어도 <strong>업주 새 주문 SMS는 여전히 안 나갑니다.</strong> 두 가지를 함께 고쳐야 합니다.</dd>
+<dt>영향</dt><dd>고객은 주문 접수·확정·배송완료·취소 알림톡을 <strong>한 통도 못 받습니다.</strong> 업주는 새 주문 SMS를 못 받으므로, 새 주문을 아는 경로가 <strong>관리자 화면을 열어두는 것 하나뿐</strong>입니다. 화면을 닫아둔 시간대의 주문은 그대로 묻힙니다. 고객 100명으로 늘리려는 계획에서 가장 먼저 터질 지점입니다.</dd>
+<dt>수정</dt><dd>① GAS 배포 URL을 <code>settings.gasUrl</code>에 넣습니다(관리자 화면에 입력칸을 추가하거나, 우선 서버에서 1회 직접 저장). ② 서버가 읽는 키를 <code>adminPhone</code>에서 <code>phone</code>으로 맞추거나, 화면이 <code>adminPhone</code>으로도 함께 저장하게 합니다. ③ 그다음에 아래 P1-3(실패를 기록·통보)을 얹습니다.</dd>
+</dl>
+</div>
+
 <div class="risk">
 <div class="risk-t"><span class="tag t-p1">P1-3</span> 알림톡·SMS가 실패해도 아무도 모른다</div>
 <dl>
 <dt>어디서</dt><dd><code>server.js:82</code> — <code>fetch(...).catch(() => {})</code>. 발송 전체가 "보내고 잊는" 방식이고 실패를 <strong>기록도, 재시도도, 통보도 하지 않습니다.</strong> <span class="fn">_notifyOrder</span>/<span class="fn">_notifyStatus</span>의 바깥 <code>try...catch(e){}</code>(<code>:113</code>, <code>:149</code>)도 비어 있습니다.</dd>
-<dt>왜 중요한가</dt><dd>업주가 새 주문을 아는 경로는 ①관리자 화면 실시간 알림(SSE) ②휴대폰 SMS 둘뿐입니다. 관리자 화면을 닫아둔 시간대에 SMS까지 조용히 실패하면 <strong>주문이 통째로 묻힙니다.</strong> 솔라피 잔액 소진, 템플릿 승인 만료, GAS 일일 한도 초과 모두 소리 없이 이렇게 됩니다.</dd>
+<dt>왜 중요한가</dt><dd><strong>바로 이것 때문에 P0-6이 지금까지 드러나지 않았습니다.</strong> 알림이 한 통도 안 나가는 상태였는데 어디에도 오류가 남지 않아 아무도 몰랐습니다. 앞으로도 솔라피 잔액 소진, 템플릿 승인 만료, GAS 일일 한도 초과가 모두 같은 방식으로 조용히 일어납니다.</dd>
 <dt>수정</dt><dd>최소 조치: 실패 시 <code>console.error</code>로라도 남겨 Railway 로그에서 추적 가능하게 합니다. 권장: <code>settings</code>에 <code>lastNotifyError</code> 키를 저장하고 관리자 화면 상단에 "최근 알림 발송 실패" 배지를 띄웁니다.</dd>
 </dl>
 </div>
@@ -308,16 +319,16 @@ flowchart LR
 <tr><th style="width:26%">단계</th><th style="width:36%">함수 / 위치</th><th>동작</th></tr>
 <tr><td>버튼 클릭</td><td><span class="fn">confirmOrder()</span> <code>menu-manager.html:2695</code></td><td><strong>확인창 없이 즉시 실행</strong></td></tr>
 <tr><td>상태 전송</td><td><code>PUT /api/orders/:id/status</code> <code>server.js:551</code></td><td>예약주문이면 날짜를 예약일로 이동</td></tr>
-<tr><td>고객 알림톡</td><td><span class="fn">_notifyStatus()</span> <code>server.js:128-131</code></td><td>"배송업체에 요청했습니다"</td></tr>
-<tr><td>배송업체 SMS</td><td><code>server.js:132-139</code></td><td>이름·전화·주소·메뉴·요청사항 전송</td></tr>
+<tr><td>고객 알림톡</td><td><span class="fn">_notifyStatus()</span> <code>server.js:128-131</code></td><td><strong>현재 발송 안 됨</strong> — 아래 P0-6</td></tr>
+<tr><td>배송업체 SMS</td><td><code>server.js:132-139</code></td><td><strong>실제 업무에서 쓰지 않는 기능</strong>(2026-08-08 업주 확인). 코드에는 남아 있으나 이 문서의 위험도 판단에서 제외</td></tr>
 </table>
 
 <div class="risk p0">
 <div class="risk-t"><span class="tag t-p0">P0-3</span> 접수완료에 확인창이 없다 — 잘못 누르면 되돌릴 수 없다</div>
 <dl>
 <dt>어디서</dt><dd><span class="fn">confirmOrder()</span> <code>menu-manager.html:2695</code>. 같은 파일의 <span class="fn">deliverOrder()</span>(<code>:2709</code>), <span class="fn">cancelOrder()</span>(<code>:2739</code>), <span class="fn">deleteOrder()</span>(<code>:2754</code>)는 <strong>전부 확인창(<span class="fn">showConfirm</span>)을 거치는데 접수완료만 없습니다.</strong></dd>
-<dt>왜 P0인가</dt><dd>업주가 정의한 접수완료의 의미는 <strong>"입금을 눈으로 확인했다"</strong>입니다. 즉 이 버튼은 돈과 직결됩니다. 그런데 한 번의 오터치로 ①고객에게 "배송 요청됨" 알림톡이 가고 ②배송업체에 실제 배송 문자가 나갑니다. <strong>이미 발송된 문자는 취소할 수 없습니다.</strong> 미입금 고객의 물건이 배송될 수 있고, 그러면 지난 계좌 사고와 같은 종류의 돈 사고가 됩니다. 주문 목록에서 버튼들이 좁게 붙어 있어 스마트폰 조작 시 오터치 확률이 낮지 않습니다.</dd>
-<dt>수정</dt><dd>다른 함수들과 동일하게 <code>showConfirm('입금을 확인하셨나요? 배송업체에 배송 요청 문자가 발송됩니다.', ...)</code>로 감쌉니다. 이미 있는 공용 모달을 쓰므로 3줄입니다. <strong>문구에 "입금 확인"을 명시</strong>하는 것이 이 사고의 핵심 방어입니다.</dd>
+<dt>왜 P0인가</dt><dd>업주가 정의한 접수완료의 의미는 <strong>"입금을 눈으로 확인했다"</strong>입니다. 즉 이 버튼은 돈과 직결됩니다. 한 번의 오터치로 미입금 주문이 조리·배송 대상으로 넘어가고, 그러면 지난 계좌 사고와 같은 종류의 돈 사고가 됩니다. 주문 목록에서 버튼들이 좁게 붙어 있어 스마트폰 조작 시 오터치 확률이 낮지 않습니다. 알림 발송이 정상화되면 고객에게 접수 알림톡도 나가는데, <strong>이미 발송된 알림은 취소할 수 없습니다.</strong></dd>
+<dt>수정</dt><dd>다른 함수들과 동일하게 <code>showConfirm('입금을 확인하셨나요? …', ...)</code>로 감쌉니다. 이미 있는 공용 모달을 쓰므로 3줄입니다. <strong>문구에 "입금 확인"을 명시</strong>하는 것이 이 사고의 핵심 방어입니다.</dd>
 </dl>
 </div>
 
@@ -434,7 +445,11 @@ flowchart LR
 <tr><td><span class="tag t-p0">P0-3</span></td><td>접수완료(=입금확인) 확인창 없음 → 오터치가 곧 배송</td><td><code>menu-manager.html:2695</code></td><td>3줄</td></tr>
 <tr><td><span class="tag t-p0">P0-4</span></td><td>관리자 비밀번호·API 토큰이 공개 소스에 평문</td><td><code>menu-manager.html:12,2858</code> <code>index.html:9</code></td><td>아래 별도 설명</td></tr>
 <tr><td><span class="tag t-p0">P0-5</span></td><td>설정 조회 API가 인증 없이 문자 발송 주소·연락처를 공개</td><td><code>server.js:875</code></td><td>서버 ~10줄</td></tr>
+<tr style="background:#fff5f4;"><td><span class="tag t-p0">P0-6</span></td><td><strong>알림톡·SMS가 하나도 발송되지 않고 있음</strong> (미수정)</td><td><code>settings.gasUrl</code> 부재 + 키 이름 불일치</td><td>설정 1건 + 서버 1줄</td></tr>
 </table>
+<div class="note" style="background:#fdf0ee;">
+<strong>P0-6은 아직 수정하지 않았습니다.</strong> GAS 배포 URL 값이 있어야 하고, 알림을 어디까지 되살릴지(고객 알림톡·업주 SMS) 업주 확인이 필요해 보류했습니다. 나머지 P0 5건은 모두 수정 완료입니다.
+</div>
 
 <div class="risk p0">
 <div class="risk-t"><span class="tag t-p0">P0-4</span> 관리자 비밀번호가 공개 소스에 그대로 적혀 있다</div>
@@ -462,7 +477,7 @@ flowchart LR
 <tr><th style="width:8%">번호</th><th style="width:34%">내용</th><th>위치</th></tr>
 <tr><td><span class="tag t-p1">P1-1</span></td><td>카톡 파싱 등록이 주문 있는 날의 재고를 초기화</td><td><code>menu-manager.html:1643</code></td></tr>
 <tr><td><span class="tag t-p1">P1-2</span></td><td>서버가 주문 금액을 검산하지 않음</td><td><code>server.js:536</code></td></tr>
-<tr><td><span class="tag t-p1">P1-3</span></td><td>알림톡·SMS 실패가 조용히 묻힘</td><td><code>server.js:82,113,149</code></td></tr>
+<tr><td><span class="tag t-p1">P1-3</span></td><td>알림톡·SMS 실패가 조용히 묻힘 (P0-6이 안 드러난 원인)</td><td><code>server.js:82,113,149</code></td></tr>
 <tr><td><span class="tag t-p1">P1-4</span></td><td>입금 여부를 기록·집계할 자리가 없음</td><td>스키마 <code>server.js:949</code></td></tr>
 <tr><td><span class="tag t-p1">P1-5</span></td><td>상태 변경이 서버 실패를 무시하고 성공으로 표시</td><td><code>menu-manager.html:2695,2709,2739</code></td></tr>
 <tr><td><span class="tag t-p1">P1-6</span></td><td>카톡 주문 수기 등록 화면 없음 → 재고 어긋남</td><td>기능 부재</td></tr>
