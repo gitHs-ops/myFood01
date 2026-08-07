@@ -69,7 +69,7 @@ function broadcast(type, payload={}) {
 // ── GAS 알림 발송 헬퍼 (fire-and-forget) ─────────────────────
 async function _getNotifySettings() {
   const [rows] = await pool.execute(
-    "SELECT k,v FROM settings WHERE k IN ('gasUrl','smsEnabled','alimtalkEnabled','adminPhone','deliveryPhone','notifyEvents')"
+    "SELECT k,v FROM settings WHERE k IN ('gasUrl','smsEnabled','alimtalkEnabled','adminPhone','phone','deliveryPhone','notifyEvents')"
   );
   const s = {};
   rows.forEach(r => { s[r.k] = r.v; });
@@ -117,10 +117,12 @@ function _notifyOrder(order, isReorder) {
       if (_notifyAllowed(ns, 'order')) {
         _alimtalk(order.phone, tplId, { 이름: order.name||'', 메뉴목록: menuList, 금액: String(total) }, fallback, url, ns);
       }
-      if (ns.adminPhone) {
+      // 관리자 화면은 업주 번호를 'phone' 키로 저장하는데 여기서는 'adminPhone'을 읽고 있었다 → 둘 다 인정
+      const ownerPhone = ns.adminPhone || ns.phone;
+      if (ownerPhone) {
         const label = isReorder ? '재주문' : '새 주문';
         const adminMsg = `[오늘의 반찬] ${label}! ${order.name}${order.phone?' ('+order.phone+')':''} ${menuList} 합계: ${Number(total).toLocaleString()}천원${order.memo?' 배송:'+order.memo:''}${order.additionalRequest?' 요청:'+order.additionalRequest:''}`;
-        _sms(ns.adminPhone, adminMsg, url, ns);
+        _sms(ownerPhone, adminMsg, url, ns);
       }
     } catch(e) {}
   })();
@@ -502,6 +504,31 @@ app.get('/api/orders', async (req, res) => {
       createdDate: toKSTDateStr(r.created_at)
     }));
     ok(res, { orders });
+  } catch(e) { err(res, e.message); }
+});
+
+// 묻힌 주문 요약 (GET /api/orders/pending-summary?today=YYYY-MM-DD)
+// 지난 날짜에 '대기중'으로 남은 주문 = 아직 입금 확인이 안 됐고 아무도 안 본 주문.
+// 알림 문자를 쓰지 않으므로, 놓친 주문을 마감 때 잡아내는 안전망 역할을 한다.
+app.get('/api/orders/pending-summary', requireAdmin, async (req, res) => {
+  try {
+    const today = (req.query.today || '').slice(0, 10);
+    if (!today) return err(res, 'today 필요', 400);
+    // 예약주문은 예약일이 아직 안 지났으면 정상 대기 상태이므로 제외
+    const [rows] = await pool.execute(
+      `SELECT DATE_FORMAT(date,'%Y-%m-%d') AS d, COUNT(*) AS cnt, COALESCE(SUM(total),0) AS amount
+         FROM orders
+        WHERE status='pending' AND date < ?
+          AND (reserve_date IS NULL OR reserve_date < ?)
+        GROUP BY date ORDER BY d DESC LIMIT 30`,
+      [today, today]
+    );
+    const dates = rows.map(r => ({ date: r.d, count: Number(r.cnt), amount: Number(r.amount) }));
+    ok(res, {
+      dates,
+      totalCount:  dates.reduce((s, r) => s + r.count, 0),
+      totalAmount: dates.reduce((s, r) => s + r.amount, 0)
+    });
   } catch(e) { err(res, e.message); }
 });
 

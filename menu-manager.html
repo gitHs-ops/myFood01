@@ -680,6 +680,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
         <span id="pollLabel" style="font-size:12px;font-weight:700;color:#fff;background:rgba(8,98,102,.6);border-radius:20px;padding:3px 10px;white-space:nowrap;min-width:46px;text-align:center;">🔄 15</span>
       </div>
     </div>
+    <div id="buriedOrderBanner" style="display:none;"></div>
     <div class="order-stats" id="orderStats"></div>
     <div class="order-filter-tabs" id="orderFilterTabs"></div>
     <div id="orderList"></div>
@@ -2394,21 +2395,50 @@ function renderOrders(){
       el.innerHTML='<div style="text-align:center;padding:30px;color:#f55;font-size:13px;">서버 연결 오류</div>';
     });
 }
+/* 묻힌 주문 경고 — 지난 날짜에 '대기중'으로 남은 주문.
+   알림 문자를 쓰지 않으므로, 못 보고 지나간 주문을 잡아내는 마지막 안전망이다. */
+function _renderBuriedOrders(){
+  var el=document.getElementById('buriedOrderBanner');
+  if(!el)return;
+  var realToday=toISO(new Date());   // 보고 있는 날짜가 아니라 '오늘' 기준
+  fetch(API_URL+'/api/orders/pending-summary?today='+encodeURIComponent(realToday),{cache:'no-store'})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(!d||!d.success||!d.totalCount){el.style.display='none';el.innerHTML='';return;}
+      var btns=d.dates.map(function(x){
+        return '<button onclick="switchPage(\'orders\');selectDate(\''+x.date+'\')" '
+          +'style="background:#fff;border:1.5px solid #c0392b;border-radius:8px;color:#c0392b;'
+          +'font-size:12px;font-weight:700;padding:5px 10px;cursor:pointer;font-family:inherit;">'
+          +fmtDate(x.date)+' · '+x.count+'건</button>';
+      }).join('');
+      el.innerHTML='<div style="background:#fdf0ee;border:2px solid #c0392b;border-radius:12px;padding:13px 16px;margin-bottom:12px;">'
+        +'<div style="font-size:14px;font-weight:800;color:#c0392b;margin-bottom:4px;">⚠️ 처리 안 된 지난 주문 '+d.totalCount+'건</div>'
+        +'<div style="font-size:12px;color:#8a3a2e;margin-bottom:9px;">입금 확인이 안 된 채로 남아 있어요. 미입금 합계 '+comma(d.totalAmount)+'천원</div>'
+        +'<div style="display:flex;flex-wrap:wrap;gap:6px;">'+btns+'</div>'
+        +'</div>';
+      el.style.display='block';
+    })
+    .catch(function(){});
+}
+
 function renderOrdersList(today,todayOrders){
   // 페이지가 비활성이면 배지만 갱신하고 끝
   if(!document.getElementById('page-orders').classList.contains('active')){
     updateAddReqBadge(todayOrders);return;
   }
+  _renderBuriedOrders();
 
   // 통계
-  var pending=todayOrders.filter(function(o){return o.status==='pending';}).length;
+  var pendingList=todayOrders.filter(function(o){return o.status==='pending';});
+  var pendingSum=pendingList.reduce(function(s,o){return s+(Number(o.total)||0);},0);
+  var pending=pendingList.length;
   var confirmed=todayOrders.filter(function(o){return o.status==='confirmed';}).length;
   var delivered=todayOrders.filter(function(o){return o.status==='delivered';}).length;
   var cancelled=todayOrders.filter(function(o){return o.status==='cancelled';}).length;
   var reserve=todayOrders.filter(_isReserveOrder).length;
   document.getElementById('orderStats').innerHTML=
     '<div class="order-stat"><div class="order-stat-num">'+todayOrders.length+'</div><div class="order-stat-lbl">전체</div></div>'+
-    '<div class="order-stat"><div class="order-stat-num" style="color:#E9A826;">'+pending+'</div><div class="order-stat-lbl">대기중</div></div>'+
+    '<div class="order-stat"><div class="order-stat-num" style="color:#E9A826;">'+pending+'</div><div class="order-stat-lbl">대기중</div>'+(pending?'<div style="font-size:10px;color:#E9A826;font-weight:700;margin-top:2px;white-space:nowrap;">미입금 '+comma(pendingSum)+'천원</div>':'')+'</div>'+
     '<div class="order-stat"><div class="order-stat-num" style="color:#1D9E75;">'+confirmed+'</div><div class="order-stat-lbl">주문접수</div></div>'+
     '<div class="order-stat"><div class="order-stat-num" style="color:#086266;">'+delivered+'</div><div class="order-stat-lbl">배송완료</div></div>'+
     '<div class="order-stat"><div class="order-stat-num" style="color:#999;">'+cancelled+'</div><div class="order-stat-lbl">취소된주문</div></div>'+
