@@ -7,11 +7,18 @@ const path    = require('path');
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
+// 주의: 이 서버는 자기 자신도 정적 HTML을 서빙한다(express.static). 그래서 Railway 주소로
+// 관리자 화면을 열 수 있는데, 그때 브라우저는 읽기(GET)에는 Origin을 안 붙이지만
+// 쓰기(POST·PUT·DELETE)에는 같은 주소여도 반드시 붙인다. 여기에 자기 주소가 없으면
+// "읽기는 되는데 저장·삭제만 전부 실패"하는 형태로 나타난다.
 const ALLOWED_ORIGINS = [
-  'https://giths-ops.github.io',   // 프로덕션 GitHub Pages
-  'http://localhost:3000',          // 로컬 개발
+  'https://giths-ops.github.io',                    // 프로덕션 GitHub Pages
+  'https://myfood01-production.up.railway.app',     // 이 서버 자신 (정적 HTML 직접 접속용)
+  'http://localhost:3000',                          // 로컬 개발
   'http://127.0.0.1:3000',
-  'http://localhost:5500',          // VS Code Live Server
+  'http://localhost:5174',                          // npx serve -l 5174 (ONBOARDING.md 기준)
+  'http://127.0.0.1:5174',
+  'http://localhost:5500',                          // VS Code Live Server
   'http://127.0.0.1:5500',
 ];
 app.use(cors({
