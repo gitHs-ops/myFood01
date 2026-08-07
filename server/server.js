@@ -404,7 +404,9 @@ app.post('/api/menu/daily', requireAdmin, async (req, res) => {
                img_url=VALUES(img_url),updated_at=VALUES(updated_at)`,
             [m.name, m.cat||'기타', m.price||0, m.child?1:0, m.imgUrl||'', m.desc||'', m.updatedAt||Date.now()]
           );
-          const [[mrow]] = await conn.execute('SELECT id FROM menus WHERE name=?', [m.name]);
+          // 이름만으로 찾으면 같은 이름의 다른 카테고리(예: 부대찌개 메인/밀키트)에 잘못 연결된다.
+          // 바로 위 INSERT가 (이름,카테고리)로 넣었으므로 같은 조건으로 찾는다.
+          const [[mrow]] = await conn.execute('SELECT id FROM menus WHERE name=? AND cat=?', [m.name, m.cat||'기타']);
           menuId = mrow ? mrow.id : null;
         }
         // 일자별: menu_id + 폴백용 기존 컬럼 동시 저장
@@ -594,13 +596,52 @@ app.post('/api/orders', async (req, res) => {
         }
       }
 
+      // ── 금액 검산 ────────────────────────────────────────────
+      // 화면이 보낸 금액을 그대로 믿지 않는다. 단가를 DB에서 다시 읽어 합계를 계산한다.
+      // 주문 수정 API(PUT /:id/items)는 원래 이렇게 하고 있었는데 주문 생성만 빠져 있었다.
+      // 단가 출처: 그날 노출 메뉴(menu_id) → 마스터(menu_id) → 그날 노출 메뉴(이름) 순.
+      // 예약 이벤트처럼 어디에도 없는 항목은 화면 값을 그대로 둔다.
+      const fixes = [];
+      for (const item of items) {
+        let dbPrice = null;
+        if (item.menuId != null && item.menuId !== 'EVENT') {
+          const [dr] = await conn.execute(
+            'SELECT price FROM daily_menus WHERE date=? AND menu_id=? LIMIT 1', [date, item.menuId]);
+          if (dr.length) dbPrice = Number(dr[0].price);
+          if (dbPrice === null) {
+            const [mr] = await conn.execute('SELECT price FROM menus WHERE id=? LIMIT 1', [item.menuId]);
+            if (mr.length) dbPrice = Number(mr[0].price);
+          }
+        }
+        if (dbPrice === null && item.name) {
+          const [dr2] = await conn.execute(
+            'SELECT price FROM daily_menus WHERE date=? AND name=? LIMIT 1', [date, item.name]);
+          if (dr2.length) dbPrice = Number(dr2[0].price);
+        }
+        if (dbPrice !== null && Number(item.price) !== dbPrice) {
+          fixes.push(`${item.name}: ${item.price}→${dbPrice}`);
+          item.price = dbPrice;
+        }
+      }
+      const itemsSum    = items.reduce((s, i) => s + (Number(i.price)||0) * (i.qty||1), 0);
+      const isPickup    = String(order.memo||'').startsWith('매장픽업');
+      const deliveryFee = (!isPickup && itemsSum >= 20) ? 1 : 0;
+      const serverTotal = itemsSum + deliveryFee;
+      if (fixes.length || Number(order.total) !== serverTotal) {
+        // 화면 계산이 서버와 다르면 서버 값으로 저장하고 기록을 남긴다.
+        // 조용히 덮기만 하면 화면 버그를 영영 못 찾는다.
+        console.warn(`[금액검산] ${order.id} 합계 ${order.total}→${serverTotal}`
+          + (fixes.length ? ` / 단가 ${fixes.join(', ')}` : ''));
+      }
+      order.total = serverTotal;   // 알림 문구에도 검산된 금액이 쓰이도록
+
       // 주문 저장
       await conn.execute(
         'INSERT INTO orders (id,date,time,name,phone,addr,memo,items,total,status,is_reorder,additional_request,device_id,reserve_date) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
         [
           order.id, date, order.time||'',
           order.name||'', order.phone||'', order.addr||'', order.memo||'',
-          JSON.stringify(items), order.total||0,
+          JSON.stringify(items), serverTotal,
           order.status||'pending', order.isReorder?1:0,
           order.additionalRequest||'', order.deviceId||null,
           order.reserveDate||null
