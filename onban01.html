@@ -1368,10 +1368,14 @@ function renderOrdererPage(){
       additionalRequest:directReq      // 요청사항은 추가요청사항으로 통일
     };
     lastOrderTotal=orderItems.reduce(function(s,c){return s+c.price*c.qty;},0)+_deliveryFee;
+    // 중복 주문 방지 — 응답이 올 때까지 버튼 잠금
+    var _btnHtml=btn.innerHTML;
+    function _unlock(){btn.disabled=false;btn.innerHTML=_btnHtml;}
+    btn.disabled=true;btn.textContent='처리 중...';
     verifyStock(function(ok,short){
-      if(!ok){_notifyOutOfStock(short);return;}
+      if(!ok){_unlock();_notifyOutOfStock(short);return;}
       saveOrder(function(result){
-        if(!result.success){_notifyOutOfStock((result.soldOut||[]).map(function(s){return{name:s.name,have:s.available,want:'?'};}));return;}
+        if(!result.success){_unlock();_notifyOutOfStock((result.soldOut||[]).map(function(s){return{name:s.name,have:s.available,want:'?'};}));return;}
         cart=[];orderItems=[];updateCartCount();
         goPage('payment');
         loadMenus(true);
@@ -1737,10 +1741,14 @@ function renderOrder(){
   btnCfm.className='btn-confirm';
   btnCfm.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" width="22" height="22"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>구매 확정하기';
   btnCfm.onclick=function(){
+    // 중복 주문 방지 — 응답이 올 때까지 버튼 잠금
+    var _btnHtml=btnCfm.innerHTML;
+    function _unlock(){btnCfm.disabled=false;btnCfm.innerHTML=_btnHtml;}
+    btnCfm.disabled=true;btnCfm.textContent='처리 중...';
     verifyStock(function(ok,short){
-      if(!ok){_notifyOutOfStock(short);return;}
+      if(!ok){_unlock();_notifyOutOfStock(short);return;}
       saveOrder(function(result){
-        if(!result.success){_notifyOutOfStock((result.soldOut||[]).map(function(s){return{name:s.name,have:s.available,want:'?'};}));return;}
+        if(!result.success){_unlock();_notifyOutOfStock((result.soldOut||[]).map(function(s){return{name:s.name,have:s.available,want:'?'};}));return;}
         goPage('payment');
       });
     });

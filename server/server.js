@@ -343,6 +343,27 @@ app.post('/api/menu/daily', requireAdmin, async (req, res) => {
     await conn.beginTransaction();
     const dates = Object.keys(byDate);
     for (const date of dates) {
+      // 저장 도중 들어온 주문의 재고 차감이 되돌아가지 않도록, 지우기 전에 현재 재고를 읽어둔다.
+      // 화면이 보낸 baseStock(불러온 시점의 재고)과 비교해 관리자가 실제로 바꾼 만큼만 현재 재고에 반영.
+      const [prevRows] = await conn.execute('SELECT menu_id,name,stock FROM daily_menus WHERE date=?', [date]);
+      const prevById = {}, prevByName = {};
+      prevRows.forEach(r => {
+        if (r.menu_id != null && prevById[r.menu_id] === undefined) prevById[r.menu_id] = Number(r.stock);
+        if (prevByName[r.name] === undefined) prevByName[r.name] = Number(r.stock);
+      });
+      const resolveStock = (m, menuId) => {
+        const want = (m.stock == null) ? 0 : Number(m.stock);
+        if (want === -1) return -1;              // 준비중은 수량이 아니라 상태 → 그대로 적용
+        if (m.baseStock == null) return want;    // 화면에서 새로 추가된 메뉴 → 그대로
+        let cur = null;
+        if (menuId != null && prevById[menuId] !== undefined) cur = prevById[menuId];
+        else if (prevByName[m.name] !== undefined)            cur = prevByName[m.name];
+        if (cur === null) return want;           // 그날 목록에 없던 메뉴 → 그대로
+        const delta = want - Number(m.baseStock);
+        if (delta === 0) return cur;             // 관리자가 손대지 않음 → DB 현재 재고 유지
+        return Math.max(0, cur + delta);
+      };
+
       await conn.execute('DELETE FROM daily_menus WHERE date=?', [date]);
       for (const m of byDate[date]) {
         // 마스터 갱신 → menu_id 확보. menuId 있으면 id 기준 UPDATE(rename 포함), 없으면 신규 INSERT
@@ -368,7 +389,7 @@ app.post('/api/menu/daily', requireAdmin, async (req, res) => {
         // 일자별: menu_id + 폴백용 기존 컬럼 동시 저장
         await conn.execute(
           'INSERT INTO daily_menus (date,menu_id,name,cat,price,stock,child) VALUES (?,?,?,?,?,?,?)',
-          [date, menuId, m.name, m.cat||'기타', m.price||0, m.stock||0, m.child?1:0]
+          [date, menuId, m.name, m.cat||'기타', m.price||0, resolveStock(m, menuId), m.child?1:0]
         );
       }
     }
@@ -871,12 +892,18 @@ app.delete('/api/customers-master/:id', requireAdmin, async (req, res) => {
 // 설정
 // ══════════════════════════════════════════════════════════════
 
+// 고객 화면이 실제로 쓰는 설정 키만 공개. 그 외(gasUrl·adminPhone·deliveryPhone 등)는
+// 관리자 토큰이 있을 때만 내려준다 — 문자 발송 주소와 연락처가 새어나가지 않도록.
+const PUBLIC_SETTING_KEYS = ['banks', 'reserveEvent', 'categories'];
+
 // 설정 로드 (GET /api/settings)
 app.get('/api/settings', async (req, res) => {
   try {
+    const isAdmin = !!ADMIN_TOKEN && req.headers['x-admin-token'] === ADMIN_TOKEN;
     const [rows] = await pool.execute('SELECT k, v FROM settings');
     const data = {};
     rows.forEach(r => {
+      if (!isAdmin && !PUBLIC_SETTING_KEYS.includes(r.k)) return;
       try { data[r.k] = JSON.parse(r.v); } catch { data[r.k] = r.v; }
     });
     ok(res, { data });

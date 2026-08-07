@@ -9,10 +9,12 @@
 <title>오늘의 메뉴 관리</title>
 <script>
 (function(){
-  var ADMIN_PW='onban@1dl34';   // ← 비밀번호 변경 위치
-  if(localStorage.getItem('onban_admin_auth')==='1')return;
+  var ADMIN_PW='onban@1dl34';   // ← 비밀번호 변경 위치 (아래 ADMIN_API_TOKEN, Railway ADMIN_TOKEN도 같이 바꿀 것)
+  // 로그인 유지 값을 비밀번호에 묶는다 — 비밀번호를 바꾸면 기존에 로그인돼 있던 기기도 다시 물어본다
+  var AUTH_VAL='ok_'+ADMIN_PW;
+  if(localStorage.getItem('onban_admin_auth')===AUTH_VAL)return;
   var input=prompt('관리자 비밀번호를 입력하세요');
-  if(input===ADMIN_PW){localStorage.setItem('onban_admin_auth','1');}
+  if(input===ADMIN_PW){localStorage.setItem('onban_admin_auth',AUTH_VAL);}
   else{alert('접근 권한이 없습니다.');location.replace('onban.html');}
 })();
 </script>
@@ -1137,7 +1139,8 @@ function loadMenus(iso){
     .then(function(d){
       if(d&&d.menus&&d.menus.length){
         var idx=Date.now();
-        menus=d.menus.map(function(m){return Object.assign({id:idx++,stock:m.stock||0},m);});
+        // baseStock — 불러온 시점의 재고. 저장할 때 서버가 "관리자가 바꾼 만큼"만 반영하는 기준값
+        menus=d.menus.map(function(m){var o=Object.assign({id:idx++,stock:m.stock||0},m);o.baseStock=(m.stock==null?0:Number(m.stock));return o;});
         renderAll();
       }
     })
@@ -1176,7 +1179,7 @@ function _watchOverlaysForSaveBtn(){
   var obs=new MutationObserver(function(){_updateSaveBtn();});
   overlays.forEach(function(o){obs.observe(o,{attributes:true,attributeFilter:['class']});});
 }
-function save(){_menuDirty=true;_updateSaveBtn();saveMenus(workDate,function(){_menuDirty=false;_updateSaveBtn();});}
+function save(){_menuDirty=true;_updateSaveBtn();saveMenus(workDate,function(ok){_menuDirty=false;_updateSaveBtn();});}
 
 var _menuPollTimer=null;
 function _startMenuSSE(date){
@@ -1652,20 +1655,29 @@ function saveToday(){
   if(!menus.length){alert('저장할 메뉴가 없어요.');return;}
   _menuDirty=false;
   _updateSaveBtn();
-  saveMenus(workDate);
   mergeToAllMenus();
+  if(_datesCache.length&&_datesCache.indexOf(workDate)<0){_datesCache.unshift(workDate);_datesCache.sort(function(a,b){return b.localeCompare(a);});}
+  // 저장은 한 번만 보낸다 — 두 번 보내면 바꾼 재고가 두 번 반영된다
   exportMenuToSheet(workDate,function(ok){
-    showToast(fmtDate(workDate)+' 메뉴 저장 완료!');
+    if(ok)showToast(fmtDate(workDate)+' 메뉴 저장 완료!');
+    else showToast('⚠️ 저장 실패 — 다시 시도해주세요.');
   });
   renderHistory();
 }
+// 저장 성공 후 기준값을 현재값으로 맞춤 — 연속 저장 시 변경분이 중복 반영되지 않도록
+function _syncBaseStock(){menus.forEach(function(m){m.baseStock=(m.stock==null?0:Number(m.stock));});}
 function exportMenuToSheet(date,cb){
-  var objs=menus.map(function(m){return{date:date,menuId:m.menuId||null,name:m.name,cat:m.cat,price:m.price,stock:m.stock,child:m.child?1:0,imgUrl:m.imgUrl||'',desc:m.desc||''};});
+  var objs=menus.map(function(m){return{date:date,menuId:m.menuId||null,name:m.name,cat:m.cat,price:m.price,stock:m.stock,baseStock:(m.baseStock==null?null:m.baseStock),child:m.child?1:0,imgUrl:m.imgUrl||'',desc:m.desc||''};});
   var ctrl=new AbortController();
   var timer=setTimeout(function(){ctrl.abort();},30000);
   fetch(API_URL+'/api/menu/daily',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:objs,date:date}),signal:ctrl.signal})
     .then(function(r){clearTimeout(timer);return r.json();})
-    .then(function(d){if(cb)cb(!!(d&&d.success!==false));})
+    .then(function(d){
+      var ok=!!(d&&d.success!==false);
+      // 저장에 성공했으면 기준값을 현재값으로 — 어느 경로로 저장하든 여기 한 곳에서 처리
+      if(ok&&date===workDate)_syncBaseStock();
+      if(cb)cb(ok);
+    })
     .catch(function(){clearTimeout(timer);if(cb)cb(false);});
 }
 var _histYM='전체';
@@ -2693,16 +2705,23 @@ function fmtDateTime(date, time){
 
 
 function confirmOrder(id){
-  var orders=getOrders();
-  var o=_findOrder(orders,id);
-  if(!o)return;
-  o.status='confirmed';
-  if(o.reserveDate)o.date=o.reserveDate;
-  saveOrders(orders);
-  _reRenderFromCache();
-  closeAdminOrderDetail();
-  fetch(API_URL+'/api/orders/'+encodeURIComponent(id)+'/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'confirmed'})})
-    .then(function(){renderOrders();}).catch(function(){});
+  showConfirm('입금을 확인하셨나요?\n\n접수완료를 누르면 배송업체에 배송 요청 문자가 바로 나가고, 고객에게도 알림톡이 갑니다. 발송된 문자는 취소할 수 없어요.',function(){
+    var orders=getOrders();
+    var o=_findOrder(orders,id);
+    if(!o)return;
+    o.status='confirmed';
+    if(o.reserveDate)o.date=o.reserveDate;
+    saveOrders(orders);
+    _reRenderFromCache();
+    closeAdminOrderDetail();
+    fetch(API_URL+'/api/orders/'+encodeURIComponent(id)+'/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'confirmed'})})
+      .then(function(r){return r.json();})
+      .then(function(d){
+        if(!(d&&d.success)){showToast('⚠️ 접수완료 반영 실패 — 다시 시도해주세요.');}
+        renderOrders();
+      })
+      .catch(function(){showToast('⚠️ 연결 오류 — 접수완료가 반영되지 않았어요.');renderOrders();});
+  },'네, 입금 확인했어요');
 }
 
 
