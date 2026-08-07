@@ -69,7 +69,7 @@ function broadcast(type, payload={}) {
 // ── GAS 알림 발송 헬퍼 (fire-and-forget) ─────────────────────
 async function _getNotifySettings() {
   const [rows] = await pool.execute(
-    "SELECT k,v FROM settings WHERE k IN ('gasUrl','smsEnabled','alimtalkEnabled','adminPhone','deliveryPhone')"
+    "SELECT k,v FROM settings WHERE k IN ('gasUrl','smsEnabled','alimtalkEnabled','adminPhone','deliveryPhone','notifyEvents')"
   );
   const s = {};
   rows.forEach(r => { s[r.k] = r.v; });
@@ -91,6 +91,16 @@ function _alimtalk(phone, tplId, vars, fallback, url, ns) {
   if (String(ns.alimtalkEnabled ?? 'true') === 'false') return;
   _gasCall(url, { action: 'alimtalk', receiver: phone, tplId, vars: JSON.stringify(vars), msg: fallback || '' });
 }
+// 고객 알림톡을 "어느 시점에" 보낼지 — settings.notifyEvents 배열로 제어.
+// 주문 시점에 카톡이 가면 고객이 그 대화방에서 답장해 옛 주문 방식으로 되돌아가므로,
+// 기본값은 거래가 끝난 뒤인 배송완료 하나뿐이다.
+// 쓸 수 있는 값: 'order'(주문접수) 'confirmed'(접수완료) 'delivered'(배송완료) 'cancelled'(주문취소) 'reply'(관리자 답변)
+function _notifyAllowed(ns, event) {
+  let list = null;
+  try { list = typeof ns.notifyEvents === 'string' ? JSON.parse(ns.notifyEvents) : ns.notifyEvents; } catch { list = null; }
+  if (!Array.isArray(list)) list = ['delivered'];
+  return list.includes(event);
+}
 function _notifyOrder(order, isReorder) {
   (async () => {
     try {
@@ -104,7 +114,9 @@ function _notifyOrder(order, isReorder) {
         ? 'KA01TP260522215451814ICITJ2ltD6g'
         : 'KA01TP260522043036061jyoL3rs2iVT';
       const fallback = `[오늘의 반찬] ${order.name}님, ${isReorder?'재주문':'주문'}이 접수됐습니다! ${menuList} 합계: ${Number(total).toLocaleString()}천원`;
-      _alimtalk(order.phone, tplId, { 이름: order.name||'', 메뉴목록: menuList, 금액: String(total) }, fallback, url, ns);
+      if (_notifyAllowed(ns, 'order')) {
+        _alimtalk(order.phone, tplId, { 이름: order.name||'', 메뉴목록: menuList, 금액: String(total) }, fallback, url, ns);
+      }
       if (ns.adminPhone) {
         const label = isReorder ? '재주문' : '새 주문';
         const adminMsg = `[오늘의 반찬] ${label}! ${order.name}${order.phone?' ('+order.phone+')':''} ${menuList} 합계: ${Number(total).toLocaleString()}천원${order.memo?' 배송:'+order.memo:''}${order.additionalRequest?' 요청:'+order.additionalRequest:''}`;
@@ -126,9 +138,11 @@ function _notifyStatus(orderId, status) {
       const items    = typeof o.items === 'string' ? JSON.parse(o.items) : (o.items || []);
       const menuList = items.map(i => `${i.name} ${i.qty||1}개`).join(', ');
       if (status === 'confirmed') {
-        _alimtalk(o.phone, 'KA01TP260522043220298Ev0vb3LtcjG',
-          { 이름: o.name, 메뉴목록: menuList, 금액: String(o.total||0) },
-          `[오늘의 반찬] ${o.name}님, 배송업체에 요청했습니다! ${menuList} 합계: ${Number(o.total||0).toLocaleString()}천원`, url, ns);
+        if (_notifyAllowed(ns, 'confirmed')) {
+          _alimtalk(o.phone, 'KA01TP260522043220298Ev0vb3LtcjG',
+            { 이름: o.name, 메뉴목록: menuList, 금액: String(o.total||0) },
+            `[오늘의 반찬] ${o.name}님, 배송업체에 요청했습니다! ${menuList} 합계: ${Number(o.total||0).toLocaleString()}천원`, url, ns);
+        }
         if (ns.deliveryPhone) {
           const delivMsg = `[오늘의 반찬] 배송 요청 / ${o.name}${o.phone?' '+o.phone:''}`
             + (o.addr ? ' / ' + o.addr : '')
@@ -138,13 +152,17 @@ function _notifyStatus(orderId, status) {
           _sms(ns.deliveryPhone, delivMsg, url, ns);
         }
       } else if (status === 'delivered') {
-        _alimtalk(o.phone, 'KA01TP260522043333235AUBreysEIxj',
-          { 이름: o.name },
-          `[오늘의 반찬] ${o.name}님, 배송이 완료됐습니다! 맛있게 드세요 😊`, url, ns);
+        if (_notifyAllowed(ns, 'delivered')) {
+          _alimtalk(o.phone, 'KA01TP260522043333235AUBreysEIxj',
+            { 이름: o.name },
+            `[오늘의 반찬] ${o.name}님, 배송이 완료됐습니다! 맛있게 드세요 😊`, url, ns);
+        }
       } else if (status === 'cancelled') {
-        _alimtalk(o.phone, 'KA01TP2605220434459714HrsH0pRr0l',
-          { 이름: o.name },
-          `[오늘의 반찬] ${o.name}님, 주문이 취소됐습니다.`, url, ns);
+        if (_notifyAllowed(ns, 'cancelled')) {
+          _alimtalk(o.phone, 'KA01TP2605220434459714HrsH0pRr0l',
+            { 이름: o.name },
+            `[오늘의 반찬] ${o.name}님, 주문이 취소됐습니다.`, url, ns);
+        }
       }
     } catch(e) {}
   })();
@@ -165,7 +183,8 @@ app.get('/api/events', (req, res) => {
 });
 
 // ── 헬스체크 ────────────────────────────────────────────────
-app.get('/health', (req, res) => res.json({ ok: true }));
+// build 표식 — 설정을 바꾸기 전에 배포가 실제로 반영됐는지 확인하는 용도
+app.get('/health', (req, res) => res.json({ ok: true, build: 'notify-events-1' }));
 
 // ══════════════════════════════════════════════════════════════
 // 메뉴 창고 (등록된모든메뉴)
@@ -767,6 +786,7 @@ app.put('/api/orders/:id/reply', requireAdmin, async (req, res) => {
         if (!url) return;
         const [[o]] = await pool.execute('SELECT phone, name FROM orders WHERE id=?', [req.params.id]);
         if (!o) return;
+        if (!_notifyAllowed(ns, 'reply')) return;
         const fallback = `[오늘의 반찬] ${text||''}`;
         _alimtalk(o.phone, 'KA01TP260529154902220c1zr7XODUTj', { 이름: o.name||'' }, fallback, url, ns);
       } catch(e) {}
