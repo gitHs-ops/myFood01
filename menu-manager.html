@@ -2413,7 +2413,7 @@ function _renderBuriedOrders(){
       }).join('');
       el.innerHTML='<div style="background:#fdf0ee;border:2px solid #c0392b;border-radius:12px;padding:13px 16px;margin-bottom:12px;">'
         +'<div style="font-size:14px;font-weight:800;color:#c0392b;margin-bottom:4px;">⚠️ 처리 안 된 지난 주문 '+d.totalCount+'건</div>'
-        +'<div style="font-size:12px;color:#8a3a2e;margin-bottom:9px;">입금 확인이 안 된 채로 남아 있어요. 미입금 합계 '+comma(d.totalAmount)+'천원</div>'
+        +'<div style="font-size:12px;color:#8a3a2e;margin-bottom:9px;">입금 확인이 안 된 채로 남아 있어요. 미입금 합계 '+Number(d.totalAmount||0).toLocaleString()+'천원</div>'
         +'<div style="display:flex;flex-wrap:wrap;gap:6px;">'+btns+'</div>'
         +'</div>';
       el.style.display='block';
@@ -2438,7 +2438,7 @@ function renderOrdersList(today,todayOrders){
   var reserve=todayOrders.filter(_isReserveOrder).length;
   document.getElementById('orderStats').innerHTML=
     '<div class="order-stat"><div class="order-stat-num">'+todayOrders.length+'</div><div class="order-stat-lbl">전체</div></div>'+
-    '<div class="order-stat"><div class="order-stat-num" style="color:#E9A826;">'+pending+'</div><div class="order-stat-lbl">대기중</div>'+(pending?'<div style="font-size:10px;color:#E9A826;font-weight:700;margin-top:2px;white-space:nowrap;">미입금 '+comma(pendingSum)+'천원</div>':'')+'</div>'+
+    '<div class="order-stat"><div class="order-stat-num" style="color:#E9A826;">'+pending+'</div><div class="order-stat-lbl">대기중</div>'+(pending?'<div style="font-size:10px;color:#E9A826;font-weight:700;margin-top:2px;white-space:nowrap;">미입금 '+Number(pendingSum||0).toLocaleString()+'천원</div>':'')+'</div>'+
     '<div class="order-stat"><div class="order-stat-num" style="color:#1D9E75;">'+confirmed+'</div><div class="order-stat-lbl">주문접수</div></div>'+
     '<div class="order-stat"><div class="order-stat-num" style="color:#086266;">'+delivered+'</div><div class="order-stat-lbl">배송완료</div></div>'+
     '<div class="order-stat"><div class="order-stat-num" style="color:#999;">'+cancelled+'</div><div class="order-stat-lbl">취소된주문</div></div>'+
@@ -3466,7 +3466,6 @@ window.onload=function(){
   ['onban_seen_addreq','onban_last_orders_open','stock_applied_orders','stock_reconcile_init'].forEach(function(k){localStorage.removeItem(k);});
   // 주문 자동 폴링 시작
   startOrderPolling();
-  requestNotifyPermission();
 };
 </script>
 </body>
