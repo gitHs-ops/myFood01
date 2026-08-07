@@ -543,6 +543,17 @@ flowchart LR
 <li>계좌를 바꿔보고 다른 기기(옛날에 접속했던 폰)에서 새 계좌가 보이는지 — 지난 사고 재발 확인</li>
 </ul>
 
+<h3>배포 운영 — 알아둘 것</h3>
+<div class="note">
+<strong>Railway는 저장소 전체를 감시해서, HTML만 고쳐 올려도 서버를 통째로 재시작합니다.</strong> 그 1~2분 동안 API가 JSON 대신 오류 HTML을 돌려주고, 저장·삭제·상태변경이 전부 같은 경로를 타므로 <strong>한꺼번에 고장난 것처럼 보입니다.</strong> 실제로 2026-08-08 작업 중 이 증상을 겪었고, DB나 서버 문제로 오인하기 쉽습니다.
+<ul style="margin:8px 0 0 20px;">
+<li><strong>해결(적용 완료):</strong> Railway 서비스 <strong>Settings → Build → Watch Paths</strong>에 <code>/server/**</code> 지정. 이제 서버 코드가 바뀔 때만 재배포되고, HTML만 고친 push는 서버를 건드리지 않습니다.</li>
+<li><strong>화면 쪽 보완:</strong> 재배포 중 응답을 못 읽으면 <code>Unexpected token '&lt;'</code> 대신 <strong>"서버가 잠시 응답하지 않아요. 30초쯤 뒤 다시 시도해주세요"</strong>가 뜹니다. 통신을 감싸는 한 곳에서 처리합니다.</li>
+<li><strong>배포 반영 확인:</strong> <code>/health</code>가 <code>build</code> 표식을 돌려줍니다. 서버 코드를 고칠 때 이 값을 함께 바꾸면 재배포가 끝났는지 바로 알 수 있습니다.</li>
+<li><strong>화면 캐시:</strong> GitHub Pages는 배포 후 최대 10분간 옛 파일을 내보냅니다(<code>max-age=600</code>). Railway 정적 서빙은 즉시 반영되므로, 수정이 잦은 날 관리자 화면은 Railway 주소로 여는 편이 낫습니다.</li>
+</ul>
+</div>
+
 <h3>업주에게 전달할 운영 규칙</h3>
 <ul class="chk">
 <li><strong>접수완료 버튼은 은행 입금을 확인한 뒤에만</strong> 누른다. 누르는 순간 배송업체에 배송 요청 문자가 나가며 취소할 수 없다.</li>
