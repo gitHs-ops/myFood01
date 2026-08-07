@@ -81,7 +81,8 @@ li{margin-bottom:5px;}
 <div class="card" style="border-left:6px solid var(--ok);background:#f0fbf6;">
   <h3 style="margin-top:0;color:#127a5b;">✅ P0 5건 수정 완료 (2026-08-08)</h3>
   <p style="margin-bottom:8px;">아래 P0 항목 5건은 <strong>모두 수정해 배포했습니다</strong>(커밋 <code>38f4df3</code>). 이 문서의 P0 설명은 <strong>수정 전 상태의 기록</strong>이며, 무엇을 왜 고쳤는지 남기기 위해 그대로 둡니다. 남은 P1 6건·P2 5건은 미수정 상태입니다.</p>
-  <p style="margin-bottom:0;font-size:13.5px;">단, <strong>P0-4는 비밀번호 값 자체를 바꾸지 않았습니다</strong> — 옛 기기를 차단하는 장치만 넣었습니다. 실제 차단 효과를 보려면 비밀번호를 새 값으로 바꿔야 하고, 이때 <code>menu-manager.html</code>·<code>index.html</code>의 <code>ADMIN_PW</code>, <code>menu-manager.html</code>의 <code>ADMIN_API_TOKEN</code>, Railway 환경변수 <code>ADMIN_TOKEN</code> <strong>네 곳을 같은 값으로 동시에</strong> 바꿔야 합니다. 하나라도 어긋나면 관리자 화면이 먹통이 됩니다.</p>
+  <p style="font-size:13.5px;"><strong>P0-4 비밀번호 교체까지 완료</strong>(2026-08-08) — Railway 환경변수 <code>ADMIN_TOKEN</code>과 코드 양쪽을 새 값으로 맞췄고, 흩어져 있던 상수 3개를 <strong>파일당 <code>ONBAN_ADMIN_KEY</code> 하나로</strong> 정리했습니다. 이제 바꿀 곳은 <code>menu-manager.html</code>·<code>index.html</code>·Railway 세 곳이며, 셋은 <strong>항상 같은 값</strong>이어야 합니다. 기존에 로그인돼 있던 관리자 기기는 전부 자동으로 재로그인을 요구합니다.</p>
+  <p style="margin-bottom:0;font-size:13.5px;">다만 <strong>비밀번호가 공개 소스에 평문으로 들어 있는 구조 자체는 그대로입니다.</strong> 유출된 옛 값이 무효화됐을 뿐이므로, 서버 로그인 방식으로 바꾸는 근본 수정(P0-4 "오픈 후" 항목)은 여전히 유효한 과제입니다.</p>
 </div>
 
 <div class="card">

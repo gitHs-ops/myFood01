@@ -173,25 +173,28 @@ function switchPage(name) {
 <div class="seq">
 <ol>
   <li>페이지 로드 시 즉시 실행 함수(IIFE)가 <code>sessionStorage.getItem('onban_admin_auth')</code> 확인</li>
-  <li>값이 <code>'1'</code>이면 인증 완료 — 페이지 정상 표시</li>
-  <li>없으면 <code>prompt()</code>로 비밀번호 입력 요청</li>
-  <li>일치 시 <code>sessionStorage.setItem('onban_admin_auth','1')</code> 저장 → 같은 탭·세션 재입력 불필요</li>
+  <li>저장된 값이 <code>'ok_' + 비밀번호</code>와 같으면 인증 완료 — 페이지 정상 표시</li>
+  <li>다르거나 없으면 <code>prompt()</code>로 비밀번호 입력 요청</li>
+  <li>일치 시 <code>localStorage</code>에 <code>'ok_' + 비밀번호</code>를 저장 → 다음 접속 시 재입력 불필요</li>
   <li>불일치 시 <code>location.replace('onban.html')</code>로 즉시 고객 페이지 리다이렉트</li>
 </ol>
 </div>
 
-<pre><code>(function(){
-  var ADMIN_PW = 'onban@1dl34';          // 소스 내 평문 — 변경 시 이 위치만 수정
-  if (sessionStorage.getItem('onban_admin_auth') === '1') return;
+<pre><code>// 값은 파일 최상단 ONBAN_ADMIN_KEY 한 곳에서만 관리 (실제 값은 소스 참조)
+var ONBAN_ADMIN_KEY = '········';
+(function(){
+  var AUTH_VAL = 'ok_' + ONBAN_ADMIN_KEY;   // 로그인 유지 값을 비밀번호에 묶는다
+  if (localStorage.getItem('onban_admin_auth') === AUTH_VAL) return;
   var input = prompt('관리자 비밀번호를 입력하세요');
-  if (input === ADMIN_PW) { sessionStorage.setItem('onban_admin_auth','1'); }
+  if (input === ONBAN_ADMIN_KEY) { localStorage.setItem('onban_admin_auth', AUTH_VAL); }
   else { alert('접근 권한이 없습니다.'); location.replace('onban.html'); }
 })();</code></pre>
 
 <h3>4.2 세션 범위</h3>
 <ul>
-  <li>브라우저 탭 종료 시 sessionStorage 초기화 → 다음 접속 시 재인증 필요</li>
-  <li>같은 탭에서 새로고침 시 재인증 불필요</li>
+  <li><code>localStorage</code>에 저장하므로 브라우저를 닫았다 열어도 로그인이 유지된다</li>
+  <li>저장 값이 비밀번호에 묶여 있어, <strong>비밀번호를 바꾸면 기존에 로그인돼 있던 기기가 전부 자동으로 차단</strong>된다(재입력 요구)</li>
+  <li>비밀번호는 <code>menu-manager.html</code>·<code>index.html</code>의 <code>ONBAN_ADMIN_KEY</code>와 Railway 환경변수 <code>ADMIN_TOKEN</code> <strong>세 곳이 항상 같은 값</strong>이어야 한다. 어긋나면 관리자 전용 API가 전부 401로 실패한다.</li>
 </ul>
 <div class="warn">⚠ 클라이언트 측 평문 비밀번호 방식. 소스 보기(Ctrl+U)로 노출 가능. 운영 환경에서는 서버 세션 또는 JWT 인증으로 개선 권장.</div>
 
