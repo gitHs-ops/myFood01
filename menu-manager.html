@@ -617,7 +617,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
     <div class="send-toggle-row">
       <div>
         <div class="send-toggle-label">💬 문자(SMS) 발송</div>
-        <div class="send-toggle-desc">주문 확정·배송·취소 시 배송업체 SMS 발송</div>
+        <div class="send-toggle-desc">새 주문 알림(업주 휴대폰) · 접수완료 시 배송 요청(배송업체)<br>위쪽 설정에서 <b>번호를 비워두면 그 문자만</b> 나가지 않아요</div>
       </div>
       <label class="toggle-switch">
         <input type="checkbox" id="cfgSmsEnabled" checked>
@@ -627,7 +627,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
     <div class="send-toggle-row">
       <div>
         <div class="send-toggle-label">🔔 알림톡 발송</div>
-        <div class="send-toggle-desc">주문 접수·확정·완료·취소 시 고객 카카오 알림톡 발송</div>
+        <div class="send-toggle-desc">고객에게 <b>배송완료</b> 알림톡 발송<br>주문·접수 시점에는 보내지 않아요 (카톡으로 되돌아가지 않도록)</div>
       </div>
       <label class="toggle-switch">
         <input type="checkbox" id="cfgAlimtalkEnabled" checked>
