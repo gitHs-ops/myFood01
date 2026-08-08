@@ -125,7 +125,7 @@
 │   ┌──────────┬──────────┬──────────┬──────────┬──────────┬──────────┐                │
 │   │ 메뉴목록  │ 장바구니  │ 주문자정보 │ 주문확인  │ 결제안내  │ 주문내역  │  ← .page 토글  │
 │   └──────────┴──────────┴──────────┴──────────┴──────────┴──────────┘                │
-│        │  localStorage: onban_device_id / orders / onban_categories                  │
+│        │  localStorage: onban_device_id / orders                                     │
 └────────┼─────────────────────────────────────────────────────────────────────────────┘
          │ fetch (REST / JSON)              ▲ EventSource (SSE: /api/events)
          ▼                                  │
@@ -305,9 +305,9 @@
   <tr><th>키</th><th>내용</th></tr>
   <tr><td><code>onban_device_id</code></td><td>UUID v4 디바이스 식별자(<code>_getDeviceId</code>). 최초 1회 생성·영구 보관</td></tr>
   <tr><td><code>orders</code></td><td>주문 내역 캐시 배열. DB와 동기화되며 항목편집 작업본(<code>_snap</code> 스냅샷 포함)</td></tr>
-  <tr><td><code>onban_categories</code></td><td>관리자 정의 카테고리 색상(<code>CAT_COLOR</code> 오버라이드)</td></tr>
   <tr><td><code>onban_admin</code></td><td>관리자 연락처(추가 SMS 발송 대상)</td></tr>
 </table>
+<div class="note">💡 카테고리 색상(<code>CAT_COLOR</code> 오버라이드)은 2026-08-08부로 localStorage가 아니라 <code>GET /api/settings</code>의 <code>categories</code> 값에서 받는다(<code>loadCatColorsFromServer()</code>, 페이지 로드 시 호출). 예전엔 이 기기의 localStorage를 읽었는데, 그 값을 쓰는 코드가 관리자 화면(다른 기기)에만 있어 고객에게는 항상 기본색만 보이던 문제가 있었다.</div>
 
 <div class="warn">⚠ <strong>device_id 함수 중복</strong>: <code>getDeviceId()</code>(prefix <code>dev-</code> 방식)와 <code>_getDeviceId()</code>(표준 UUID v4)가 공존한다. 동일 키(<code>onban_device_id</code>)를 사용하되 생성 형식이 달라, 최초 호출 함수에 따라 형식이 결정된다. → 유지보수 시 통일 권장.</div>
 

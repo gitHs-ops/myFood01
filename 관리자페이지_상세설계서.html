@@ -555,12 +555,12 @@ var ONBAN_ADMIN_KEY = '········';
 <h3>7.2 localStorage 사용 목록</h3>
 <table>
   <tr><th>키</th><th>내용</th><th>읽는 함수</th></tr>
-  <tr><td><code>onban_categories</code></td><td>카테고리 목록 (JSON)</td><td><code>getCats()</code></td></tr>
   <tr><td><code>onban_settings</code></td><td>재고 기본값 등 설정 (JSON)</td><td><code>getSettings()</code></td></tr>
   <tr><td><code>onban_banks</code></td><td>계좌 정보 목록 (JSON)</td><td><code>getBanks()</code></td></tr>
   <tr><td><code>onban_admin</code></td><td>관리자 연락처·이메일 (JSON)</td><td><code>getAdminInfo()</code></td></tr>
 </table>
 <div class="note">💡 localStorage는 DB 로드 이전에 화면을 빠르게 초기화하는 캐시 역할. 설정 저장 시 DB에도 동기화하므로 정본은 DB.</div>
+<div class="note">💡 카테고리(<code>onban_categories</code>)는 2026-08-08부로 localStorage에 저장하지 않는다. 원본이 이 기기에만 있어 관리자 폰을 바꾸면 통째로 사라지고 고객에게도 전파되지 않는 문제가 있었다. 지금은 <code>getCats()</code>가 메모리 변수 <code>_cats</code>를 반환하고, <code>setCats()</code>는 <code>POST /api/settings</code>로 즉시 서버에 저장한다. 페이지 로드 시 <code>loadCatsFromServer()</code>가 서버 값으로 맞추며, 이 기기에 옛 값이 남아 있고 서버엔 아직 없으면 1회 서버로 옮긴 뒤 로컬 값은 지운다.</div>
 
 <h3>7.3 렌더 함수 체계</h3>
 <table class="fn-table">

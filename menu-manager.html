@@ -822,7 +822,6 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
 </div>
 <script>
 var IMGBB_KEY='b5a6e9481bb9cb4791108cf50761a459';
-var CATS_KEY='onban_categories';
 var DEFAULT_CATS=[
   {name:'메인',color:'#1D9E75'},
   {name:'한우',color:'#C0392B'},
@@ -832,8 +831,43 @@ var DEFAULT_CATS=[
   {name:'밀키트',color:'#E9A826'},
   {name:'기타',color:'#888780'}
 ];
-function getCats(){try{var s=localStorage.getItem(CATS_KEY);if(s)return JSON.parse(s);}catch(e){}return DEFAULT_CATS.map(function(c){return {name:c.name,color:c.color};});}
-function setCats(cats){localStorage.setItem(CATS_KEY,JSON.stringify(cats));}
+// 카테고리 원본은 서버(settings.categories)뿐 — localStorage에 저장하지 않는다.
+// 관리자 기기를 바꾸면 통째로 사라지고 고객에게도 전파되지 않던 문제(2026-08-08)를 없앤다.
+// _cats 는 서버 응답이 오기 전까지 쓰는 메모리상의 임시값(기본 카테고리) — 새로고침마다 서버에서 다시 받는다.
+var _cats=DEFAULT_CATS.map(function(c){return {name:c.name,color:c.color};});
+function getCats(){return _cats;}
+function setCats(cats,cb){
+  _cats=cats;
+  apiPost('/api/settings',{categories:cats},function(err,d){
+    var ok=!err&&d&&d.success!==false;
+    if(!ok)showToast('⚠️ 카테고리 저장 실패 — 다시 시도해주세요.');
+    if(cb)cb(ok);
+  });
+}
+// 예전 버전에서 이 기기의 localStorage에만 남아있던 카테고리를 서버로 1회 옮긴다(값 보존).
+var _LEGACY_CATS_KEY='onban_categories';
+function _migrateLegacyCats(){
+  try{
+    var s=localStorage.getItem(_LEGACY_CATS_KEY);
+    if(!s)return;
+    var legacy=JSON.parse(s);
+    if(Array.isArray(legacy)&&legacy.length)setCats(legacy);
+  }catch(e){}
+  localStorage.removeItem(_LEGACY_CATS_KEY);
+}
+// 페이지를 열 때마다 서버 값으로 맞춘다. 서버에 값이 없으면(최초 1회) 이 기기의 옛 설정을 올린다.
+function loadCatsFromServer(cb){
+  apiFetch('/api/settings',function(err,d){
+    if(!err&&d&&d.success&&d.data&&Array.isArray(d.data.categories)&&d.data.categories.length){
+      _cats=d.data.categories;
+      _buildCatMaps();
+      if(cb)cb(true);
+    }else{
+      _migrateLegacyCats();
+      if(cb)cb(false);
+    }
+  });
+}
 var CAT_COLOR={};var VALID_CATS=[];
 function _buildCatMaps(){CAT_COLOR={};VALID_CATS=[];getCats().forEach(function(c){CAT_COLOR[c.name]=c.color;VALID_CATS.push(c.name);});}
 var CAT_EMOJI={'메인':'🍳','한우':'🥩','한돈':'🐷','반찬':'🥗','김치':'🥬','밀키트':'📦','기타':'🍽'};
@@ -3328,11 +3362,14 @@ function removeCatRow(i){_editingCats.splice(i,1);_renderCatRows();}
 function saveCatSettings(){
   if(!_editingCats)return;
   var cats=_editingCats.filter(function(c){return c.name;});
-  setCats(cats);_buildCatMaps();
+  setCats(cats,function(ok){
+    if(!ok)return;   // 실패 시 화면은 이미 새 값으로 그려졌지만 서버엔 안 남았다 — 알림만 하고 그대로 둠(재시도 유도)
+    var el=document.getElementById('settingSaved5');el.style.display='block';
+    setTimeout(function(){el.style.display='none';},2000);
+  });
+  _buildCatMaps();
   populateCatSelect('menuCat','전체',true);populateCatSelect('newMenuCat','메인');
   renderFilterTabs();renderAllFilterTabs();
-  var el=document.getElementById('settingSaved5');el.style.display='block';
-  setTimeout(function(){el.style.display='none';},2000);
 }
 function migrateHanPrefix(){
   var btn=document.querySelector('[onclick="migrateHanPrefix()"]');
@@ -3498,6 +3535,12 @@ window.onload=function(){
   var _goto=localStorage.getItem('mm_goto');if(_goto){localStorage.removeItem('mm_goto');setTimeout(function(){switchPage(_goto);},400);}
   // 시작 시 서버에서 설정 동기화 (localStorage stale 방지)
   loadSettingsFromSheet(function(){});
+  // 카테고리도 서버 값으로 맞춘다. 늦게 도착하면 이미 그려진 화면을 색상만 다시 칠한다.
+  loadCatsFromServer(function(changed){
+    if(!changed)return;
+    populateCatSelect('menuCat','전체',true);populateCatSelect('newMenuCat','메인');
+    renderAll();renderAllFilterTabs();
+  });
   populateCatSelect('menuCat','전체',true);populateCatSelect('newMenuCat','메인');
   workDate=toISO(new Date());loadMenus(workDate);_startMenuSSE(workDate);
   _updateSaveBtn();

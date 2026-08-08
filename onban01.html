@@ -731,7 +731,19 @@ function _validUrl(u){return(u&&u!=='ERROR'&&u.startsWith('http'))?u:null;}
 function _isPexels(u){return!!(u&&u.startsWith('https://images.pexels.com/photos'));}
 function _isAiImg(u){return!!(u&&u.startsWith('https://d8j0ntlcm91z4.cloudfront.net'));}
 function _itemCat(name){var m=allMenus.find(function(x){return x.name===name;});return m?m.cat:'';}
-(function(){try{var s=localStorage.getItem('onban_categories');if(s){JSON.parse(s).forEach(function(c){CAT_COLOR[c.name]=c.color;});}}catch(e){}})();
+// 카테고리 색상은 서버(settings.categories)에서 받는다 — 관리자가 색을 바꾸면 여기도 그걸 봐야 한다.
+// (예전엔 이 기기의 localStorage를 읽었는데, 그 값을 쓰는 코드가 이 파일엔 없어 늘 기본색만 보였다)
+function loadCatColorsFromServer(cb){
+  fetch(API_URL+'/api/settings',{cache:'no-store'})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d&&d.success&&d.data&&Array.isArray(d.data.categories)&&d.data.categories.length){
+        d.data.categories.forEach(function(c){CAT_COLOR[c.name]=c.color;});
+        if(cb)cb(true);
+      }else if(cb)cb(false);
+    })
+    .catch(function(){if(cb)cb(false);});
+}
 // 계좌 정보는 localStorage를 쓰지 않고 항상 구글시트에서 조회 (결제화면 진입 시 갱신).
 // 아래는 시트 조회 실패 시에만 쓰는 임시 기본값.
 var BANK={name:'',holder:'',account:''};
@@ -2752,6 +2764,10 @@ function submitReserveOrder(){
 }
 
 window.onload=function(){
+  // 관리자가 바꾼 카테고리 색을 반영. 늦게 도착하면 이미 그려진 화면만 다시 칠한다.
+  loadCatColorsFromServer(function(changed){
+    if(changed){renderCatTabs();renderMenuGrid();}
+  });
   // 이미지 갤러리 등 외부 페이지에서 특정 메뉴 상세를 바로 열도록 딥링크 지원
   var _urlParams=new URLSearchParams(window.location.search);
   var _openMenuName=_urlParams.get('openMenu');
