@@ -166,6 +166,49 @@ function _notifyOrder(order, isReorder) {
     } catch(e) {}
   })();
 }
+// 주문이 바뀐 내역을 답변 필드에 쌓는다.
+// 최초 주문 문자와 실제 주문이 달라지면 입금 대조가 안 되므로, 무엇이 언제 바뀌었는지
+// 남겨 거래 증명으로 쓴다. 이 내용은 고객 주문내역에도 그대로 보인다.
+async function _appendOrderLog(orderId, lines) {
+  if (!lines || !lines.length) return;
+  try {
+    const [[o]] = await pool.execute('SELECT admin_reply FROM orders WHERE id=?', [orderId]);
+    if (!o) return;
+    const stamp = new Date(Date.now() + 9*60*60*1000).toISOString().replace('T', ' ').slice(0, 16);
+    const entry = `[${stamp}] ` + lines.join(' / ');
+    const prev  = (o.admin_reply || '').trim();
+    await pool.execute(
+      'UPDATE orders SET admin_reply=?, reply_at=NOW() WHERE id=?',
+      [prev ? prev + '\n' + entry : entry, orderId]
+    );
+    broadcast('order_reply', { orderId });
+  } catch(e) {}
+}
+
+// 주문이 바뀌면 업주에게 '지금 상태'로 문자를 다시 보낸다.
+// 최초 주문 문자만 남아 있으면 실제 주문과 어긋나 입금 대조가 안 된다.
+function _notifyOwnerChange(orderId, label, lines) {
+  (async () => {
+    try {
+      const ns  = await _getNotifySettings();
+      const url = (ns.gasUrl || '').trim();
+      if (!url) return;
+      const ownerPhone = ns.adminPhone || ns.phone;
+      if (!ownerPhone) return;
+      const [[o]] = await pool.execute(
+        'SELECT name,phone,memo,items,total FROM orders WHERE id=?', [orderId]);
+      if (!o) return;
+      const items    = typeof o.items === 'string' ? JSON.parse(o.items) : (o.items || []);
+      const menuList = items.map(i => `${i.name} ${i.qty||1}개`).join(', ');
+      const msg = `[오늘의 반찬] ${label}! ${o.name}${o.phone ? ' ('+o.phone+')' : ''} ${menuList}`
+        + ` 합계: ${Number(o.total||0).toLocaleString()}천원`
+        + (lines && lines.length ? ` / 변경: ${lines.join(', ')}` : '')
+        + (o.memo ? ` 배송:${o.memo}` : '');
+      _sms(ownerPhone, msg, url, ns);
+    } catch(e) {}
+  })();
+}
+
 function _notifyStatus(orderId, status) {
   (async () => {
     try {
@@ -237,7 +280,7 @@ app.get('/api/events', (req, res) => {
 
 // ── 헬스체크 ────────────────────────────────────────────────
 // build 표식 — 설정을 바꾸기 전에 배포가 실제로 반영됐는지 확인하는 용도
-app.get('/health', (req, res) => res.json({ ok: true, build: 'notify-log-2' }));
+app.get('/health', (req, res) => res.json({ ok: true, build: 'order-log-1' }));
 
 // ══════════════════════════════════════════════════════════════
 // 메뉴 창고 (등록된모든메뉴)
@@ -778,6 +821,13 @@ app.put('/api/orders/:id/status', async (req, res) => {
       if (['confirmed','delivered','cancelled'].includes(status)) {
         _notifyStatus(req.params.id, status);
       }
+      // 주문취소는 거래 내용이 사라지는 일이라 반드시 기록으로 남긴다.
+      // 업주 문자는 고객이 취소했을 때만 — 관리자가 직접 취소한 건 본인이 이미 안다.
+      if (status === 'cancelled' && prev !== 'cancelled') {
+        const who = isAdmin ? '관리자' : '고객';
+        _appendOrderLog(req.params.id, [`${who}가 주문취소`]);
+        if (!isAdmin) _notifyOwnerChange(req.params.id, '고객 주문취소', null);
+      }
     } catch(e) { await conn.rollback(); conn.release(); throw e; }
   } catch(e) { err(res, e.message); }
 });
@@ -792,7 +842,7 @@ app.put('/api/orders/:id/items', async (req, res) => {
     await conn.beginTransaction();
     try {
       const [rows] = await conn.execute(
-        'SELECT status, date, items, memo, reserve_date FROM orders WHERE id=? FOR UPDATE', [req.params.id]
+        'SELECT status, date, items, memo, total, reserve_date FROM orders WHERE id=? FOR UPDATE', [req.params.id]
       );
       if (!rows.length) { await conn.rollback(); conn.release(); return err(res, '주문 없음', 404); }
       if (rows[0].status !== 'pending') { await conn.rollback(); conn.release(); return err(res, '대기중 주문만 수정할 수 있어요.', 409); }
@@ -850,10 +900,33 @@ app.put('/api/orders/:id/items', async (req, res) => {
       const deliveryFee = (!isPickup && itemsSum >= 20) ? 1 : 0;
       const total       = itemsSum + deliveryFee;
 
+      // 무엇이 바뀌었는지 정리 (거래 증명용)
+      const changeLines = [];
+      const keyOf  = i => (i.menuId != null ? 'id:' + i.menuId : 'nm:' + i.name);
+      const oldMap = {}; oldItems.forEach(i => { oldMap[keyOf(i)] = i; });
+      const newMap = {}; items.forEach(i => { newMap[keyOf(i)] = i; });
+      for (const i of items) {
+        const o = oldMap[keyOf(i)];
+        const nq = i.qty || 1;
+        if (!o) changeLines.push(`${i.name} ${nq}개 추가`);
+        else if ((o.qty || 1) !== nq) changeLines.push(`${i.name} ${o.qty||1}개→${nq}개`);
+      }
+      for (const o of oldItems) {
+        if (!newMap[keyOf(o)]) changeLines.push(`${o.name} ${o.qty||1}개 삭제`);
+      }
+      const prevMemo  = rows[0].memo || '';
+      const prevTotal = Number(rows[0].total) || 0;
+      if (finalMemo !== prevMemo) changeLines.push(`배송방법 ${prevMemo||'(없음)'}→${finalMemo||'(없음)'}`);
+      if (total !== prevTotal)    changeLines.push(`합계 ${prevTotal}→${total}천원`);
+
       await conn.execute('UPDATE orders SET items=?, total=?, memo=? WHERE id=?', [JSON.stringify(items), total, finalMemo, req.params.id]);
       await conn.commit(); conn.release();
       broadcast('order_items', { orderId: req.params.id });
       ok(res, { total });
+      if (changeLines.length) {
+        _appendOrderLog(req.params.id, changeLines);
+        _notifyOwnerChange(req.params.id, '주문변경', changeLines);
+      }
     } catch(e) { await conn.rollback(); conn.release(); throw e; }
   } catch(e) { err(res, e.message); }
 });
@@ -872,9 +945,17 @@ app.put('/api/orders/:id/request', async (req, res) => {
 app.put('/api/orders/:id/memo', async (req, res) => {
   try {
     const { memo } = req.body;
+    const [[prev]] = await pool.execute('SELECT memo FROM orders WHERE id=?', [req.params.id]);
     await pool.execute('UPDATE orders SET memo=? WHERE id=?', [memo||'', req.params.id]);
     broadcast('order_memo', { orderId: req.params.id });
     ok(res);
+    // 배송방법이 실제로 바뀐 경우에만 기록·통보 (같은 값 재저장은 무시)
+    const before = (prev && prev.memo) || '';
+    if (before !== (memo || '')) {
+      const lines = [`배송방법 ${before||'(없음)'}→${memo||'(없음)'}`];
+      _appendOrderLog(req.params.id, lines);
+      _notifyOwnerChange(req.params.id, '배송방법 변경', lines);
+    }
   } catch(e) { err(res, e.message); }
 });
 
