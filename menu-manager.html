@@ -2778,7 +2778,13 @@ function deliverOrder(id){
     _reRenderFromCache();
     closeAdminOrderDetail();
     fetch(API_URL+'/api/orders/'+encodeURIComponent(id)+'/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'delivered'})})
-      .then(function(){renderOrders();}).catch(function(){});
+      .then(function(r){return r.json();})
+      .then(function(d){
+        // 실패를 삼키면 화면만 배송완료로 보이고 서버는 그대로 남는다(고객 알림톡도 안 나감)
+        if(!(d&&d.success))showToast('⚠️ 배송완료 반영 실패 — 다시 시도해주세요.');
+        renderOrders();
+      })
+      .catch(function(){showToast('⚠️ 연결 오류 — 배송완료가 반영되지 않았어요.');renderOrders();});
   });
 }
 
@@ -2808,8 +2814,14 @@ function cancelOrder(id){
     _reRenderFromCache();
     closeAdminOrderDetail();
     fetch(API_URL+'/api/orders/'+encodeURIComponent(id)+'/status',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'cancelled'})})
-      .then(function(){if(o.date===workDate){loadMenus(workDate);}renderOrders();})
-      .catch(function(){});
+      .then(function(r){return r.json();})
+      .then(function(d){
+        // 취소는 재고 복원까지 걸려 있어, 실패를 놓치면 재고가 어긋난 채로 남는다
+        if(!(d&&d.success))showToast('⚠️ 주문취소 반영 실패 — 다시 시도해주세요.');
+        if(o.date===workDate){loadMenus(workDate);}
+        renderOrders();
+      })
+      .catch(function(){showToast('⚠️ 연결 오류 — 주문취소가 반영되지 않았어요.');renderOrders();});
   },'네, 취소할게요');
 }
 
