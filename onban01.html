@@ -2279,10 +2279,9 @@ function histSaveMemo(id){
   localStorage.setItem('orders',JSON.stringify(ords));
   document.getElementById('histmemo-'+id).innerHTML=_histMemoHtml(id,text);
   _updateHistTotal(id);
-  fetch(API_URL+'/api/orders/'+encodeURIComponent(id)+'/memo',{
-    method:'PUT',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({memo:text})
-  }).catch(function(){});
+  // 수량 변경과 마찬가지로 '저장'을 눌러야 서버에 반영된다.
+  // 저장할 때 배송방법도 함께 보내지므로(_doSaveOrderItems) 여기서 따로 보내지 않는다.
+  _histDirty[id]=true;
 }
 function histEditExtra(id){
   var ords=JSON.parse(localStorage.getItem('orders')||'[]');

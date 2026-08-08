@@ -280,7 +280,7 @@ app.get('/api/events', (req, res) => {
 
 // ── 헬스체크 ────────────────────────────────────────────────
 // build 표식 — 설정을 바꾸기 전에 배포가 실제로 반영됐는지 확인하는 용도
-app.get('/health', (req, res) => res.json({ ok: true, build: 'order-log-1' }));
+app.get('/health', (req, res) => res.json({ ok: true, build: 'order-log-2' }));
 
 // ══════════════════════════════════════════════════════════════
 // 메뉴 창고 (등록된모든메뉴)
@@ -944,18 +944,14 @@ app.put('/api/orders/:id/request', async (req, res) => {
 // 배송방법(memo) 저장 (PUT /api/orders/:id/memo)
 app.put('/api/orders/:id/memo', async (req, res) => {
   try {
+    // 여기서는 기록·통보를 하지 않는다.
+    // 고객이 배송방법을 바꾸면 '저장'을 눌렀을 때 PUT /:id/items 로 함께 넘어오고,
+    // 거기서 한 번만 기록·발송한다. 이 경로는 옛 memo 형식을 정리하는 1회성
+    // 마이그레이션도 쓰기 때문에, 여기서 통보하면 화면을 열 때마다 문자가 나간다.
     const { memo } = req.body;
-    const [[prev]] = await pool.execute('SELECT memo FROM orders WHERE id=?', [req.params.id]);
     await pool.execute('UPDATE orders SET memo=? WHERE id=?', [memo||'', req.params.id]);
     broadcast('order_memo', { orderId: req.params.id });
     ok(res);
-    // 배송방법이 실제로 바뀐 경우에만 기록·통보 (같은 값 재저장은 무시)
-    const before = (prev && prev.memo) || '';
-    if (before !== (memo || '')) {
-      const lines = [`배송방법 ${before||'(없음)'}→${memo||'(없음)'}`];
-      _appendOrderLog(req.params.id, lines);
-      _notifyOwnerChange(req.params.id, '배송방법 변경', lines);
-    }
   } catch(e) { err(res, e.message); }
 });
 
