@@ -738,7 +738,11 @@ function loadCatColorsFromServer(cb){
     .then(function(r){return r.json();})
     .then(function(d){
       if(d&&d.success&&d.data&&Array.isArray(d.data.categories)&&d.data.categories.length){
-        d.data.categories.forEach(function(c){CAT_COLOR[c.name]=c.color;});
+        // 덮어쓰기가 아니라 통째로 교체 — 이름을 바꾸거나 지운 카테고리가
+        // 하드코딩 기본값에 남아 옛 이름으로 계속 보이는 일이 없도록
+        var next={};
+        d.data.categories.forEach(function(c){next[c.name]=c.color;});
+        CAT_COLOR=next;
         if(cb)cb(true);
       }else if(cb)cb(false);
     })
