@@ -2165,13 +2165,21 @@ function _doSaveOrderItems(id,cb){
   })
   .catch(function(){_saveInFlight[id]=false;if(cb)cb(false);});
 }
-// '저장' 버튼 — 이때만 서버에 반영되고 업주에게 변경 문자가 나간다
+// '저장' 버튼 — 이때만 서버에 반영되고 업주에게 변경 문자가 나간다.
+// 문자가 남발되지 않도록 한 번 더 확인받고, 확인한 뒤에는 저장하고 창을 닫는다.
 function histSaveItemsNow(id){
-  _doSaveOrderItems(id,function(ok,d){
-    if(ok)showToast('저장되었습니다.');
-    else if(d&&d.soldOut&&d.soldOut.length)showToast('재고가 부족해요: '+d.soldOut.map(function(s){return s.name;}).join(', '));
-    else showToast('⚠️ 저장 실패 — 다시 시도해주세요.');
-  });
+  if(!_histDirty[id]){showToast('변경한 내용이 없어요.');return;}
+  var ords=JSON.parse(localStorage.getItem('orders')||'[]');
+  var ord=ords.find(function(o){return o.id===id;});
+  var sum=ord?('\n\n합계 '+comma(ord.total||0)+'천원'):'';
+  showConfirm('변경된 내역으로 재주문하여도 괜찮아요?'+sum,function(){
+    _doSaveOrderItems(id,function(ok,d){
+      if(ok){showToast('저장되었습니다.');closeOrderDetail();}
+      else if(d&&d.soldOut&&d.soldOut.length)showToast('재고가 부족해요: '+d.soldOut.map(function(s){return s.name;}).join(', '));
+      else showToast('⚠️ 저장 실패 — 다시 시도해주세요.');
+    });
+  },'네');
+  // '아니오'를 누르면 아무 동작 없이 확인창만 닫히고 주문 팝업으로 돌아간다
 }
 // 저장하지 않고 닫을 때 — 서버 값으로 되돌려 화면과 실제 주문이 어긋나지 않게 한다
 function _revertHistOrder(id,cb){
