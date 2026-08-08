@@ -620,7 +620,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
         <div class="send-toggle-desc">새 주문 알림(업주 휴대폰) · 접수완료 시 배송 요청(배송업체)<br>위쪽 설정에서 <b>번호를 비워두면 그 문자만</b> 나가지 않아요</div>
       </div>
       <label class="toggle-switch">
-        <input type="checkbox" id="cfgSmsEnabled" checked>
+        <input type="checkbox" id="cfgSmsEnabled" onchange="saveSendSettings('sms')" checked>
         <span class="toggle-slider"></span>
       </label>
     </div>
@@ -630,7 +630,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
         <div class="send-toggle-desc">고객에게 <b>배송완료</b> 알림톡 발송<br>주문·접수 시점에는 보내지 않아요 (카톡으로 되돌아가지 않도록)</div>
       </div>
       <label class="toggle-switch">
-        <input type="checkbox" id="cfgAlimtalkEnabled" checked>
+        <input type="checkbox" id="cfgAlimtalkEnabled" onchange="saveSendSettings('alimtalk')" checked>
         <span class="toggle-slider"></span>
       </label>
     </div>
@@ -3236,12 +3236,20 @@ function renderBankList(){
   });
 }
 
-function saveSendSettings(){
+function saveSendSettings(which){
   var s=getSettings();
   s.smsEnabled      = document.getElementById('cfgSmsEnabled').checked;
   s.alimtalkEnabled = document.getElementById('cfgAlimtalkEnabled').checked;
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
-  syncSettingsToSheet(function(){
+  syncSettingsToSheet(function(ok){
+    // 저장 실패를 성공으로 알리면 안 된다 — 화면만 켜지고 실제로는 꺼진 채로 남는다
+    if(!ok){
+      showToast('⚠️ 발송 설정 저장 실패 — 다시 시도해주세요.');
+      loadSettingsForm();   // 서버 값으로 화면 되돌리기
+      return;
+    }
+    if(which==='sms')           showToast(s.smsEnabled?'💬 문자 발송을 켰어요':'💬 문자 발송을 껐어요');
+    else if(which==='alimtalk') showToast(s.alimtalkEnabled?'🔔 알림톡 발송을 켰어요':'🔔 알림톡 발송을 껐어요');
     var el=document.getElementById('settingSaved4');
     el.style.display='block';
     setTimeout(function(){el.style.display='none';},2000);
