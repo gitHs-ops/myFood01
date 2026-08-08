@@ -112,8 +112,13 @@ function _gasCall(url, params) {
     }));
 }
 function _sms(phone, msg, url, ns) {
-  if (!phone || !msg || !url) return;
-  if (String(ns.smsEnabled ?? 'true') === 'false') return;
+  // 알림톡과 마찬가지로 건너뛴 이유를 남긴다
+  if (!phone) { _recordNotify({ step: 'skipped', action: 'sms', reason: '받는 번호가 없음' }); return; }
+  if (!msg)   { _recordNotify({ step: 'skipped', action: 'sms', reason: '보낼 내용이 비어 있음' }); return; }
+  if (!url)   { _recordNotify({ step: 'skipped', action: 'sms', reason: 'settings.gasUrl 이 비어 있음' }); return; }
+  if (String(ns.smsEnabled ?? 'true') === 'false') {
+    _recordNotify({ step: 'skipped', action: 'sms', reason: 'smsEnabled 가 false (설정으로 꺼둔 상태)' }); return;
+  }
   _gasCall(url, { receiver: String(phone).replace(/[^0-9]/g,''), msg });
 }
 function _alimtalk(phone, tplId, vars, fallback, url, ns) {
@@ -188,7 +193,10 @@ function _notifyStatus(orderId, status) {
             { 이름: o.name, 메뉴목록: menuList, 금액: String(o.total||0) },
             `[오늘의 반찬] ${o.name}님, 배송업체에 요청했습니다! ${menuList} 합계: ${Number(o.total||0).toLocaleString()}천원`, url, ns);
         }
-        if (ns.deliveryPhone) {
+        // 배송업체 요청 문자는 실제 업무에서 쓰지 않는다(2026-08-08 업주 확인).
+        // 다른 발송과 달리 시점 제어를 안 거쳐서, 업주 SMS를 켜면 이것까지 같이 나갔다.
+        // 이제 notifyEvents 에 'delivery' 를 넣어야만 나간다.
+        if (ns.deliveryPhone && _notifyAllowed(ns, 'delivery')) {
           const delivMsg = `[오늘의 반찬] 배송 요청 / ${o.name}${o.phone?' '+o.phone:''}`
             + (o.addr ? ' / ' + o.addr : '')
             + ' / ' + menuList
@@ -229,7 +237,7 @@ app.get('/api/events', (req, res) => {
 
 // ── 헬스체크 ────────────────────────────────────────────────
 // build 표식 — 설정을 바꾸기 전에 배포가 실제로 반영됐는지 확인하는 용도
-app.get('/health', (req, res) => res.json({ ok: true, build: 'notify-log-1' }));
+app.get('/health', (req, res) => res.json({ ok: true, build: 'sms-gate-1' }));
 
 // ══════════════════════════════════════════════════════════════
 // 메뉴 창고 (등록된모든메뉴)
