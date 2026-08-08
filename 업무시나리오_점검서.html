@@ -77,9 +77,9 @@ li{margin-bottom:5px;}
 <div class="card">
   <h3 style="margin-top:0;">재조사 결과</h3>
   <div class="score">
-    <div><div class="n" style="color:var(--ok);">19</div><div class="l">해결</div></div>
-    <div><div class="n" style="color:#8e7cc3;">5</div><div class="l">부분 해결</div></div>
-    <div><div class="n" style="color:#777;">5</div><div class="l">남음</div></div>
+    <div><div class="n" style="color:var(--ok);">20</div><div class="l">해결</div></div>
+    <div><div class="n" style="color:#8e7cc3;">4</div><div class="l">부분 해결</div></div>
+    <div><div class="n" style="color:#777;">4</div><div class="l">남음</div></div>
     <div><div class="n" style="color:var(--p0);">0</div><div class="l">재오픈 차단 요소</div></div>
   </div>
   <p>최초 점검에서 잡은 <strong>16건</strong>과, 그것을 고치는 과정에서 드러난 <strong>13건</strong>을 합쳐 29건을 다뤘습니다. <strong>재오픈을 막을 만한 항목은 남아 있지 않습니다.</strong></p>
@@ -150,7 +150,7 @@ flowchart LR
 <tr><td>P1-2</td><td>서버가 주문 금액을 검산하지 않음</td><td><span class="tag t-ok">해결</span></td><td>단가를 DB에서 다시 읽어 합계·배송비 재계산. 8가지 경우 검증</td></tr>
 <tr><td>P1-3</td><td>알림 실패가 조용히 묻힘</td><td><span class="tag t-ok">해결</span></td><td>발송 결과·건너뛴 이유를 <code>settings.lastNotify</code>에 기록. 이 기능으로 솔라피 IP 차단을 찾아냄</td></tr>
 <tr><td>P1-4</td><td>입금 여부를 기록·집계할 자리가 없음</td><td><span class="tag t-half">부분</span></td><td>미입금 합계 표시 + 묻힌 주문 경고 추가. <strong>입금자명·입금시각 기록은 미해결</strong></td></tr>
-<tr><td>P1-5</td><td>상태 변경이 서버 실패를 무시하고 성공 표시</td><td><span class="tag t-half">부분</span></td><td>접수완료만 해결. <strong>배송완료·주문취소는 아직 실패를 삼킴</strong></td></tr>
+<tr><td>P1-5</td><td>상태 변경이 서버 실패를 무시하고 성공 표시</td><td><span class="tag t-ok">해결</span></td><td>접수완료·배송완료·주문취소 3종 모두 응답을 확인해 실패 시 경고. 3종 × 3상황(정상·거절·연결끊김) 9건 실행 검증</td></tr>
 <tr><td>P1-6</td><td>관리자 화면에 수기 주문 등록 없음</td><td><span class="tag t-open">남음</span></td><td>기능 부재 확인. 카톡 주문은 여전히 재고에 반영 안 됨</td></tr>
 <tr><td>P2-1</td><td>저장 실패해도 "완료" 토스트</td><td><span class="tag t-ok">해결</span></td><td>메뉴 저장·발송 설정 모두 결과를 확인해 분기</td></tr>
 <tr><td>P2-2</td><td>마감 개념 부재</td><td><span class="tag t-half">부분</span></td><td>"처리 안 된 지난 주문 N건" 경고로 보완. 마감 기능 자체는 없음</td></tr>
@@ -186,7 +186,7 @@ flowchart LR
 </div>
 
 <!-- ══════════════ 남은 위험 ══════════════ -->
-<h2 id="left">4. 남은 위험 5건</h2>
+<h2 id="left">4. 남은 위험 4건</h2>
 
 <div class="risk">
 <div class="risk-t"><span class="tag t-p1">1</span> 카톡 주문이 재고에 반영되지 않는다 <span class="small">(P1-6)</span></div>
@@ -198,16 +198,7 @@ flowchart LR
 </div>
 
 <div class="risk">
-<div class="risk-t"><span class="tag t-p1">2</span> 배송완료·주문취소 버튼이 서버 실패를 삼킨다 <span class="small">(P1-5 잔여)</span></div>
-<dl>
-<dt>현황</dt><dd>접수완료는 고쳤지만 <code>menu-manager.html</code>의 <code>deliverOrder()</code>·<code>cancelOrder()</code>는 아직 <code>.catch(function(){})</code>로 끝납니다. 통신이 끊긴 상태에서 누르면 <strong>화면만 바뀌고 서버는 그대로</strong>입니다.</dd>
-<dt>영향</dt><dd>배송완료로 보이는데 서버는 접수완료 상태 → 고객 알림톡도 안 나감. 업주는 처리했다고 믿고 넘어갑니다.</dd>
-<dt>수정</dt><dd>접수완료와 똑같이 응답을 확인해 실패 시 경고를 띄우면 됩니다. <strong>두 함수 각 5줄</strong>이라 재오픈 전에 처리할 값어치가 있습니다.</dd>
-</dl>
-</div>
-
-<div class="risk">
-<div class="risk-t"><span class="tag t-p2">3</span> 카테고리가 관리자 기기에만 있다 <span class="small">(P2-5)</span></div>
+<div class="risk-t"><span class="tag t-p2">2</span> 카테고리가 관리자 기기에만 있다 <span class="small">(P2-5)</span></div>
 <dl>
 <dt>현황</dt><dd><code>menu-manager.html:836</code> — 카테고리 원본이 브라우저 저장소에만 있습니다. 서버에 저장하는 코드가 없습니다.</dd>
 <dt>영향</dt><dd>관리자 폰을 바꾸거나 브라우저 데이터를 지우면 <strong>카테고리 설정이 통째로 사라집니다.</strong> 고객 화면에도 전파되지 않아 하드코딩 기본색만 보입니다.</dd>
@@ -216,7 +207,7 @@ flowchart LR
 </div>
 
 <div class="risk">
-<div class="risk-t"><span class="tag t-p2">4</span> 예약주문이 그 날짜 재고에 반영되지 않는다 <span class="small">(P2-3)</span></div>
+<div class="risk-t"><span class="tag t-p2">3</span> 예약주문이 그 날짜 재고에 반영되지 않는다 <span class="small">(P2-3)</span></div>
 <dl>
 <dt>현황</dt><dd>예약주문은 재고를 전혀 건드리지 않습니다(의도된 설계 — 예약일 메뉴가 아직 없을 수 있음).</dd>
 <dt>지금 할 것</dt><dd>아침 메뉴 등록 전에 <strong>"예약된 메뉴" 탭을 먼저 확인</strong>하고 그 수량만큼 재고를 넉넉히 잡습니다.</dd>
@@ -224,7 +215,7 @@ flowchart LR
 </div>
 
 <div class="risk">
-<div class="risk-t"><span class="tag t-p2">5</span> 비밀번호가 공개 소스에 평문 <span class="small">(P0-4 잔여)</span></div>
+<div class="risk-t"><span class="tag t-p2">4</span> 비밀번호가 공개 소스에 평문 <span class="small">(P0-4 잔여)</span></div>
 <dl>
 <dt>현황</dt><dd>값은 새로 바꿨고 상수도 파일당 한 곳으로 모았지만, <strong>소스 보기로 읽히는 구조는 그대로</strong>입니다. 유출된 옛 값이 무효화됐을 뿐입니다.</dd>
 <dt>수정</dt><dd>서버가 비밀번호를 검증하고 토큰을 내려주는 방식으로 바꿔야 근본 해결입니다. 오픈 후 과제.</dd>
