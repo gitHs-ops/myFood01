@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>온반 업무 시나리오 점검서 — 정식 배포 최종 점검</title>
+<title>온반 업무 시나리오 점검서 — 재조사 (2026-08-08)</title>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -21,20 +21,19 @@ header .meta{margin-top:10px;font-size:13px;opacity:.9;}
 header .badge{display:inline-block;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);border-radius:999px;padding:3px 12px;font-size:12px;margin-right:6px;margin-top:8px;}
 h2{font-size:21px;font-weight:800;margin:40px 0 14px;padding-bottom:9px;border-bottom:3px solid var(--teal);color:var(--teal);}
 h3{font-size:17px;font-weight:700;margin:26px 0 10px;color:#0a4a4d;}
-h4{font-size:14px;font-weight:700;margin:16px 0 7px;color:#333;}
 p{margin-bottom:11px;}
 .card{background:var(--card);border-radius:14px;padding:22px 24px;margin-bottom:18px;box-shadow:0 2px 12px rgba(8,98,102,.07);}
 table{width:100%;border-collapse:collapse;margin:12px 0 16px;font-size:13.5px;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.05);}
 th{background:#e8f2f2;color:var(--teal);font-weight:700;text-align:left;padding:10px 12px;border-bottom:2px solid var(--line);white-space:nowrap;}
 td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;}
 tr:last-child td{border-bottom:none;}
-code{background:#eef3f4;color:#0a4a4d;padding:1px 6px;border-radius:5px;font-family:"D2Coding",Consolas,monospace;font-size:12.5px;white-space:nowrap;}
-.fn{color:#7b4397;font-weight:600;}
+code{background:#eef3f4;color:#0a4a4d;padding:1px 6px;border-radius:5px;font-family:"D2Coding",Consolas,monospace;font-size:12.5px;}
 .tag{display:inline-block;border-radius:6px;padding:2px 9px;font-size:11.5px;font-weight:800;color:#fff;white-space:nowrap;}
-.t-p0{background:var(--p0);} .t-p1{background:var(--p1);} .t-p2{background:var(--p2);} .t-ok{background:var(--ok);}
+.t-p0{background:var(--p0);} .t-p1{background:var(--p1);} .t-p2{background:var(--p2);}
+.t-ok{background:var(--ok);} .t-half{background:#8e7cc3;} .t-open{background:#777;}
 .risk{border-left:5px solid var(--p1);background:#fff8ee;border-radius:0 10px 10px 0;padding:14px 18px;margin:12px 0;}
 .risk.p0{border-left-color:var(--p0);background:#fdf0ee;}
-.risk.p2{border-left-color:var(--p2);background:#eef5fc;}
+.risk.ok{border-left-color:var(--ok);background:#f2fbf6;}
 .risk-t{font-weight:800;font-size:14.5px;margin-bottom:5px;}
 .risk-t .tag{margin-right:7px;vertical-align:1px;}
 .risk dl{margin-top:8px;font-size:13.5px;}
@@ -45,19 +44,16 @@ code{background:#eef3f4;color:#0a4a4d;padding:1px 6px;border-radius:5px;font-fam
 .note strong{color:var(--teal);}
 ul,ol{margin:0 0 12px 22px;}
 li{margin-bottom:5px;}
-.toc{background:#fff;border-radius:14px;padding:20px 26px;box-shadow:0 2px 12px rgba(8,98,102,.07);}
-.toc ol{margin-left:18px;}
-.toc a{color:var(--teal);text-decoration:none;font-weight:600;}
-.toc a:hover{text-decoration:underline;}
 .chk{list-style:none;margin-left:0;}
 .chk li{padding-left:28px;position:relative;margin-bottom:9px;}
 .chk li::before{content:"☐";position:absolute;left:0;font-size:17px;color:var(--teal);}
-.scn{border:2px solid var(--line);border-radius:14px;padding:0;margin-bottom:22px;overflow:hidden;background:#fff;}
-.scn-h{background:#f0f6f6;padding:13px 20px;font-weight:800;font-size:15.5px;color:var(--teal);border-bottom:2px solid var(--line);}
-.scn-b{padding:18px 20px;}
 .small{font-size:12.5px;color:var(--sub);}
+.score{display:flex;gap:12px;flex-wrap:wrap;margin:16px 0;}
+.score div{flex:1;min-width:120px;background:#fff;border-radius:12px;padding:14px;text-align:center;box-shadow:0 1px 6px rgba(0,0,0,.05);}
+.score .n{font-size:26px;font-weight:800;line-height:1.2;}
+.score .l{font-size:12px;color:var(--sub);margin-top:2px;}
 @media(max-width:640px){
-  header h1{font-size:21px;} .wrap{padding:0 14px;} .card,.scn-b{padding:16px;}
+  header h1{font-size:21px;} .wrap{padding:0 14px;} .card{padding:16px;}
   table{font-size:12.5px;} th,td{padding:8px;}
 }
 </style>
@@ -66,513 +62,216 @@ li{margin-bottom:5px;}
 
 <header>
   <div class="wrap">
-    <h1>온반 업무 시나리오 점검서</h1>
-    <div class="meta">정식 배포(재오픈) 최종 점검 · 2026-08-08 작성</div>
+    <h1>온반 업무 시나리오 점검서 — 재조사</h1>
+    <div class="meta">2026-08-08 · 최초 점검 후 대규모 수정을 반영한 전면 재조사</div>
     <div>
-      <span class="badge">대상: onban01.html · menu-manager.html · server/server.js</span>
-      <span class="badge">방법: 코드·설계서 도상 점검(함수 단위 추적)</span>
-      <span class="badge">범위: 업무 흐름 + 동시 주문 경합 (인프라 장애 제외)</span>
+      <span class="badge">최초 위험 16건 재확인</span>
+      <span class="badge">작업 중 추가 발견 13건</span>
+      <span class="badge">설정값은 운영 서버에서 실측</span>
     </div>
   </div>
 </header>
 
 <div class="wrap">
 
-<div class="card" style="border-left:6px solid var(--ok);background:#f0fbf6;">
-  <h3 style="margin-top:0;color:#127a5b;">✅ P0 5건 수정 완료 (2026-08-08)</h3>
-  <p style="margin-bottom:8px;">아래 P0 항목 5건은 <strong>모두 수정해 배포했습니다</strong>(커밋 <code>38f4df3</code>). 이 문서의 P0 설명은 <strong>수정 전 상태의 기록</strong>이며, 무엇을 왜 고쳤는지 남기기 위해 그대로 둡니다. 남은 P1 6건·P2 5건은 미수정 상태입니다.</p>
-  <p style="font-size:13.5px;"><strong>P0-4 비밀번호 교체까지 완료</strong>(2026-08-08) — Railway 환경변수 <code>ADMIN_TOKEN</code>과 코드 양쪽을 새 값으로 맞췄고, 흩어져 있던 상수 3개를 <strong>파일당 <code>ONBAN_ADMIN_KEY</code> 하나로</strong> 정리했습니다. 이제 바꿀 곳은 <code>menu-manager.html</code>·<code>index.html</code>·Railway 세 곳이며, 셋은 <strong>항상 같은 값</strong>이어야 합니다. 기존에 로그인돼 있던 관리자 기기는 전부 자동으로 재로그인을 요구합니다.</p>
-  <p style="margin-bottom:0;font-size:13.5px;">다만 <strong>비밀번호가 공개 소스에 평문으로 들어 있는 구조 자체는 그대로입니다.</strong> 유출된 옛 값이 무효화됐을 뿐이므로, 서버 로그인 방식으로 바꾸는 근본 수정(P0-4 "오픈 후" 항목)은 여전히 유효한 과제입니다.</p>
-</div>
-
 <div class="card">
-  <h3 style="margin-top:0;">이 문서의 결론 먼저</h3>
-  <p>업무 흐름 <strong>7단계 전체</strong>를 함수 단위로 추적한 결과, 재오픈 전 반드시 손봐야 할 <span class="tag t-p0">P0</span> 결함 <strong>5건</strong>, 오픈 직후 처리할 <span class="tag t-p1">P1</span> <strong>6건</strong>, 이월 가능한 <span class="tag t-p2">P2</span> <strong>5건</strong>을 확인했습니다.</p>
-  <p>가장 위험한 것은 <strong>①일일 메뉴 저장이 그 사이 들어온 주문의 재고 차감을 통째로 되돌리는 문제</strong>와 <strong>②관리자 비밀번호가 공개 소스에 평문으로 있어 누구나 관리자 화면과 API를 쓸 수 있는 문제</strong>입니다. 계좌번호 사고와 같은 부류(값이 한 곳에만 있고 다른 곳과 어긋남)가 여전히 3곳 남아 있습니다.</p>
+  <h3 style="margin-top:0;">재조사 결과</h3>
+  <div class="score">
+    <div><div class="n" style="color:var(--ok);">19</div><div class="l">해결</div></div>
+    <div><div class="n" style="color:#8e7cc3;">5</div><div class="l">부분 해결</div></div>
+    <div><div class="n" style="color:#777;">5</div><div class="l">남음</div></div>
+    <div><div class="n" style="color:var(--p0);">0</div><div class="l">재오픈 차단 요소</div></div>
+  </div>
+  <p>최초 점검에서 잡은 <strong>16건</strong>과, 그것을 고치는 과정에서 드러난 <strong>13건</strong>을 합쳐 29건을 다뤘습니다. <strong>재오픈을 막을 만한 항목은 남아 있지 않습니다.</strong></p>
+  <p style="margin-bottom:0;">가장 큰 성과는 <strong>알림이 되살아난 것</strong>입니다. 최초 점검 시점에는 알림톡·문자가 <strong>한 통도 나가지 않고 있었고</strong>, 원인이 세 겹으로 쌓여 있었습니다 — 서버에 발송 주소가 아예 없었고, 솔라피 계정이 IP로 막고 있었고, 실패가 어디에도 기록되지 않아 아무도 몰랐습니다.</p>
 </div>
 
-<div class="toc">
-  <strong>목차</strong>
-  <ol>
-    <li><a href="#s1">시스템 전체 업무 흐름</a></li>
-    <li><a href="#s2">시나리오 A — 아침 메뉴 등록·카톡 발송</a></li>
-    <li><a href="#s3">시나리오 B — 고객 주문(웹 직접)</a></li>
-    <li><a href="#s4">시나리오 C — 동시 주문 경합</a></li>
-    <li><a href="#s5">시나리오 D — 입금 확인·접수완료</a></li>
-    <li><a href="#s6">시나리오 E — 배송완료·마감</a></li>
-    <li><a href="#s7">시나리오 F — 주문 취소·수정·삭제</a></li>
-    <li><a href="#s8">시나리오 G — 카톡 주문 수작업 병행</a></li>
-    <li><a href="#s9">시나리오 H — 예약주문</a></li>
-    <li><a href="#s10">위험 목록 총괄표</a></li>
-    <li><a href="#s11">재오픈 전 작업 순서 / 업주 체크리스트</a></li>
-  </ol>
-</div>
-
-<!-- ══════════════ 1 ══════════════ -->
-<h2 id="s1">1. 시스템 전체 업무 흐름</h2>
+<!-- ══════════════ 현재 동작 ══════════════ -->
+<h2 id="now">1. 지금 시스템이 이렇게 동작합니다</h2>
 
 <div class="mermaid">
 flowchart TB
-  A["아침: 일일 메뉴 등록<br/>menu-manager 메뉴관리 탭"] --> B["카카오채널 발송 텍스트 생성<br/>업주가 복사 → 카카오 비즈채널로 1000명 발송"]
-  B --> C{"고객 주문 경로"}
-  C -->|웹 직접| D["onban01 장바구니 → 주문확정<br/>재고 차감 · 알림톡 발송"]
-  C -->|카톡 답장| E["업주가 수작업 병행 처리<br/>(시스템 밖)"]
-  D --> F["관리자 화면 실시간 수신<br/>SSE + 업주 휴대폰 SMS"]
+  A["아침: 일일 메뉴 등록"] --> B["카카오채널로 메뉴 고지<br/>(1000명 · 시스템 밖)"]
+  B --> C{"주문 경로"}
+  C -->|웹 직접| D["주문 확정<br/>버튼 잠금 · 서버가 금액 검산"]
+  C -->|카톡 답장| E["업주 수작업<br/>재고를 직접 줄여야 함"]
+  D --> F["관리자 화면<br/>소리·진동·탭 알림"]
+  D --> G["업주 휴대폰 문자"]
   E --> F
-  F --> G["은행 앱에서 입금 실확인"]
-  G -->|입금 확인됨| H["접수완료 클릭<br/>고객 알림톡 + 배송업체 SMS"]
-  G -->|미입금| I["대기중 유지 / 취소"]
-  H --> J["조리 · 포장 · 배송"]
-  J --> K["배송완료 클릭<br/>고객 알림톡"]
-  K --> L["마감"]
-  style A fill:#e8f5f4,stroke:#086266
-  style H fill:#fff3cd,stroke:#e07b00
-  style G fill:#fdf0ee,stroke:#c0392b
+  F --> H["은행 입금 실확인"]
+  H -->|확인됨| I["접수완료<br/>(확인창 거침)"]
+  H -->|미입금| J["대기중 유지<br/>미입금 합계로 추적"]
+  I --> K["조리·포장·배송"]
+  K --> L["배송완료<br/>고객 알림톡 발송"]
+  style H fill:#fdf0ee,stroke:#c0392b
+  style L fill:#eefbf4,stroke:#1D9E75
 </div>
+
+<h3>알림 — 운영 서버 실측값</h3>
+<table>
+<tr><th style="width:34%">시점</th><th style="width:22%">고객</th><th>업주</th></tr>
+<tr><td>주문 접수</td><td>안 보냄 <span class="small">(의도)</span></td><td><strong>문자</strong> + 화면 소리·진동</td></tr>
+<tr><td>접수완료</td><td>안 보냄</td><td>—</td></tr>
+<tr><td><strong>배송완료</strong></td><td><strong>알림톡</strong></td><td>—</td></tr>
+<tr><td>고객이 주문 변경 후 저장</td><td>답변 기록으로 확인</td><td><strong>문자</strong> (변경 내역 + 현재 상태)</td></tr>
+<tr><td>고객이 주문취소</td><td>안 보냄</td><td><strong>문자</strong></td></tr>
+<tr><td>배송업체</td><td colspan="2">번호를 비워두어 발송 없음 <span class="small">(실측 확인)</span></td></tr>
+</table>
 
 <div class="note">
-  <strong>이 시스템의 핵심 전제</strong> — ①<strong>선입금</strong> 구조입니다. 접수완료 버튼은 "주문을 봤다"가 아니라 "은행에서 돈이 들어온 것을 눈으로 확인했다"는 뜻이고, 이 버튼이 배송업체에 실제 배송 요청 문자를 쏩니다. ②금액 단위는 전부 <strong>천원</strong>입니다(가격 21 = 21,000원). ③배송비는 2만원 이상 배달 주문에만 1천원 붙고, 2만원 미만은 매장픽업만 됩니다.
+<strong>주문 시점에 고객 알림톡을 보내지 않는 이유</strong> — 알림톡은 카카오 채널 대화방에 도착하고, 고객은 그 자리에서 답장해 옛 주문 방식으로 되돌아갑니다. 거래가 끝난 <strong>배송완료 때만</strong> 보내는 것은 그래서 내린 결정입니다. 설정은 <code>notifyEvents</code>로 관리하며 현재 <code>["delivered"]</code>입니다. 여기에 <code>confirmed</code>·<code>cancelled</code>·<code>reply</code>·<code>order</code>를 넣으면 그 시점도 함께 발송됩니다.
 </div>
 
-<!-- ══════════════ 2 ══════════════ -->
-<h2 id="s2">2. 시나리오 A — 아침 메뉴 등록·카톡 발송</h2>
-
-<div class="scn">
-<div class="scn-h">A-1. 정상 흐름 — 오늘의 메뉴 등록</div>
-<div class="scn-b">
-<table>
-<tr><th style="width:22%">단계</th><th style="width:38%">함수 / 위치</th><th>동작</th></tr>
-<tr><td>날짜 선택</td><td><span class="fn">selectDate()</span> <code>menu-manager.html:1190</code></td><td>workDate 설정 → loadMenus + 3초 주기 자동 새로고침 시작</td></tr>
-<tr><td>서버에서 로드</td><td><span class="fn">loadMenus()</span> <code>menu-manager.html:1132</code></td><td><code>GET /api/menu/:date</code> → 화면 작업사본 <code>menus</code> 배열에 담음</td></tr>
-<tr><td>메뉴 추가</td><td><span class="fn">addMenu()</span> <code>menu-manager.html:1216</code></td><td>마스터에 없으면 신규 등록 후 일일 목록에 추가 → <span class="fn">save()</span></td></tr>
-<tr><td>저장</td><td><span class="fn">saveToday()</span> → <span class="fn">exportMenuToSheet()</span> <code>menu-manager.html:1663</code></td><td><code>POST /api/menu/daily</code>로 <strong>그날 전체 목록을 통째로 전송</strong></td></tr>
-<tr><td>서버 저장</td><td><code>server.js:326-379</code></td><td>해당 날짜 <code>daily_menus</code> 행을 <strong>전부 DELETE 후 재INSERT</strong></td></tr>
-</table>
-
-<div class="risk p0">
-<div class="risk-t"><span class="tag t-p0">P0-1</span> 메뉴를 저장하면 그 사이 들어온 주문의 재고 차감이 되돌아간다</div>
-<dl>
-<dt>어디서</dt>
-<dd><code>server.js:346</code>의 <code>DELETE FROM daily_menus WHERE date=?</code> 후 <code>server.js:369</code>에서 화면이 보낸 <code>stock</code> 값 그대로 재삽입. 화면 쪽 <span class="fn">exportMenuToSheet()</span>(<code>menu-manager.html:1663</code>)는 브라우저 메모리의 <code>menus</code> 배열에 있는 <strong>불러온 시점의 옛 재고</strong>를 보냅니다.</dd>
-<dt>어떻게 터지나</dt>
-<dd>업주가 오전 9시에 메뉴 화면을 열어둡니다(재고 10). 9시 5분 고객이 3개 주문 → DB 재고 7. 9시 10분 업주가 다른 메뉴 하나를 고치고 저장 → <strong>재고가 다시 10으로 되돌아갑니다.</strong> 실제로는 3개가 이미 팔렸는데 시스템은 10개가 남았다고 표시하고, 그만큼 초과 주문을 받습니다.</dd>
-<dt>왜 지금 안 터졌나</dt>
-<dd>3초마다 자동 새로고침(<span class="fn">_startMenuSSE</span> <code>menu-manager.html:1182</code>)이 돌지만, <strong>수정 중(<code>_menuDirty</code>=true)일 때는 새로고침을 건너뜁니다</strong>(<code>:1185</code>). 즉 "화면을 열어두고 뭔가 하나라도 건드린 뒤 저장"하는 흐름에서 정확히 재현됩니다. 지금까지는 주문이 몰리는 시간과 메뉴 수정 시간이 겹치지 않아 드러나지 않았을 가능성이 큽니다.</dd>
-<dt>수정 방향</dt>
-<dd>① 가장 간단·확실: <code>POST /api/menu/daily</code>에서 <strong>기존 행의 stock을 보존</strong>하도록 변경 — DELETE 전에 <code>SELECT menu_id,stock</code>으로 현재 재고를 읽어두고, 재INSERT 시 같은 <code>menu_id</code>가 이미 있었으면 화면이 보낸 값 대신 <strong>DB의 현재 재고</strong>를 씁니다(신규 메뉴만 화면 값 사용). ② 재고를 정말 바꾸고 싶을 때는 이미 있는 전용 API <code>PUT /api/menu/:date/stock</code>(<code>server.js:382</code>)만 쓰도록 화면을 분리. <strong>①만 해도 사고는 막힙니다.</strong></dd>
-</dl>
-</div>
-
-<div class="risk p2">
-<div class="risk-t"><span class="tag t-p2">P2-1</span> 저장 실패해도 "저장 완료" 토스트가 뜬다</div>
-<dl>
-<dt>어디서</dt><dd><span class="fn">saveToday()</span> <code>menu-manager.html:1653-1660</code> — <code>exportMenuToSheet</code>의 콜백이 성공/실패 인자(<code>ok</code>)를 받는데 확인하지 않고 무조건 "메뉴 저장 완료!"를 띄웁니다.</dd>
-<dt>결과</dt><dd>네트워크가 끊긴 상태에서 저장하면 업주는 저장됐다고 믿고 화면을 닫습니다. 고객에게는 옛 메뉴가 보입니다. (같은 파일의 <span class="fn">deleteToday()</span> <code>:1213</code>는 <code>ok</code>를 제대로 확인하고 있어 대조적입니다.)</dd>
-<dt>수정</dt><dd><code>if(ok) 성공토스트 else 실패토스트</code>로 한 줄 분기.</dd>
-</dl>
-</div>
-</div>
-</div>
-
-<div class="scn">
-<div class="scn-h">A-2. 카카오 발송 텍스트 생성 → 파싱 역등록</div>
-<div class="scn-b">
-<p>업주는 <strong>카카오 발송</strong> 탭에서 생성된 텍스트를 복사해 카카오 비즈니스 채널로 1000명에게 보냅니다. 반대로 카톡 텍스트를 붙여넣어 일일 메뉴를 만드는 기능도 있습니다 — <span class="fn">parseKakaoToMenu()</span> <code>menu-manager.html:1608</code>.</p>
-<div class="risk p2">
-<div class="risk-t"><span class="tag t-ok">종결</span> P1-1 카톡 파싱 재등록 — 업무 지침으로 처리(코드 수정 안 함)</div>
-<dl>
-<dt>무엇이었나</dt><dd><code>menu-manager.html:1650</code>의 <code>menus=parsed.map(...)</code>가 그날 목록을 통째로 갈아엎으면서 <strong>재고를 설정 기본값으로 되돌립니다.</strong> 파싱된 메뉴에는 <code>baseStock</code>이 없어 P0-1의 재고 보존이 적용되지 않습니다(서버가 "새로 추가한 메뉴"로 판단).</dd>
-<dt>왜 고치지 않나</dt><dd>업주 판단 — ①주문이 들어온 뒤 파싱을 다시 누르는 일은 <strong>사전 업무 지침으로 막습니다.</strong> ②설령 눌러도 <strong>재고는 무시해도 됩니다.</strong> 반찬가게는 계속 만들어 내므로 재고가 고정 수량이 아니고, 업주가 수시로 갱신하는 값입니다. 초기화되더라도 곧 업주가 실물 기준으로 다시 맞춥니다.</dd>
-<dt>남는 것</dt><dd>재고와 무관한 부작용 하나는 <strong>코드로 고쳤습니다</strong> — 파싱된 메뉴는 <code>menuId</code> 없이 이름으로 마스터를 찾는데, 마스터 고유키는 (이름 + 카테고리)입니다. 실제로 <strong>동명 마스터가 9건</strong> 있어(부대찌개·동태탕·낙지연포탕 등 메인/밀키트 짝) 엉뚱한 쪽에 연결되면 카테고리·사진이 뒤바뀔 수 있었습니다. 조회 조건에 카테고리를 더해 해결했습니다.</dd>
-</dl>
-</div>
-</div>
-</div>
-
-<!-- ══════════════ 3 ══════════════ -->
-<h2 id="s3">3. 시나리오 B — 고객 주문(웹 직접)</h2>
-
-<div class="mermaid">
-sequenceDiagram
-  participant C as 고객 (onban01)
-  participant S as 서버 (server.js)
-  participant D as MySQL
-  participant G as GAS/솔라피
-  C->>C: cartOrder() 장바구니 확정
-  C->>C: renderOrdererPage() 이름·연락처·주소 입력
-  C->>S: verifyStock() → GET /api/menu/:date
-  S-->>C: 재고 응답 (참고용 사전확인)
-  C->>S: saveOrder() → POST /api/orders
-  S->>D: SELECT ... FOR UPDATE (재고 잠금)
-  alt 재고 부족
-    D-->>S: stock < qty
-    S-->>C: {success:false, soldOut:[...]}
-  else 충분
-    S->>D: UPDATE stock = stock - qty
-    S->>D: INSERT INTO orders (status='pending')
-    S-->>C: {success:true}
-    S->>G: 고객 알림톡 + 업주 SMS (응답 안 기다림)
-    S->>S: broadcast('order_new') → 관리자 화면 SSE
-  end
-  C->>C: renderPayment() 계좌 표시 (매번 서버 조회)
-</div>
-
-<div class="scn">
-<div class="scn-h">B-1. 함수 체인</div>
-<div class="scn-b">
-<table>
-<tr><th style="width:24%">단계</th><th style="width:40%">함수 / 위치</th><th>비고</th></tr>
-<tr><td>장바구니 확정</td><td><span class="fn">cartOrder()</span> <code>onban01.html:1279</code></td><td>체크된 항목만 <code>orderItems</code>로</td></tr>
-<tr><td>주문자 입력·검증</td><td><span class="fn">renderOrdererPage()</span> <code>onban01.html:1287</code></td><td>기기ID로 저장 주소록 자동완성 / 2만원 미만 배달 차단</td></tr>
-<tr><td>배송비 계산</td><td><span class="fn">_updateDeliveryFee()</span> <code>onban01.html:1386</code></td><td>픽업 아니고 2만원↑ → +1천원</td></tr>
-<tr><td>재고 사전확인</td><td><span class="fn">verifyStock()</span> <code>onban01.html:1610</code></td><td>화면 안내용. <strong>실제 판정은 서버</strong></td></tr>
-<tr><td>주문 전송</td><td><span class="fn">saveOrder()</span> <code>onban01.html:1641</code></td><td><code>POST /api/orders</code></td></tr>
-<tr><td>서버 처리</td><td><code>server.js:469-548</code></td><td>FOR UPDATE 잠금 → 재고 차감 → INSERT → 알림</td></tr>
-<tr><td>결제 안내</td><td><span class="fn">renderPayment()</span> <code>onban01.html:1752</code></td><td><span class="tag t-ok">양호</span> 계좌를 매번 서버에서 새로 조회 — 지난 사고의 수정분</td></tr>
-</table>
-
-<div class="risk p0">
-<div class="risk-t"><span class="tag t-p0">P0-2</span> 주문 확정 버튼을 두 번 누르면 주문이 두 건 생긴다</div>
-<dl>
-<dt>어디서</dt><dd><span class="fn">renderOrdererPage()</span>의 확정 버튼 <code>onban01.html:1347</code> — 누른 직후 <strong>버튼을 잠그지 않습니다</strong>. 주문 번호는 <code>'ORD'+Date.now()</code>(<code>:1644</code>)라 밀리초만 달라도 다른 주문이 됩니다. 서버에도 같은 사람·같은 시간 중복을 막는 장치가 일반 주문에는 없습니다(예약 이벤트만 <code>server.js:487</code>에서 막음).</dd>
-<dt>어떻게 터지나</dt><dd>휴대폰에서 응답이 느릴 때 고객이 한 번 더 누릅니다. 주문 2건, <strong>재고 2배 차감</strong>, 알림톡 2통, 업주 SMS 2통. 업주는 입금액과 주문액이 안 맞아 전화를 겁니다. 참고로 예약주문 화면은 이미 버튼을 잠그고 있습니다(<span class="fn">submitReserveOrder()</span>에서 <code>btn.disabled=true</code>) — 일반 주문만 빠져 있습니다.</dd>
-<dt>수정</dt><dd>확정 버튼 <code>onclick</code> 진입 즉시 <code>btn.disabled=true; btn.textContent='처리 중...'</code>, 실패 콜백에서만 되돌립니다. 예약주문 코드와 같은 방식이라 5줄이면 됩니다.</dd>
-</dl>
-</div>
-
-<div class="risk" style="border-left-color:var(--ok);background:#f4fbf7;">
-<div class="risk-t"><span class="tag t-ok">해결</span> P1-2 서버가 결제 금액을 검산하지 않던 문제</div>
-<dl>
-<dt>무엇이었나</dt><dd><code>POST /api/orders</code>가 화면이 보낸 <code>order.total</code>을 <strong>그대로 저장</strong>했습니다. 주문 수정 API는 서버가 다시 계산하는데(주석에도 "클라이언트 값을 신뢰하지 않고"라고 적혀 있음) <strong>생성 경로만 빠져 있었습니다.</strong> 총액뿐 아니라 <code>items</code> 안의 <code>price</code>도 화면 값이라, 합계만 재계산해서는 부족했습니다.</dd>
-<dt>어떻게 고쳤나</dt><dd><strong>단가를 DB에서 다시 읽어</strong> 합계를 계산합니다. 조회 순서는 그날 노출 메뉴(<code>menu_id</code>) → 마스터(<code>menu_id</code>) → 그날 노출 메뉴(이름)이며, 예약주문은 오늘 목록에 없어도 <strong>마스터 단가로 검산</strong>됩니다. 예약 이벤트처럼 어디에도 없는 항목만 화면 값을 그대로 둡니다. 배송비(매장픽업 아니고 2만원 이상 → 1천원)도 서버가 판정합니다.</dd>
-<dt>화면 값과 다르면</dt><dd><strong>서버 값으로 저장하되 기록을 남깁니다</strong>(<code>console.warn</code>, Railway 로그에서 확인). 조용히 덮기만 하면 화면 계산 버그를 영영 못 찾고, 주문을 거부하면 정상 고객이 막히기 때문입니다. 알림 문구에도 검산된 금액이 쓰입니다.</dd>
-<dt>검증</dt><dd>정상 주문 · 단가 조작 · 총액 조작 · 매장픽업 · 2만원 미만 배달 · menuId 없는 구버전 · 예약주문 · 예약 이벤트 8가지 경우를 실제로 실행해 전부 통과했습니다.</dd>
-<dt>남긴 선택지</dt><dd>2만원 미만 배달을 <strong>서버가 거부하도록</strong> 막지는 않았습니다. 화면이 이미 막고 있어 정상 고객은 여기 걸리지 않지만, 재오픈 직후에 주문이 거부되는 쪽이 더 위험하다고 판단했습니다. 금액은 정확히 저장되므로 업주가 접수 단계에서 판단할 수 있습니다.</dd>
-</dl>
-</div>
-
-<div class="risk p0">
-<div class="risk-t"><span class="tag t-p0">P0-6</span> 알림톡·SMS가 하나도 나가지 않고 있다 (2026-08-08 발견)</div>
-<dl>
-<dt>확인된 사실</dt><dd>운영 DB의 <code>settings</code> 테이블에 <strong><code>gasUrl</code> 키가 아예 없습니다.</strong> <span class="fn">_getNotifySettings()</span>(<code>server.js:70-77</code>)가 이 값을 읽어오는데, 없으면 <span class="fn">_notifyOrder</span>·<span class="fn">_notifyStatus</span>·관리자 답변 알림이 모두 <code>if (!url) return;</code>에서 <strong>즉시 빠져나갑니다</strong>(<code>:99</code>, <code>:121</code>, <code>:766</code>).</dd>
-<dt>왜 이렇게 됐나</dt><dd><code>gasUrl</code>을 <strong>저장하는 코드가 어디에도 없습니다.</strong> 관리자 설정 화면의 <span class="fn">syncSettingsToSheet()</span>는 <code>stock·smsEnabled·alimtalkEnabled·phone·email·deliveryPhone·banks</code>만 보내고, GAS 주소를 입력하는 칸 자체가 화면에 없습니다. 과거 프런트에 하드코딩돼 있던 것을 서버 DB로 옮기는 과정에서 <strong>값을 옮겨 심는 단계가 빠진 것</strong>으로 보입니다. (설계서에는 <span class="fn">saveSendSettings()</span>가 <code>gasUrl</code>을 저장한다고 적혀 있으나 실제 함수는 발송 토글 두 개만 저장합니다 — 문서가 코드와 다릅니다.)</dd>
-<dt>키 이름도 어긋나 있다</dt><dd>관리자 화면은 업주 번호를 <code>phone</code>으로 저장하는데 서버는 <code>adminPhone</code>을 찾습니다(<code>server.js:72,108</code>). 따라서 <code>gasUrl</code>을 채워 넣어도 <strong>업주 새 주문 SMS는 여전히 안 나갑니다.</strong> 두 가지를 함께 고쳐야 합니다.</dd>
-<dt>영향</dt><dd>고객은 주문 접수·확정·배송완료·취소 알림톡을 <strong>한 통도 못 받습니다.</strong> 업주는 새 주문 SMS를 못 받으므로, 새 주문을 아는 경로가 <strong>관리자 화면을 열어두는 것 하나뿐</strong>입니다. 화면을 닫아둔 시간대의 주문은 그대로 묻힙니다. 고객 100명으로 늘리려는 계획에서 가장 먼저 터질 지점입니다.</dd>
-<dt>수정</dt><dd>① GAS 배포 URL을 <code>settings.gasUrl</code>에 넣습니다(관리자 화면에 입력칸을 추가하거나, 우선 서버에서 1회 직접 저장). ② 서버가 읽는 키를 <code>adminPhone</code>에서 <code>phone</code>으로 맞추거나, 화면이 <code>adminPhone</code>으로도 함께 저장하게 합니다. ③ 그다음에 아래 P1-3(실패를 기록·통보)을 얹습니다.</dd>
-</dl>
-</div>
-
-<div class="risk">
-<div class="risk-t"><span class="tag t-p1">P1-3</span> 알림톡·SMS가 실패해도 아무도 모른다</div>
-<dl>
-<dt>어디서</dt><dd><code>server.js:82</code> — <code>fetch(...).catch(() => {})</code>. 발송 전체가 "보내고 잊는" 방식이고 실패를 <strong>기록도, 재시도도, 통보도 하지 않습니다.</strong> <span class="fn">_notifyOrder</span>/<span class="fn">_notifyStatus</span>의 바깥 <code>try...catch(e){}</code>(<code>:113</code>, <code>:149</code>)도 비어 있습니다.</dd>
-<dt>왜 중요한가</dt><dd><strong>바로 이것 때문에 P0-6이 지금까지 드러나지 않았습니다.</strong> 알림이 한 통도 안 나가는 상태였는데 어디에도 오류가 남지 않아 아무도 몰랐습니다. 앞으로도 솔라피 잔액 소진, 템플릿 승인 만료, GAS 일일 한도 초과가 모두 같은 방식으로 조용히 일어납니다.</dd>
-<dt>수정</dt><dd>최소 조치: 실패 시 <code>console.error</code>로라도 남겨 Railway 로그에서 추적 가능하게 합니다. 권장: <code>settings</code>에 <code>lastNotifyError</code> 키를 저장하고 관리자 화면 상단에 "최근 알림 발송 실패" 배지를 띄웁니다.</dd>
-</dl>
-</div>
-</div>
-</div>
-
-<!-- ══════════════ 4 ══════════════ -->
-<h2 id="s4">4. 시나리오 C — 동시 주문 경합</h2>
-
-<div class="scn">
-<div class="scn-h">C-1. 고객 두 명이 마지막 1개를 동시에 주문 <span class="tag t-ok">양호</span></div>
-<div class="scn-b">
-<p><code>server.js:507-527</code>은 <code>SELECT ... FOR UPDATE</code>로 행을 잠근 뒤 차감하므로 <strong>제대로 직렬화됩니다.</strong> 늦은 쪽은 <code>{success:false, soldOut:[...]}</code>를 받고 화면은 <span class="fn">_notifyOutOfStock()</span>(<code>onban01.html:1631</code>)으로 안내 후 장바구니를 비웁니다. 주문 수정 경로(<code>server.js:627-700</code>)도 같은 방식으로 잠급니다. <strong>이 부분은 손댈 필요 없습니다.</strong></p>
-<div class="note"><strong>다만</strong> 사전확인 <span class="fn">verifyStock()</span>은 잠금 없는 단순 조회라 통과해도 최종 저장에서 막힐 수 있습니다. 이건 정상 설계입니다(화면 안내용). 단, 이때 고객이 보는 안내가 <code>alert()</code> 기본 창이라 다른 화면의 공용 모달과 어긋납니다 — P2.</div>
-</div>
-</div>
-
-<div class="scn">
-<div class="scn-h">C-2. 주문과 관리자 재고 수정이 겹칠 때 <span class="tag t-p0">위험</span></div>
-<div class="scn-b">
-<p>고객 주문은 잠금으로 보호되지만, <strong>관리자 쪽 경로 두 개가 그 보호를 우회합니다.</strong></p>
-<table>
-<tr><th style="width:34%">경로</th><th style="width:30%">위치</th><th>문제</th></tr>
-<tr><td>일일 메뉴 저장</td><td><code>server.js:346,369</code></td><td><strong>P0-1</strong> — DELETE 후 화면의 옛 재고로 재INSERT. 잠금 무의미</td></tr>
-<tr><td>재고 직접 수정</td><td><code>server.js:382-393</code> <code>PUT /:date/stock</code></td><td>잠금 없이 절대값 덮어쓰기. 수정 직전에 들어온 주문의 차감이 사라짐</td></tr>
-<tr><td>재고 증감</td><td><code>server.js:396-414</code> <code>stock-adjust</code></td><td><span class="tag t-ok">양호</span> — <code>stock + ?</code> 상대 연산이라 안전</td></tr>
-</table>
-<p class="small">→ P0-1을 고치면 첫 번째가 해결됩니다. 두 번째(<code>PUT stock</code>)는 업주가 "재고를 20으로 맞춤" 같은 의도적 행위라 절대값이 맞습니다. 다만 <strong>업주가 직접 재고를 조정하는 순간 그 직전 몇 초의 주문이 반영 안 될 수 있다</strong>는 점은 운영 규칙으로 알려야 합니다(재고 조정은 주문이 뜸한 시간에).</p>
-</div>
-</div>
-
-<!-- ══════════════ 5 ══════════════ -->
-<h2 id="s5">5. 시나리오 D — 입금 확인·접수완료</h2>
-
+<h3>고객이 주문을 고칠 때 — 문자가 남발되지 않도록</h3>
 <div class="mermaid">
 flowchart LR
-  A["주문 도착<br/>status=pending 대기중"] --> B["업주: 은행 앱에서<br/>입금자명·금액 대조"]
-  B -->|일치| C["접수완료 클릭<br/>confirmOrder()"]
-  B -->|미입금| D["대기중 그대로 둠"]
-  B -->|입금자명 다름| E["시스템에 기록할 곳 없음<br/>업주 기억에 의존"]
-  C --> F["status=confirmed"]
-  F --> G["고객 알림톡<br/>'배송업체에 요청했습니다'"]
-  F --> H["배송업체 SMS<br/>주소·메뉴·요청사항"]
-  style E fill:#fdf0ee,stroke:#c0392b
-  style C fill:#fff3cd,stroke:#e07b00
+  A["수량·배송방법 변경"] -->|화면에만 반영| B["변경표시"]
+  B --> C{"저장 누름"}
+  C -->|"'네'"| D["서버 반영 + 업주 문자 1통<br/>+ 답변 필드에 기록"]
+  C -->|"'아니오'"| E["팝업 유지 · 발송 없음"]
+  B --> F{"그냥 닫기"}
+  F -->|"저장하고 닫기"| D
+  F -->|"되돌리고 닫기"| G["서버 값으로 복구 · 발송 없음"]
+  style D fill:#eefbf4,stroke:#1D9E75
 </div>
+<p class="small">여러 항목을 고쳐도 <strong>저장 한 번에 문자 한 통</strong>이고, 변경 내역은 한 줄로 묶여 기록됩니다. 예: <code>[2026-08-08 15:10] 김치찌개 2개→3개 / 배송방법 배달→매장픽업 / 합계 33→38천원</code></p>
 
-<div class="scn">
-<div class="scn-h">D-1. 접수완료 클릭의 실제 파급</div>
-<div class="scn-b">
+<!-- ══════════════ 재조사 대장 ══════════════ -->
+<h2 id="audit">2. 최초 위험 16건 — 재조사 결과</h2>
+
 <table>
-<tr><th style="width:26%">단계</th><th style="width:36%">함수 / 위치</th><th>동작</th></tr>
-<tr><td>버튼 클릭</td><td><span class="fn">confirmOrder()</span> <code>menu-manager.html:2695</code></td><td><strong>확인창 없이 즉시 실행</strong></td></tr>
-<tr><td>상태 전송</td><td><code>PUT /api/orders/:id/status</code> <code>server.js:551</code></td><td>예약주문이면 날짜를 예약일로 이동</td></tr>
-<tr><td>고객 알림톡</td><td><span class="fn">_notifyStatus()</span> <code>server.js:128-131</code></td><td><strong>현재 발송 안 됨</strong> — 아래 P0-6</td></tr>
-<tr><td>배송업체 SMS</td><td><code>server.js:132-139</code></td><td><strong>실제 업무에서 쓰지 않는 기능</strong>(2026-08-08 업주 확인). 코드에는 남아 있으나 이 문서의 위험도 판단에서 제외</td></tr>
+<tr><th style="width:7%">번호</th><th style="width:31%">내용</th><th style="width:12%">상태</th><th>확인한 것</th></tr>
+<tr><td>P0-1</td><td>메뉴 저장이 그 사이 주문의 재고 차감을 되돌림</td><td><span class="tag t-ok">해결</span></td><td>화면이 <code>baseStock</code>을 함께 보내고 서버는 바꾼 만큼만 반영. 8가지 경우 단위 검증</td></tr>
+<tr><td>P0-2</td><td>주문 확정 중복 클릭 → 주문 2건·재고 2배 차감</td><td><span class="tag t-ok">해결</span></td><td>확정 버튼 두 곳 모두 즉시 잠금</td></tr>
+<tr><td>P0-3</td><td>접수완료에만 확인창 없음</td><td><span class="tag t-ok">해결</span></td><td>"입금을 확인하셨나요?" 확인창 + 서버 반영 실패 시 경고</td></tr>
+<tr><td>P0-4</td><td>비밀번호가 공개 소스에 평문</td><td><span class="tag t-half">부분</span></td><td>값 교체·상수 통합(파일당 1곳)·옛 기기 자동 차단은 완료. <strong>공개 소스에 평문이라는 구조는 그대로</strong></td></tr>
+<tr><td>P0-5</td><td>설정 API가 인증 없이 발송 주소·연락처 공개</td><td><span class="tag t-ok">해결</span></td><td>토큰 없으면 <code>banks·reserveEvent·categories</code>만. 실측으로 <code>gasUrl</code> 비노출 확인</td></tr>
+<tr><td>P1-1</td><td>카톡 파싱 등록이 그날 재고를 초기화</td><td><span class="tag t-ok">종결</span></td><td>업무 지침으로 처리(업주 판단 — 재고는 어차피 수시 갱신). 동명 마스터 오연결만 코드 수정</td></tr>
+<tr><td>P1-2</td><td>서버가 주문 금액을 검산하지 않음</td><td><span class="tag t-ok">해결</span></td><td>단가를 DB에서 다시 읽어 합계·배송비 재계산. 8가지 경우 검증</td></tr>
+<tr><td>P1-3</td><td>알림 실패가 조용히 묻힘</td><td><span class="tag t-ok">해결</span></td><td>발송 결과·건너뛴 이유를 <code>settings.lastNotify</code>에 기록. 이 기능으로 솔라피 IP 차단을 찾아냄</td></tr>
+<tr><td>P1-4</td><td>입금 여부를 기록·집계할 자리가 없음</td><td><span class="tag t-half">부분</span></td><td>미입금 합계 표시 + 묻힌 주문 경고 추가. <strong>입금자명·입금시각 기록은 미해결</strong></td></tr>
+<tr><td>P1-5</td><td>상태 변경이 서버 실패를 무시하고 성공 표시</td><td><span class="tag t-half">부분</span></td><td>접수완료만 해결. <strong>배송완료·주문취소는 아직 실패를 삼킴</strong></td></tr>
+<tr><td>P1-6</td><td>관리자 화면에 수기 주문 등록 없음</td><td><span class="tag t-open">남음</span></td><td>기능 부재 확인. 카톡 주문은 여전히 재고에 반영 안 됨</td></tr>
+<tr><td>P2-1</td><td>저장 실패해도 "완료" 토스트</td><td><span class="tag t-ok">해결</span></td><td>메뉴 저장·발송 설정 모두 결과를 확인해 분기</td></tr>
+<tr><td>P2-2</td><td>마감 개념 부재</td><td><span class="tag t-half">부분</span></td><td>"처리 안 된 지난 주문 N건" 경고로 보완. 마감 기능 자체는 없음</td></tr>
+<tr><td>P2-3</td><td>예약주문이 그 날짜 재고에 미반영</td><td><span class="tag t-open">남음</span></td><td>코드 그대로. 운영 규칙(아침에 예약 탭 확인)으로 대응</td></tr>
+<tr><td>P2-4</td><td>고객 주문내역 원본이 브라우저에 있음</td><td><span class="tag t-open">남음</span></td><td>구조 그대로. 되돌리기 때 서버에서 다시 받는 경로만 생김</td></tr>
+<tr><td>P2-5</td><td>카테고리가 서버에 저장 안 됨</td><td><span class="tag t-open">남음</span></td><td><code>menu-manager.html:836</code> 여전히 브라우저 저장. 관리자 폰을 바꾸면 설정 소실</td></tr>
 </table>
 
-<div class="risk p0">
-<div class="risk-t"><span class="tag t-p0">P0-3</span> 접수완료에 확인창이 없다 — 잘못 누르면 되돌릴 수 없다</div>
+<!-- ══════════════ 추가 발견 ══════════════ -->
+<h2 id="found">3. 고치는 과정에서 새로 드러난 것 13건</h2>
+
+<p>최초 점검은 코드를 읽어서 한 도상 점검이었고, 실제로 고치고 돌려보는 과정에서 <strong>읽기만 해서는 안 보이던 것들</strong>이 나왔습니다. 대부분 재오픈 후 실운영에서 터졌을 종류입니다.</p>
+
+<table>
+<tr><th style="width:5%">#</th><th style="width:38%">발견</th><th style="width:12%">상태</th><th>왜 안 보였나</th></tr>
+<tr><td>1</td><td><strong>알림톡·문자가 한 통도 안 나가고 있었음</strong> — <code>settings.gasUrl</code>이 아예 없음</td><td><span class="tag t-ok">해결</span></td><td>실패가 기록되지 않아 아무도 몰랐음. 저장하는 코드 자체가 프로젝트에 없었음</td></tr>
+<tr><td>2</td><td>솔라피 API 키의 <strong>IP 제한</strong>으로 알림톡 전부 거절</td><td><span class="tag t-ok">해결</span></td><td>외부 계정 설정. 발송 기록을 만들고 나서야 응답이 보였음</td></tr>
+<tr><td>3</td><td>CORS 허용 목록에 <strong>서버 자기 주소가 빠져</strong> Railway 주소로 열면 저장·삭제가 전부 실패</td><td><span class="tag t-ok">해결</span></td><td>읽기는 되고 쓰기만 막혀 서버·DB 장애처럼 보였음. <code>curl</code>은 Origin을 안 보내 재현 불가</td></tr>
+<tr><td>4</td><td><code>comma()</code> 미정의 → 대기중 주문이 있으면 주문 화면 전체가 오류</td><td><span class="tag t-ok">해결</span></td><td>다른 HTML에만 있는 함수. 문법 검사로는 안 잡힘. 대기중 주문이 생겨야 터짐</td></tr>
+<tr><td>5</td><td>업주 번호를 <code>phone</code>으로 저장하는데 서버는 <code>adminPhone</code>을 조회</td><td><span class="tag t-ok">해결</span></td><td>키 이름 불일치. 발송 주소를 채워도 업주 문자는 영영 안 갔을 것</td></tr>
+<tr><td>6</td><td>주문 수정이 <strong>자동 저장</strong>이라 수량을 누를 때마다 변경 문자 발송</td><td><span class="tag t-ok">해결</span></td><td>저장 버튼이 사실상 장식이었음. 변경 통보를 붙이고 나서야 드러남</td></tr>
+<tr><td>7</td><td>배송방법 변경도 별도 경로로 즉시 발송</td><td><span class="tag t-ok">해결</span></td><td>수량과 다른 경로를 타고 있었음</td></tr>
+<tr><td>8</td><td>그 경로를 <strong>옛 형식 정리 코드도 사용</strong> — 고객이 화면만 열어도 문자가 나갈 뻔</td><td><span class="tag t-ok">해결</span></td><td>사용자 동작이 아닌 자동 실행 경로</td></tr>
+<tr><td>9</td><td>발송 설정 토글이 저장 버튼 없이는 반영 안 되는데, <strong>실패해도 "저장되었습니다"</strong></td><td><span class="tag t-ok">해결</span></td><td>토글은 즉시 적용되는 것처럼 보임. 결과를 확인하지 않았음</td></tr>
+<tr><td>10</td><td>일일 메뉴를 전부 지우면 서버가 404를 주는데 <strong>화면 갱신을 건너뜀</strong></td><td><span class="tag t-ok">해결</span></td><td>정상 응답이 아니면 아무것도 안 하는 구조. 삭제했는데 안 된 것처럼 보였음</td></tr>
+<tr><td>11</td><td><code>saveToday()</code>가 같은 내용을 서버에 <strong>두 번 저장</strong></td><td><span class="tag t-ok">해결</span></td><td>절대값 저장일 땐 무해. 재고 보존(변경분 방식)으로 바꾸면서 문제가 됨</td></tr>
+<tr><td>12</td><td>마스터 메뉴를 <strong>이름만으로</strong> 찾음 — 동명 9건(메인/밀키트 짝)이 실재</td><td><span class="tag t-ok">해결</span></td><td>고유키는 (이름+카테고리). 카테고리·사진이 뒤바뀔 수 있었음</td></tr>
+<tr><td>13</td><td><code>histSaveMemo</code>가 선택 요소를 못 찾으면 <strong>배송방법을 빈 값으로 지움</strong></td><td><span class="tag t-ok">해결</span></td><td>검증 테스트를 돌리다 발견. 배송비 계산까지 틀어짐</td></tr>
+</table>
+
+<div class="note">
+<strong>여기서 얻은 교훈 하나</strong> — 문법 검사만으로는 부족합니다. 4번(<code>comma()</code>)과 13번은 문법이 통과하는데도 실제로는 깨지는 코드였고, 둘 다 <strong>실제 데이터를 넣어 실행해 보고서야</strong> 잡혔습니다. 이후 수정은 모두 해당 로직을 잘라내 실행 검증했습니다.
+</div>
+
+<!-- ══════════════ 남은 위험 ══════════════ -->
+<h2 id="left">4. 남은 위험 5건</h2>
+
+<div class="risk">
+<div class="risk-t"><span class="tag t-p1">1</span> 카톡 주문이 재고에 반영되지 않는다 <span class="small">(P1-6)</span></div>
 <dl>
-<dt>어디서</dt><dd><span class="fn">confirmOrder()</span> <code>menu-manager.html:2695</code>. 같은 파일의 <span class="fn">deliverOrder()</span>(<code>:2709</code>), <span class="fn">cancelOrder()</span>(<code>:2739</code>), <span class="fn">deleteOrder()</span>(<code>:2754</code>)는 <strong>전부 확인창(<span class="fn">showConfirm</span>)을 거치는데 접수완료만 없습니다.</strong></dd>
-<dt>왜 P0인가</dt><dd>업주가 정의한 접수완료의 의미는 <strong>"입금을 눈으로 확인했다"</strong>입니다. 즉 이 버튼은 돈과 직결됩니다. 한 번의 오터치로 미입금 주문이 조리·배송 대상으로 넘어가고, 그러면 지난 계좌 사고와 같은 종류의 돈 사고가 됩니다. 주문 목록에서 버튼들이 좁게 붙어 있어 스마트폰 조작 시 오터치 확률이 낮지 않습니다. 알림 발송이 정상화되면 고객에게 접수 알림톡도 나가는데, <strong>이미 발송된 알림은 취소할 수 없습니다.</strong></dd>
-<dt>수정</dt><dd>다른 함수들과 동일하게 <code>showConfirm('입금을 확인하셨나요? …', ...)</code>로 감쌉니다. 이미 있는 공용 모달을 쓰므로 3줄입니다. <strong>문구에 "입금 확인"을 명시</strong>하는 것이 이 사고의 핵심 방어입니다.</dd>
+<dt>현황</dt><dd>관리자 화면에 <strong>주문을 직접 입력하는 기능이 없습니다.</strong> 카톡으로 받은 주문은 시스템 밖에 있으므로 재고가 줄지 않고, 웹 고객에게 초과 판매됩니다. 병행 운영이 계속되는 한 남는 위험입니다.</dd>
+<dt>지금 할 것</dt><dd><strong>카톡 주문을 받으면 그 메뉴의 재고를 관리자 화면에서 직접 줄인다</strong> — 운영 규칙으로 막습니다. 재고 조정 기능은 이미 있습니다.</dd>
+<dt>오픈 후</dt><dd>수기 주문 등록 화면을 만듭니다. <strong>서버는 손댈 필요가 없습니다</strong> — <code>POST /api/orders</code>를 그대로 쓰되 기기ID를 비우면 재고 차감·기록이 전부 기존 흐름을 탑니다.</dd>
 </dl>
 </div>
 
 <div class="risk">
-<div class="risk-t"><span class="tag t-p1">P1-4</span> 입금 여부를 기록할 자리가 시스템에 없다</div>
+<div class="risk-t"><span class="tag t-p1">2</span> 배송완료·주문취소 버튼이 서버 실패를 삼킨다 <span class="small">(P1-5 잔여)</span></div>
 <dl>
-<dt>현황</dt><dd>주문 상태는 <code>pending / confirmed / delivered / cancelled</code> 넷뿐입니다(<code>server.js:959</code>). <strong>입금액·입금자명·입금시각을 남길 컬럼이 없습니다.</strong> "입금 확인"은 오직 업주의 머릿속과 은행 앱에만 존재합니다.</dd>
-<dt>어떻게 터지나</dt><dd>①입금자명이 주문자와 다를 때(가족 명의) 대조 실패 → 확인 지연·누락. ②부분 입금·초과 입금 시 기록할 곳이 없음. ③업주가 여러 건을 몰아 확인하다 한 건을 건너뛰면 그 주문은 <strong>영원히 대기중</strong>으로 남고 아무도 알아채지 못합니다. ④마감 시점에 "오늘 미입금 몇 건"을 볼 방법이 없습니다.</dd>
-<dt>수정</dt><dd><strong>재오픈 전(최소):</strong> 관리자 주문 화면에 <strong>"대기중 N건 / 미입금 합계 N천원"</strong> 요약을 띄웁니다. 이미 <code>menu-manager.html:2390</code>에서 상태별 건수를 세고 있으므로 표시만 추가하면 됩니다. 마감 전 대기중 0건을 확인하는 습관이 곧 미입금 방지책입니다.<br>
-<strong>오픈 후:</strong> <code>orders</code>에 <code>paid_at DATETIME</code>, <code>payer_name VARCHAR(50)</code> 추가 + 접수완료 시 입금자명 입력란(비워도 진행 가능).</dd>
+<dt>현황</dt><dd>접수완료는 고쳤지만 <code>menu-manager.html</code>의 <code>deliverOrder()</code>·<code>cancelOrder()</code>는 아직 <code>.catch(function(){})</code>로 끝납니다. 통신이 끊긴 상태에서 누르면 <strong>화면만 바뀌고 서버는 그대로</strong>입니다.</dd>
+<dt>영향</dt><dd>배송완료로 보이는데 서버는 접수완료 상태 → 고객 알림톡도 안 나감. 업주는 처리했다고 믿고 넘어갑니다.</dd>
+<dt>수정</dt><dd>접수완료와 똑같이 응답을 확인해 실패 시 경고를 띄우면 됩니다. <strong>두 함수 각 5줄</strong>이라 재오픈 전에 처리할 값어치가 있습니다.</dd>
 </dl>
 </div>
-</div>
-</div>
-
-<!-- ══════════════ 6 ══════════════ -->
-<h2 id="s6">6. 시나리오 E — 배송완료·마감</h2>
-
-<div class="scn">
-<div class="scn-h">E-1. 배송완료 처리</div>
-<div class="scn-b">
-<p><span class="fn">deliverOrder()</span> <code>menu-manager.html:2709</code> → <code>PUT status=delivered</code> → 고객에게 "배송이 완료됐습니다" 알림톡(<code>server.js:140-143</code>). <span class="tag t-ok">양호</span> 확인창 있음.</p>
-<p><code>menu-manager.html:2553</code>에 <strong>배송완료 차단 조건</strong>이 있습니다 — 예약일이 안 맞거나(<code>reserveMismatch</code>) 오늘이 아닌 날짜(<code>notToday</code>)면 버튼을 막습니다. 오늘 날짜 주문을 실수로 다른 날에서 처리하는 것을 방지하는 좋은 장치입니다.</p>
-<div class="risk p2">
-<div class="risk-t"><span class="tag t-p2">P2-2</span> 마감 개념이 시스템에 없다</div>
-<dl>
-<dt>현황</dt><dd>업무 흐름의 마지막 단계인 "마감"에 대응하는 기능이 없습니다. 날짜가 바뀌면 자연스럽게 넘어갈 뿐, <strong>그날 처리되지 않은 대기중 주문이 그대로 남습니다.</strong></dd>
-<dt>결과</dt><dd>어제의 미입금 대기중 주문이 오늘 화면에 안 보이므로 잊힙니다. 고객은 "주문했는데 안 왔다"고 며칠 뒤 연락합니다.</dd>
-<dt>수정</dt><dd>P1-4의 "대기중 N건" 표시를 어제 날짜까지 포함해 보여주거나, 관리자 화면 상단에 <strong>"처리 안 된 지난 주문 N건"</strong> 경고를 띄웁니다. 오픈 후 과제로 충분합니다.</dd>
-</dl>
-</div>
-</div>
-</div>
-
-<!-- ══════════════ 7 ══════════════ -->
-<h2 id="s7">7. 시나리오 F — 주문 취소·수정·삭제</h2>
-
-<div class="scn">
-<div class="scn-h">F-1. 상태별 처리 규칙 (현재 구현)</div>
-<div class="scn-b">
-<table>
-<tr><th>상태</th><th>고객이 취소</th><th>업주가 취소</th><th>삭제</th><th>재고</th></tr>
-<tr><td>대기중 pending</td><td><span class="tag t-ok">가능</span> 본인 기기만</td><td>가능</td><td><strong>차단</strong> <code>server.js:775</code></td><td>취소 시 복원</td></tr>
-<tr><td>접수완료 confirmed</td><td>불가</td><td>가능</td><td>가능(경고 문구)</td><td>취소 시 복원 / 삭제 시 복원 안 함</td></tr>
-<tr><td>배송완료 delivered</td><td>불가</td><td>가능</td><td>가능</td><td>취소 시 복원</td></tr>
-<tr><td>취소됨 cancelled</td><td>—</td><td>—</td><td>가능(고객도 본인 것)</td><td>—</td></tr>
-</table>
-<p class="small">권한 검사는 <code>server.js:566-572</code>(상태변경)와 <code>server.js:768-778</code>(삭제)에 있고, <strong>기기ID 소유 확인이 제대로 되어 있습니다.</strong> <span class="tag t-ok">양호</span></p>
 
 <div class="risk">
-<div class="risk-t"><span class="tag t-p1">P1-5</span> 화면이 서버 응답을 안 기다리고 먼저 성공으로 그린다</div>
+<div class="risk-t"><span class="tag t-p2">3</span> 카테고리가 관리자 기기에만 있다 <span class="small">(P2-5)</span></div>
 <dl>
-<dt>어디서</dt><dd><span class="fn">confirmOrder()</span> <code>:2699-2702</code>, <span class="fn">deliverOrder()</span> <code>:2714-2716</code>, <span class="fn">cancelOrder()</span> <code>:2744-2746</code> — 모두 화면 상태를 먼저 바꾸고 <code>fetch</code>를 보낸 뒤 <code>.catch(function(){})</code>로 <strong>실패를 삼킵니다.</strong></dd>
-<dt>결과</dt><dd>통신이 끊긴 상태에서 접수완료를 누르면 화면에는 "접수완료"로 보이지만 <strong>서버는 여전히 대기중</strong>입니다. 업주는 처리했다고 믿고 넘어가고, 고객에게는 알림톡도 안 갔습니다. 삭제 함수(<span class="fn">deleteOrder</span> <code>:2766-2783</code>)는 실패 시 토스트로 알리고 다시 그리는데, <strong>상태 변경 3종만 빠져 있습니다.</strong></dd>
-<dt>수정</dt><dd><span class="fn">deleteOrder</span>와 같은 형태로 통일 — 응답의 <code>success</code>를 확인해 실패면 "⚠️ 반영 실패" 토스트 + <span class="fn">renderOrders()</span> 재조회.</dd>
+<dt>현황</dt><dd><code>menu-manager.html:836</code> — 카테고리 원본이 브라우저 저장소에만 있습니다. 서버에 저장하는 코드가 없습니다.</dd>
+<dt>영향</dt><dd>관리자 폰을 바꾸거나 브라우저 데이터를 지우면 <strong>카테고리 설정이 통째로 사라집니다.</strong> 고객 화면에도 전파되지 않아 하드코딩 기본색만 보입니다.</dd>
+<dt>수정</dt><dd>서버는 이미 준비돼 있습니다 — <code>categories</code>가 공개 키 목록에 들어 있어 <strong>화면만 고치면 됩니다.</strong> 지난 계좌번호 사고와 같은 부류이므로 오픈 후 우선 처리를 권합니다.</dd>
 </dl>
 </div>
-</div>
-</div>
-
-<!-- ══════════════ 8 ══════════════ -->
-<h2 id="s8">8. 시나리오 G — 카톡 주문 수작업 병행</h2>
-
-<div class="note">
-업주는 기존 고객 1000명에게 닿는 유일한 통로가 카카오 비즈니스 채널이므로, <strong>웹 주문과 카톡 답장 주문이 당분간 함께 갑니다.</strong> 카톡 주문은 업주가 시스템 밖에서 수작업으로 처리합니다.
-</div>
-
-<div class="scn">
-<div class="scn-h">G-1. 병행 운영에서 생기는 구조적 어긋남</div>
-<div class="scn-b">
-<div class="risk">
-<div class="risk-t"><span class="tag t-p1">P1-6</span> 관리자 화면에 주문을 직접 입력하는 기능이 없다</div>
-<dl>
-<dt>확인 결과</dt><dd>menu-manager.html 전체를 훑었으나 <strong>업주가 주문을 수기로 등록하는 화면·함수가 없습니다.</strong> 주문 생성 경로는 고객 화면의 <span class="fn">saveOrder()</span>와 <span class="fn">submitReserveOrder()</span> 둘뿐입니다. (참고: "카카오 파싱"은 <strong>메뉴</strong>를 등록하는 기능이지 주문 등록이 아닙니다.)</dd>
-<dt>그래서 무슨 일이 생기나</dt><dd>카톡으로 받은 주문은 시스템에 들어오지 않습니다. 따라서 ①<strong>재고가 안 맞습니다</strong> — 카톡 주문 10개가 팔려도 시스템 재고는 그대로라 웹 고객에게 초과 판매됩니다. 이것이 병행 운영의 가장 큰 실무 위험입니다. ②그날 총 매출·총 주문 건수를 한 화면에서 볼 수 없습니다. ③카톡 주문 고객에게는 알림톡이 안 갑니다.</dd>
-<dt>재오픈 전 대응(코드 수정 없이)</dt><dd>업주가 카톡 주문을 받을 때마다 <strong>관리자 화면에서 해당 메뉴의 재고를 그만큼 직접 줄이는</strong> 운영 규칙을 정합니다. 재고 수정 기능은 이미 있습니다. 이것만 지켜도 초과 판매는 막힙니다.</dd>
-<dt>오픈 후 과제</dt><dd>관리자 화면에 <strong>수기 주문 등록</strong>을 추가합니다. 서버는 손댈 필요가 없습니다 — <code>POST /api/orders</code>를 그대로 쓰되 <code>deviceId</code>를 비우고 이름·전화·메뉴·수량만 넣으면 재고 차감·알림톡이 전부 기존 흐름을 탑니다. 화면 하나만 만들면 됩니다.</dd>
-</dl>
-</div>
-<div class="note">
-<strong>알아둘 점</strong> — 수기 등록을 만들더라도 그 주문에는 기기ID가 없으므로 <strong>그 고객의 휴대폰 주문내역에는 표시되지 않습니다.</strong> 전화번호로 조회하는 경로는 서버에 이미 있으니(<code>GET /api/orders?phone=</code>, <code>server.js:440</code>), 고객 화면이 기기ID뿐 아니라 전화번호로도 조회하게 하면 해결됩니다. 순서상 P2-4(주문내역을 서버 기준으로 전환)와 함께 처리하는 것이 자연스럽습니다.
-</div>
-</div>
-</div>
-
-<!-- ══════════════ 9 ══════════════ -->
-<h2 id="s9">9. 시나리오 H — 예약주문</h2>
-
-<div class="scn">
-<div class="scn-h">H-1. 흐름과 재고 처리</div>
-<div class="scn-b">
-<p>고객이 <span class="fn">submitReserveOrder()</span>(<code>onban01.html</code>)로 내일~7일 이내 날짜를 지정해 주문합니다. 주문 번호는 <code>RSV</code>로 시작하고 <code>reserve_date</code>가 채워집니다.</p>
-<p><strong>예약주문은 재고를 전혀 건드리지 않습니다.</strong> 생성 시 차감 안 함(<code>server.js:502</code> <code>if(!isReserve)</code>), 접수완료·취소 시에도 모든 재고 연산을 건너뜁니다(<code>server.js:583</code> <code>isReserveOrder</code>). 이는 의도된 설계입니다 — 예약일의 메뉴가 아직 등록되지 않았을 수 있기 때문입니다.</p>
 
 <div class="risk">
-<div class="risk-t"><span class="tag t-p2">P2-3</span> 예약주문은 그 날짜의 재고에 반영되지 않는다</div>
+<div class="risk-t"><span class="tag t-p2">4</span> 예약주문이 그 날짜 재고에 반영되지 않는다 <span class="small">(P2-3)</span></div>
 <dl>
-<dt>결과</dt><dd>8월 12일자 예약주문 5건이 있어도, 8월 12일 아침에 메뉴를 등록할 때 <strong>재고에서 5개가 빠져 있지 않습니다.</strong> 업주가 예약 목록을 직접 보고 수동으로 빼야 합니다. 관리자 화면에 "예약된 메뉴" 탭이 있어 조회는 가능합니다(<code>menu-manager.html</code> <span class="fn">loadReservedOrders()</span>).</dd>
-<dt>대응</dt><dd>재오픈 전에는 <strong>운영 규칙</strong>으로 충분합니다 — 아침 메뉴 등록 시 "예약된 메뉴" 탭을 먼저 확인하고 그만큼 재고를 늘려 잡습니다. 코드 수정은 오픈 후에.</dd>
-</dl>
-</div>
-<p class="small"><span class="tag t-ok">양호</span> 같은 전화번호로 같은 날짜에 같은 예약 이벤트를 중복 신청하는 것은 서버가 막고 있습니다(<code>server.js:487-497</code>).</p>
-</div>
-</div>
-
-<!-- ══════════════ 10 ══════════════ -->
-<h2 id="s10">10. 위험 목록 총괄표</h2>
-
-<h3>P0 — 재오픈 전 반드시</h3>
-<table>
-<tr><th style="width:8%">번호</th><th style="width:30%">내용</th><th style="width:28%">위치</th><th>수정 규모</th></tr>
-<tr><td><span class="tag t-p0">P0-1</span></td><td>메뉴 저장이 그 사이 주문의 재고 차감을 되돌림</td><td><code>server.js:346,369</code></td><td>서버 ~15줄</td></tr>
-<tr><td><span class="tag t-p0">P0-2</span></td><td>주문 확정 버튼 중복 클릭 → 주문 2건·재고 2배 차감</td><td><code>onban01.html:1347</code></td><td>5줄</td></tr>
-<tr><td><span class="tag t-p0">P0-3</span></td><td>접수완료(=입금확인) 확인창 없음 → 오터치가 곧 배송</td><td><code>menu-manager.html:2695</code></td><td>3줄</td></tr>
-<tr><td><span class="tag t-p0">P0-4</span></td><td>관리자 비밀번호·API 토큰이 공개 소스에 평문</td><td><code>menu-manager.html:12,2858</code> <code>index.html:9</code></td><td>아래 별도 설명</td></tr>
-<tr><td><span class="tag t-p0">P0-5</span></td><td>설정 조회 API가 인증 없이 문자 발송 주소·연락처를 공개</td><td><code>server.js:875</code></td><td>서버 ~10줄</td></tr>
-<tr><td><span class="tag t-p0">P0-6</span></td><td>알림톡·SMS가 하나도 발송되지 않고 있음</td><td><code>settings.gasUrl</code> 부재 + 키 이름 불일치</td><td>설정 1건 + 서버 1줄</td></tr>
-</table>
-<div class="note" style="background:#eefbf4;border-left:5px solid var(--ok);">
-<strong>P0-6도 해결됐습니다 — 다만 "전부 되살리기"가 아니라 업주 방침에 맞춘 형태입니다.</strong>
-<ul style="margin:8px 0 0 20px;">
-<li><strong>고객 알림톡은 배송완료 때만</strong> 보냅니다. 주문 시점에 카톡이 가면 고객이 그 대화방에서 답장해 <strong>옛 주문 방식으로 되돌아가기</strong> 때문입니다(업주 판단). <code>settings.notifyEvents</code> 배열로 시점을 제어하며 현재 값은 <code>["delivered"]</code>입니다. 여기에 <code>confirmed</code>·<code>cancelled</code>·<code>reply</code>·<code>order</code>를 넣으면 그 시점도 함께 발송됩니다.</li>
-<li><strong>업주 SMS와 배송업체 SMS는 쓰지 않습니다</strong>(<code>smsEnabled=false</code>). 업주는 관리자 화면의 변화를 보고 대응하는 방식을 택했습니다.</li>
-<li>그래서 <strong>관리자 화면이 새 주문을 아는 유일한 경로</strong>가 됐고, 아래 두 가지를 새로 넣었습니다.</li>
-</ul>
-</div>
-
-<div class="risk" style="border-left-color:var(--ok);background:#f4fbf7;">
-<div class="risk-t"><span class="tag t-ok">보완</span> 알림 문자를 안 쓰는 대신 넣은 장치 두 가지</div>
-<dl>
-<dt>새 주문 소리·진동·탭 제목 알림</dt>
-<dd>실시간 신호 중 <code>order_new</code>가 왔을 때만 '딩-동' 소리를 두 번 울리고, 지원 기기에서는 진동하며, 브라우저 탭 제목이 <code>🔔 새 주문 N건!</code>으로 깜빡입니다. 소리는 오디오 파일 없이 코드로 만들어 정적 호스팅에서도 그대로 동작합니다. <strong>주의:</strong> 브라우저는 사용자가 화면을 한 번 건드리기 전에는 소리를 막으므로, 관리자 화면에 들어와 아무것도 누르지 않으면 첫 알림이 안 울릴 수 있습니다.</dd>
-<dt>묻힌 주문 경고 + 미입금 합계</dt>
-<dd>소리는 <strong>화면을 열어둔 동안만</strong> 울립니다. 브라우저를 닫아둔 사이의 주문은 여전히 놓칠 수 있으므로, 지난 날짜에 대기중으로 남은 주문을 <code>GET /api/orders/pending-summary</code>로 집계해 주문 화면 상단에 <strong>"처리 안 된 지난 주문 N건"</strong> 경고를 띄웁니다. 해당 날짜로 바로 이동하는 버튼도 함께 나옵니다. 대기중 통계에는 <strong>미입금 합계 금액</strong>을 표시해, 마감 전에 이 숫자만 확인하면 됩니다. (P1-4·P2-2 해소)</dd>
+<dt>현황</dt><dd>예약주문은 재고를 전혀 건드리지 않습니다(의도된 설계 — 예약일 메뉴가 아직 없을 수 있음).</dd>
+<dt>지금 할 것</dt><dd>아침 메뉴 등록 전에 <strong>"예약된 메뉴" 탭을 먼저 확인</strong>하고 그 수량만큼 재고를 넉넉히 잡습니다.</dd>
 </dl>
 </div>
 
-<div class="risk p0">
-<div class="risk-t"><span class="tag t-p0">P0-4</span> 관리자 비밀번호가 공개 소스에 그대로 적혀 있다</div>
+<div class="risk">
+<div class="risk-t"><span class="tag t-p2">5</span> 비밀번호가 공개 소스에 평문 <span class="small">(P0-4 잔여)</span></div>
 <dl>
-<dt>어디서</dt><dd><code>menu-manager.html:12</code>의 <code>ADMIN_PW</code>, <code>menu-manager.html:2858</code>의 <code>ADMIN_API_TOKEN</code>, <code>index.html:9</code>의 <code>ADMIN_PW</code> — <strong>세 곳 모두 같은 값이 평문으로 박혀 있습니다.</strong></dd>
-<dt>왜 심각한가</dt><dd>프런트는 GitHub Pages로 배포되고 저장소가 공개이므로, <strong>브라우저에서 소스 보기만 해도 비밀번호가 보입니다.</strong> 이 토큰 하나로 관리자 전용 API 전부(메뉴 전체 삭제, 주문 삭제, 설정·계좌 변경)를 호출할 수 있습니다. 계좌 정보를 바꿔치기하는 것도 가능합니다 — 지난 사고보다 더 큰 형태의 같은 사고입니다.</dd>
-<dt>추가로</dt><dd><code>onban_admin_auth</code> 플래그가 <code>'1'</code> 고정값이라 <strong>비밀번호를 바꿔도 이미 접속했던 기기는 계속 통과합니다</strong>(<code>menu-manager.html:13</code>).</dd>
-<dt>재오픈 전 최소 조치</dt><dd>①비밀번호를 새 값으로 변경 ②플래그를 비밀번호에 연동해 옛 기기 자동 차단(<code>var AUTH_VAL='ok_'+ADMIN_PW</code> 방식, 3줄) ③Railway 환경변수 <code>ADMIN_TOKEN</code>도 같이 변경. <strong>근본 해결은 아니지만 유출된 값은 무효화됩니다.</strong></dd>
-<dt>오픈 후 근본 수정</dt><dd><code>POST /api/admin/login</code>을 만들어 서버가 비밀번호를 검증하고 토큰을 내려주는 방식으로 전환, HTML에서 비밀번호·토큰 하드코딩을 완전히 제거합니다. 자세한 내용은 <code>localStorage_잔존값_제거_방안.md</code> §2 참고.</dd>
+<dt>현황</dt><dd>값은 새로 바꿨고 상수도 파일당 한 곳으로 모았지만, <strong>소스 보기로 읽히는 구조는 그대로</strong>입니다. 유출된 옛 값이 무효화됐을 뿐입니다.</dd>
+<dt>수정</dt><dd>서버가 비밀번호를 검증하고 토큰을 내려주는 방식으로 바꿔야 근본 해결입니다. 오픈 후 과제.</dd>
 </dl>
 </div>
 
-<div class="risk p0">
-<div class="risk-t"><span class="tag t-p0">P0-5</span> 설정 조회 API가 인증 없이 모든 값을 내준다</div>
-<dl>
-<dt>어디서</dt><dd><code>server.js:875</code> — <code>GET /api/settings</code>에 <code>requireAdmin</code>이 없고, <code>settings</code> 테이블의 <strong>모든 키를 통째로</strong> 반환합니다. 저장 쪽(<code>server.js:887</code>)에는 인증이 걸려 있는데 조회만 열려 있습니다.</dd>
-<dt>무엇이 새는가</dt><dd><code>gasUrl</code>(문자 발송 프록시 주소), <code>adminPhone</code>(업주 휴대폰), <code>deliveryPhone</code>(배송업체 연락처), <code>banks</code>(계좌 전체). 그리고 <strong>그 <code>gasUrl</code>은 인증이 없어</strong>(<code>sms_proxy4onban.gs</code>), 주소만 알면 누구나 임의의 번호로 문자를 보낼 수 있습니다 — <strong>요금은 가게가 냅니다.</strong></dd>
-<dt>왜 인증을 못 거나</dt><dd>고객 화면이 계좌를 표시하려고 이 API를 쓰기 때문입니다(<code>onban01.html:1757</code>). 지난 계좌 사고를 고치면서 만든 경로라 없앨 수 없습니다.</dd>
-<dt>수정 방향</dt><dd>인증을 걸지 말고 <strong>내주는 값을 가립니다.</strong> 관리자 토큰이 없으면 <code>banks</code>·카테고리 같은 <strong>고객에게 필요한 키만</strong> 반환하고 <code>gasUrl</code>·<code>adminPhone</code>·<code>deliveryPhone</code>은 제외합니다. 화이트리스트 방식 10줄이면 되고 고객 화면은 그대로 동작합니다.</dd>
-</dl>
-</div>
+<!-- ══════════════ 체크리스트 ══════════════ -->
+<h2 id="check">5. 재오픈 체크리스트</h2>
 
-<h3>P1 — 오픈 직후</h3>
-<table>
-<tr><th style="width:8%">번호</th><th style="width:34%">내용</th><th>위치</th></tr>
-<tr><td><span class="tag t-ok">종결</span></td><td><s>카톡 파싱 등록이 주문 있는 날의 재고를 초기화</s> → <strong>업무 지침으로 처리</strong>(재고는 어차피 수시 갱신). 동명 마스터 오연결만 코드로 수정</td><td><code>menu-manager.html:1650</code></td></tr>
-<tr><td><span class="tag t-ok">해결</span></td><td><s>서버가 주문 금액을 검산하지 않음</s> → <strong>단가·배송비를 서버가 DB에서 재계산</strong></td><td><code>server.js</code> POST /api/orders</td></tr>
-<tr><td><span class="tag t-p1">P1-3</span></td><td>알림톡·SMS 실패가 조용히 묻힘 (P0-6이 안 드러난 원인)</td><td><code>server.js:82,113,149</code></td></tr>
-<tr><td><span class="tag t-p1">P1-4</span></td><td><s>입금 여부를 기록·집계할 자리가 없음</s> → <strong>집계 표시 완료</strong>(미입금 합계·묻힌 주문 경고). 입금자명 기록은 이월</td><td>스키마 <code>server.js:949</code></td></tr>
-<tr><td><span class="tag t-p1">P1-5</span></td><td>상태 변경이 서버 실패를 무시하고 성공으로 표시</td><td><code>menu-manager.html:2695,2709,2739</code></td></tr>
-<tr><td><span class="tag t-p1">P1-6</span></td><td>카톡 주문 수기 등록 화면 없음 → 재고 어긋남</td><td>기능 부재</td></tr>
-</table>
-
-<h3>P2 — 이월</h3>
-<table>
-<tr><th style="width:8%">번호</th><th style="width:34%">내용</th><th>위치</th></tr>
-<tr><td><span class="tag t-p2">P2-1</span></td><td>메뉴 저장 실패해도 "완료" 토스트</td><td><code>menu-manager.html:1653</code></td></tr>
-<tr><td><span class="tag t-p2">P2-2</span></td><td>마감 개념 부재 — 지난 대기중 주문이 묻힘</td><td>기능 부재</td></tr>
-<tr><td><span class="tag t-p2">P2-3</span></td><td>예약주문이 해당 날짜 재고에 미반영</td><td><code>server.js:502,583</code></td></tr>
-<tr><td><span class="tag t-p2">P2-4</span></td><td>고객 주문내역 원본이 브라우저에 있음(기기 바꾸면 소실)</td><td><code>onban01.html:1844,1879</code></td></tr>
-<tr><td><span class="tag t-p2">P2-5</span></td><td>카테고리가 서버에 저장 안 됨 — 관리자 기기에만 존재</td><td><code>menu-manager.html:826</code></td></tr>
-</table>
-
-<div class="note">
-<strong>P2-4·P2-5는 지난 계좌 사고와 같은 부류입니다</strong> — 값이 기기 안에만 있어 다른 기기·다른 사람과 어긋나는 구조. 상세 수정안은 별도 문서 <code>localStorage_잔존값_제거_방안.md</code>에 정리돼 있습니다. 특히 <strong>카테고리는 서버에 저장 자체가 안 되고 있어</strong>, 업주가 관리자 폰을 바꾸면 설정이 통째로 사라집니다.
-</div>
-
-<!-- ══════════════ 11 ══════════════ -->
-<h2 id="s11">11. 재오픈 전 작업 순서 / 업주 체크리스트</h2>
-
-<h3>개발 작업 (권장 순서 — 사흘)</h3>
-<table>
-<tr><th style="width:10%">순서</th><th style="width:30%">작업</th><th style="width:12%">규모</th><th>이유</th></tr>
-<tr><td>1</td><td>P0-3 접수완료 확인창</td><td>3줄</td><td>가장 싸고 돈 사고를 직접 막음</td></tr>
-<tr><td>2</td><td>P0-2 주문 버튼 잠금</td><td>5줄</td><td>싸고 재고·금액 어긋남을 직접 막음</td></tr>
-<tr><td>3</td><td>P0-4 비밀번호 교체 + 옛 기기 차단</td><td>3줄 + 설정</td><td>유출된 토큰 무효화</td></tr>
-<tr><td>4</td><td>P0-5 설정 API 값 가리기</td><td>10줄</td><td>문자 요금 도용·연락처 유출 차단</td></tr>
-<tr><td>5</td><td><strong>P0-1 재고 보존</strong></td><td>15줄</td><td>가장 중요하지만 가장 신중해야 함 — 마지막에</td></tr>
-<tr><td>6</td><td>P2-5 카테고리 서버 이전</td><td>~40줄</td><td>시간 남으면. 사고 대기 상태</td></tr>
-</table>
-
-<div class="note">
-<strong>5번(P0-1)을 마지막에 두는 이유</strong> — 메뉴 저장은 매일 아침 반드시 쓰는 기능이라, 여기서 실수하면 재오픈 당일 아침에 메뉴 등록 자체가 막힙니다. 앞의 네 건을 먼저 올려 안정시킨 뒤, <strong>실제 날짜로 등록→주문→재저장을 직접 돌려 재고가 유지되는지 확인하고</strong> 배포하십시오.
-</div>
-
-<h3>배포 후 검증 (본인이 직접)</h3>
+<h3>아직 확인하지 못한 것 — 직접 해보셔야 합니다</h3>
 <ul class="chk">
-<li>고객 화면에서 주문 1건 넣고 → 관리자 화면에서 실시간으로 뜨는지, 업주 휴대폰에 문자가 오는지</li>
-<li>같은 상태에서 관리자 화면 메뉴를 하나 고쳐 저장 → <strong>주문으로 빠진 재고가 유지되는지</strong> (P0-1 검증, 가장 중요)</li>
-<li>주문 확정 버튼 빠르게 두 번 클릭 → 주문이 1건만 생기는지 (P0-2)</li>
-<li>접수완료 클릭 → 확인창이 뜨고 문구에 "입금"이 들어 있는지 (P0-3)</li>
-<li>비밀번호 바꾼 뒤 기존에 로그인돼 있던 기기에서 다시 물어보는지 (P0-4)</li>
-<li>브라우저 주소창에 <code>.../api/settings</code>를 직접 열어 <strong>문자 발송 주소와 연락처가 안 보이는지</strong> (P0-5)</li>
-<li>계좌를 바꿔보고 다른 기기(옛날에 접속했던 폰)에서 새 계좌가 보이는지 — 지난 사고 재발 확인</li>
+<li><strong>재고 보존</strong> — 관리자 화면을 열어둔 채 다른 기기로 주문을 넣고, 메뉴를 하나 고쳐 저장했을 때 주문으로 빠진 재고가 유지되는지. <strong>이번 작업에서 가장 중요하고 매일 아침 쓰는 기능인데 실제 확인이 남아 있습니다.</strong></li>
+<li><strong>배송완료 알림톡</strong> — 시험 주문을 배송완료로 바꿔 고객 폰에 도착하는지 (서버 응답은 <code>success:true</code> 확인됨)</li>
+<li><strong>업주 새 주문 문자</strong> — 주문을 하나 넣어 업주 휴대폰에 오는지</li>
+<li><strong>주문 변경 문자</strong> — 고객 화면에서 수량을 바꾸고 저장 → 확인창 → 네 → 문자 한 통만 오는지</li>
+<li><strong>새 주문 소리</strong> — 관리자 화면에 들어가 <strong>아무 곳이나 한 번 누른 뒤</strong> 다른 기기로 주문. 브라우저는 화면을 건드리기 전에는 소리를 막습니다</li>
 </ul>
-
-<h3>배포 운영 — 알아둘 것</h3>
-<div class="note">
-<strong>Railway는 저장소 전체를 감시해서, HTML만 고쳐 올려도 서버를 통째로 재시작합니다.</strong> 그 1~2분 동안 API가 JSON 대신 오류 HTML을 돌려주고, 저장·삭제·상태변경이 전부 같은 경로를 타므로 <strong>한꺼번에 고장난 것처럼 보입니다.</strong> 실제로 2026-08-08 작업 중 이 증상을 겪었고, DB나 서버 문제로 오인하기 쉽습니다.
-<ul style="margin:8px 0 0 20px;">
-<li><strong>해결(적용 완료):</strong> Railway 서비스 <strong>Settings → Build → Watch Paths</strong>에 <code>/server/**</code> 지정. 이제 서버 코드가 바뀔 때만 재배포되고, HTML만 고친 push는 서버를 건드리지 않습니다.</li>
-<li><strong>화면 쪽 보완:</strong> 재배포 중 응답을 못 읽으면 <code>Unexpected token '&lt;'</code> 대신 <strong>"서버가 잠시 응답하지 않아요. 30초쯤 뒤 다시 시도해주세요"</strong>가 뜹니다. 통신을 감싸는 한 곳에서 처리합니다.</li>
-<li><strong>배포 반영 확인:</strong> <code>/health</code>가 <code>build</code> 표식을 돌려줍니다. 서버 코드를 고칠 때 이 값을 함께 바꾸면 재배포가 끝났는지 바로 알 수 있습니다.</li>
-<li><strong>화면 캐시:</strong> GitHub Pages는 배포 후 최대 10분간 옛 파일을 내보냅니다(<code>max-age=600</code>). Railway 정적 서빙은 즉시 반영되므로, 수정이 잦은 날 관리자 화면은 Railway 주소로 여는 편이 낫습니다.</li>
-</ul>
-</div>
 
 <h3>업주에게 전달할 운영 규칙</h3>
 <ul class="chk">
-<li><strong>접수완료 버튼은 은행 입금을 확인한 뒤에만</strong> 누른다. 누르는 순간 배송업체에 배송 요청 문자가 나가며 취소할 수 없다.</li>
-<li><strong>카톡으로 받은 주문은 관리자 화면에서 그 메뉴의 재고를 그만큼 직접 줄인다.</strong> 안 그러면 웹 고객에게 없는 물건을 팔게 된다.</li>
+<li><strong>접수완료는 은행 입금을 확인한 뒤에만</strong> 누른다. 되돌릴 수 없다.</li>
+<li><strong>카톡으로 받은 주문은 관리자 화면에서 그 메뉴의 재고를 직접 줄인다.</strong> 안 그러면 없는 물건을 팔게 된다.</li>
 <li>아침 메뉴 등록 전에 <strong>"예약된 메뉴" 탭을 먼저 확인</strong>하고 그 수량만큼 재고를 넉넉히 잡는다.</li>
-<li>메뉴 화면을 <strong>장시간 열어두지 않는다.</strong> 특히 주문이 몰리는 시간에 화면을 열어둔 채 저장하지 않는다.</li>
-<li>재고를 직접 수정할 때는 <strong>주문이 뜸한 시간</strong>에 한다.</li>
-<li>마감 전 <strong>"대기중" 주문이 남아 있는지</strong> 반드시 확인한다. 대기중 = 아직 입금 확인이 안 된 주문이다.</li>
-<li>계좌를 바꿨으면 <strong>관리자 화면 설정에서 반드시 저장</strong>하고, 다른 폰으로 주문 화면에 들어가 새 계좌가 보이는지 눈으로 확인한다.</li>
+<li>주문이 들어온 뒤에는 <strong>카톡 파싱 등록을 다시 누르지 않는다.</strong></li>
+<li>마감 전 <strong>"대기중" 건수와 "처리 안 된 지난 주문" 경고</strong>를 확인한다. 대기중 = 아직 입금 확인이 안 된 주문이다.</li>
+<li>계좌를 바꿨으면 <strong>설정에서 저장하고, 다른 폰으로 주문 화면에 들어가 새 계좌가 보이는지</strong> 눈으로 확인한다.</li>
 </ul>
 
+<h3>운영 중 알아둘 것</h3>
+<div class="note">
+<ul style="margin:0 0 0 20px;">
+<li><strong>배포 직후 증상은 캐시부터 의심.</strong> GitHub Pages는 최대 10분간 옛 화면을 내보냅니다. 주소 뒤에 <code>?v=숫자</code>를 붙이면 무조건 새로 받습니다.</li>
+<li><strong>알림이 안 나가면 기록부터 봅니다.</strong> <code>settings.lastNotify</code>에 마지막 발송 결과와 실패 사유가, <code>lastNotifyTrigger</code>에 어떤 주문의 어떤 상태에서 시도했는지가 남습니다.</li>
+<li><strong>배포 반영은 <code>/health</code>로 확인.</strong> <code>build</code> 값이 바뀌면 새 서버가 뜬 것입니다. 현재 <code>order-log-2</code>.</li>
+<li><strong>화면에 "서버 응답을 읽지 못했어요 (숫자 경로)"가 뜨면</strong> 그 숫자와 경로를 알려주면 원인을 바로 짚을 수 있습니다.</li>
+</ul>
+</div>
+
 <div class="card" style="margin-top:34px;background:#f0f6f6;">
-<h3 style="margin-top:0;">이 점검의 한계 — 반드시 알아둘 것</h3>
-<p>이 점검은 <strong>코드와 설계서를 읽어서 한 도상 점검</strong>입니다. 실제 화면을 띄워 눌러본 것이 아니고, 업주 인터뷰나 모의 주문 리허설도 하지 않았습니다. 따라서 <strong>여기서 찾지 못한 문제가 있을 수 있습니다</strong> — 특히 업주가 실제로 화면을 어떻게 조작하는지, 어떤 순서로 버튼을 누르는지에서 오는 문제는 코드만 봐서는 보이지 않습니다.</p>
-<p>지난 계좌번호 사고도 정확히 그 지점에서 났습니다. <strong>재오픈 첫날은 업주 곁에서 또는 통화 가능한 상태로 지켜보시길</strong> 권합니다. 수정을 다 하더라도 그것이 마지막 방어선입니다.</p>
+<h3 style="margin-top:0;">이 재조사의 한계</h3>
+<p>최초 점검은 코드만 읽은 도상 점검이었고, 그 한계가 실제로 드러났습니다 — <strong>읽어서 찾은 16건보다, 고치고 돌려보며 찾은 13건이 더 실전적이었습니다.</strong> 알림이 통째로 죽어 있던 것도, 저장이 전부 막혀 있던 것도 도상 점검으로는 보이지 않았습니다.</p>
+<p>이번 재조사 역시 <strong>실제 화면을 눌러본 것이 아니라 코드와 서버 응답으로 확인한 것</strong>입니다. 위 체크리스트의 다섯 가지는 반드시 직접 해보셔야 합니다.</p>
+<p style="margin-bottom:0;">그리고 <strong>재오픈 첫날은 지켜보시길</strong> 권합니다. 업주가 실제로 어떤 순서로 버튼을 누르는지에서 오는 문제는 어떤 점검으로도 미리 잡히지 않습니다. 지난 계좌번호 사고가 정확히 그 지점이었습니다.</p>
 </div>
 
 <p class="small" style="text-align:center;margin-top:40px;color:#999;">
-온반 업무 시나리오 점검서 · 2026-08-08 · 도상 점검(코드·설계서 기반)
+온반 업무 시나리오 점검서 — 재조사 · 2026-08-08 · 최초 16건 + 추가 13건 = 29건
 </p>
 
 </div>
