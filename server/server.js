@@ -280,7 +280,7 @@ app.get('/api/events', (req, res) => {
 
 // ── 헬스체크 ────────────────────────────────────────────────
 // build 표식 — 설정을 바꾸기 전에 배포가 실제로 반영됐는지 확인하는 용도
-app.get('/health', (req, res) => res.json({ ok: true, build: 'catcolor-fix-1' }));
+app.get('/health', (req, res) => res.json({ ok: true, build: 'cat-fk-1' }));
 
 // ══════════════════════════════════════════════════════════════
 // 메뉴 창고 (등록된모든메뉴)
@@ -297,10 +297,11 @@ app.post('/api/menu/all', requireAdmin, async (req, res) => {
       // menuId 있으면 id 기준 UPDATE(이름 변경=rename 포함), 없으면 신규 INSERT
       // → menus.id가 진짜 키. 이름을 바꿔도 같은 행을 갱신(중복 생성 방지)
       for (const m of list) {
+        const catId = await _resolveCatId(conn, m.cat || '기타');
         if (m.menuId) {
           await conn.execute(
-            `UPDATE menus SET name=?,cat=?,price=?,stock=?,child=?,img_url=?,icon=?,menu_desc=?,count=?,updated_at=? WHERE id=?`,
-            [m.name, m.cat||'기타', m.price||0, m.stock||0, m.child?1:0, m.imgUrl||'', m.icon||'', m.desc||'', m.count||0, m.updatedAt||0, m.menuId]
+            `UPDATE menus SET name=?,cat=?,cat_id=?,price=?,stock=?,child=?,img_url=?,icon=?,menu_desc=?,count=?,updated_at=? WHERE id=?`,
+            [m.name, m.cat||'기타', catId, m.price||0, m.stock||0, m.child?1:0, m.imgUrl||'', m.icon||'', m.desc||'', m.count||0, m.updatedAt||0, m.menuId]
           );
           // rename 전파: 연결된 daily_menus의 비정규화 name도 갱신(옛 이름 잔존·중복 방지)
           await conn.execute(
@@ -309,12 +310,12 @@ app.post('/api/menu/all', requireAdmin, async (req, res) => {
           );
         } else {
           await conn.execute(
-            `INSERT INTO menus (name,cat,price,stock,child,img_url,icon,menu_desc,count,updated_at)
-             VALUES (?,?,?,?,?,?,?,?,?,?)
-             ON DUPLICATE KEY UPDATE cat=VALUES(cat),price=VALUES(price),stock=VALUES(stock),
+            `INSERT INTO menus (name,cat,cat_id,price,stock,child,img_url,icon,menu_desc,count,updated_at)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?)
+             ON DUPLICATE KEY UPDATE cat=VALUES(cat),cat_id=VALUES(cat_id),price=VALUES(price),stock=VALUES(stock),
                child=VALUES(child),img_url=VALUES(img_url),icon=VALUES(icon),menu_desc=VALUES(menu_desc),
                count=VALUES(count),updated_at=VALUES(updated_at)`,
-            [m.name, m.cat||'기타', m.price||0, m.stock||0, m.child?1:0, m.imgUrl||'', m.icon||'', m.desc||'', m.count||0, m.updatedAt||0]
+            [m.name, m.cat||'기타', catId, m.price||0, m.stock||0, m.child?1:0, m.imgUrl||'', m.icon||'', m.desc||'', m.count||0, m.updatedAt||0]
           );
         }
       }
@@ -481,22 +482,23 @@ app.post('/api/menu/daily', requireAdmin, async (req, res) => {
 
       await conn.execute('DELETE FROM daily_menus WHERE date=?', [date]);
       for (const m of byDate[date]) {
+        const catId = await _resolveCatId(conn, m.cat || '기타');
         // 마스터 갱신 → menu_id 확보. menuId 있으면 id 기준 UPDATE(rename 포함), 없으면 신규 INSERT
         let menuId = m.menuId || null;
         if (menuId) {
           // menu_desc는 master 전용 — 일일 저장이 덮어쓰지 않음(정합성 보호)
           await conn.execute(
-            `UPDATE menus SET name=?,cat=?,price=?,child=?,img_url=?,updated_at=? WHERE id=?`,
-            [m.name, m.cat||'기타', m.price||0, m.child?1:0, m.imgUrl||'', m.updatedAt||Date.now(), menuId]
+            `UPDATE menus SET name=?,cat=?,cat_id=?,price=?,child=?,img_url=?,updated_at=? WHERE id=?`,
+            [m.name, m.cat||'기타', catId, m.price||0, m.child?1:0, m.imgUrl||'', m.updatedAt||Date.now(), menuId]
           );
         } else {
           // 신규행만 desc 초기값 적용. 기존행(중복키) menu_desc는 보호(덮어쓰지 않음)
           await conn.execute(
-            `INSERT INTO menus (name,cat,price,child,img_url,menu_desc,updated_at)
-             VALUES (?,?,?,?,?,?,?)
-             ON DUPLICATE KEY UPDATE cat=VALUES(cat),price=VALUES(price),child=VALUES(child),
+            `INSERT INTO menus (name,cat,cat_id,price,child,img_url,menu_desc,updated_at)
+             VALUES (?,?,?,?,?,?,?,?)
+             ON DUPLICATE KEY UPDATE cat=VALUES(cat),cat_id=VALUES(cat_id),price=VALUES(price),child=VALUES(child),
                img_url=VALUES(img_url),updated_at=VALUES(updated_at)`,
-            [m.name, m.cat||'기타', m.price||0, m.child?1:0, m.imgUrl||'', m.desc||'', m.updatedAt||Date.now()]
+            [m.name, m.cat||'기타', catId, m.price||0, m.child?1:0, m.imgUrl||'', m.desc||'', m.updatedAt||Date.now()]
           );
           // 이름만으로 찾으면 같은 이름의 다른 카테고리(예: 부대찌개 메인/밀키트)에 잘못 연결된다.
           // 바로 위 INSERT가 (이름,카테고리)로 넣었으므로 같은 조건으로 찾는다.
@@ -505,8 +507,8 @@ app.post('/api/menu/daily', requireAdmin, async (req, res) => {
         }
         // 일자별: menu_id + 폴백용 기존 컬럼 동시 저장
         await conn.execute(
-          'INSERT INTO daily_menus (date,menu_id,name,cat,price,stock,child) VALUES (?,?,?,?,?,?,?)',
-          [date, menuId, m.name, m.cat||'기타', m.price||0, resolveStock(m, menuId), m.child?1:0]
+          'INSERT INTO daily_menus (date,menu_id,name,cat,cat_id,price,stock,child) VALUES (?,?,?,?,?,?,?,?)',
+          [date, menuId, m.name, m.cat||'기타', catId, m.price||0, resolveStock(m, menuId), m.child?1:0]
         );
       }
     }
@@ -1110,7 +1112,9 @@ app.delete('/api/customers-master/:id', requireAdmin, async (req, res) => {
 
 // 고객 화면이 실제로 쓰는 설정 키만 공개. 그 외(gasUrl·adminPhone·deliveryPhone 등)는
 // 관리자 토큰이 있을 때만 내려준다 — 문자 발송 주소와 연락처가 새어나가지 않도록.
-const PUBLIC_SETTING_KEYS = ['banks', 'reserveEvent', 'categories'];
+// categories 는 별도 취급(아래) — settings 테이블이 아니라 categories 테이블이 원본이고,
+// 고객 화면도 색상이 필요하므로 인증 여부와 무관하게 항상 공개한다.
+const PUBLIC_SETTING_KEYS = ['banks', 'reserveEvent'];
 
 // 설정 로드 (GET /api/settings)
 app.get('/api/settings', async (req, res) => {
@@ -1122,6 +1126,8 @@ app.get('/api/settings', async (req, res) => {
       if (!isAdmin && !PUBLIC_SETTING_KEYS.includes(r.k)) return;
       try { data[r.k] = JSON.parse(r.v); } catch { data[r.k] = r.v; }
     });
+    const [cats] = await pool.execute('SELECT id,name,color FROM categories ORDER BY sort_order,id');
+    data.categories = cats;
     ok(res, { data });
   } catch(e) { err(res, e.message); }
 });
@@ -1132,7 +1138,11 @@ app.post('/api/settings', requireAdmin, async (req, res) => {
     const data = req.body.data || req.body;
     const conn = await pool.getConnection();
     await conn.beginTransaction();
+    let blockedCategories = [];
     for (const [k, v] of Object.entries(data)) {
+      // 카테고리는 id 기반 전용 로직으로 — 일반 키-값 저장(JSON 통째로 덮어쓰기)을 타면
+      // 이름 변경이 기존 메뉴에 전파되지 않아 옛 이름이 계속 남는 문제가 재발한다.
+      if (k === 'categories') { blockedCategories = await _saveCategories(conn, v); continue; }
       const val = typeof v === 'object' ? JSON.stringify(v) : String(v);
       await conn.execute(
         'INSERT INTO settings (k,v) VALUES (?,?) ON DUPLICATE KEY UPDATE v=?',
@@ -1141,7 +1151,7 @@ app.post('/api/settings', requireAdmin, async (req, res) => {
     }
     await conn.commit();
     conn.release();
-    ok(res);
+    ok(res, blockedCategories.length ? { blockedCategories } : {});
   } catch(e) { err(res, e.message); }
 });
 
@@ -1188,6 +1198,16 @@ async function initDB() {
       count INT DEFAULT 0,
       updated_at BIGINT DEFAULT 0,
       UNIQUE KEY uq_name_cat (name, cat)
+    )`,
+    // 카테고리 진짜 원본 — 이름이 아니라 id로 참조한다. menu_id/daily_menus 관계와 같은 방식.
+    // menus.cat / daily_menus.cat 은 화면 렌더용 비정규화 캐시로 남겨두고, 이름이 바뀌면 카테고리
+    // 저장 시(POST /api/settings) 그 캐시도 함께 갱신한다 — 메뉴 이름 rename 전파와 같은 패턴.
+    `CREATE TABLE IF NOT EXISTS categories (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      name VARCHAR(50) NOT NULL UNIQUE,
+      color VARCHAR(20) DEFAULT '#888780',
+      sort_order INT DEFAULT 0,
+      created_at DATETIME DEFAULT NOW()
     )`,
     `CREATE TABLE IF NOT EXISTS orders (
       id VARCHAR(100) PRIMARY KEY,
@@ -1237,10 +1257,121 @@ async function initDB() {
   const conn = await pool.getConnection();
   try {
     for (const sql of sqls) await conn.execute(sql);
+    // ADD COLUMN IF NOT EXISTS 는 MySQL 8.0.29 이상에서만 지원되어 버전을 확신할 수 없다.
+    // information_schema로 존재 여부를 직접 확인하는 방식은 모든 버전에서 동작한다.
+    await _ensureColumn(conn, 'menus', 'cat_id', 'cat_id INT NULL');
+    await _ensureColumn(conn, 'daily_menus', 'cat_id', 'cat_id INT NULL');
     console.log('DB 테이블 초기화 완료');
+    await _migrateCategoriesToTable(conn);
   } finally {
     conn.release();
   }
+}
+
+async function _ensureColumn(conn, table, column, ddl) {
+  const [[row]] = await conn.execute(
+    'SELECT COUNT(*) AS n FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name=? AND column_name=?',
+    [table, column]
+  );
+  if (row.n > 0) return;
+  await conn.execute(`ALTER TABLE ${table} ADD COLUMN ${ddl}`);
+}
+
+// 카테고리를 이름 기반(settings.categories JSON / menus.cat 문자열)에서 id 기반(categories 테이블)으로
+// 옮기는 1회성 마이그레이션. 서버 기동마다 실행되지만 완료 표시(settings.categoriesMigratedV1)로
+// 두 번째부터는 곧바로 빠져나간다 — 기존 menu_id 도입 때와 같은 방식.
+async function _migrateCategoriesToTable(conn) {
+  const [[flag]] = await conn.execute("SELECT v FROM settings WHERE k='categoriesMigratedV1'");
+  if (flag) return;
+
+  // 1) 시드 — 예전 settings.categories(JSON)에 있던 값이 있으면 그걸, 없으면 기본 7개
+  const [[oldRow]] = await conn.execute("SELECT v FROM settings WHERE k='categories'");
+  let seed = [];
+  if (oldRow) { try { seed = JSON.parse(oldRow.v); } catch(e) {} }
+  if (!Array.isArray(seed) || !seed.length) {
+    seed = [
+      { name: '메인', color: '#1D9E75' }, { name: '한우', color: '#C0392B' },
+      { name: '한돈', color: '#8E44AD' }, { name: '반찬', color: '#378ADD' },
+      { name: '김치', color: '#D4537E' }, { name: '밀키트', color: '#E9A826' },
+      { name: '기타', color: '#888780' }
+    ];
+  }
+  for (const c of seed) {
+    if (!c || !c.name) continue;
+    await conn.execute('INSERT IGNORE INTO categories (name,color) VALUES (?,?)', [c.name, c.color || '#888780']);
+  }
+  // 2) 이미 메뉴에 쓰이고 있는데 목록엔 없던 카테고리명도 빠짐없이 만든다(고아 방지)
+  const [orphans] = await conn.execute(
+    `SELECT DISTINCT cat FROM (
+       SELECT cat FROM menus WHERE cat IS NOT NULL AND cat<>''
+       UNION SELECT cat FROM daily_menus WHERE cat IS NOT NULL AND cat<>''
+     ) x WHERE cat NOT IN (SELECT name FROM categories)`
+  );
+  for (const o of orphans) {
+    await conn.execute('INSERT IGNORE INTO categories (name,color) VALUES (?,?)', [o.cat, '#888780']);
+  }
+  // 3) 이름으로 매칭해 cat_id 백필 (이후로는 id가 원본, cat 문자열은 캐시)
+  await conn.execute('UPDATE menus m JOIN categories c ON c.name=m.cat SET m.cat_id=c.id WHERE m.cat_id IS NULL');
+  await conn.execute('UPDATE daily_menus d JOIN categories c ON c.name=d.cat SET d.cat_id=c.id WHERE d.cat_id IS NULL');
+  // 4) 예전 JSON 원본은 정리 — 이제 GET /api/settings 는 categories 테이블만 본다
+  await conn.execute("DELETE FROM settings WHERE k='categories'");
+  await conn.execute("INSERT INTO settings (k,v) VALUES ('categoriesMigratedV1','1') ON DUPLICATE KEY UPDATE v='1'");
+  console.log('카테고리 id 기반 마이그레이션 완료');
+}
+
+// 카테고리명으로 id를 찾고, 없으면 만든다(카톡 파싱 등 자유 입력으로 새 카테고리명이 들어오는 경우 대비)
+async function _resolveCatId(conn, name) {
+  const n = (name || '').trim() || '기타';
+  const [[row]] = await conn.execute('SELECT id FROM categories WHERE name=?', [n]);
+  if (row) return row.id;
+  const [ins] = await conn.execute('INSERT INTO categories (name,color) VALUES (?,?)', [n, '#888780']);
+  return ins.insertId;
+}
+
+// 카테고리 목록 저장 — id가 있으면 그 행을 수정(이름이 바뀌면 메뉴들의 cat 캐시도 함께 갱신),
+// id가 없으면(신규 추가) 이름으로 기존 행을 찾아 재사용하거나 새로 만든다.
+// 목록에서 빠진 기존 카테고리는, 메뉴가 참조 중이면 삭제하지 않고 남겨둔다(마스터 메뉴 삭제와 같은 보호 정책).
+async function _saveCategories(conn, list) {
+  if (!Array.isArray(list)) return [];
+  const [existingRows] = await conn.execute('SELECT id,name,color FROM categories');
+  const existingById = {}; existingRows.forEach(r => { existingById[r.id] = r; });
+  const seenIds = new Set();
+  let order = 0;
+  for (const c of list) {
+    const name = ((c && c.name) || '').trim();
+    if (!name) { order++; continue; }
+    const color = (c && c.color) || '#888780';
+    if (c && c.id && existingById[c.id]) {
+      seenIds.add(c.id);
+      const prev = existingById[c.id];
+      await conn.execute('UPDATE categories SET name=?,color=?,sort_order=? WHERE id=?', [name, color, order, c.id]);
+      if (prev.name !== name) {
+        await conn.execute('UPDATE menus SET cat=? WHERE cat_id=?', [name, c.id]);
+        await conn.execute('UPDATE daily_menus SET cat=? WHERE cat_id=?', [name, c.id]);
+      }
+    } else {
+      const [[byName]] = await conn.execute('SELECT id FROM categories WHERE name=?', [name]);
+      if (byName) {
+        seenIds.add(byName.id);
+        await conn.execute('UPDATE categories SET color=?,sort_order=? WHERE id=?', [color, order, byName.id]);
+      } else {
+        const [ins] = await conn.execute('INSERT INTO categories (name,color,sort_order) VALUES (?,?,?)', [name, color, order]);
+        seenIds.add(ins.insertId);
+      }
+    }
+    order++;
+  }
+  const blocked = [];
+  for (const row of existingRows) {
+    if (seenIds.has(row.id)) continue;
+    const [[used]] = await conn.execute(
+      'SELECT (SELECT COUNT(*) FROM menus WHERE cat_id=?)+(SELECT COUNT(*) FROM daily_menus WHERE cat_id=?) AS n',
+      [row.id, row.id]
+    );
+    if (used && used.n > 0) { blocked.push({ id: row.id, name: row.name }); continue; }
+    await conn.execute('DELETE FROM categories WHERE id=?', [row.id]);
+  }
+  return blocked;
 }
 
 

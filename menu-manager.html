@@ -836,12 +836,14 @@ var DEFAULT_CATS=[
 // _cats 는 서버 응답이 오기 전까지 쓰는 메모리상의 임시값(기본 카테고리) — 새로고침마다 서버에서 다시 받는다.
 var _cats=DEFAULT_CATS.map(function(c){return {name:c.name,color:c.color};});
 function getCats(){return _cats;}
+// cb(ok, blocked) — blocked: 삭제하려 했지만 아직 메뉴가 참조 중이라 서버가 지우지 않은 카테고리 목록.
+// 토스트는 여기서 띄우지 않는다 — 배경 마이그레이션(_migrateLegacyCats)에서도 이 함수를 쓰는데
+// 페이지 여는 순간 "저장 실패" 알림이 뜨면 사용자가 아무것도 안 했는데 놀라게 된다.
 function setCats(cats,cb){
   _cats=cats;
   apiPost('/api/settings',{categories:cats},function(err,d){
     var ok=!err&&d&&d.success!==false;
-    if(!ok)showToast('⚠️ 카테고리 저장 실패 — 다시 시도해주세요.');
-    if(cb)cb(ok);
+    if(cb)cb(ok,(d&&d.blockedCategories)||[]);
   });
 }
 // 예전 버전에서 이 기기의 localStorage에만 남아있던 카테고리를 서버로 1회 옮긴다(값 보존).
@@ -3341,7 +3343,9 @@ function clearReserveEvent(){
 var _editingCats=null;
 function renderCatSettings(){
   var cats=getCats();
-  _editingCats=cats.map(function(c){return {name:c.name,color:c.color};});
+  // id를 함께 들고 있어야 서버가 "이름만 바뀐 같은 카테고리"로 인식해 기존 메뉴에도 rename을 전파한다.
+  // id 없이 보내면 새 카테고리로 취급되어, 옛 이름을 쓰던 메뉴들이 어느 탭에도 안 뜨게 된다.
+  _editingCats=cats.map(function(c){return {id:c.id,name:c.name,color:c.color};});
   _renderCatRows();
 }
 function _renderCatRows(){
@@ -3354,16 +3358,21 @@ function _renderCatRows(){
   }).join('');
 }
 function addNewCat(){
-  if(!_editingCats)_editingCats=getCats().map(function(c){return {name:c.name,color:c.color};});
-  _editingCats.push({name:'새 카테고리',color:'#888888'});
+  if(!_editingCats)_editingCats=getCats().map(function(c){return {id:c.id,name:c.name,color:c.color};});
+  _editingCats.push({name:'새 카테고리',color:'#888888'});   // id 없음 = 저장 시 신규 생성
   _renderCatRows();
 }
 function removeCatRow(i){_editingCats.splice(i,1);_renderCatRows();}
 function saveCatSettings(){
   if(!_editingCats)return;
   var cats=_editingCats.filter(function(c){return c.name;});
-  setCats(cats,function(ok){
-    if(!ok)return;   // 실패 시 화면은 이미 새 값으로 그려졌지만 서버엔 안 남았다 — 알림만 하고 그대로 둠(재시도 유도)
+  setCats(cats,function(ok,blocked){
+    if(!ok){showToast('⚠️ 카테고리 저장 실패 — 다시 시도해주세요.');return;}
+    if(blocked&&blocked.length){
+      // 삭제하려던 카테고리를 아직 쓰는 메뉴가 있어 서버가 지우지 않고 남겨둔 경우
+      showToast('⚠️ "'+blocked.map(function(b){return b.name;}).join(', ')+'"은(는) 아직 메뉴가 쓰고 있어 삭제하지 않았어요.');
+      loadCatsFromServer(function(){_buildCatMaps();renderCatSettings();});   // 목록을 서버 상태로 되돌려 보여줌
+    }
     var el=document.getElementById('settingSaved5');el.style.display='block';
     setTimeout(function(){el.style.display='none';},2000);
   });
