@@ -3070,18 +3070,13 @@ var ADMIN_API_TOKEN=ONBAN_ADMIN_KEY;
     });
   };
 })();
-var SETTINGS_KEY='onban_settings';
-var BANKS_KEY='onban_banks';
-
-var ADMIN_KEY='onban_admin';
-function getSettings(){
-  var def={stock:0, smsEnabled:true, alimtalkEnabled:true};
-  return Object.assign(def,JSON.parse(localStorage.getItem(SETTINGS_KEY)||'{}'));
-}
-function getAdminInfo(){
-  var def={phone:'',email:'',deliveryPhone:''};
-  return Object.assign(def,JSON.parse(localStorage.getItem(ADMIN_KEY)||'{}'));
-}
+// 설정·계좌·관리자정보 원본은 서버뿐 — localStorage에 저장하지 않는다(2026-08-08, 카테고리와 같은 이유).
+// 서버 응답이 오기 전까지 쓰는 기본값이며, loadSettingsFromSheet()가 페이지를 열 때마다 서버 값으로 갈아끼운다.
+var _settings={stock:0, smsEnabled:true, alimtalkEnabled:true};
+var _adminInfo={phone:'',email:'',deliveryPhone:''};
+var _banks=[];
+function getSettings(){return _settings;}
+function getAdminInfo(){return _adminInfo;}
 // ── API POST 유틸 (대용량 데이터용) ──
 function apiPost(path,data,cb){
   var ctrl=new AbortController();
@@ -3120,34 +3115,28 @@ function loadSettingsFromSheet(cb){
   apiFetch('/api/settings',function(err,d){
     if(!err&&d&&d.success&&d.data){
       var data=d.data;
-      var s={stock:Number(data.stock)||0,
+      _settings={stock:Number(data.stock)||0,
              smsEnabled:data.smsEnabled!==false&&data.smsEnabled!=='false',
              alimtalkEnabled:data.alimtalkEnabled!==false&&data.alimtalkEnabled!=='false'};
-      localStorage.setItem(SETTINGS_KEY,JSON.stringify(s));
-      localStorage.setItem(ADMIN_KEY,JSON.stringify({phone:data.phone||'',email:data.email||'',deliveryPhone:data.deliveryPhone||''}));
-      if(data.banks&&Array.isArray(data.banks))localStorage.setItem(BANKS_KEY,JSON.stringify(data.banks));
+      _adminInfo={phone:data.phone||'',email:data.email||'',deliveryPhone:data.deliveryPhone||''};
+      if(data.banks&&Array.isArray(data.banks))_banks=data.banks;
       if(cb)cb(true);
     }else{if(cb)cb(false);}
   });
 }
 
 function saveAdminInfo(){
-  var s={
+  _adminInfo={
     phone:document.getElementById('cfgAdminPhone').value.replace(/[^0-9]/g,''),
     email:document.getElementById('cfgAdminEmail').value.trim(),
     deliveryPhone:document.getElementById('cfgDeliveryPhone').value.replace(/[^0-9]/g,'')
   };
-  localStorage.setItem(ADMIN_KEY,JSON.stringify(s));
   var el=document.getElementById('settingSaved3');el.style.display='block';
   setTimeout(function(){el.style.display='none';},2000);
   syncSettingsToSheet(null);
 }
-function getBanks(){
-  var def=[];
-  var saved=localStorage.getItem(BANKS_KEY);
-  return saved?JSON.parse(saved):def;
-}
-function saveBanks(banks){localStorage.setItem(BANKS_KEY,JSON.stringify(banks));syncSettingsToSheet(null);}
+function getBanks(){return _banks;}
+function saveBanks(banks){_banks=banks;syncSettingsToSheet(null);}
 function getPrimaryBank(){
   var banks=getBanks();
   return banks.find(function(b){return b.primary;})||banks[0]||{name:'',holder:'',account:''};
@@ -3156,7 +3145,6 @@ function getPrimaryBank(){
 function saveSettings(){
   var s=getSettings();
   s.stock=parseInt(document.getElementById('cfgStock').value)||0;
-  localStorage.setItem(SETTINGS_KEY,JSON.stringify(s));
   syncSettingsToSheet(function(){
     var el=document.getElementById('settingSaved');el.style.display='block';
     setTimeout(function(){el.style.display='none';},2000);
@@ -3288,7 +3276,6 @@ function saveSendSettings(which){
   var s=getSettings();
   s.smsEnabled      = document.getElementById('cfgSmsEnabled').checked;
   s.alimtalkEnabled = document.getElementById('cfgAlimtalkEnabled').checked;
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
   syncSettingsToSheet(function(ok){
     // 저장 실패를 성공으로 알리면 안 된다 — 화면만 켜지고 실제로는 꺼진 채로 남는다
     if(!ok){
