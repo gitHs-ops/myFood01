@@ -81,12 +81,6 @@
     <div id="todayStatus" class="today-status" style="display:none;"></div>
     <div class="cat-filter" id="catFilter">
       <button class="cat-btn active" data-cat="전체">전체</button>
-      <button class="cat-btn" data-cat="메인">메인</button>
-      <button class="cat-btn" data-cat="한우">한우</button>
-      <button class="cat-btn" data-cat="한돈">한돈</button>
-      <button class="cat-btn" data-cat="반찬">반찬</button>
-      <button class="cat-btn" data-cat="김치">김치</button>
-      <button class="cat-btn" data-cat="밀키트">밀키트</button>
     </div>
     <div class="search-line">
       <span class="search-all-label">전체 검색</span>
@@ -94,16 +88,17 @@
         <input type="text" id="searchAllInput" placeholder="메뉴명 검색...">
         <span class="search-icon">🔍</span>
       </div>
-      <span class="search-all-label">카테고리내 검색</span>
+      <span class="search-all-label" style="margin-left:24px;">카테고리내 검색</span>
       <div class="search-input-wrap">
         <input type="text" id="searchCatInput" placeholder="메뉴명 검색...">
         <span class="search-icon">🔍</span>
       </div>
-      <span class="result-count" id="resultCount"></span>
     </div>
     <div class="search-box">
       <button class="stat-badge today-btn" id="todayBtn">📅 오늘의 메뉴</button>
       <button class="stat-badge today-btn" id="reserveBtn">📝 예약주문</button>
+      <span class="search-all-label" style="margin-left:8px;">대상건수</span>
+      <span class="result-count" id="resultCount"></span>
     </div>
     <div id="reserveEventCard"></div>
   </header>
@@ -9535,7 +9530,7 @@
     const searchAllInput = document.getElementById('searchAllInput');
     const searchCatInput = document.getElementById('searchCatInput');
     const cards = document.querySelectorAll('.card');
-    const catBtns = document.querySelectorAll('.cat-btn');
+    function getCatBtns() { return document.querySelectorAll('.cat-btn'); }
     let activeCat = '전체';
     function applyFilter() {
       const qAll = searchAllInput.value.trim().toLowerCase();
@@ -9572,20 +9567,22 @@
     }
     searchAllInput.addEventListener('input', applyFilter);
     searchCatInput.addEventListener('input', applyFilter);
-    catBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        catBtns.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        activeCat = btn.dataset.cat;
-        searchCatInput.value = '';
-        if (todayMode) {
-          todayMode = false;
-          todayStatus.style.display = 'none';
-          cards.forEach(c => { c.style.opacity = ''; const b = c.querySelector('.soldout-badge'); if (b) b.remove(); });
-        }
-        reserveMode = false;
-        applyFilter();
-      });
+    // 카테고리 버튼은 서버에서 동적으로 추가되므로, 개별 바인딩 대신 상위 컨테이너에
+    // 이벤트 위임으로 한 번만 등록 — 나중에 추가되는 버튼에도 자동으로 적용됨
+    document.getElementById('catFilter').addEventListener('click', (e) => {
+      const btn = e.target.closest('.cat-btn');
+      if (!btn) return;
+      getCatBtns().forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeCat = btn.dataset.cat;
+      searchCatInput.value = '';
+      if (todayMode) {
+        todayMode = false;
+        todayStatus.style.display = 'none';
+        cards.forEach(c => { c.style.opacity = ''; const b = c.querySelector('.soldout-badge'); if (b) b.remove(); });
+      }
+      reserveMode = false;
+      applyFilter();
     });
 
     const modalOverlay = document.getElementById('modalOverlay');
@@ -9674,8 +9671,8 @@
         if (b) b.remove();
       });
       activeCat = '전체';
-      catBtns.forEach(b => b.classList.remove('active'));
-      catBtns[0].classList.add('active');
+      getCatBtns().forEach(b => b.classList.remove('active'));
+      getCatBtns()[0].classList.add('active');
       applyFilter();
     }
 
@@ -9749,6 +9746,26 @@
         .catch(() => {});
     }
     loadReserveEventCard();
+
+    // 카테고리 탭 — 하드코딩 대신 서버 categories 테이블에서 동적으로 불러와 렌더링
+    function loadCategoriesFromServer() {
+      fetch(API_URL + '/api/settings', { cache: 'no-store' })
+        .then(r => r.json())
+        .then(d => {
+          var cats = (d && d.success && d.data && d.data.categories) || [];
+          if (!cats.length) return;
+          cats.forEach(function (c) {
+            var btn = document.createElement('button');
+            btn.className = 'cat-btn';
+            btn.dataset.cat = c.name;
+            btn.textContent = c.name;
+            catFilter.appendChild(btn);
+          });
+        })
+        .catch(() => {});
+    }
+    loadCategoriesFromServer();
+
     applyFilter();
   </script>
 </body>
