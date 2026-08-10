@@ -889,7 +889,14 @@ function loadMenus(silent,cb){
   if(!silent)document.getElementById('dateBannerText').textContent='📅 '+label+' 오늘의 메뉴 불러오는 중...';
 
   fetch(API_URL+'/api/menu/'+iso,{cache:'no-store'})
-    .then(function(r){if(!r.ok)throw new Error('no menu');return r.json();})
+    .then(function(r){
+      // 404 = 관리자가 오늘 메뉴를 전부 삭제한 정상 상태 — 네트워크 오류와 다르게 항상 화면에 반영해야 한다.
+      // 예전엔 이것도 catch로 떨어져 silent(자동 새로고침)일 때 무시돼, 전체 삭제 후에도
+      // 고객 화면에 옛 메뉴가 계속 남아 있는 문제가 있었다(2026-08-08 발견).
+      if(r.status===404)return {menus:[]};
+      if(!r.ok)throw new Error('HTTP '+r.status);
+      return r.json();
+    })
     .then(function(d){
       allMenus=[];
       (d.menus||[]).forEach(function(m,i){
@@ -897,14 +904,14 @@ function loadMenus(silent,cb){
           price:Number(m.price)||0,stock:Number(m.stock)||0,
           child:!!m.child,imgUrl:m.imgUrl||null,icon:m.icon||null,desc:''});
       });
-      document.getElementById('dateBannerText').textContent='📅 '+label+' 오늘의 메뉴';
+      document.getElementById('dateBannerText').textContent='📅 '+label+(allMenus.length?' 오늘의 메뉴':' 준비 중입니다');
       renderCatTabs();renderMenuGrid();
       if(cb)cb();
     })
     .catch(function(){
+      // 네트워크 오류 등 진짜 실패일 때만 silent 가드 — 일시적 통신 장애로 화면을 비우지 않기 위함
       if(!silent){
-        document.getElementById('dateBannerText').textContent='📅 '+label+' 준비 중입니다';
-        allMenus=[];renderCatTabs();renderMenuGrid();
+        document.getElementById('dateBannerText').textContent='📅 '+label+' 불러오기 실패';
       }
       if(cb)cb();
     });
@@ -1631,7 +1638,14 @@ function closeAddrList(e){
 function verifyStock(onResult){
   var iso=toISO(new Date());
   fetch(API_URL+'/api/menu/'+iso,{cache:'no-store'})
-    .then(function(r){if(!r.ok)throw new Error('no menu');return r.json();})
+    .then(function(r){
+      // 404 = 관리자가 오늘 메뉴를 전부 삭제한 상태 — 장바구니에 남은 항목은 전부 품절로 취급해야 한다.
+      // 예전엔 이것도 catch로 떨어져 "이상 없음"으로 통과시켰다(서버가 최종 저지는 하지만,
+      // 그러면 고객은 "재고 부족"이라는 부정확한 사유로 주문이 막힌다).
+      if(r.status===404)return {menus:[]};
+      if(!r.ok)throw new Error('HTTP '+r.status);
+      return r.json();
+    })
     .then(function(d){
       var stockByName={},stockById={};
       (d.menus||[]).forEach(function(m){
