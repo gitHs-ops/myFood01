@@ -2826,6 +2826,7 @@ function deliverOrder(id){
 
 var _genericConfirmCb=null;
 function showConfirm(msg,onYes,yesLabel){
+  if(_menuPollTimer){clearInterval(_menuPollTimer);_menuPollTimer=null;}  // 확인창 열린 동안 menus[] id 재생성 방지
   document.getElementById('genericConfirmMsg').textContent=msg;
   document.getElementById('genericConfirmYesBtn').textContent=yesLabel||'네';
   _genericConfirmCb=onYes;
@@ -2834,6 +2835,7 @@ function showConfirm(msg,onYes,yesLabel){
 function closeGenericConfirm(){
   document.getElementById('genericConfirmOverlay').classList.remove('open');
   _genericConfirmCb=null;
+  if(workDate)_startMenuSSE(workDate);  // 확인창 닫히면 폴링 재개
 }
 function _genericConfirmYes(){
   var cb=_genericConfirmCb;
