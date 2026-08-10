@@ -25,6 +25,7 @@
   .today-btn.active { background:#fff; color:#086266; border-color:#fff; }
   .today-status { max-width:600px; margin:12px auto 0; text-align:center; color:#fff; font-size:13px; opacity:0.9; }
   .soldout-badge { position:absolute; top:8px; left:8px; background:rgba(0,0,0,0.65); color:#fff; font-size:11px; font-weight:700; padding:3px 8px; border-radius:8px; }
+  .card-number { position:absolute; top:8px; right:8px; background:rgba(0,0,0,0.55); color:#fff; font-size:11px; font-weight:700; padding:3px 8px; border-radius:8px; pointer-events:none; }
   .search-box { max-width:1200px; margin:14px auto 0; display:flex; gap:8px; align-items:center; justify-content:flex-start; }
   .search-input-wrap { position:relative; flex:0 1 130px; min-width:0; }
   .search-input-wrap input { width:100%; padding:6px 38px 6px 16px; border-radius:4px; border:none; font-family:'Pretendard',sans-serif; font-size:14px; outline:none; box-sizing:border-box; }
@@ -9553,7 +9554,16 @@
           show = matchCat && matchToday;
         }
         c.style.display = show ? '' : 'none';
-        if (show) visibleCount++;
+        if (show) {
+          visibleCount++;
+          let numEl = c.querySelector('.card-number');
+          if (!numEl) {
+            numEl = document.createElement('span');
+            numEl.className = 'card-number';
+            c.querySelector('.thumb').appendChild(numEl);
+          }
+          numEl.textContent = visibleCount;
+        }
       });
       document.getElementById('emptyState').style.display = visibleCount ? 'none' : '';
       document.getElementById('resultCount').textContent = visibleCount + '개';
