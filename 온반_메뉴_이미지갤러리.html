@@ -15,6 +15,7 @@
   .header-top { display:flex; align-items:center; justify-content:space-between; gap:12px; text-align:left; flex-wrap:wrap; }
   .header-title { display:flex; align-items:center; gap:10px; }
   .header-logo { height:40px; mix-blend-mode:lighten; flex-shrink:0; cursor:pointer; }
+  .header-page-label { font-size:15px; font-weight:700; color:rgba(255,255,255,0.85); white-space:nowrap; }
   .header-list-link { display:inline-flex; align-items:center; gap:6px; padding:8px 16px; background:rgba(255,255,255,0.18); border:1px solid rgba(255,255,255,0.4); border-radius:20px; font-size:13px; font-weight:700; color:#fff; text-decoration:none; white-space:nowrap; backdrop-filter:blur(4px); transition:background .15s; }
   .header-list-link:hover { background:rgba(255,255,255,0.3); }
   .stats { display:inline-flex; gap:10px; margin-top:14px; flex-wrap:wrap; justify-content:center; }
@@ -72,6 +73,7 @@
     <div class="header-top">
       <div class="header-title">
         <img src="온반_로고.png" alt="온반" class="header-logo" title="첫 페이지로 가기" onclick="window.location.href='index.html'">
+        <span class="header-page-label">메뉴 갤러리</span>
       </div>
       <a href="onban01.html" class="header-list-link">📋 일일메뉴 목록으로 가기</a>
     </div>

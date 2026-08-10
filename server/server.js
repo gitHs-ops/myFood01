@@ -280,7 +280,7 @@ app.get('/api/events', (req, res) => {
 
 // ── 헬스체크 ────────────────────────────────────────────────
 // build 표식 — 설정을 바꾸기 전에 배포가 실제로 반영됐는지 확인하는 용도
-app.get('/health', (req, res) => res.json({ ok: true, build: 'gallery-cat-override-2' }));
+app.get('/health', (req, res) => res.json({ ok: true, build: 'gallery-header-label-1' }));
 
 // ══════════════════════════════════════════════════════════════
 // 메뉴 창고 (등록된모든메뉴)
