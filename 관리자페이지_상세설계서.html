@@ -359,17 +359,18 @@ var ONBAN_ADMIN_KEY = '········';
 
 <table>
   <tr><th>상태 변경 함수</th><th>API 호출</th><th>서버 사이드 효과</th></tr>
-  <tr><td><code>confirmOrder(id)</code></td><td>PUT /api/orders/:id/status {status:'confirmed'}</td><td>고객 알림톡(배송업체 요청) + 배송업체 SMS 발송</td></tr>
-  <tr><td><code>deliverOrder(id)</code></td><td>PUT /api/orders/:id/status {status:'delivered'}</td><td>고객 알림톡(배달완료) 발송</td></tr>
-  <tr><td><code>cancelOrder(id)</code></td><td>PUT /api/orders/:id/status {status:'cancelled'}</td><td>재고 복원 + 고객 알림톡(취소) 발송</td></tr>
+  <tr><td><code>confirmOrder(id)</code></td><td>PUT /api/orders/:id/status {status:'confirmed'}</td><td>확인창("입금을 확인하셨나요?") 통과 후 반영. 고객 알림톡·배송업체 SMS는 <strong>기본 비활성</strong>(<code>notifyEvents</code>에 <code>confirmed</code> 추가 시에만 알림톡 발송)</td></tr>
+  <tr><td><code>deliverOrder(id)</code></td><td>PUT /api/orders/:id/status {status:'delivered'}</td><td>고객 알림톡(배달완료) 발송 — 기본 활성화된 유일한 고객 알림톡</td></tr>
+  <tr><td><code>cancelOrder(id)</code></td><td>PUT /api/orders/:id/status {status:'cancelled'}</td><td>재고 복원. 고객 알림톡은 <strong>기본 비활성</strong>. 관리자가 취소한 경우는 답변 필드에 기록만 되고 문자는 안 감(고객이 직접 취소했을 때만 업주에게 SMS)</td></tr>
 </table>
+<div class="note">📌 위 표의 "기본 비활성" 항목은 <code>settings.notifyEvents</code> 배열(기본값 <code>["delivered"]</code>)에 해당 시점을 추가하면 켤 수 있다. 자세한 내용은 10절 참고.</div>
 
 <h3>5.9 주문 상세 팝업 (<code>openAdminOrderDetail(id)</code>)</h3>
 <p>클릭 시 <code>_ordersCache[id]</code>에서 데이터를 읽어 <code>admOrderDetailContent</code>를 렌더링한다. 별도 API 조회 없음.</p>
 <table>
   <tr><th>섹션</th><th>표시 내용</th></tr>
   <tr><td>주문자 정보</td><td>이름 · 전화번호 · 배송주소 · 배송방법 · 주문일시</td></tr>
-  <tr><td>메뉴 목록</td><td>메뉴명 · 수량 · 단가 · 소계. 재주문 여부 뱃지</td></tr>
+  <tr><td>메뉴 목록</td><td>메뉴명 · 수량 · 단가 · 소계</td></tr>
   <tr><td>합계</td><td>메뉴 합계 + 배달비(있는 경우)</td></tr>
   <tr><td>추가 요청사항</td><td>텍스트 + [확인 완료] 버튼 (<code>PUT /api/orders/:id/addreq-ack</code>). 고객이 입력한 원문 그대로 표시(예약 판별용 접두 문구 없음)</td></tr>
   <tr><td>예약 날짜 배지</td><td><code>reserveDate</code>가 있으면 "📅 예약 날짜: YYYY-MM-DD" 배지를 헤더 하단에 표시. 목록 행에도 동일 정보를 담은 소형 배지(<code>_reserveDateBadge</code>) 표시</td></tr>
@@ -385,7 +386,7 @@ var ONBAN_ADMIN_KEY = '········';
   <li>텍스트에어리어 값을 읽어 줄바꿈을 <code>&lt;br&gt;</code>로 변환</li>
   <li><code>PUT /api/orders/:id/reply {text}</code> 호출</li>
   <li>서버: admin_reply 저장 + reply_at 갱신 + broadcast('order_reply')</li>
-  <li>서버: GAS를 통해 고객 알림톡 발송 (템플릿: <code>KA01TP260529154902220c1zr7XODUTj</code>)</li>
+  <li>서버: <code>notifyEvents</code>에 <code>reply</code>가 포함돼 있을 때만 GAS를 통해 고객 알림톡 발송(템플릿: <code>KA01TP260529154902220c1zr7XODUTj</code>) — <strong>기본 설정에는 빠져 있어 평소엔 발송되지 않는다</strong></li>
   <li>동시에 <code>PUT /api/orders/:id/addreq-ack</code> 자동 처리 (답변 = 추가요청 확인 간주)</li>
 </ol>
 </div>
@@ -402,10 +403,10 @@ var ONBAN_ADMIN_KEY = '········';
   <tr><th>사용처</th><th>판별 함수/조건</th></tr>
   <tr><td>주문접수 버튼 라벨("✅ 예약 주문 접수" vs "✅ 주문 접수")</td><td><code>_isReserveOrder(order)</code></td></tr>
   <tr><td>예약주문 필터·통계·상태 라벨(예약주문 / 주문접수 등)</td><td><code>_isReserveOrder(o)</code></td></tr>
-  <tr><td>배송완료 버튼 활성 조건, 재주문 시 예약 승계</td><td><code>order.reserveDate</code> 값 직접 참조</td></tr>
+  <tr><td>배송완료 버튼 활성 조건</td><td><code>order.reserveDate</code> 값 직접 참조</td></tr>
 </table>
 <p><strong>✅ 주문 접수</strong> 처리 시 <code>confirmOrder()</code>가 <code>PUT /api/orders/:id/status {status:'confirmed'}</code>를 호출하며, 서버는 <code>status==='confirmed' && reserve_date 존재</code> 조건에서 <code>date</code> 컬럼을 <code>reserve_date</code> 값으로 갱신한다(이전 상태 값과 무관하게 동작).</p>
-<div class="warn">⚠ 예약주문은 신청/접수/배송완료 전 과정에서 <strong>재고 차감·복원·검증 로직을 모두 우회</strong>한다(reserve_date 존재 여부만으로 스킵, 8.x 참고).</div>
+<div class="warn">⚠ 예약주문은 신청/접수/배송완료 전 과정에서 <strong>재고 차감·복원·검증 로직을 모두 우회</strong>한다(reserve_date 존재 여부만으로 스킵).</div>
 
 <hr>
 
@@ -468,19 +469,22 @@ var ONBAN_ADMIN_KEY = '········';
 </div>
 
 <h3>5.14 설정 항목 상세</h3>
+<div class="warn">⚠ 2026-08-08 정리: 이 화면의 재고·계좌·관리자정보·카테고리는 예전엔 localStorage에도 캐시돼 있었으나(<code>onban_settings</code>/<code>onban_banks</code>/<code>onban_admin</code>/<code>onban_categories</code>), 전부 제거하고 <strong>서버가 유일한 원본</strong>이 되도록 정리했다. 페이지를 열 때마다 서버에서 다시 받아 메모리 변수(<code>_settings</code>/<code>_adminInfo</code>/<code>_banks</code>/<code>_cats</code>)에 담는다. 아래 표의 저장 키 이름도 실제 코드 기준으로 바로잡았다(문서에는 <code>adminPhone</code>/<code>adminEmail</code>/<code>defaultStock</code>로 적혀 있었으나 실제 전송 키는 <code>phone</code>/<code>email</code>/<code>stock</code>이다).</div>
 <table>
   <tr><th>섹션</th><th>저장 키</th><th>저장 위치</th><th>함수</th></tr>
-  <tr><td>초기 재고량</td><td><code>defaultStock</code></td><td>DB settings + localStorage</td><td><code>saveSettings()</code></td></tr>
-  <tr><td>계좌 정보 (복수)</td><td><code>banks</code> (JSON 배열)</td><td>DB settings + localStorage</td><td><code>addBank / editBank / deleteBank / setPrimaryBank</code></td></tr>
-  <tr><td>관리자 연락처</td><td><code>adminPhone</code></td><td>DB settings + localStorage</td><td><code>saveAdminInfo()</code></td></tr>
-  <tr><td>관리자 이메일</td><td><code>adminEmail</code></td><td>DB settings + localStorage</td><td><code>saveAdminInfo()</code></td></tr>
-  <tr><td>배송업체 연락처</td><td><code>deliveryPhone</code></td><td>DB settings + localStorage</td><td><code>saveAdminInfo()</code></td></tr>
-  <tr><td>GAS URL</td><td><code>gasUrl</code></td><td>DB settings</td><td><code>saveSendSettings()</code></td></tr>
-  <tr><td>SMS 발송 ON/OFF</td><td><code>smsEnabled</code></td><td>DB settings</td><td><code>saveSendSettings()</code></td></tr>
-  <tr><td>알림톡 발송 ON/OFF</td><td><code>alimtalkEnabled</code></td><td>DB settings</td><td><code>saveSendSettings()</code></td></tr>
-  <tr><td>카테고리 목록</td><td><code>categories</code></td><td>DB settings + localStorage</td><td><code>saveCatSettings()</code></td></tr>
-  <tr><td>예약 이벤트</td><td><code>reserveEvent</code> ({name,desc,price,deadline})</td><td>DB settings만(localStorage 미사용)</td><td><code>saveReserveEvent() / loadReserveEventForm() / clearReserveEvent()</code></td></tr>
+  <tr><td>초기 재고량</td><td><code>stock</code></td><td>DB settings</td><td><code>saveSettings()</code></td></tr>
+  <tr><td>계좌 정보 (복수)</td><td><code>banks</code> (JSON 배열)</td><td>DB settings</td><td><code>addBank / editBank / deleteBank / setPrimaryBank</code></td></tr>
+  <tr><td>관리자 연락처</td><td><code>phone</code> (서버는 구버전 호환으로 <code>adminPhone</code>도 함께 인정)</td><td>DB settings</td><td><code>saveAdminInfo()</code></td></tr>
+  <tr><td>관리자 이메일</td><td><code>email</code></td><td>DB settings</td><td><code>saveAdminInfo()</code></td></tr>
+  <tr><td>배송업체 연락처</td><td><code>deliveryPhone</code></td><td>DB settings</td><td><code>saveAdminInfo()</code></td></tr>
+  <tr><td>GAS URL</td><td><code>gasUrl</code></td><td>DB settings</td><td>(설정 화면에 입력란 없음 — 현재는 필요 시 API로 직접 저장)</td></tr>
+  <tr><td>SMS 발송 ON/OFF</td><td><code>smsEnabled</code></td><td>DB settings</td><td><code>saveSendSettings('sms')</code> — 토글 즉시 저장</td></tr>
+  <tr><td>알림톡 발송 ON/OFF</td><td><code>alimtalkEnabled</code></td><td>DB settings</td><td><code>saveSendSettings('alimtalk')</code> — 토글 즉시 저장</td></tr>
+  <tr><td>고객 알림톡 발송 시점</td><td><code>notifyEvents</code> (배열, 기본 <code>["delivered"]</code>)</td><td>DB settings</td><td>설정 화면에 편집 UI 없음 — API로 직접 저장. <code>order</code>/<code>confirmed</code>/<code>cancelled</code>/<code>reply</code>/<code>delivered</code> 중 선택</td></tr>
+  <tr><td>카테고리 목록</td><td>전용 <code>categories</code> 테이블(id·name·color) — 더 이상 <code>settings</code> k-v가 아님</td><td>DB categories</td><td><code>saveCatSettings()</code></td></tr>
+  <tr><td>예약 이벤트</td><td><code>reserveEvent</code> ({name,desc,price,deadline})</td><td>DB settings</td><td><code>saveReserveEvent() / loadReserveEventForm() / clearReserveEvent()</code></td></tr>
 </table>
+<div class="note">📌 <code>GET /api/settings</code>는 관리자 토큰이 없으면 <code>banks</code>·<code>reserveEvent</code>·<code>categories</code>만 내려준다(고객 화면이 실제로 쓰는 값). <code>gasUrl</code>·<code>phone</code>·<code>deliveryPhone</code> 등은 토큰이 있어야 보인다 — 2026-08-08 P0 점검에서 이 값들이 인증 없이 전부 노출되던 것을 막았다.</div>
 
 <h4>예약 이벤트 관리</h4>
 <p>고객 화면(오늘의 메뉴·예약주문 페이지)에 노출되는 특별 예약 카드를 설정한다. 다른 설정 항목과 달리 <strong>localStorage 캐시를 쓰지 않고</strong> <code>apiFetch/apiPost</code>로 <code>/api/settings</code>를 직접 읽고 쓴다.</p>
@@ -683,41 +687,52 @@ return '기타';</code></pre>
 <!-- ═══════════ 10 ═══════════ -->
 <h2 id="s10">10. 알림 발송 구조</h2>
 
-<h3>10.1 설계 원칙 (2026-06-30 개선 완료)</h3>
-<p>모든 GAS 호출이 <strong>서버(<code>server.js</code>)</strong>로 이전됨. 클라이언트는 알림 로직이 없으며 API 응답만 수신한다.</p>
+<h3>10.1 설계 원칙</h3>
+<p>모든 GAS 호출이 <strong>서버(<code>server.js</code>)</strong>에서만 이뤄진다. 클라이언트는 알림 로직이 없으며 API 응답만 수신한다.</p>
+<div class="warn">⚠ 2026-08-08 발견·해결: 운영 DB에 <code>gasUrl</code> 값 자체가 없어서 <strong>알림톡·SMS가 한 통도 나가지 않고 있었다.</strong> 저장하는 코드가 프로젝트 어디에도 없었던 게 원인이며, 발송 실패가 기록되지 않아 오래 아무도 몰랐다(10.4절 진단 기록을 만든 뒤에야 원인을 찾았고, 추가로 솔라피 API 키의 IP 제한도 겹쳐 있었다).</div>
+<div class="warn">⚠ 배송업체 관련 문구 정정: <strong>배송업체 SMS는 실제 업무에서 쓰지 않는다.</strong> 코드는 남아 있지만(<code>settings.deliveryPhone</code>이 있을 때만 발송), 운영에서는 이 칸을 비워둔다. 아래 표·다이어그램에서 "배송업체 SMS"로 표기된 항목은 <strong>코드상 가능한 동작</strong>이지 실제 운영 동작이 아니다.</div>
 
 <div class="arch">
-관리자 클릭 confirmOrder(id)
+관리자 클릭 confirmOrder(id) — 입금 확인 확인창 통과 후
   → PUT /api/orders/:id/status {status:'confirmed'}
   → 서버: DB 갱신 + broadcast + ok(res)
   → 서버 백그라운드: _notifyStatus(id, 'confirmed')
-      → _getNotifySettings() // gasUrl, smsEnabled, alimtalkEnabled, deliveryPhone
-      → pool.execute(SELECT phone,name,items,... FROM orders WHERE id=?)
-      → _alimtalk(phone, 'KA01TP260522043220298Ev0vb3LtcjG', ...)  // 고객
-      → _sms(deliveryPhone, '배송 요청 / ...')                     // 배송업체
+      → _getNotifySettings() // gasUrl, phone, adminPhone, deliveryPhone, smsEnabled, alimtalkEnabled, notifyEvents
+      → _notifyAllowed(ns, 'confirmed') 가 true일 때만 ↓ (기본 설정에선 false)
+          → _alimtalk(phone, 'KA01TP260522043220298Ev0vb3LtcjG', ...)   // 고객
+      → deliveryPhone 이 설정돼 있을 때만 ↓ (실제 운영에선 비워둠)
+          → _sms(deliveryPhone, '배송 요청 / ...')                      // 배송업체
 </div>
 
 <h3>10.2 트리거별 알림 매핑</h3>
 <table>
-  <tr><th>트리거</th><th>클라이언트 API 호출</th><th>서버 발송 함수</th><th>수신자</th><th>알림톡 템플릿 ID</th></tr>
-  <tr><td>신규 주문 접수</td><td>POST /api/orders</td><td><code>_notifyOrder(order, false)</code></td><td>고객 알림톡</td><td>KA01TP260522043036061jyoL3rs2iVT</td></tr>
-  <tr><td>신규 주문 접수</td><td>POST /api/orders</td><td><code>_notifyOrder(order, false)</code></td><td>관리자 SMS</td><td>—</td></tr>
-  <tr><td>재주문 접수</td><td>POST /api/orders</td><td><code>_notifyOrder(order, true)</code></td><td>고객 알림톡</td><td>KA01TP260522215451814ICITJ2ltD6g</td></tr>
-  <tr><td>재주문 접수</td><td>POST /api/orders</td><td><code>_notifyOrder(order, true)</code></td><td>관리자 SMS</td><td>—</td></tr>
-  <tr><td>주문 확정</td><td>PUT /api/orders/:id/status</td><td><code>_notifyStatus(id, 'confirmed')</code></td><td>고객 알림톡</td><td>KA01TP260522043220298Ev0vb3LtcjG</td></tr>
-  <tr><td>주문 확정</td><td>PUT /api/orders/:id/status</td><td><code>_notifyStatus(id, 'confirmed')</code></td><td>배송업체 SMS</td><td>—</td></tr>
-  <tr><td>배달 완료</td><td>PUT /api/orders/:id/status</td><td><code>_notifyStatus(id, 'delivered')</code></td><td>고객 알림톡</td><td>KA01TP260522043333235AUBreysEIxj</td></tr>
-  <tr><td>주문 취소</td><td>PUT /api/orders/:id/status</td><td><code>_notifyStatus(id, 'cancelled')</code></td><td>고객 알림톡</td><td>KA01TP2605220434459714HrsH0pRr0l</td></tr>
-  <tr><td>관리자 답변</td><td>PUT /api/orders/:id/reply</td><td>인라인 async 블록</td><td>고객 알림톡</td><td>KA01TP260529154902220c1zr7XODUTj</td></tr>
+  <tr><th>트리거</th><th>클라이언트 API 호출</th><th>서버 발송 함수</th><th>수신자</th><th>기본 활성?</th></tr>
+  <tr><td>신규 주문 접수</td><td>POST /api/orders</td><td><code>_notifyOrder(order)</code></td><td>관리자 SMS</td><td>✅ 활성</td></tr>
+  <tr><td>신규 주문 접수</td><td>POST /api/orders</td><td><code>_notifyOrder(order)</code></td><td>고객 알림톡</td><td>비활성 (<code>notifyEvents</code>에 <code>order</code> 필요)</td></tr>
+  <tr><td>주문 접수확정</td><td>PUT /api/orders/:id/status</td><td><code>_notifyStatus(id,'confirmed')</code></td><td>고객 알림톡 / 배송업체 SMS</td><td>비활성 / 번호 있을 때만(실제 미사용)</td></tr>
+  <tr><td><strong>배송완료</strong></td><td>PUT /api/orders/:id/status</td><td><code>_notifyStatus(id,'delivered')</code></td><td>고객 알림톡</td><td><strong>✅ 활성</strong> — 기본으로 나가는 유일한 고객 알림톡</td></tr>
+  <tr><td>주문 취소(관리자)</td><td>PUT /api/orders/:id/status</td><td><code>_notifyStatus(id,'cancelled')</code></td><td>고객 알림톡</td><td>비활성</td></tr>
+  <tr><td>주문 취소(고객 본인)</td><td>PUT /api/orders/:id/status</td><td><code>_notifyOwnerChange(id,'고객 주문취소')</code></td><td>관리자 SMS</td><td>✅ 활성 — 관리자가 취소한 경우는 SMS 안 보냄(본인이 이미 앎)</td></tr>
+  <tr><td>고객이 주문 저장(수량 등 변경)</td><td>PUT /api/orders/:id/items</td><td><code>_appendOrderLog</code> + <code>_notifyOwnerChange(id,'주문변경')</code></td><td>관리자 SMS + <code>admin_reply</code>에 변경 기록</td><td>✅ 활성</td></tr>
+  <tr><td>관리자 답변</td><td>PUT /api/orders/:id/reply</td><td>인라인 async 블록</td><td>고객 알림톡</td><td>비활성 (<code>notifyEvents</code>에 <code>reply</code> 필요)</td></tr>
 </table>
+<div class="note">📌 "기본 활성" 여부는 <code>settings.notifyEvents</code>(배열, 기본값 <code>["delivered"]</code>)와 <code>smsEnabled</code>/<code>alimtalkEnabled</code> 토글의 조합으로 결정된다. 주문 시점에 고객 알림톡을 안 보내는 이유는, 카카오 대화방으로 알림이 가면 고객이 그 자리에서 답장해 시스템 이전의 카톡 주문 방식으로 되돌아가기 때문이다(업주 결정).</div>
 
 <h3>10.3 발송 설정 조회 (<code>_getNotifySettings()</code>)</h3>
 <pre><code>// settings 테이블에서 필요한 키만 조회
 SELECT k, v FROM settings
-WHERE k IN ('gasUrl','smsEnabled','alimtalkEnabled','adminPhone','deliveryPhone')
-// 결과를 {gasUrl, smsEnabled, alimtalkEnabled, adminPhone, deliveryPhone} 객체로 변환</code></pre>
+WHERE k IN ('gasUrl','smsEnabled','alimtalkEnabled','adminPhone','phone','deliveryPhone','notifyEvents')
+// 결과를 {gasUrl, smsEnabled, alimtalkEnabled, adminPhone, phone, deliveryPhone, notifyEvents} 객체로 변환</code></pre>
+<div class="note">📌 <code>adminPhone</code>과 <code>phone</code>을 둘 다 조회하는 이유: 관리자 화면은 <code>phone</code> 키로 저장하는데 서버는 원래 <code>adminPhone</code>만 읽고 있어 업주 SMS가 영원히 안 갔을 결함이 있었다(2026-08-08 발견·수정). <code>const ownerPhone = ns.adminPhone || ns.phone</code>로 둘 다 인정하도록 고쳤다.</div>
 
-<div class="tip">💡 알림 발송은 모두 fire-and-forget (비동기 IIFE). 발송 실패가 주문 처리 응답에 영향을 주지 않는다.</div>
+<h3>10.4 발송 결과 기록 (진단용)</h3>
+<p>발송은 fire-and-forget(비동기 IIFE)이라 실패해도 API 응답에 영향을 주지 않는다. 대신 결과를 <code>settings</code> 테이블 두 키에 매번 덮어쓴다 — "왜 문자가 안 오는지"를 코드 재배포 없이 바로 확인하기 위한 장치(2026-08-08 신설, 알림 전면 미발송 사고를 계기로 만듦).</p>
+<table>
+  <tr><th>키</th><th>내용</th></tr>
+  <tr><td><code>lastNotify</code></td><td>가장 최근 GAS 호출 결과 — 성공 시 HTTP 상태·응답 본문(앞 300자), 실패 시 에러 메시지, 아예 시도하지 않았으면 건너뛴 이유(번호 없음/<code>gasUrl</code> 없음/토글 꺼짐)</td></tr>
+  <tr><td><code>lastNotifyTrigger</code></td><td>어떤 주문의 어떤 상태 변경에서 시도했는지와, 그 시점의 판단값(<code>gasUrl</code> 존재 여부·토글 상태·<code>notifyEvents</code>·최종 허용 여부)</td></tr>
+</table>
+<div class="note">📌 두 키 모두 전화번호는 뒤 4자리만 남기며(<code>_mask()</code>), 관리자 토큰 없이는 조회되지 않는다(설정 API의 인증 규칙을 그대로 따름).</div>
 
 <hr>
 
@@ -870,7 +885,7 @@ var _pollTimer = setInterval(function(){
   <text x="490" y="183" text-anchor="middle" font-size="10" fill="#086266">SELECT phone,name,items FROM orders</text>
   <line x1="568" y1="208" x2="412" y2="208" stroke="#555" stroke-width="1" stroke-dasharray="3" marker-end="url(#b)"/>
   <line x1="410" y1="228" x2="698" y2="228" stroke="#E9A826" stroke-width="1.5" marker-end="url(#b)"/>
-  <text x="555" y="223" text-anchor="middle" font-size="10" fill="#888">알림톡(고객) + SMS(배송업체)</text>
+  <text x="555" y="223" text-anchor="middle" font-size="10" fill="#888">알림톡(고객, 기본 비활성) — 배송업체 SMS는 실제 미사용</text>
 </svg>
 </div>
 <p class="dgm-cap">파란 실선 = 동기 호출 / 점선 = 응답 / 노란 실선 = fire-and-forget 비동기</p>
@@ -1258,7 +1273,7 @@ var _pollTimer = setInterval(function(){
   <rect x="567" y="140" width="118" height="16" rx="3" fill="#48cae4"/><text x="626" y="152" text-anchor="middle" fill="#0c1414" font-size="8.5">order_request / order_memo</text>
 
   <!-- ── GAS 알림 노드 ── -->
-  <rect x="567" y="245" width="118" height="16" rx="3" fill="#922b21"/><text x="626" y="257" text-anchor="middle" fill="#fff" font-size="8.5">_notifyOrder() — 신규·재주문</text>
+  <rect x="567" y="245" width="118" height="16" rx="3" fill="#922b21"/><text x="626" y="257" text-anchor="middle" fill="#fff" font-size="8.5">_notifyOrder() — 신규주문</text>
   <rect x="567" y="267" width="118" height="16" rx="3" fill="#922b21"/><text x="626" y="279" text-anchor="middle" fill="#fff" font-size="8.5">_notifyStatus() — 확정·완료·취소</text>
   <rect x="567" y="289" width="118" height="16" rx="3" fill="#922b21"/><text x="626" y="301" text-anchor="middle" fill="#fff" font-size="8.5">_alimtalk() — 관리자답변</text>
   <rect x="567" y="311" width="118" height="16" rx="3" fill="#666"/><text x="626" y="323" text-anchor="middle" fill="#fff" font-size="8.5">_getNotifySettings(settings)</text>

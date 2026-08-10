@@ -140,7 +140,7 @@
          ▼
    ┌─────────────── MySQL ───────────────┐         ┌────── Google Apps Script ──────┐
    │ daily_menus · menus · orders         │         │ SMS(솔라피) / 카카오 알림톡 발송  │
-   │ customers_master · settings · log    │  ◀──────│  (고객 접수/취소/재주문 알림)     │
+   │ customers_master · settings · log    │  ◀──────│  (고객 배송완료 알림 · 관리자 SMS) │
    └──────────────────────────────────────┘         └────────────────────────────────┘</div>
 
 <h3>2.2 레이어 책임</h3>
@@ -166,7 +166,7 @@
   <tr><td>호스팅</td><td>Railway (<code>https://myfood01-production.up.railway.app</code>), <code>Procfile</code> 기동</td></tr>
   <tr><td>정적 서빙</td><td><code>express.static(repo 루트)</code> — HTML/이미지 파일 직접 서빙</td></tr>
   <tr><td>외부 연동</td><td>Google Apps Script Web App (SMS 프록시 / 카카오 알림톡)</td></tr>
-  <tr><td>클라이언트 저장</td><td>localStorage (device_id, orders 캐시, 카테고리 색상, 관리자 연락처)</td></tr>
+  <tr><td>클라이언트 저장</td><td>localStorage는 <code>onban_device_id</code>(기기 식별)와 <code>orders</code>(주문내역 캐시) 두 키뿐. 설정·계좌·관리자연락처·카테고리는 전부 서버가 원본이며 로컬에 저장하지 않는다(2026-08-08 정리)</td></tr>
 </table>
 
 <div class="note">📌 <strong>API_URL 상수</strong>: 프론트엔드는 <code>var API_URL='https://myfood01-production.up.railway.app'</code> 로 고정된 백엔드를 호출한다. 서버 포트는 <code>process.env.PORT || 3000</code>.</div>
@@ -189,7 +189,7 @@
   <tr><td><code>page-history</code></td><td>주문 내역</td><td><code>goPage('history')</code></td><td><code>renderHistory()</code></td></tr>
 </table>
 
-<div class="warn">⚠ <strong>전환 가드</strong>: 주문내역에서 항목(수량·삭제)을 편집한 뒤 재주문 미처리 상태로 다른 페이지로 이동하면 <code>goPage()</code>가 <code>confirm()</code>으로 경고하고, 강행 시 <code>_revertPendingItemEdits()</code>로 원본을 복원한다 (목적지가 history/payment인 경우는 예외).</div>
+<div class="warn">⚠ <strong>주문상세 팝업 닫기 가드</strong>: 주문내역 상세 팝업에서 수량·배송방법을 편집한 뒤 저장하지 않고 닫으려 하면 <code>_closeOrderDetailGuarded()</code>가 공용 확인창을 띄운다 — <strong>저장하고 닫기</strong> 또는 <strong>되돌리고 닫기</strong>(<code>_revertHistOrder()</code>가 서버 값으로 다시 채움) 중 선택. <code>goPage()</code> 자체에는 페이지 전환 가드가 없다 — 가드는 오직 이 팝업의 닫기 동작(닫기 버튼·바깥 클릭)에만 걸린다.</div>
 
 <h3>4.2 상단 헤더 (공통)</h3>
 <p>검은색 sticky 헤더(<code>.top-bar</code>)에 로고·슬로건과 4개 네비 버튼이 위치한다.</p>
@@ -256,8 +256,8 @@
   <li>오늘자 "phantom 주문"(DB에 없는 로컬 전용 항목) 제거 — 예약일자 보유 항목은 date가 오늘이 아니므로 이 제거 대상에서 자연히 제외됨.</li>
   <li>목록 표시 필터: <code>o.date===menuDate || !!o.reserveDate</code> — 오늘자 주문뿐 아니라 예약일자가 미래로 바뀐 접수완료 예약주문/예약이벤트도 함께 표시.</li>
   <li>상태 뱃지: pending(대기중)·confirmed(주문접수)·delivered(배송완료)·cancelled(취소됨). 예약주문은 별도 status 값을 쓰지 않고 <strong>일반 주문과 동일한 상태 흐름</strong>을 따르며, <code>reserveDate</code>(예약일자)가 존재하는지만으로 판별해 타임스탬프 뒤에 빨간색 "예약주문 (MM/DD)" 라벨을 추가로 표시.</li>
-  <li>항목 클릭 → <code>openOrderDetail(id)</code> 상세 팝업(<code>_buildOrderCard</code>): 수량편집·삭제·배송방법수정·추가요청·재주문·취소.</li>
-  <li>재주문 버튼(<code>btn-reorder-</code>)은 진입 시 스냅샷(<code>_snap</code>) 대비 실제 변경분이 없으면 기본 비활성화. 수량·항목·배송방법 변경 시에만 <code>_updateReorderBtnState</code>가 활성화하며, 값을 원복하면 다시 비활성화된다(추가요청 단독 수정은 활성화 대상 아님).</li>
+  <li>항목 클릭 → <code>openOrderDetail(id)</code> 상세 팝업(<code>_buildOrderCard</code>): 수량편집·삭제·배송방법수정·추가요청·저장·취소.</li>
+  <li><strong>저장</strong> 버튼(<code>histSaveItemsNow</code>)은 변경한 내용이 없으면 아무 요청도 보내지 않고 안내만 표시. 변경이 있으면 "변경된 내역으로 재주문하여도 괜찮아요?" 확인창을 띄우고, <strong>네</strong>를 눌러야 <code>PUT /api/orders/:id/items</code>로 반영되며 이때 한 번만 업주에게 변경 문자가 나간다(<code>_histDirty</code> 플래그로 저장 전까지는 화면에만 반영, 2026-08-08 재구현 — 예전엔 수량을 누를 때마다 자동 저장·자동 발송되어 문자가 남발됐음).</li>
 </ul>
 
 <h3>4.9 예약주문 페이지 (<code>goPage('reserve')</code>)</h3>
@@ -296,15 +296,14 @@
   <tr><td><code>_deliveryFee</code></td><td>Number</td><td>배달료(0 또는 1천원)</td></tr>
   <tr><td><code>lastOrderTotal</code></td><td>Number</td><td>결제화면에 표시할 최종 합계</td></tr>
   <tr><td><code>menuDate</code></td><td>String</td><td>오늘 날짜(KST, ISO) — 주문/내역 필터 키</td></tr>
-  <tr><td><code>_pendingItemEdits</code></td><td>Object</td><td>주문내역 항목 미확정 편집 플래그(orderId→true)</td></tr>
-  <tr><td><code>_reorderActiveIds</code></td><td>Object</td><td>재주문 버튼 활성 상태(SSE 재렌더에도 유지)</td></tr>
+  <tr><td><code>_histDirty</code></td><td>Object</td><td>주문내역 항목 미저장 편집 플래그(orderId→true). 저장 성공 또는 되돌리기 시 해당 키 삭제</td></tr>
 </table>
 
 <h3>5.2 localStorage 키</h3>
 <table>
   <tr><th>키</th><th>내용</th></tr>
   <tr><td><code>onban_device_id</code></td><td>UUID v4 디바이스 식별자(<code>_getDeviceId</code>). 최초 1회 생성·영구 보관</td></tr>
-  <tr><td><code>orders</code></td><td>주문 내역 캐시 배열. DB와 동기화되며 항목편집 작업본(<code>_snap</code> 스냅샷 포함)</td></tr>
+  <tr><td><code>orders</code></td><td>주문 내역 캐시 배열. 페이지 진입 시 서버 값으로 동기화되며, 항목 편집 중인 미저장 작업본도 이 배열 안에 함께 보관(저장 또는 되돌리기 전까지)</td></tr>
   <tr><td><code>onban_admin</code></td><td>관리자 연락처(추가 SMS 발송 대상)</td></tr>
 </table>
 <div class="note">💡 카테고리 색상(<code>CAT_COLOR</code> 오버라이드)은 2026-08-08부로 localStorage가 아니라 <code>GET /api/settings</code>의 <code>categories</code> 값에서 받는다(<code>loadCatColorsFromServer()</code>, 페이지 로드 시 호출). 예전엔 이 기기의 localStorage를 읽었는데, 그 값을 쓰는 코드가 관리자 화면(다른 기기)에만 있어 고객에게는 항상 기본색만 보이던 문제가 있었다.</div>
@@ -369,14 +368,14 @@ settings (k-v 설정)                        access_log (접속 로그)
 <table>
   <tr><th>컬럼</th><th>설명</th></tr>
   <tr><td>id</td><td>VARCHAR PK — 클라이언트 생성 <code>'ORD'+Date.now()</code>(일반) / <code>'RSV'+Date.now()</code>(예약주문)</td></tr>
-  <tr><td>time</td><td>VARCHAR — 저장 형식이 생성 경로마다 다름: 일반 주문·재주문은 <code>toLocaleTimeString('ko-KR')</code> 기반 "오후 9:42"(12시간제+한글 오전/오후), 예약주문은 <code>toTimeString()</code> 기반 "21:41:57"(24시간제). 화면 표시 함수(<code>fmtDateTime</code>/<code>fmtDT</code>)가 "오전/오후"·"AM/PM" 표기를 먼저 감지해 24시간제로 정규화한 뒤 재변환하므로 두 형식 모두 정상 표시된다(과거엔 이 정규화가 없어 오후 시간이 AM으로 잘못 표시되는 버그가 있었음).</td></tr>
+  <tr><td>time</td><td>VARCHAR — 저장 형식이 생성 경로마다 다름: 일반 주문은 <code>toLocaleTimeString('ko-KR')</code> 기반 "오후 9:42"(12시간제+한글 오전/오후), 예약주문은 <code>toTimeString()</code> 기반 "21:41:57"(24시간제). 화면 표시 함수(<code>fmtDateTime</code>/<code>fmtDT</code>)가 "오전/오후"·"AM/PM" 표기를 먼저 감지해 24시간제로 정규화한 뒤 재변환하므로 두 형식 모두 정상 표시된다(과거엔 이 정규화가 없어 오후 시간이 AM으로 잘못 표시되는 버그가 있었음).</td></tr>
   <tr><td>items</td><td>JSON — <code>[{menuId,name,qty,price}]</code></td></tr>
   <tr><td>status</td><td>pending / confirmed / delivered / cancelled — 예약주문도 <strong>동일한 값만 사용</strong>(전용 상태 없음), <code>reserve_date</code> 유무로만 예약 여부를 구분</td></tr>
   <tr><td>reserve_date</td><td>DATE NULL — 예약주문 전용 배송 희망일(오늘+1~7일). 접수(confirmed) 처리 시 <code>date</code> 컬럼이 이 값으로 갱신됨. 확정 이후에도 컬럼 자체는 유지되어 "이 주문이 예약 기원인지" 판별에 계속 사용됨</td></tr>
   <tr><td>memo</td><td>배송방법(레거시 ' / ' 인라인 노트는 마이그레이션으로 분리)</td></tr>
   <tr><td>additional_request / addreq_acked</td><td>고객 추가요청 원문 / 관리자 확인 플래그. 예약주문 여부와 무관하게 사용자가 입력한 텍스트만 저장(예약 판별용 접두 문구를 넣지 않음)</td></tr>
-  <tr><td>admin_reply / reply_at</td><td>관리자 답변 / 답변 시각(DATETIME). 답변 저장 시 줄바꿈은 <code>&lt;br&gt;</code> 마크업 문자열로 저장(줄바꿈 문자 아님)</td></tr>
-  <tr><td>is_reorder</td><td>재주문 여부</td></tr>
+  <tr><td>admin_reply / reply_at</td><td>관리자 답변 / 답변 시각(DATETIME). 답변 저장 시 줄바꿈은 <code>&lt;br&gt;</code> 마크업 문자열로 저장(줄바꿈 문자 아님). 2026-08-08부터 고객이 주문을 <strong>저장</strong>하거나 <strong>취소</strong>할 때 <code>[YYYY-MM-DD HH:MM] 변경내역</code> 형식의 로그가 이 필드에 자동으로 이어붙는다(<code>_appendOrderLog</code>) — 관리자 답변과 변경 이력이 같은 필드에 시각순으로 누적됨</td></tr>
+  <tr><td>is_reorder</td><td>레거시 컬럼. 재주문 기능이 프런트엔드에서 완전히 제거되어 이 값을 <code>true</code>로 보내는 코드가 더 이상 없음 — 항상 0으로 저장됨</td></tr>
   <tr><td>device_id</td><td>주문 디바이스(내역 조회 키)</td></tr>
   <tr><td>created_at</td><td>DATETIME — 실제 주문 생성 시각. <code>date</code>는 접수 시 예약일로 덮어써지므로, 화면에 "실제 신청 시각"을 표시할 땐 API 응답의 <code>createdDate</code>(created_at 기반)를 사용</td></tr>
 </table>
@@ -453,23 +452,28 @@ settings (k-v 설정)                        access_log (접속 로그)
 COMMIT → broadcast('order_new')</code></pre>
 <div class="warn">⚠ 클라이언트도 주문 확정 직전 <code>verifyStock()</code>로 1차 확인하지만, <strong>최종 정합성은 서버 트랜잭션이 보장</strong>한다(이중 방어). 클라이언트 검사 통과 후 서버에서 품절 시 <code>_notifyOutOfStock()</code>로 안내.</p></div>
 
-<h3>8.2 주문 취소 ↔ 재주문의 재고 정합성</h3>
+<h3>8.2 주문 상태 전이의 재고 정합성</h3>
 <table>
   <tr><th>전이</th><th>재고 처리</th></tr>
   <tr><td>active(pending/confirmed/delivered) → cancelled</td><td>재고 <strong>복원</strong> (stock + qty)</td></tr>
   <tr><td>cancelled → active</td><td>재고 <strong>재차감</strong> (GREATEST(stock - qty, 0))</td></tr>
 </table>
-<p>재주문(<code>reorder</code>)은 "기존 주문 취소 → 신규 주문 생성" 순서로 처리한다. 신규 주문이 재고부족으로 실패하면 localStorage에서 신규·원본을 제거하고 <strong>원본 상태를 서버에서 복원</strong>한 뒤 품절 모달을 띄운다. 편집 스냅샷(<code>_snap</code>)으로 취소된 원본은 최초 주문 내용으로 되돌린다.</p>
+<div class="note">📌 예약주문(<code>reserve_date</code> 보유)은 이 표의 재고 연산을 전부 건너뛴다 — 8.6절 참고.</div>
 
 <h3>8.3 배달료·최소주문 정책</h3>
 <ul>
   <li>배달료는 <strong>품목 합계 ≥ 20천원(2만원)</strong>이고 매장픽업이 아닐 때만 <strong>+1천원</strong>.</li>
-  <li><strong>2만원 미만 주문은 매장픽업만 허용</strong> — 주문 확정·재주문·내역 배송방법 변경 모든 지점에서 강제(<code>_updateDeliveryFee</code>, <code>histMemoSelChange</code>, <code>_updateHistTotal</code>).</li>
+  <li><strong>2만원 미만 주문은 매장픽업만 허용</strong> — 주문 확정·내역 배송방법 변경 모든 지점에서 강제(<code>_updateDeliveryFee</code>, <code>histMemoSelChange</code>, <code>_updateHistTotal</code>).</li>
   <li>내역에서 항목 삭제로 2만원 미만이 되면 배송방법을 매장픽업으로 자동 전환 + 경고.</li>
 </ul>
 
-<h3>8.4 주문내역 항목 편집의 "미확정" 모델</h3>
-<p>주문내역에서 수량·삭제 편집은 즉시 DB에 반영하지 않고 <code>_pendingItemEdits</code> 플래그로 <strong>작업본</strong>만 변경한다. 편집 시작 시 <code>_snapOrig()</code>로 원본을 <code>_snap</code>에 스냅샷. <strong>재주문 처리해야 확정</strong>되며, 미확정 상태로 이탈/닫기/새로고침하면 <code>_revert*</code> 함수가 원본으로 복원한다(물리 반영 방지).</p>
+<h3>8.4 주문내역 항목 편집의 "저장 확정" 모델</h3>
+<p>주문내역에서 수량 변경·항목 삭제·배송방법 변경은 <strong>화면(로컬 배열)에만 즉시 반영</strong>되고, 서버에는 <strong>저장</strong> 버튼을 눌러야 반영된다(<code>_histDirty[orderId]=true</code>로 편집 시작을 표시). 이렇게 바뀐 이유는 예전 구현이 수량 버튼을 누를 때마다 0.4초 디바운스 후 자동으로 <code>PUT /:id/items</code>를 호출했기 때문이다 — 여기에 업주 알림 문자를 붙이자 <strong>수량을 한 번 누를 때마다 문자가 나가는 문제</strong>가 드러나 2026-08-08에 저장-확정 모델로 재구현했다.</p>
+<ul>
+  <li><strong>저장</strong>(<code>histSaveItemsNow</code>): <code>_histDirty</code>가 없으면(변경 없음) 아무 요청도 보내지 않음. 있으면 확인창 → 확인 시 <code>PUT /api/orders/:id/items</code>로 서버가 재고·합계를 재계산해 반영, 성공 시 <code>_histDirty</code> 삭제.</li>
+  <li><strong>저장하지 않고 닫기</strong>: <code>_closeOrderDetailGuarded()</code>가 "저장하고 닫기" / "되돌리고 닫기" 확인창을 띄운다. 되돌리기는 <code>_revertHistOrder()</code>가 서버에서 그 주문을 다시 조회해 로컬 배열을 덮어쓰는 방식 — 스냅샷을 따로 들고 있지 않고 항상 서버가 원본이다.</li>
+  <li>주문을 취소하면 <code>_histDirty</code> 플래그도 함께 제거되어, 취소된 주문을 다시 열어도 엉뚱한 확인창이 뜨지 않는다.</li>
+</ul>
 
 <h3>8.5 메뉴 자동 갱신</h3>
 <p><code>_startMenuAutoRefresh()</code>가 1초 인터벌로 카운트다운하여, 메뉴 목록이 활성이고 모달이 닫혀있고 탭이 보일 때 10초마다 <code>loadMenus(true)</code> 재조회. 사용자 활동(click/scroll/key/touch)이 있으면 카운트를 리셋(<code>_markMenuActivity</code>).</p>
@@ -478,10 +482,7 @@ COMMIT → broadcast('order_new')</code></pre>
 <p>예약주문은 <strong>배송 희망일이 미래</strong>이므로, 재고 검증 대상에서 완전히 제외된다. 예약주문 여부는 <strong>오직 <code>reserve_date</code> 컬럼이 NULL이 아닌지</strong>로만 판별하며, status 값이나 추가요청 텍스트는 판별에 전혀 관여하지 않는다(과거엔 status==='예약주문' / additionalRequest 텍스트 매칭도 병행했으나, 신호가 여러 개라 혼란을 유발해 <code>reserve_date</code> 단일 기준으로 정리함).</p>
 <div class="tip">💡 <code>reserve_date</code>는 접수(confirmed) 이후에도, 심지어 배송완료·취소 이후에도 컬럼값이 유지되므로, 주문의 생애주기 전체에서 예약 기원 판별이 흔들리지 않는다.</div>
 
-<h3>8.7 예약주문의 재주문(reorder) 승계</h3>
-<p>예약주문 원본을 재주문하면, <code>reorder()</code>는 <code>!!order.reserveDate</code>만으로 예약 기원을 판별해 새 주문에도 <code>reserveDate</code>를 그대로 승계한다. 단, 새 주문의 <code>status</code>는 예약 여부와 무관하게 <strong>항상 일반 주문과 동일하게 <code>'pending'</code></strong>으로 생성된다 — 예약주문 전용 status는 존재하지 않으며, 처리 흐름(대기중→주문접수→배송완료) 자체가 일반 주문과 완전히 동일하다. <code>reserveDate</code>는 <code>renderHistory()</code>의 서버 동기화 단계에서 로컬 캐시에도 반영되어, SSE 재렌더 이후에도 판별이 깨지지 않는다.</p>
-
-<h3>8.8 예약 이벤트 날짜 범위·중복 신청 방지</h3>
+<h3>8.7 예약 이벤트 날짜 범위·중복 신청 방지</h3>
 <ul>
   <li><strong>날짜 범위</strong>: <code>_reserveSel['EVENT']</code>가 선택된 상태로 <code>openReservePopup()</code>이 호출되면 <code>_reserveDateMin=이벤트 deadline</code>, <code>_reserveDateMax=deadline+7일</code>로 재계산된다. 일반 예약주문(오늘+1~7일)과 달리 이벤트의 예약 가능일은 <strong>기한일 이후 1주일</strong>로 별도 규칙을 따른다.</li>
   <li><strong>중복 방지</strong>: <code>POST /api/orders</code>에서 <code>items</code>에 <code>menuId==='EVENT'</code> 항목이 있으면, 같은 <code>phone</code>+같은 <code>reserve_date</code>로 <code>status!='cancelled'</code>인 기존 이벤트 주문이 있는지 조회한다(항목의 <code>menuId</code>를 JS에서 JSON 파싱 후 비교). 발견되면 INSERT 이전에 <code>409</code>로 거부 — 같은 고객이 같은 이벤트를 같은 날짜로 중복 신청하는 것을 막는다. 다른 날짜거나 일반 메뉴 예약은 이 검사 대상이 아니다.</li>
@@ -509,11 +510,24 @@ COMMIT → broadcast('order_new')</code></pre>
 <!-- ════════════════ 10 ════════════════ -->
 <h2 id="s10">10. 외부 시스템 연동</h2>
 <h3>10.1 SMS / 카카오 알림톡</h3>
-<p>Google Apps Script Web App을 프록시로 사용한다(<code>gasUrl</code>은 서버 DB <code>settings</code>에만 저장, 서버 코드에서만 조회 — 프론트엔드에 노출되지 않음). 발송 토글(<code>smsEnabled/alimtalkEnabled</code>)은 <code>/api/settings</code>에서 로드하여 ON일 때만 발송.</p>
+<p>Google Apps Script Web App을 프록시로 사용한다(<code>gasUrl</code>은 서버 DB <code>settings</code>에만 저장, 서버 코드에서만 조회 — 프론트엔드에 노출되지 않음).</p>
+<div class="warn">⚠ 2026-08-08 발견·해결: 실제 운영 DB에 <code>gasUrl</code> 값 자체가 없어서 알림톡·SMS가 <strong>한 통도 발송되지 않고 있었다</strong>. 저장하는 코드가 프로젝트 어디에도 없었고, 발송 실패가 기록되지 않아 오랫동안 아무도 몰랐다. <code>settings.lastNotify</code>(발송 결과·실패 사유)·<code>lastNotifyTrigger</code>(어떤 주문의 어떤 상태에서 시도했는지)를 새로 기록하도록 만든 뒤에야 원인(주소 누락 + 솔라피 API 키의 IP 제한)을 찾아 해결했다.</div>
 <table>
-  <tr><th>함수</th><th>용도</th><th>대상</th></tr>
-  <tr><td><code>_sms(phone,msg,url,ns)</code></td><td>SMS(GAS 경유)</td><td>관리자 새주문/재주문 알림 — 수신 번호는 DB <code>settings.adminPhone</code>/<code>deliveryPhone</code>에서 동적 조회(하드코딩 없음)</td></tr>
-  <tr><td><code>_alimtalk(phone,tplId,vars,fallback,url,ns)</code></td><td>카카오 알림톡</td><td>고객 — 주문접수/취소/재주문(템플릿 ID별)</td></tr>
+  <tr><th>시점</th><th>고객 알림톡</th><th>업주 SMS</th></tr>
+  <tr><td>주문 접수</td><td>기본 비활성 (아래 참고)</td><td>발송 — 새 주문 요약</td></tr>
+  <tr><td>접수완료 / 취소(관리자 처리)</td><td>기본 비활성</td><td>—</td></tr>
+  <tr><td><strong>배송완료</strong></td><td><strong>발송</strong></td><td>—</td></tr>
+  <tr><td>고객이 주문 저장(수량 등 변경)</td><td>—(<code>admin_reply</code>에 변경내역 기록으로 대체)</td><td>발송 — 변경 내역 + 현재 주문 상태</td></tr>
+  <tr><td>고객이 주문 취소</td><td>—</td><td>발송</td></tr>
+  <tr><td>배송업체 요청</td><td colspan="2">실제 업무에서 쓰지 않음. <code>settings.deliveryPhone</code>을 비워두면 발송 안 됨(코드는 남아있으나 운영에서 미사용)</td></tr>
+</table>
+<div class="note">📌 <strong>고객 알림톡을 주문 시점에 보내지 않는 이유</strong>: 알림톡은 카카오 채널 대화방에 도착하는데, 고객이 그 자리에서 답장하면 시스템 이전의 "카톡으로 주문받던" 방식으로 되돌아간다. 그래서 거래가 끝난 <strong>배송완료 시점만</strong> 기본 활성화했다. 설정은 <code>settings.notifyEvents</code>(배열, 기본값 <code>["delivered"]</code>)로 제어하며, <code>order</code>/<code>confirmed</code>/<code>cancelled</code>/<code>reply</code>를 추가하면 해당 시점도 함께 발송된다.</div>
+<table>
+  <tr><th>함수</th><th>역할</th></tr>
+  <tr><td><code>_sms(phone,msg,url,ns)</code></td><td>SMS(GAS 경유). <code>smsEnabled</code> 토글로 전체 on/off. 받는 번호가 비어있으면 그 문자만 발송 안 됨(전체를 끄지 않아도 배송업체 번호만 비워 그 문자만 막을 수 있음)</td></tr>
+  <tr><td><code>_alimtalk(phone,tplId,vars,fallback,url,ns)</code></td><td>카카오 알림톡. <code>alimtalkEnabled</code> 토글 + <code>notifyEvents</code> 시점 필터를 모두 통과해야 발송</td></tr>
+  <tr><td><code>_appendOrderLog(orderId,lines)</code></td><td>주문 변경·취소 내역을 <code>admin_reply</code>에 시각과 함께 누적 기록(거래 증명용). 고객 주문내역 화면에도 그대로 보인다</td></tr>
+  <tr><td><code>_notifyOwnerChange(orderId,label,lines)</code></td><td>업주에게 "지금 상태"로 SMS 재발송 — 최초 주문 문자와 실제 주문이 달라져 입금 대조가 안 되는 문제를 막기 위함</td></tr>
 </table>
 <div class="note">📌 <strong>보안 점검 결과(해결됨)</strong>: 과거에는 Apps Script URL·관리자 전화번호·계좌 기본값이 프론트엔드에 하드코딩되어 있었으나, 현재는 모두 서버 DB <code>settings</code> 테이블에서 동적으로 조회하도록 정리되었다. <code>gasUrl</code>·<code>adminPhone</code>·<code>deliveryPhone</code>은 서버 코드(server.js)에서만 다루고 클라이언트에는 응답하지 않으며, 계좌 정보(<code>BANK</code>)는 초기값이 빈 문자열로 항상 <code>/api/settings</code> 조회 결과로 채워진다.</div>
 
@@ -633,8 +647,8 @@ COMMIT → broadcast('order_new')</code></pre>
 </div>
 <div class="dgm-cap">그림 13-1. 신규 주문 생성 시퀀스 (verifyStock → saveOrder → 알림 → 결제)</div>
 
-<h3>13.2 [시퀀스] 재주문 — 취소 후 신규 생성과 재고부족 롤백</h3>
-<p><code>reorder()</code>는 "원본 주문 취소 → 신규 주문 생성" 순서로 처리한다. 신규 생성이 재고부족으로 실패하면 원본 상태를 복원하고 품절 모달을 표시한다(보상 트랜잭션).</p>
+<h3>13.2 [시퀀스] 주문내역 편집 — 저장 확정과 닫기 가드</h3>
+<p>수량·배송방법 변경은 화면에만 반영되고(<code>_histDirty=true</code>), <strong>저장</strong>을 눌러 확인해야 서버에 반영되며 이때만 업주에게 문자가 나간다(2026-08-08 재구현 — 예전엔 수량 버튼을 누를 때마다 자동 저장·자동 발송됐다). 저장하지 않고 닫으면 저장할지 되돌릴지 다시 확인한다.</p>
 <div class="diagram">
 <svg viewBox="0 0 880 470" xmlns="http://www.w3.org/2000/svg" font-family="Malgun Gothic, sans-serif">
   <defs>
@@ -643,7 +657,7 @@ COMMIT → broadcast('order_new')</code></pre>
   </defs>
   <g text-anchor="middle" font-size="11" font-weight="bold">
     <g><rect x="12" y="20" width="110" height="30" rx="6" fill="#086266"/><text x="67" y="40" fill="#fff">고객</text></g>
-    <g><rect x="232" y="20" width="150" height="30" rx="6" fill="#0a7a7f"/><text x="307" y="40" fill="#fff">SPA reorder()</text></g>
+    <g><rect x="212" y="20" width="190" height="30" rx="6" fill="#0a7a7f"/><text x="307" y="40" fill="#fff">SPA 주문상세 편집</text></g>
     <g><rect x="500" y="20" width="130" height="30" rx="6" fill="#378ADD"/><text x="565" y="40" fill="#fff">API server.js</text></g>
     <g><rect x="742" y="20" width="120" height="30" rx="6" fill="#C0392B"/><text x="802" y="40" fill="#fff">MySQL</text></g>
   </g>
@@ -653,41 +667,39 @@ COMMIT → broadcast('order_new')</code></pre>
   </g>
   <g font-size="10.5" fill="#1a1a1a" text-anchor="middle">
     <line x1="67" y1="82" x2="303" y2="82" stroke="#1a4a4a" stroke-width="1.6" marker-end="url(#bh)"/>
-    <text x="185" y="76">① 재주문 클릭 → confirm</text>
-    <!-- snap revert local -->
+    <text x="185" y="76">① 수량/배송방법 변경</text>
     <path d="M307,98 h60 v16 h-56" fill="none" stroke="#1a4a4a" stroke-width="1.4" marker-end="url(#bh)"/>
-    <text x="375" y="97" text-anchor="start">원본 _snap 복원 · status=cancelled(로컬)</text>
-    <!-- cancel original -->
-    <line x1="307" y1="140" x2="561" y2="140" stroke="#1a4a4a" stroke-width="1.6" marker-end="url(#bh)"/>
-    <text x="434" y="134">② PUT /orders/:id/status (cancelled)</text>
-    <line x1="565" y1="164" x2="798" y2="164" stroke="#1a4a4a" stroke-width="1.6" marker-end="url(#bh)"/>
-    <text x="682" y="158">재고 복원 (stock+qty)</text>
-    <!-- new order -->
-    <line x1="307" y1="196" x2="561" y2="196" stroke="#1a4a4a" stroke-width="1.6" marker-end="url(#bh)"/>
-    <text x="434" y="190">③ POST /api/orders (신규)</text>
+    <text x="375" y="97" text-anchor="start">화면에만 반영 · _histDirty=true</text>
+    <line x1="67" y1="140" x2="303" y2="140" stroke="#1a4a4a" stroke-width="1.6" marker-end="url(#bh)"/>
+    <text x="185" y="134">② 저장 클릭 → confirm("재주문하여도 괜찮아요?")</text>
+    <line x1="307" y1="172" x2="561" y2="172" stroke="#1a4a4a" stroke-width="1.6" marker-end="url(#bh)"/>
+    <text x="434" y="166">③ 네 → PUT /orders/:id/items</text>
+    <line x1="565" y1="196" x2="798" y2="196" stroke="#1a4a4a" stroke-width="1.6" marker-end="url(#bh)"/>
+    <text x="682" y="190">FOR UPDATE · 증감분만 재고 반영</text>
     <line x1="565" y1="220" x2="798" y2="220" stroke="#1a4a4a" stroke-width="1.6" marker-end="url(#bh)"/>
-    <text x="682" y="214">FOR UPDATE · 재고 차감 시도</text>
-    <!-- branch label -->
-    <rect x="250" y="238" width="600" height="0" />
-    <text x="312" y="252" text-anchor="start" font-weight="bold" fill="#086266">[성공] →</text>
-    <line x1="565" y1="268" x2="311" y2="268" stroke="#777" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#bhd)"/>
-    <text x="438" y="262" fill="#555">{success:true}</text>
-    <path d="M307,284 h60 v16 h-56" fill="none" stroke="#1a4a4a" stroke-width="1.4" marker-end="url(#bh)"/>
-    <text x="375" y="283" text-anchor="start">알림 발송 · goPage('payment')</text>
-    <!-- failure branch -->
-    <text x="312" y="324" text-anchor="start" font-weight="bold" fill="#C0392B">[재고부족] →</text>
-    <line x1="565" y1="340" x2="311" y2="340" stroke="#777" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#bhd)"/>
-    <text x="438" y="334" fill="#555">{success:false, soldOut[]}</text>
-    <line x1="307" y1="368" x2="561" y2="368" stroke="#1a4a4a" stroke-width="1.6" marker-end="url(#bh)"/>
-    <text x="434" y="362">④ PUT status (origStatus 복원)</text>
-    <path d="M307,386 h60 v16 h-56" fill="none" stroke="#1a4a4a" stroke-width="1.4" marker-end="url(#bh)"/>
-    <text x="375" y="385" text-anchor="start">로컬 신규·원본 제거 · showSoldOutModal()</text>
-    <line x1="303" y1="420" x2="71" y2="420" stroke="#777" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#bhd)"/>
-    <text x="185" y="414" fill="#555">품절 모달 표시</text>
+    <text x="682" y="214">items/total UPDATE (서버가 합계 재계산)</text>
+    <line x1="798" y1="244" x2="569" y2="244" stroke="#777" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#bhd)"/>
+    <text x="682" y="238" fill="#555">{success:true, total}</text>
+    <path d="M565,260 h60 v16 h-56" fill="none" stroke="#1a4a4a" stroke-width="1.4" marker-end="url(#bh)"/>
+    <text x="633" y="259" text-anchor="start">(비동기) admin_reply 로그 추가 · 업주 SMS 재발송</text>
+    <line x1="561" y1="292" x2="311" y2="292" stroke="#777" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#bhd)"/>
+    <text x="438" y="286" fill="#555">응답</text>
+    <path d="M307,308 h60 v16 h-56" fill="none" stroke="#1a4a4a" stroke-width="1.4" marker-end="url(#bh)"/>
+    <text x="375" y="307" text-anchor="start">_histDirty 삭제 · 팝업 닫기</text>
+    <!-- 저장하지 않고 닫기 분기 -->
+    <text x="72" y="345" text-anchor="start" font-weight="bold" fill="#E9A826">[저장 안 하고 닫기] →</text>
+    <line x1="67" y1="360" x2="303" y2="360" stroke="#1a4a4a" stroke-width="1.6" marker-end="url(#bh)"/>
+    <text x="185" y="354">④ 닫기 클릭 → _closeOrderDetailGuarded</text>
+    <path d="M307,376 h60 v16 h-56" fill="none" stroke="#1a4a4a" stroke-width="1.4" marker-end="url(#bh)"/>
+    <text x="375" y="375" text-anchor="start">확인창: 저장하고 닫기 / 되돌리고 닫기</text>
+    <line x1="307" y1="408" x2="561" y2="408" stroke="#1a4a4a" stroke-width="1.6" marker-end="url(#bh)"/>
+    <text x="434" y="402">⑤ (되돌리기 선택 시) GET /orders?deviceId=</text>
+    <line x1="561" y1="432" x2="311" y2="432" stroke="#777" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#bhd)"/>
+    <text x="438" y="426" fill="#555">서버 값(원본)</text>
   </g>
 </svg>
 </div>
-<div class="dgm-cap">그림 13-2. 재주문 시퀀스 — 성공/재고부족 분기와 보상 처리</div>
+<div class="dgm-cap">그림 13-2. 주문내역 편집 시퀀스 — 저장 확정 시에만 서버 반영·문자 발송, 미저장 닫기는 서버 값으로 되돌림</div>
 
 <h3>13.3 [시퀀스] SSE 실시간 동기화</h3>
 <p>관리자가 주문 상태를 바꾸면, 서버가 모든 SSE 연결로 이벤트를 푸시하고 각 고객 클라이언트는 디바운스 후 주문내역을 재렌더한다.</p>
@@ -780,9 +792,9 @@ COMMIT → broadcast('order_new')</code></pre>
   <!-- history pipeline -->
   <g class="nd page"><rect x="700" y="470" width="130" height="28"/><text x="765" y="489">openOrderDetail</text></g>
   <g class="nd util"><rect x="540" y="470" width="130" height="28"/><text x="605" y="489">_buildOrderCard</text></g>
-  <g class="nd util"><rect x="360" y="470" width="100" height="28"/><text x="410" y="489">reorder</text></g>
+  <g class="nd util"><rect x="345" y="470" width="130" height="28"/><text x="410" y="489">histSaveItemsNow</text></g>
   <g class="nd util"><rect x="200" y="470" width="140" height="28"/><text x="270" y="489">histEditQty/DelItem</text></g>
-  <g class="nd util"><rect x="200" y="512" width="160" height="28"/><text x="280" y="531">_pendingItemEdits 가드</text></g>
+  <g class="nd util"><rect x="200" y="512" width="160" height="28"/><text x="280" y="531">_histDirty 가드</text></g>
 
   <!-- edges -->
   <g class="edge">
@@ -818,7 +830,7 @@ COMMIT → broadcast('order_new')</code></pre>
     <!-- buildcard -> histEdit -> guard -->
     <path d="M540,488 C460,492 380,486 342,484"/>
     <path d="M270,498 L275,510"/>
-    <!-- histEdit -> reorder (재주문 확정) -->
+    <!-- histEdit -> save (변경 저장 확정) -->
     <path d="M340,480 C352,478 356,478 358,480"/>
   </g>
   <g class="elbl">
