@@ -280,7 +280,7 @@ app.get('/api/events', (req, res) => {
 
 // ── 헬스체크 ────────────────────────────────────────────────
 // build 표식 — 설정을 바꾸기 전에 배포가 실제로 반영됐는지 확인하는 용도
-app.get('/health', (req, res) => res.json({ ok: true, build: 'customer-tracker-log-1' }));
+app.get('/health', (req, res) => res.json({ ok: true, build: 'my-tracker-view-1' }));
 
 // ══════════════════════════════════════════════════════════════
 // 메뉴 창고 (등록된모든메뉴)
@@ -1326,6 +1326,32 @@ app.post('/api/track/recommend-apply', async (req, res) => {
       [deviceId, scope, JSON.stringify(conditions), JSON.stringify(picks), reason]
     );
     ok(res, {});
+  } catch (e) { err(res, e.message); }
+});
+
+// GET /api/tracker/mine?deviceId=xxx — 고객 본인 기기의 추천선택/관심메뉴 이력(주문·예약은 기존 /api/orders?deviceId= 재사용)
+app.get('/api/tracker/mine', async (req, res) => {
+  try {
+    const deviceId = String(req.query.deviceId || '').trim();
+    if (!deviceId) return err(res, 'deviceId 필요', 400);
+    const [recRows] = await pool.execute(
+      'SELECT scope, conditions, picks, reason, created_at FROM recommend_selection_log WHERE device_id=? ORDER BY created_at DESC LIMIT 10',
+      [deviceId]
+    );
+    const [clickRows] = await pool.execute(
+      'SELECT menu_name, cat, COUNT(*) AS cnt, MAX(created_at) AS last_at FROM menu_click_log WHERE device_id=? GROUP BY menu_name, cat ORDER BY cnt DESC, last_at DESC LIMIT 10',
+      [deviceId]
+    );
+    const toTS = d => { if (!d) return null; const ms = d instanceof Date ? d.getTime() : new Date(String(d).replace(' ', 'T')).getTime(); return isNaN(ms) ? null : ms + 9 * 60 * 60 * 1000; };
+    const recommendLogs = recRows.map(r => ({
+      scope: r.scope,
+      conditions: typeof r.conditions === 'string' ? JSON.parse(r.conditions) : (r.conditions || {}),
+      picks: typeof r.picks === 'string' ? JSON.parse(r.picks) : (r.picks || []),
+      reason: r.reason || '',
+      createdAt: toTS(r.created_at),
+    }));
+    const topMenus = clickRows.map(r => ({ name: r.menu_name, cat: r.cat, count: r.cnt, lastAt: toTS(r.last_at) }));
+    ok(res, { recommendLogs, topMenus });
   } catch (e) { err(res, e.message); }
 });
 

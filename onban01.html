@@ -364,6 +364,17 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 .hist-li-arrow{font-size:20px;color:#ccc;}
 .hist-li-addreq{font-size:11px;color:#086266;word-break:break-all;margin-top:3px;line-height:1.5;}
 .hist-li-reply{font-size:11px;color:#b8860b;word-break:break-all;margin-top:1px;line-height:1.5;}
+/* ── 내 트래커 페이지 ── */
+.trk-section-title{font-size:14px;font-weight:800;color:#086266;margin:18px 14px 8px;}
+.trk-section-title:first-child{margin-top:6px;}
+.trk-summary-row{display:flex;gap:10px;padding:0 14px;margin-bottom:4px;}
+.trk-stat{flex:1;background:#fff;border-radius:14px;box-shadow:var(--shadow);padding:14px;text-align:center;}
+.trk-stat-num{font-size:22px;font-weight:800;color:var(--teal);}
+.trk-stat-label{font-size:12px;color:var(--sub);margin-top:2px;}
+.trk-picks{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;}
+.trk-pick-chip{font-size:11px;font-weight:700;background:#e6f4f3;color:#086266;border-radius:999px;padding:3px 10px;}
+.trk-reason{font-size:11px;color:var(--sub);margin-top:5px;line-height:1.5;}
+.trk-rank{width:22px;height:22px;border-radius:50%;background:#f4fafa;color:#086266;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 /* ── 주문 상세 팝업 ── */
 .order-detail-overlay{position:fixed;inset:0;background:rgba(0,0,0,.52);z-index:600;display:none;align-items:flex-start;justify-content:center;padding:18px 8px 40px;overflow-y:auto;}
 .order-detail-overlay.open{display:flex;}
@@ -579,6 +590,10 @@ select.reserve-info-inp{appearance:none;-webkit-appearance:none;background:#fff 
       <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
       예약주문
     </button>
+    <button class="top-btn" onclick="goPage('tracker')">
+      <svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>
+      내 트래커
+    </button>
   </div>
 </div>
 
@@ -675,6 +690,12 @@ select.reserve-info-inp{appearance:none;-webkit-appearance:none;background:#fff 
   </div>
   <div id="reserveCatTabs" class="reserve-cat-tabs"></div>
   <div id="reserveMenuList" class="reserve-menu-list"></div>
+</div>
+
+<!-- ════ 페이지: 내 트래커 ════ -->
+<div id="page-tracker" class="page">
+  <div class="section-title">📊 내 트래커</div>
+  <div id="trackerContent"></div>
 </div>
 
 <!-- 예약주문 팝업 -->
@@ -834,6 +855,7 @@ function goPage(name,cb){
   if(name==='order')renderOrder();
   if(name==='payment')renderPayment();
   if(name==='history')renderHistory();
+  if(name==='tracker')renderTracker();
   if(name==='reserve'){loadReserveMenus(cb);_renderReserveBar();}
   else{var rsb=document.getElementById('reserveSubmitBar');if(rsb)rsb.remove();if(cb)cb();}
   // list 이탈 시 플로팅 버튼 숨김
@@ -1867,6 +1889,101 @@ function _migrateLegacyMemo(all){
       fetch(API_URL+'/api/orders/'+encodeURIComponent(o.id)+'/request',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:o.additionalRequest})}).catch(function(){});
     }
   });
+}
+
+// ── 내 트래커 (개인 소비 패턴) ──
+function renderTracker(){
+  var el=document.getElementById('trackerContent');
+  el.innerHTML='<div style="text-align:center;padding:40px;color:#aaa;font-size:13px;">불러오는 중...</div>';
+  var did=getDeviceId();
+  Promise.all([
+    fetch(API_URL+'/api/orders?deviceId='+encodeURIComponent(did),{cache:'no-store'}).then(function(r){return r.json();}),
+    fetch(API_URL+'/api/tracker/mine?deviceId='+encodeURIComponent(did),{cache:'no-store'}).then(function(r){return r.json();})
+  ])
+  .then(function(results){ _doRenderTracker(el,results[0],results[1]); })
+  .catch(function(){
+    el.innerHTML='<div class="hist-empty"><span>📶</span><p>네트워크 오류가 발생했어요.<br>'
+      +'<button onclick="renderTracker()" style="margin-top:10px;padding:7px 20px;border-radius:20px;border:none;background:#086266;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">다시 시도</button></p></div>';
+  });
+}
+function _doRenderTracker(el,ordersRes,trackerRes){
+  el.innerHTML='';
+  var orders=(ordersRes&&ordersRes.success&&Array.isArray(ordersRes.orders))?ordersRes.orders:[];
+  var normalOrders=orders.filter(function(o){return !o.reserveDate;});
+  var reserveOrders=orders.filter(function(o){return !!o.reserveDate;});
+  var recommendLogs=(trackerRes&&trackerRes.success&&Array.isArray(trackerRes.recommendLogs))?trackerRes.recommendLogs:[];
+  var topMenus=(trackerRes&&trackerRes.success&&Array.isArray(trackerRes.topMenus))?trackerRes.topMenus:[];
+
+  var sumTitle=document.createElement('div');
+  sumTitle.className='trk-section-title';
+  sumTitle.textContent='📋 주문·예약 요약';
+  el.appendChild(sumTitle);
+  var sumRow=document.createElement('div');
+  sumRow.className='trk-summary-row';
+  sumRow.innerHTML=
+    '<div class="trk-stat"><div class="trk-stat-num">'+normalOrders.length+'</div><div class="trk-stat-label">총 주문</div></div>'
+    +'<div class="trk-stat"><div class="trk-stat-num">'+reserveOrders.length+'</div><div class="trk-stat-label">총 예약</div></div>';
+  el.appendChild(sumRow);
+
+  var recTitle=document.createElement('div');
+  recTitle.className='trk-section-title';
+  recTitle.textContent='🎯 AI추천 선택 내역';
+  el.appendChild(recTitle);
+  if(!recommendLogs.length){
+    el.appendChild(_trkEmpty('AI추천에서 메뉴를 적용한 이력이 없어요.'));
+  }else{
+    var recWrap=document.createElement('div');
+    recWrap.className='hist-list';
+    recommendLogs.forEach(function(r){
+      var row=document.createElement('div');
+      row.className='hist-li';
+      row.style.cursor='default';
+      var scopeLabel=r.scope==='today'?'오늘의 메뉴':'전체 메뉴';
+      var picksHtml=(r.picks||[]).map(function(p){return '<span class="trk-pick-chip">'+_escTrk(p)+'</span>';}).join('');
+      row.innerHTML=
+        '<div class="hist-li-main">'
+          +'<div class="hist-li-top"><span class="hist-li-dt">'+_fmtTrkDT(r.createdAt)+'</span><span class="hist-li-badge reorder">'+scopeLabel+'</span></div>'
+          +'<div class="trk-picks">'+picksHtml+'</div>'
+          +(r.reason?'<div class="trk-reason">'+_escTrk(r.reason)+'</div>':'')
+        +'</div>';
+      recWrap.appendChild(row);
+    });
+    el.appendChild(recWrap);
+  }
+
+  var clickTitle=document.createElement('div');
+  clickTitle.className='trk-section-title';
+  clickTitle.textContent='👀 자주 살펴본 메뉴';
+  el.appendChild(clickTitle);
+  if(!topMenus.length){
+    el.appendChild(_trkEmpty('아직 살펴본 메뉴 기록이 없어요.'));
+  }else{
+    var clickWrap=document.createElement('div');
+    clickWrap.className='hist-list';
+    topMenus.forEach(function(m,i){
+      var row=document.createElement('div');
+      row.className='hist-li';
+      row.style.cursor='default';
+      row.innerHTML=
+        '<div class="trk-rank">'+(i+1)+'</div>'
+        +'<div class="hist-li-main"><div class="hist-li-sum-text" style="font-size:14px;font-weight:700;color:#333;">'+_escTrk(menuDisplayName(m.name,m.cat))+'</div></div>'
+        +'<div class="hist-li-right"><span class="hist-li-total">'+m.count+'회</span></div>';
+      clickWrap.appendChild(row);
+    });
+    el.appendChild(clickWrap);
+  }
+}
+function _trkEmpty(msg){
+  var d=document.createElement('div');
+  d.className='hist-empty';
+  d.style.padding='30px 20px';
+  d.innerHTML='<span style="font-size:32px;">🗒️</span><p style="font-size:12px;">'+msg+'</p>';
+  return d;
+}
+function _escTrk(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function _fmtTrkDT(ts){
+  if(!ts)return'';
+  try{return new Date(ts).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});}catch(e){return'';}
 }
 
 // ── 주문 내역 ──
