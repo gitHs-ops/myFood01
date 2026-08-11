@@ -280,7 +280,7 @@ app.get('/api/events', (req, res) => {
 
 // ── 헬스체크 ────────────────────────────────────────────────
 // build 표식 — 설정을 바꾸기 전에 배포가 실제로 반영됐는지 확인하는 용도
-app.get('/health', (req, res) => res.json({ ok: true, build: 'nav-ai-recommend-link-1' }));
+app.get('/health', (req, res) => res.json({ ok: true, build: 'recommend-form-tweak-1' }));
 
 // ══════════════════════════════════════════════════════════════
 // 메뉴 창고 (등록된모든메뉴)
@@ -1214,7 +1214,6 @@ app.post('/api/recommend', async (req, res) => {
     const temp = String(body.temp || '').trim();
     const diet = Array.isArray(body.diet) ? body.diet.filter(Boolean).map(String) : [];
     const mealKit = String(body.mealKit || '').trim();
-    const ingredients = String(body.ingredients || '').trim();
     const allergy = String(body.allergy || '').trim();
     const drinks = Array.isArray(body.drinks) ? body.drinks.filter(Boolean).map(String) : [];
     const budget = String(body.budget || '').trim();
@@ -1233,7 +1232,6 @@ app.post('/api/recommend', async (req, res) => {
     if (temp) reqLines.push('- 온도감: ' + temp);
     if (diet.length) reqLines.push('- 식단/칼로리: ' + diet.join(', '));
     if (mealKit) reqLines.push('- 밀키트 여부: ' + mealKit);
-    if (ingredients) reqLines.push('- 보유 중인 주재료: ' + ingredients);
     if (allergy) reqLines.push('- 알레르기·비선호 재료(반드시 제외): ' + allergy);
     if (drinks.length) reqLines.push('- 곁들일 음료: ' + drinks.join(', '));
     if (budget) reqLines.push('- 예산 범위(총액 기준): ' + budget);

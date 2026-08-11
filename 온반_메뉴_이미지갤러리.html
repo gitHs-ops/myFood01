@@ -160,7 +160,7 @@
             <button type="button" class="rf-opt" data-val="가족 식사">가족 식사</button>
             <button type="button" class="rf-opt" data-val="손님 초대">손님 초대</button>
             <button type="button" class="rf-opt" data-val="홈파티">홈파티</button>
-            <button type="button" class="rf-opt" data-val="혼술 안주">혼술 안주</button>
+            <button type="button" class="rf-opt" data-val="안주">안주</button>
           </div>
         </div>
         <div class="rf-group">
@@ -223,10 +223,6 @@
             <button type="button" class="rf-opt" data-val="밀키트">밀키트</button>
             <button type="button" class="rf-opt" data-val="완조리 반찬">완조리 반찬</button>
           </div>
-        </div>
-        <div class="rf-group">
-          <label class="rf-label">보유 중인 주재료 (선택)</label>
-          <input type="text" id="rfIngredients" class="rf-input" placeholder="예: 두부, 김치, 돼지고기">
         </div>
         <div class="rf-group">
           <label class="rf-label">알레르기·비선호 재료 (선택)</label>
@@ -672,7 +668,6 @@
       const runBtn = document.getElementById('rfRun');
       const status = document.getElementById('rfStatus');
       const servings = Number(document.getElementById('rfServings').value) || 0;
-      const ingredients = document.getElementById('rfIngredients').value.trim();
       const allergy = document.getElementById('rfAllergy').value.trim();
       runBtn.disabled = true;
       status.style.display = 'block';
@@ -690,7 +685,6 @@
           temp: rfSingleVals.rfTemp,
           diet: Array.from(rfMultiVals.rfDiet),
           mealKit: rfSingleVals.rfMealKit,
-          ingredients: ingredients,
           allergy: allergy,
           drinks: Array.from(rfMultiVals.rfDrinks),
           budget: rfSingleVals.rfBudget,
