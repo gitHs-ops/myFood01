@@ -280,7 +280,7 @@ app.get('/api/events', (req, res) => {
 
 // ── 헬스체크 ────────────────────────────────────────────────
 // build 표식 — 설정을 바꾸기 전에 배포가 실제로 반영됐는지 확인하는 용도
-app.get('/health', (req, res) => res.json({ ok: true, build: 'gallery-noimg-placeholder-1' }));
+app.get('/health', (req, res) => res.json({ ok: true, build: 'ai-recommend-menu-1' }));
 
 // ══════════════════════════════════════════════════════════════
 // 메뉴 창고 (등록된모든메뉴)
@@ -1168,6 +1168,78 @@ app.post('/api/log', async (req, res) => {
     );
     ok(res);
   } catch(e) { err(res, e.message); }
+});
+
+// ══════════════════════════════════════════════════════════════
+// AI 추천 메뉴 (오늘의 추천 메뉴)
+// ══════════════════════════════════════════════════════════════
+
+app.post('/api/recommend', async (req, res) => {
+  try {
+    if (!process.env.ANTHROPIC_API_KEY) return err(res, 'AI 추천 기능이 아직 설정되지 않았습니다.', 503);
+    const body = req.body || {};
+    const cuisine = String(body.cuisine || '').trim();
+    const servings = Number(body.servings) || 0;
+    const ingredients = String(body.ingredients || '').trim();
+    const drinks = Array.isArray(body.drinks) ? body.drinks.filter(Boolean).map(String) : [];
+
+    const [rows] = await pool.execute('SELECT name, cat FROM menus ORDER BY count DESC, name');
+    if (!rows.length) return err(res, '추천할 메뉴가 없습니다.', 404);
+    const menuLines = rows.map(r => r.name + ' (' + (r.cat || '기타') + ')').join('\n');
+
+    const reqLines = [];
+    if (cuisine) reqLines.push('- 음식 종류: ' + cuisine);
+    if (servings) reqLines.push('- 인원수: ' + servings + '인분');
+    if (ingredients) reqLines.push('- 보유 중인 주재료: ' + ingredients);
+    if (drinks.length) reqLines.push('- 곁들일 음료: ' + drinks.join(', '));
+    if (!reqLines.length) reqLines.push('- 특별한 조건 없음, 아무거나 골고루 추천');
+
+    const prompt = '당신은 반찬가게 "온반"의 메뉴 추천 도우미입니다. 아래는 현재 판매 중인 전체 메뉴 목록입니다.\n\n'
+      + menuLines + '\n\n'
+      + '고객 요청:\n' + reqLines.join('\n') + '\n\n'
+      + '위 목록 중에서 고객 요청에 가장 잘 맞는 메뉴를 3~6개 골라 추천해주세요. '
+      + '반드시 목록에 있는 이름을 정확히 그대로 사용하세요(오타·변형 금지).';
+
+    const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-5',
+        max_tokens: 1024,
+        messages: [{ role: 'user', content: prompt }],
+        tools: [{
+          name: 'recommend_menus',
+          description: '고객 조건에 맞는 메뉴를 목록에서 골라 추천한다',
+          input_schema: {
+            type: 'object',
+            properties: {
+              picks: { type: 'array', items: { type: 'string' }, description: '추천 메뉴 이름(목록에 있는 정확한 이름), 3~6개' },
+              reason: { type: 'string', description: '한두 문장으로 된 추천 이유' },
+            },
+            required: ['picks', 'reason'],
+          },
+        }],
+        tool_choice: { type: 'tool', name: 'recommend_menus' },
+      }),
+    });
+    if (!aiRes.ok) {
+      const errText = await aiRes.text().catch(() => '');
+      return err(res, 'AI 호출 실패(' + aiRes.status + '): ' + errText.slice(0, 300));
+    }
+    const aiData = await aiRes.json();
+    const toolBlock = (aiData.content || []).find(b => b.type === 'tool_use' && b.name === 'recommend_menus');
+    if (!toolBlock) return err(res, 'AI 응답 형식 오류');
+
+    const validNames = new Set(rows.map(r => r.name));
+    const picks = (toolBlock.input.picks || []).filter(n => validNames.has(n));
+    if (!picks.length) return err(res, '조건에 맞는 메뉴를 찾지 못했습니다.', 404);
+
+    ok(res, { picks, reason: toolBlock.input.reason || '' });
+  } catch (e) { err(res, e.message); }
 });
 
 // ── 서버 시작 ────────────────────────────────────────────────
