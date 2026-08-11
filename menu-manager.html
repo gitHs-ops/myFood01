@@ -3479,50 +3479,6 @@ function exportMenuSheet(){
     .catch(function(){showToast('조회 실패');btn.disabled=false;btn.textContent='📊 메뉴 창고로 내보내기';});
 }
 
-
-/* ════ 구글 시트에서 메뉴 가져오기 (공개 CSV 방식) ════ */
-function importFromSheet(mode){
-  var date=document.getElementById('sheetImportDate').value;
-  if(!date){alert('날짜를 선택해주세요.');return;}
-
-  var res=document.getElementById('sheetImportResult');
-  res.style.display='block';
-  res.style.color='#086266';
-  res.textContent='불러오는 중...';
-
-  fetch(API_URL+'/api/menu/'+date)
-    .then(function(r){
-      if(!r.ok)throw new Error(date+' 날짜를 찾을 수 없습니다.');
-      return r.json();
-    })
-    .then(function(d){
-      var imported=(d.menus||[]).map(function(m){return Object.assign({id:Date.now()+Math.random(),stock:getSettings().stock||0},m);});
-      var confirmMsg;
-      if(mode==='add'){
-        var existNames={};menus.forEach(function(m){existNames[(m.name||'').trim()+'|'+(m.cat||'').trim()]=true;});
-        var newCount=imported.filter(function(m){return!existNames[(m.name||'').trim()+'|'+(m.cat||'').trim()];}).length;
-        var dupCount=imported.length-newCount;
-        confirmMsg=newCount+'개 메뉴를 현재 목록에 추가할까요?'+(dupCount?' (중복 제외 '+dupCount+'개)':'');
-      }else{
-        var seen={},uniqCount=0,dupCount=0;
-        imported.forEach(function(m){var k=(m.name||'').trim()+'|'+(m.cat||'').trim();if(seen[k])dupCount++;else{seen[k]=true;uniqCount++;}});
-        confirmMsg=uniqCount+'개 메뉴로 현재 목록을 대체할까요?'+(dupCount?' (중복 제외 '+dupCount+'개)':'');
-      }
-      showConfirm(confirmMsg,function(){
-        var addedCount=applyImportedMenus(imported,mode);
-        save();renderAll();
-        res.style.color='#1D9E75';
-        res.textContent='✅ '+addedCount+'개 가져오기 완료!';
-        showToast(date+' 메뉴 '+addedCount+'개 가져왔습니다!');
-        setTimeout(function(){switchPage('manage');},800);
-      },'가져올게요');
-    })
-    .catch(function(e){
-      res.style.color='#e05';
-      res.textContent='❌ '+e.message;
-    });
-}
-
 window.onload=function(){
   // 접속 로그
   (function(){
