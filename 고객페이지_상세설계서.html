@@ -98,9 +98,10 @@
 <h3>1.2 범위</h3>
 <table>
   <tr><th>구분</th><th>대상</th><th>설명</th></tr>
-  <tr><td>Frontend</td><td><code>onban01.html</code></td><td>고객 주문 단일 페이지 앱(SPA). 메뉴 조회·장바구니·주문·결제안내·주문내역 전 기능</td></tr>
-  <tr><td>Backend</td><td><code>server/server.js</code></td><td>Express 기반 REST API + SSE 서버. 메뉴/주문/고객/설정 데이터 관리</td></tr>
-  <tr><td>DB</td><td>MySQL</td><td>6개 테이블 (daily_menus, menus, orders, customers_master, settings, access_log)</td></tr>
+  <tr><td>Frontend</td><td><code>onban01.html</code></td><td>고객 주문 단일 페이지 앱(SPA). 메뉴 조회·장바구니·주문·결제안내·주문내역·나의 기록 전 기능</td></tr>
+  <tr><td>Frontend</td><td><code>온반_메뉴_이미지갤러리.html</code></td><td>메뉴 사진 갤러리 + AI 추천메뉴. onban01.html과 딥링크로 연결되는 별도 페이지(2026-08 신설, 4.11~4.12절)</td></tr>
+  <tr><td>Backend</td><td><code>server/server.js</code></td><td>Express 기반 REST API + SSE 서버. 메뉴/주문/고객/설정 데이터 관리 + Anthropic API 연동(AI 추천)</td></tr>
+  <tr><td>DB</td><td>MySQL</td><td>9개 테이블 (daily_menus, menus, categories, orders, customers_master, settings, access_log, menu_click_log, recommend_selection_log)</td></tr>
   <tr><td>제외</td><td>관리자 페이지</td><td><code>menu-manager.html</code> 등 관리자 화면은 본 설계서 범위 외 (API 공유 부분만 참조)</td></tr>
 </table>
 
@@ -142,15 +143,16 @@
    │ daily_menus · menus · orders         │         │ SMS(솔라피) / 카카오 알림톡 발송  │
    │ customers_master · settings · log    │  ◀──────│  (고객 배송완료 알림 · 관리자 SMS) │
    └──────────────────────────────────────┘         └────────────────────────────────┘</div>
+<div class="note">📌 <strong>이미지 갤러리 페이지</strong>(<code>온반_메뉴_이미지갤러리.html</code>)는 위 다이어그램의 <code>onban01.html</code>과 나란히 존재하는 별도 정적 페이지로, 같은 <code>API_URL</code>·같은 <code>onban_device_id</code>를 공유하며 상단 버튼/딥링크로 서로 이동한다. 서버 쪽은 <code>POST /api/recommend</code> 호출 시 Anthropic Messages API(<code>claude-sonnet-5</code>)를 추가로 연동한다(4.11~4.12절, 10.3절).</div>
 
 <h3>2.2 레이어 책임</h3>
 <table>
   <tr><th>레이어</th><th>책임</th></tr>
-  <tr><td>Presentation (HTML/CSS)</td><td>모바일 우선 반응형 UI. 6개 페이지 + 모달(메뉴상세·주문상세·주소목록·품절알림)</td></tr>
+  <tr><td>Presentation (HTML/CSS)</td><td>모바일 우선 반응형 UI. onban01.html 8개 페이지 + 이미지 갤러리 페이지 + 모달(메뉴상세·주문상세·주소목록·품절알림·AI추천폼)</td></tr>
   <tr><td>Client Logic (JS)</td><td>상태관리, 렌더링, API 호출, localStorage 동기화, SSE 수신, 알림 발송 트리거</td></tr>
-  <tr><td>API (Express)</td><td>라우팅, 입력 검증, 트랜잭션 제어, 재고 연산, SSE 브로드캐스트</td></tr>
-  <tr><td>Data (MySQL)</td><td>영속 저장. 정규화된 메뉴 마스터(menus) + 일자별 스냅샷(daily_menus)</td></tr>
-  <tr><td>External</td><td>Google Apps Script 경유 SMS·알림톡, Railway 정적 호스팅</td></tr>
+  <tr><td>API (Express)</td><td>라우팅, 입력 검증, 트랜잭션 제어, 재고 연산, SSE 브로드캐스트, AI 추천 프롬프트 구성</td></tr>
+  <tr><td>Data (MySQL)</td><td>영속 저장. 정규화된 메뉴 마스터(menus) + 일자별 스냅샷(daily_menus) + 고객 행동 로그(menu_click_log·recommend_selection_log)</td></tr>
+  <tr><td>External</td><td>Google Apps Script 경유 SMS·알림톡, Anthropic Messages API(AI 추천), Railway 정적 호스팅</td></tr>
 </table>
 
 <hr>
@@ -165,8 +167,8 @@
   <tr><td>실시간</td><td>SSE(Server-Sent Events) — <code>text/event-stream</code>, 25초 heartbeat</td></tr>
   <tr><td>호스팅</td><td>Railway (<code>https://myfood01-production.up.railway.app</code>), <code>Procfile</code> 기동</td></tr>
   <tr><td>정적 서빙</td><td><code>express.static(repo 루트)</code> — HTML/이미지 파일 직접 서빙</td></tr>
-  <tr><td>외부 연동</td><td>Google Apps Script Web App (SMS 프록시 / 카카오 알림톡)</td></tr>
-  <tr><td>클라이언트 저장</td><td>localStorage는 <code>onban_device_id</code>(기기 식별)와 <code>orders</code>(주문내역 캐시) 두 키뿐. 설정·계좌·관리자연락처·카테고리는 전부 서버가 원본이며 로컬에 저장하지 않는다(2026-08-08 정리)</td></tr>
+  <tr><td>외부 연동</td><td>Google Apps Script Web App (SMS 프록시 / 카카오 알림톡), Anthropic Messages API (AI 추천, <code>model:'claude-sonnet-5'</code>, <code>ANTHROPIC_API_KEY</code> 환경변수)</td></tr>
+  <tr><td>클라이언트 저장</td><td>localStorage는 <code>onban_device_id</code>(기기 식별, onban01.html·이미지갤러리 공통)와 <code>orders</code>(주문내역 캐시) 두 키뿐. 설정·계좌·관리자연락처·카테고리는 전부 서버가 원본이며 로컬에 저장하지 않는다(2026-08-08 정리)</td></tr>
 </table>
 
 <div class="note">📌 <strong>API_URL 상수</strong>: 프론트엔드는 <code>var API_URL='https://myfood01-production.up.railway.app'</code> 로 고정된 백엔드를 호출한다. 서버 포트는 <code>process.env.PORT || 3000</code>.</div>
@@ -187,18 +189,23 @@
   <tr><td><code>page-order</code></td><td>주문 확인</td><td><code>goPage('order')</code></td><td><code>renderOrder()</code></td></tr>
   <tr><td><code>page-payment</code></td><td>결제 안내</td><td>주문 확정 후</td><td><code>renderPayment()</code></td></tr>
   <tr><td><code>page-history</code></td><td>주문 내역</td><td><code>goPage('history')</code></td><td><code>renderHistory()</code></td></tr>
+  <tr><td><code>page-reserve</code></td><td>예약 주문</td><td><code>goPage('reserve')</code></td><td><code>loadReserveMenus()</code>, <code>_renderReserveBar()</code></td></tr>
+  <tr><td><code>page-tracker</code></td><td>나의 기록</td><td><code>goPage('tracker')</code></td><td><code>renderTracker()</code> (2026-08 신설, 4.13절)</td></tr>
 </table>
 
 <div class="warn">⚠ <strong>주문상세 팝업 닫기 가드</strong>: 주문내역 상세 팝업에서 수량·배송방법을 편집한 뒤 저장하지 않고 닫으려 하면 <code>_closeOrderDetailGuarded()</code>가 공용 확인창을 띄운다 — <strong>저장하고 닫기</strong> 또는 <strong>되돌리고 닫기</strong>(<code>_revertHistOrder()</code>가 서버 값으로 다시 채움) 중 선택. <code>goPage()</code> 자체에는 페이지 전환 가드가 없다 — 가드는 오직 이 팝업의 닫기 동작(닫기 버튼·바깥 클릭)에만 걸린다.</div>
 
 <h3>4.2 상단 헤더 (공통)</h3>
-<p>검은색 sticky 헤더(<code>.top-bar</code>)에 로고·슬로건과 4개 네비 버튼이 위치한다.</p>
+<p>검은색 sticky 헤더(<code>.top-bar</code>)에 로고·슬로건과 네비 버튼이 위치한다.</p>
 <table>
   <tr><th>버튼</th><th>onclick</th><th>비고</th></tr>
   <tr><td>메뉴 목록</td><td><code>goPage('list')</code></td><td>4-grid 아이콘</td></tr>
+  <tr><td>AI 추천메뉴</td><td><code>window.location.href='온반_메뉴_이미지갤러리.html?openRecommend=1'</code></td><td>갤러리 페이지의 AI 추천 팝업을 바로 오픈하는 딥링크(2026-08 신설, 4.12절)</td></tr>
+  <tr><td>설명서</td><td><code>window.open('고객페이지_사용매뉴얼.html')</code></td><td>새 탭으로 매뉴얼 오픈</td></tr>
   <tr><td>장바구니</td><td><code>goPage('cart')</code></td><td><code>#cartCount</code> 뱃지 — 수량&gt;0 시 <code>.on</code> 표시</td></tr>
   <tr><td>주문내역</td><td><code>goPage('history')</code></td><td>시계 아이콘</td></tr>
-  <tr><td>설명서</td><td><code>window.open('고객페이지_사용매뉴얼.html')</code></td><td>새 탭으로 매뉴얼 오픈</td></tr>
+  <tr><td>예약주문</td><td><code>goPage('reserve')</code></td><td>달력 아이콘 (4.9절)</td></tr>
+  <tr><td>나의 기록</td><td><code>goPage('tracker')</code></td><td>꺾은선 그래프 아이콘 (2026-08 신설, 4.13절)</td></tr>
 </table>
 
 <h3>4.3 메뉴 목록 페이지</h3>
@@ -279,6 +286,46 @@
   <li><strong>예약 날짜 범위 특례</strong>: <code>openReservePopup()</code>에서 <code>_reserveSel['EVENT']</code>가 있으면 <code>_reserveDateMin=이벤트 deadline</code>, <code>_reserveDateMax=deadline+7일</code>로 재계산한다(일반 예약주문의 "오늘+1~7일"과 다른 규칙). 날짜 입력 힌트(<code>#reserveDateHint</code>)와 유효성 오류 문구도 이벤트 여부에 따라 동적으로 바뀐다.</li>
 </ul>
 
+<h3>4.11 이미지 갤러리 페이지 (<code>온반_메뉴_이미지갤러리.html</code>)</h3>
+<p>onban01.html과는 별도의 정적 HTML 파일이다. 마스터 메뉴(<code>/api/menu/all</code>)를 사진 카드 그리드로 실시간 렌더링하며(<code>renderCards()</code>), onban01.html의 <strong>AI 추천메뉴</strong> 버튼(<code>?openRecommend=1</code> 쿼리) 또는 직접 접속으로 진입한다.</p>
+<table>
+  <tr><th>구성</th><th>설명</th></tr>
+  <tr><td>카드 렌더</td><td><code>cardHtml(m)</code> — 사진 없는 메뉴는 <code>.thumb-placeholder</code>(접시 이모지)로 대체. 카테고리 탭·전체검색·카테고리내검색은 onban01.html과 동일 UX</td></tr>
+  <tr><td>일반 클릭(비관리자)</td><td><code>openModal(card)</code> — 상세 팝업. 열람 시 <code>trackMenuClick()</code>으로 <code>menu_click_log</code>에 조회 이력 기록(4.13절, 6.2절 표 상세)</td></tr>
+  <tr><td>관리자 인증 시 클릭</td><td><code>isAdmin</code>(<code>localStorage.onban_admin_auth</code> 검사) 이면 상세 팝업 대신 <code>openEditPopup(card)</code> 인라인 편집 팝업 오픈 — menu-manager.html의 메뉴 편집 팝업과 동일 UI, <code>POST /api/menu/master/update</code> 단건 저장(7.1절, 관리자 상세설계서 12장 API 명세 교차 참조)</td></tr>
+  <tr><td>오늘의 메뉴 보기</td><td><code>todayBtn</code> — <code>todayMode</code>일 때 오늘 판매 중인 메뉴만 필터링, 품절 배지 표시</td></tr>
+  <tr><td>예약 주문 신청하기</td><td><code>reserveBtn</code> — 일반 모드에서는 카드 클릭 시 단건 예약(<code>onban01.html?openReserve=</code>), 추천 모드(아래 4.12절)에서는 체크된 다건을 <code>onban01.html?openReserveMulti=[...]</code>로 전달</td></tr>
+</table>
+<div class="note">📌 갤러리 전용 <code>.modal-overlay</code> 4개(상세·추천폼·편집)는 배경(overlay 자신) 영역에서 발생하는 <code>wheel</code>/<code>touchmove</code>를 <code>preventDefault</code>로 막아, 팝업이 열려있는 동안 바탕 페이지가 함께 스크롤되는 것을 방지한다. <code>_scrollLockCount</code> 카운터로 팝업이 겹쳐 열려도(추천폼→결과) 마지막 하나가 닫힐 때까지 <code>body{overflow:hidden}</code>을 유지한다.</div>
+
+<h3>4.12 AI 추천메뉴 (<code>#recommendOverlay</code>)</h3>
+<p>고객이 조건을 입력하면 서버가 Anthropic Messages API로 메뉴를 추천하는 기능이다. 팝업 상단에서 추천 범위를 먼저 고른다.</p>
+<table>
+  <tr><th>스코프(<code>rfScopeVal</code>)</th><th>메뉴 풀</th><th>설명</th></tr>
+  <tr><td><code>today</code></td><td><code>daily_menus</code>(오늘)</td><td>오늘 등록된 메뉴가 없으면 404 + "전체 메뉴중에서 추천 받기로 다시 시도" 안내</td></tr>
+  <tr><td><code>all</code></td><td><code>menus</code> 전체(count DESC)</td><td>지금까지 판매해온 전체 메뉴</td></tr>
+  <tr><td><code>persona</code></td><td><code>menus</code> 전체(<code>all</code>과 동일 쿼리)</td><td><strong>개인취향으로 추천받기</strong> — 8.9절 참고</td></tr>
+</table>
+<p>추천 조건 입력 항목(모두 선택式, 비워도 됨): 식사 목적·식사 형태·음식 종류·국물 유무·맛/매운정도(복수)·온도감·식단/칼로리(복수)·밀키트 여부·곁들일 음료(복수)·예산 범위·알레르기·비선호 재료(자유입력, 폼 맨 마지막 항목).</p>
+<ul>
+  <li><strong>실행</strong> 클릭 → <code>POST /api/recommend</code> 호출 중에는 중앙 토스트("AI가 메뉴를 고르는 중...")를 표시하고 <strong>실행</strong> 버튼을 비활성화한다.</li>
+  <li>성공(<code>picks.length&gt;0</code>) 시 <strong>별도 팝업을 띄우지 않고</strong> 같은 폼 하단(<code>#rfResult</code>)에 추천 이유 + <strong>메뉴 적용</strong>/<strong>취소</strong> 버튼을 노출하며 실행 버튼은 숨긴다. 팝업을 다시 열면 <code>openRecommendModal()</code>이 결과 영역을 초기화한다.</li>
+  <li>실패(picks 없음/에러) 시에는 중앙 토스트로 사유를 안내하고(<code>showGalleryToast</code>), 폼은 그대로 열려 있어 조건을 조정해 재시도할 수 있다.</li>
+  <li><strong>메뉴 적용</strong> → <code>applyRecommendMode(picks)</code>: 갤러리를 추천 메뉴만 보이는 선택모드(<code>.select-mode</code>)로 전환, 카드마다 체크박스가 나타나며 기본 전체 선택. 이 시점에 <code>trackRecommendApply()</code>로 <code>recommend_selection_log</code>에 조건·픽·이유를 기록(6.3/7.5절).</li>
+  <li><strong>취소</strong> → 추천을 적용하지 않고 카테고리·검색 상태를 초기화해 전체 메뉴 화면으로 되돌린다.</li>
+  <li>선택모드에서는 카드 전체를 클릭해도 체크박스가 토글된다(작은 체크박스 영역만 클릭 가능했던 이전 동작에서 개선).</li>
+</ul>
+
+<h3>4.13 나의 기록 페이지 (<code>page-tracker</code>, onban01.html)</h3>
+<p>고객이 본인 기기의 이용 이력을 조회하는 화면. 상단 <strong>나의 기록</strong> 버튼(<code>goPage('tracker')</code>) → <code>renderTracker()</code>가 두 API를 병렬 호출해 렌더링한다.</p>
+<table>
+  <tr><th>영역</th><th>데이터 출처</th><th>설명</th></tr>
+  <tr><td>📋 주문·예약 요약</td><td><code>GET /api/orders?deviceId=</code>(신규 호출 아님, 기존 API 재사용)</td><td>응답의 <code>reserveDate</code> 유무로 주문/예약 건수를 클라이언트에서 분리 집계</td></tr>
+  <tr><td>🎯 AI추천 선택 내역</td><td><code>GET /api/tracker/mine</code></td><td><code>recommend_selection_log</code> 최근 10건 — 스코프·픽 목록(칩)·추천 이유</td></tr>
+  <tr><td>👀 자주 살펴본 메뉴</td><td><code>GET /api/tracker/mine</code></td><td><code>menu_click_log</code>를 메뉴명별 COUNT로 집계해 상위 10개, 조회 횟수 순</td></tr>
+</table>
+<div class="tip">💡 주문·예약 데이터는 새 테이블을 만들지 않고 기존 <code>orders.device_id</code>를 그대로 재사용한다 — 이 화면을 위해 백엔드에 추가된 것은 <code>GET /api/tracker/mine</code> 하나뿐이다.</div>
+
 <hr>
 
 <!-- ════════════════ 5 ════════════════ -->
@@ -345,7 +392,12 @@ orders (주문)                              customers_master (고객 주소록)
   reserve_date (예약주문 전용, NULL 가능)
 
 settings (k-v 설정)                        access_log (접속 로그)
-  k (PK), v (TEXT/JSON)                       id, created_at, ip, referrer, page</div>
+  k (PK), v (TEXT/JSON)                       id, created_at, ip, referrer, page
+
+menu_click_log (메뉴 열람 이력, 신규)         recommend_selection_log (AI추천 적용 이력, 신규)
+  id (PK), device_id, menu_name, cat            id (PK), device_id, scope
+  created_at                                    conditions (JSON), picks (JSON)
+  INDEX(device_id)                              reason, created_at, INDEX(device_id)</div>
 
 <h3>6.2 테이블 상세</h3>
 
@@ -382,6 +434,9 @@ settings (k-v 설정)                        access_log (접속 로그)
 
 <div class="note">📌 <strong>시간대 처리</strong>: 풀이 <code>timezone:'+09:00'</code>이라 DATE/DATETIME이 KST로 반환되며 toISOString 변환 시 9시간 보정(<code>toDateStr</code>, <code>toTS</code>)을 적용한다.</div>
 
+<h4>menu_click_log / recommend_selection_log — 고객 행동 로그(2026-08 신설)</h4>
+<p>둘 다 <code>device_id</code> 기준으로만 쌓이는 단순 append-only 로그다. <code>menu_click_log</code>는 갤러리 상세 팝업을 열 때마다 1행씩 기록되며(<code>menu_name, cat</code>), <code>recommend_selection_log</code>는 AI추천에서 <strong>메뉴 적용</strong>을 눌렀을 때만 1행 기록된다(<code>conditions</code>=입력 조건 JSON, <code>picks</code>=추천받아 적용한 메뉴 배열 JSON, <code>reason</code>=AI가 제시한 이유). 둘 다 <code>GET /api/tracker/mine</code>(7.5절)이 조회 전용으로 사용하며, 이 데이터를 보여주는 관리자용 조회 화면은 아직 없다(고객 본인의 "나의 기록"에서만 조회 가능, 4.13절).</p>
+
 <hr>
 
 <!-- ════════════════ 7 ════════════════ -->
@@ -398,6 +453,7 @@ settings (k-v 설정)                        access_log (접속 로그)
   <tr><td><span class="badge badge-put">PUT</span> <span class="tag-mono">/api/menu/:date/stock</span></td><td>재고 절대값 설정</td><td>관리자용</td></tr>
   <tr><td><span class="badge badge-post">POST</span> <span class="tag-mono">/api/menu/:date/stock-adjust</span></td><td>재고 증감(delta, <code>GREATEST(0,...)</code>)</td><td>관리자용</td></tr>
   <tr><td><span class="badge badge-post">POST</span> <span class="tag-mono">/api/menu/master/merge·delete</span></td><td>마스터 병합 / 삭제(참조 차단·force)</td><td>관리자용</td></tr>
+  <tr><td><span class="badge badge-post">POST</span> <span class="tag-mono">/api/menu/master/update</span></td><td>마스터 메뉴 단건 수정(name·cat·price·stock·img_url·icon·menu_desc). <code>x-admin-token</code> 헤더 필요. 이미지 갤러리 페이지의 관리자 인라인 편집 팝업 전용 — <code>POST /api/menu/all</code>(전체 재동기화)과 달리 한 건만 안전하게 갱신한다(4.11절)</td><td>관리자용, 2026-08 신설</td></tr>
 </table>
 
 <h3>7.2 주문 (고객 핵심)</h3>
@@ -428,7 +484,17 @@ settings (k-v 설정)                        access_log (접속 로그)
   <tr><td><span class="badge badge-post">POST</span> <span class="tag-mono">/api/log</span></td><td>접속 로그 기록</td></tr>
 </table>
 
-<h3>7.4 공통 응답 규약</h3>
+<h3>7.4 AI 추천 / 고객 행동 로그 (2026-08 신설)</h3>
+<table>
+  <tr><th>메서드/경로</th><th>설명</th></tr>
+  <tr><td><span class="badge badge-post">POST</span> <span class="tag-mono">/api/recommend</span></td><td>AI 추천 실행. body: <code>{scope, deviceId, purpose, mealType, cuisine, broth, taste[], temp, diet[], mealKit, allergy, drinks[], budget}</code>. <code>ANTHROPIC_API_KEY</code> 미설정 시 503. <code>scope==='persona'</code>면 해당 <code>deviceId</code>의 <code>recommend_selection_log</code>·<code>menu_click_log</code>를 조회해 프롬프트에 취향 컨텍스트를 추가한다(8.9절). 응답 <code>{success,picks[],reason}</code>, 조건에 맞는 메뉴가 없으면 <code>404</code>+사유(<code>reason</code>)</td></tr>
+  <tr><td><span class="badge badge-post">POST</span> <span class="tag-mono">/api/track/menu-click</span></td><td>갤러리 상세 팝업 열람 기록. body: <code>{deviceId, name, cat}</code> → <code>menu_click_log</code> INSERT. 인증 불필요(무인증 공개 API), 실패해도 화면에 영향 없음(클라이언트가 fire-and-forget)</td></tr>
+  <tr><td><span class="badge badge-post">POST</span> <span class="tag-mono">/api/track/recommend-apply</span></td><td>AI추천 "메뉴 적용" 클릭 기록. body: <code>{deviceId, scope, conditions, picks[], reason}</code> → <code>recommend_selection_log</code> INSERT(conditions·picks는 JSON 직렬화 저장)</td></tr>
+  <tr><td><span class="badge badge-get">GET</span> <span class="tag-mono">/api/tracker/mine?deviceId=</span></td><td>"나의 기록" 화면용 조회. <code>recommend_selection_log</code> 최근 10건 + <code>menu_click_log</code> 메뉴별 COUNT 상위 10건을 함께 반환(<code>{success,recommendLogs[],topMenus[]}</code>). 주문·예약은 이 API가 아니라 기존 <code>/api/orders?deviceId=</code>로 조회(4.13절)</td></tr>
+</table>
+<div class="note">📌 위 4개 API는 모두 <strong>무인증 공개 API</strong>다. 12.2절 위험 목록("API 인증 부재")과 동일한 한계를 그대로 공유하며, <code>deviceId</code>는 클라이언트가 자체 생성한 값이라 서버가 소유권을 검증하지 않는다(추천/트래커는 개인정보가 아니므로 현재는 낮은 위험으로 판단, 필요 시 향후 device_id 소유 검증 추가 검토).</div>
+
+<h3>7.5 공통 응답 규약</h3>
 <pre><code>성공: { "success": true,  ...data }      // ok(res, data)
 실패: { "success": false, "error": msg } // err(res, msg, status)
 재고부족(주문): { "success": false, "soldOut": [{name, available}] }
@@ -487,6 +553,17 @@ COMMIT → broadcast('order_new')</code></pre>
   <li><strong>날짜 범위</strong>: <code>_reserveSel['EVENT']</code>가 선택된 상태로 <code>openReservePopup()</code>이 호출되면 <code>_reserveDateMin=이벤트 deadline</code>, <code>_reserveDateMax=deadline+7일</code>로 재계산된다. 일반 예약주문(오늘+1~7일)과 달리 이벤트의 예약 가능일은 <strong>기한일 이후 1주일</strong>로 별도 규칙을 따른다.</li>
   <li><strong>중복 방지</strong>: <code>POST /api/orders</code>에서 <code>items</code>에 <code>menuId==='EVENT'</code> 항목이 있으면, 같은 <code>phone</code>+같은 <code>reserve_date</code>로 <code>status!='cancelled'</code>인 기존 이벤트 주문이 있는지 조회한다(항목의 <code>menuId</code>를 JS에서 JSON 파싱 후 비교). 발견되면 INSERT 이전에 <code>409</code>로 거부 — 같은 고객이 같은 이벤트를 같은 날짜로 중복 신청하는 것을 막는다. 다른 날짜거나 일반 메뉴 예약은 이 검사 대상이 아니다.</li>
 </ul>
+
+<h3>8.8 갤러리 → 예약주문 다건 연결 (<code>openReserveMulti</code>)</h3>
+<p>갤러리의 AI추천 선택모드에서 체크된 메뉴 이름 배열을 <code>onban01.html?openReserveMulti=[...URL 인코딩된 JSON 배열...]</code> 쿼리로 전달한다. onban01.html의 <code>window.onload</code>가 이 쿼리를 파싱해 <code>_selectReserveItemsByNames(names)</code>를 호출 — 각 이름을 <code>_reserveAllMenus</code>에서 찾아 <code>_reserveSel</code>에 채운 뒤 예약주문 페이지로 이동하고 팝업까지 자동으로 연다. 기존 단건 딥링크(<code>?openReserve=</code>)는 이 함수의 1건짜리 호출로 재구현되어 하위호환을 유지한다.</p>
+
+<h3>8.9 개인취향(persona) 추천 로직</h3>
+<p><code>POST /api/recommend</code>에서 <code>scope==='persona'</code>이고 <code>deviceId</code>가 있으면, 메뉴 목록 자체는 <code>scope==='all'</code>과 동일한 전체 마스터 쿼리를 쓰되(즉 "오늘 등록 여부"에 제한받지 않음), 프롬프트에 다음 컨텍스트를 추가한다:</p>
+<ul>
+  <li><code>menu_click_log</code>를 <code>device_id</code>로 GROUP BY하여 조회 횟수 상위 5개 — "자주 살펴본 메뉴"</li>
+  <li><code>recommend_selection_log</code>에서 최근 5건의 <code>picks</code>를 모아 중복 제거 — "과거 AI추천에서 실제로 선택했던 메뉴"</li>
+</ul>
+<p>두 데이터가 모두 없는 신규 고객이면(아직 이력이 안 쌓인 상태) "인기 있는 메뉴 위주로 추천해주세요"라는 폴백 지시만 프롬프트에 추가되어, <strong>일반 추천과 사실상 동일하게 자연스러운 결과</strong>가 나온다. 폼에 입력한 다른 조건(식사 목적·예산 등)은 persona 스코프에서도 동일하게 함께 적용된다.</p>
 
 <hr>
 

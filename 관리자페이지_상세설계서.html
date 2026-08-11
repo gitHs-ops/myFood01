@@ -194,7 +194,8 @@ var ONBAN_ADMIN_KEY = '········';
 <ul>
   <li><code>localStorage</code>에 저장하므로 브라우저를 닫았다 열어도 로그인이 유지된다</li>
   <li>저장 값이 비밀번호에 묶여 있어, <strong>비밀번호를 바꾸면 기존에 로그인돼 있던 기기가 전부 자동으로 차단</strong>된다(재입력 요구)</li>
-  <li>비밀번호는 <code>menu-manager.html</code>·<code>index.html</code>의 <code>ONBAN_ADMIN_KEY</code>와 Railway 환경변수 <code>ADMIN_TOKEN</code> <strong>세 곳이 항상 같은 값</strong>이어야 한다. 어긋나면 관리자 전용 API가 전부 401로 실패한다.</li>
+  <li>비밀번호는 <code>menu-manager.html</code>·<code>index.html</code>·<code>온반_메뉴_이미지갤러리.html</code>의 <code>ONBAN_ADMIN_KEY</code>와 Railway 환경변수 <code>ADMIN_TOKEN</code> <strong>네 곳이 항상 같은 값</strong>이어야 한다(2026-08부터 갤러리 페이지 추가). 어긋나면 관리자 전용 API가 전부 401로 실패한다.</li>
+  <li>이미지 갤러리 페이지는 <code>localStorage.onban_admin_auth</code> 값을 그대로 읽어 관리자 여부를 판별한다 — 별도 로그인 화면이 없고, menu-manager.html에 이미 로그인된 <strong>같은 기기/브라우저</strong>에서만 관리자 모드로 동작한다(고객페이지_상세설계서.html 4.11절 참조).</li>
 </ul>
 <div class="warn">⚠ 클라이언트 측 평문 비밀번호 방식. 소스 보기(Ctrl+U)로 노출 가능. 운영 환경에서는 서버 세션 또는 JWT 인증으로 개선 권장.</div>
 
@@ -773,6 +774,7 @@ var _pollTimer = setInterval(function(){
   <tr><td><span class="badge badge-post">POST</span></td><td><code>/api/menu/all</code></td><td>saveAllMenus()</td><td>마스터 전체 저장</td></tr>
   <tr><td><span class="badge badge-post">POST</span></td><td><code>/api/menu/master/merge</code></td><td>saveNewMasterMenu()</td><td>신 메뉴 UPSERT</td></tr>
   <tr><td><span class="badge badge-post">POST</span></td><td><code>/api/menu/master/delete</code></td><td>doMerge(), deleteAllMenu()</td><td>마스터 메뉴 삭제</td></tr>
+  <tr><td><span class="badge badge-post">POST</span></td><td><code>/api/menu/master/update</code></td><td><strong>menu-manager.html 아님</strong> — 이미지 갤러리 페이지(<code>온반_메뉴_이미지갤러리.html</code>)의 관리자 인라인 편집 팝업 전용. 자세한 사용자 흐름은 고객페이지_사용매뉴얼.html 8장, 상세 설계는 고객페이지_상세설계서.html 4.11절 참조</td><td>마스터 메뉴 단건 수정. <code>x-admin-token</code> 헤더 필요. 2026-08 신설</td></tr>
   <tr><td><span class="badge badge-get">GET</span></td><td><code>/api/dates</code></td><td>renderHistory()</td><td>일일 메뉴 존재 날짜 목록</td></tr>
 </table>
 

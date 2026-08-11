@@ -364,7 +364,7 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 .hist-li-arrow{font-size:20px;color:#ccc;}
 .hist-li-addreq{font-size:11px;color:#086266;word-break:break-all;margin-top:3px;line-height:1.5;}
 .hist-li-reply{font-size:11px;color:#b8860b;word-break:break-all;margin-top:1px;line-height:1.5;}
-/* ── 내 트래커 페이지 ── */
+/* ── 나의 기록 페이지 ── */
 .trk-section-title{font-size:14px;font-weight:800;color:#086266;margin:18px 14px 8px;}
 .trk-section-title:first-child{margin-top:6px;}
 .trk-summary-row{display:flex;gap:10px;padding:0 14px;margin-bottom:4px;}
@@ -592,7 +592,7 @@ select.reserve-info-inp{appearance:none;-webkit-appearance:none;background:#fff 
     </button>
     <button class="top-btn" onclick="goPage('tracker')">
       <svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>
-      내 트래커
+      나의 기록
     </button>
   </div>
 </div>
@@ -692,9 +692,9 @@ select.reserve-info-inp{appearance:none;-webkit-appearance:none;background:#fff 
   <div id="reserveMenuList" class="reserve-menu-list"></div>
 </div>
 
-<!-- ════ 페이지: 내 트래커 ════ -->
+<!-- ════ 페이지: 나의 기록 ════ -->
 <div id="page-tracker" class="page">
-  <div class="section-title">📊 내 트래커</div>
+  <div class="section-title">📊 나의 기록</div>
   <div id="trackerContent"></div>
 </div>
 
@@ -1891,7 +1891,7 @@ function _migrateLegacyMemo(all){
   });
 }
 
-// ── 내 트래커 (개인 소비 패턴) ──
+// ── 나의 기록 (개인 소비 패턴) ──
 function renderTracker(){
   var el=document.getElementById('trackerContent');
   el.innerHTML='<div style="text-align:center;padding:40px;color:#aaa;font-size:13px;">불러오는 중...</div>';
