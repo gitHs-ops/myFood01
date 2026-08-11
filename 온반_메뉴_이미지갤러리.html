@@ -922,6 +922,11 @@
     });
 
     loadCardsFromServer(applyFilter);
+
+    // 고객페이지 상단 'AI 추천메뉴' 버튼 등 외부에서 딥링크로 들어오면 추천 폼을 바로 오픈
+    if (new URLSearchParams(window.location.search).get('openRecommend')) {
+      openRecommendModal();
+    }
   </script>
 </body>
 </html>
