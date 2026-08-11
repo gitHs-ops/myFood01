@@ -280,7 +280,7 @@ app.get('/api/events', (req, res) => {
 
 // ── 헬스체크 ────────────────────────────────────────────────
 // build 표식 — 설정을 바꾸기 전에 배포가 실제로 반영됐는지 확인하는 용도
-app.get('/health', (req, res) => res.json({ ok: true, build: 'rf-run-btn-hide-1' }));
+app.get('/health', (req, res) => res.json({ ok: true, build: 'customer-tracker-log-1' }));
 
 // ══════════════════════════════════════════════════════════════
 // 메뉴 창고 (등록된모든메뉴)
@@ -1301,6 +1301,34 @@ app.post('/api/recommend', async (req, res) => {
   } catch (e) { err(res, e.message); }
 });
 
+// ── 고객 개인별 취향/행동 추적 로그 (주문·예약은 기존 orders.device_id로 이미 저장됨) ──
+app.post('/api/track/menu-click', async (req, res) => {
+  try {
+    const deviceId = String(req.body.deviceId || '').trim();
+    const name = String(req.body.name || '').trim();
+    if (!deviceId || !name) return err(res, 'deviceId, name 필요', 400);
+    const cat = String(req.body.cat || '').trim();
+    await pool.execute('INSERT INTO menu_click_log (device_id,menu_name,cat) VALUES (?,?,?)', [deviceId, name, cat]);
+    ok(res, {});
+  } catch (e) { err(res, e.message); }
+});
+
+app.post('/api/track/recommend-apply', async (req, res) => {
+  try {
+    const deviceId = String(req.body.deviceId || '').trim();
+    const picks = Array.isArray(req.body.picks) ? req.body.picks.filter(Boolean).map(String) : [];
+    if (!deviceId || !picks.length) return err(res, 'deviceId, picks 필요', 400);
+    const scope = req.body.scope === 'today' ? 'today' : 'all';
+    const conditions = (req.body.conditions && typeof req.body.conditions === 'object') ? req.body.conditions : {};
+    const reason = String(req.body.reason || '');
+    await pool.execute(
+      'INSERT INTO recommend_selection_log (device_id,scope,conditions,picks,reason) VALUES (?,?,?,?,?)',
+      [deviceId, scope, JSON.stringify(conditions), JSON.stringify(picks), reason]
+    );
+    ok(res, {});
+  } catch (e) { err(res, e.message); }
+});
+
 // ── 서버 시작 ────────────────────────────────────────────────
 async function initDB() {
   const sqls = [
@@ -1383,6 +1411,26 @@ async function initDB() {
       ip VARCHAR(100),
       referrer VARCHAR(500),
       page VARCHAR(100)
+    )`,
+    // 고객 개인별 취향 추적 — 갤러리에서 메뉴 상세를 열어본 기록(관심 신호)
+    `CREATE TABLE IF NOT EXISTS menu_click_log (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      device_id VARCHAR(64),
+      menu_name VARCHAR(200),
+      cat VARCHAR(50),
+      created_at DATETIME DEFAULT NOW(),
+      INDEX idx_device (device_id)
+    )`,
+    // 고객 개인별 페르소나 파악 — AI 추천에서 실제로 "메뉴 적용"한 조건/결과 기록
+    `CREATE TABLE IF NOT EXISTS recommend_selection_log (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      device_id VARCHAR(64),
+      scope VARCHAR(20),
+      conditions JSON,
+      picks JSON,
+      reason TEXT,
+      created_at DATETIME DEFAULT NOW(),
+      INDEX idx_device (device_id)
     )`
   ];
   const conn = await pool.getConnection();

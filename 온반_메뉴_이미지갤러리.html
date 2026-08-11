@@ -468,6 +468,7 @@
       modalPrice.textContent = card.querySelector('.price').textContent;
       modalOverlay.classList.add('open');
       lockBodyScroll();
+      trackMenuClick(modalName.textContent, modalCat.textContent);
     }
     function closeModal() { modalOverlay.classList.remove('open'); unlockBodyScroll(); }
     document.getElementById('modalClose').addEventListener('click', closeModal);
@@ -476,6 +477,31 @@
 
     // ── 오늘의 메뉴 모드 ──
     const API_URL = 'https://myfood01-production.up.railway.app';
+    // 고객 개인별 취향 추적용 기기 식별자 — onban01.html의 getDeviceId()와 동일한 키/형식(UUID v4)을 공유
+    function getDeviceId() {
+      var k = 'onban_device_id';
+      var id = localStorage.getItem(k);
+      if (!id) {
+        id = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+          var r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+        });
+        localStorage.setItem(k, id);
+      }
+      return id;
+    }
+    // 추적 실패가 실제 이용에 지장을 주면 안 되므로 실패해도 조용히 무시
+    function trackMenuClick(name, cat) {
+      fetch(API_URL + '/api/track/menu-click', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deviceId: getDeviceId(), name: name, cat: cat }),
+      }).catch(() => {});
+    }
+    function trackRecommendApply(picks, conditions, reason) {
+      fetch(API_URL + '/api/track/recommend-apply', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deviceId: getDeviceId(), scope: rfScopeVal, conditions: conditions, picks: picks, reason: reason }),
+      }).catch(() => {});
+    }
     const todayBtn = document.getElementById('todayBtn');
     const todayStatus = document.getElementById('todayStatus');
     const catFilter = document.getElementById('catFilter');
@@ -695,29 +721,32 @@
     const rfResultEl = document.getElementById('rfResult');
     const rfResultTextEl = document.getElementById('rfResultText');
     let _rfLastPicks = null;
+    let _rfLastConditions = null;
+    let _rfLastReason = '';
     document.getElementById('rfRun').addEventListener('click', () => {
       const runBtn = document.getElementById('rfRun');
       const allergy = document.getElementById('rfAllergy').value.trim();
       runBtn.disabled = true;
       rfResultEl.style.display = 'none'; // 재실행 시 이전 결과 숨김
       showGalleryToast('AI가 메뉴를 고르는 중...', 0); // 응답 올 때까지 안 사라짐
+      const reqBody = {
+        scope: rfScopeVal,
+        purpose: rfSingleVals.rfPurpose,
+        mealType: rfSingleVals.rfMealType,
+        cuisine: rfSingleVals.rfCuisine,
+        broth: rfSingleVals.rfBroth,
+        taste: Array.from(rfMultiVals.rfTaste),
+        temp: rfSingleVals.rfTemp,
+        diet: Array.from(rfMultiVals.rfDiet),
+        mealKit: rfSingleVals.rfMealKit,
+        allergy: allergy,
+        drinks: Array.from(rfMultiVals.rfDrinks),
+        budget: rfSingleVals.rfBudget,
+      };
       fetch(API_URL + '/api/recommend', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          scope: rfScopeVal,
-          purpose: rfSingleVals.rfPurpose,
-          mealType: rfSingleVals.rfMealType,
-          cuisine: rfSingleVals.rfCuisine,
-          broth: rfSingleVals.rfBroth,
-          taste: Array.from(rfMultiVals.rfTaste),
-          temp: rfSingleVals.rfTemp,
-          diet: Array.from(rfMultiVals.rfDiet),
-          mealKit: rfSingleVals.rfMealKit,
-          allergy: allergy,
-          drinks: Array.from(rfMultiVals.rfDrinks),
-          budget: rfSingleVals.rfBudget,
-        }),
+        body: JSON.stringify(reqBody),
       })
         .then(r => r.json())
         .then(d => {
@@ -728,6 +757,8 @@
             return;
           }
           _rfLastPicks = d.picks;
+          _rfLastConditions = reqBody;
+          _rfLastReason = d.reason || '';
           rfResultTextEl.textContent = d.reason || '요청하신 조건에 맞는 메뉴예요.';
           rfResultEl.style.display = 'block';
           runBtn.style.display = 'none';
@@ -739,6 +770,7 @@
     });
     document.getElementById('rfApplyBtn').addEventListener('click', () => {
       if (!_rfLastPicks) return;
+      trackRecommendApply(_rfLastPicks, _rfLastConditions, _rfLastReason);
       applyRecommendMode(_rfLastPicks);
       closeRecommendModal();
     });
