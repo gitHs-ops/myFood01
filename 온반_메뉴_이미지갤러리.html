@@ -71,6 +71,9 @@
   .recommend-box { max-width:460px; padding:24px 22px 22px; max-height:calc(100vh - 48px); overflow-y:auto; }
   .recommend-form h3 { font-size:18px; color:#086266; margin-bottom:16px; }
   .rf-group { margin-bottom:16px; }
+  .rf-scope-group { margin-bottom:18px; padding-bottom:16px; border-bottom:1px solid #eee; }
+  .rf-scope { gap:8px; }
+  .rf-scope .rf-opt { flex:1; text-align:center; padding:10px 6px; font-size:12.5px; line-height:1.4; }
   .rf-label { display:block; font-size:13px; font-weight:700; color:#555; margin-bottom:8px; }
   .rf-options { display:flex; flex-wrap:wrap; gap:6px; }
   .rf-opt { background:#f2f7f6; border:1.5px solid #d5e6e4; border-radius:20px; padding:6px 14px; font-size:13px; font-weight:600; color:#086266; cursor:pointer; font-family:inherit; transition:background .12s,border-color .12s; }
@@ -81,7 +84,6 @@
   .rf-run-btn { width:100%; padding:12px; background:#086266; color:#fff; border:none; border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; font-family:inherit; transition:background .12s; }
   .rf-run-btn:hover { background:#0a7a7f; }
   .rf-run-btn:disabled { background:#aac9c8; cursor:default; }
-  .rf-status { margin-top:12px; font-size:13px; color:#086266; text-align:center; }
   .recommend-result h3 { font-size:18px; color:#086266; margin-bottom:14px; }
   .recommend-result-text { font-size:14px; color:#333; line-height:1.6; margin-bottom:20px; white-space:pre-wrap; }
   .edit-child-toggle { display:flex; align-items:center; gap:6px; font-size:13px; color:#555; margin-bottom:14px; cursor:pointer; user-select:none; }
@@ -153,6 +155,12 @@
       <button class="modal-close" id="recommendClose">&times;</button>
       <div class="recommend-form">
         <h3>🎯 오늘 메뉴 AI추천</h3>
+        <div class="rf-group rf-scope-group">
+          <div class="rf-options rf-single rf-scope" id="rfScope">
+            <button type="button" class="rf-opt rf-scope-opt selected" data-val="today">오늘의 메뉴에서<br>추천받기</button>
+            <button type="button" class="rf-opt rf-scope-opt" data-val="all">전체 메뉴중에서<br>추천 받기</button>
+          </div>
+        </div>
         <div class="rf-group">
           <label class="rf-label">식사 목적</label>
           <div class="rf-options rf-single" id="rfPurpose">
@@ -250,7 +258,6 @@
           </div>
         </div>
         <button type="button" id="rfRun" class="rf-run-btn">실행</button>
-        <div id="rfStatus" class="rf-status" style="display:none;"></div>
       </div>
     </div>
   </div>
@@ -532,17 +539,23 @@
     }
 
     var galleryToastEl = null;
-    function showGalleryToast(msg) {
+    // duration===0 이면 자동으로 안 사라지고 hideGalleryToast()로 직접 닫아야 함(로딩중 메시지용)
+    function showGalleryToast(msg, duration) {
       if (!galleryToastEl) {
         galleryToastEl = document.createElement('div');
         galleryToastEl.id = 'gallery-toast';
-        galleryToastEl.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:999px;font-size:13px;opacity:0;transition:opacity .3s;z-index:9999;white-space:nowrap;';
+        galleryToastEl.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#1a1a1a;color:#fff;padding:14px 22px;border-radius:14px;font-size:13px;line-height:1.5;text-align:center;max-width:280px;opacity:0;transition:opacity .3s;z-index:9999;';
         document.body.appendChild(galleryToastEl);
       }
       galleryToastEl.textContent = msg;
       galleryToastEl.style.opacity = '1';
       clearTimeout(galleryToastEl._hideTimer);
-      galleryToastEl._hideTimer = setTimeout(() => { galleryToastEl.style.opacity = '0'; }, 2000);
+      if (duration !== 0) {
+        galleryToastEl._hideTimer = setTimeout(() => { galleryToastEl.style.opacity = '0'; }, duration || 2000);
+      }
+    }
+    function hideGalleryToast() {
+      if (galleryToastEl) { clearTimeout(galleryToastEl._hideTimer); galleryToastEl.style.opacity = '0'; }
     }
     todayBtn.addEventListener('click', () => {
       if (todayMode) { exitTodayMode(); return; }
@@ -621,6 +634,15 @@
         else rfMultiVals[id].delete(btn.dataset.val);
       });
     });
+    // 오늘의메뉴/전체메뉴 스코프 — 다른 단일선택과 달리 항상 하나는 선택된 상태를 유지(재클릭해도 해제 안 됨)
+    let rfScopeVal = 'today';
+    document.getElementById('rfScope').addEventListener('click', (e) => {
+      const btn = e.target.closest('.rf-opt');
+      if (!btn) return;
+      document.querySelectorAll('#rfScope .rf-opt').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      rfScopeVal = btn.dataset.val;
+    });
     function openRecommendModal() { recommendOverlay.classList.add('open'); }
     function closeRecommendModal() { recommendOverlay.classList.remove('open'); }
     recommendBtn.addEventListener('click', openRecommendModal);
@@ -666,16 +688,15 @@
     }
     document.getElementById('rfRun').addEventListener('click', () => {
       const runBtn = document.getElementById('rfRun');
-      const status = document.getElementById('rfStatus');
       const servings = Number(document.getElementById('rfServings').value) || 0;
       const allergy = document.getElementById('rfAllergy').value.trim();
       runBtn.disabled = true;
-      status.style.display = 'block';
-      status.textContent = 'AI가 메뉴를 고르는 중...';
+      showGalleryToast('AI가 메뉴를 고르는 중...', 0); // 응답 올 때까지 안 사라짐
       fetch(API_URL + '/api/recommend', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          scope: rfScopeVal,
           purpose: rfSingleVals.rfPurpose,
           mealType: rfSingleVals.rfMealType,
           cuisine: rfSingleVals.rfCuisine,
@@ -694,16 +715,16 @@
         .then(d => {
           runBtn.disabled = false;
           if (!d.success || !d.picks || !d.picks.length) {
-            status.textContent = d.error || '조건에 맞는 메뉴를 찾지 못했어요. 조건을 바꿔보세요.';
+            showGalleryToast(d.error || '조건에 맞는 메뉴를 찾지 못했어요. 조건을 바꿔보세요.', 5000);
             return;
           }
-          status.style.display = 'none';
+          hideGalleryToast();
           applyRecommendMode(d.picks, d.reason);
           closeRecommendModal();
         })
         .catch(() => {
           runBtn.disabled = false;
-          status.textContent = '추천 요청에 실패했어요. 다시 시도해주세요.';
+          showGalleryToast('추천 요청에 실패했어요. 다시 시도해주세요.', 4000);
         });
     });
 

@@ -280,7 +280,7 @@ app.get('/api/events', (req, res) => {
 
 // ── 헬스체크 ────────────────────────────────────────────────
 // build 표식 — 설정을 바꾸기 전에 배포가 실제로 반영됐는지 확인하는 용도
-app.get('/health', (req, res) => res.json({ ok: true, build: 'recommend-form-tweak-1' }));
+app.get('/health', (req, res) => res.json({ ok: true, build: 'recommend-scope-toast-1' }));
 
 // ══════════════════════════════════════════════════════════════
 // 메뉴 창고 (등록된모든메뉴)
@@ -1205,6 +1205,7 @@ app.post('/api/recommend', async (req, res) => {
   try {
     if (!process.env.ANTHROPIC_API_KEY) return err(res, 'AI 추천 기능이 아직 설정되지 않았습니다.', 503);
     const body = req.body || {};
+    const scope = body.scope === 'today' ? 'today' : 'all';
     const purpose = String(body.purpose || '').trim();
     const mealType = String(body.mealType || '').trim();
     const cuisine = String(body.cuisine || '').trim();
@@ -1218,8 +1219,22 @@ app.post('/api/recommend', async (req, res) => {
     const drinks = Array.isArray(body.drinks) ? body.drinks.filter(Boolean).map(String) : [];
     const budget = String(body.budget || '').trim();
 
-    const [rows] = await pool.execute('SELECT name, cat FROM menus ORDER BY count DESC, name');
-    if (!rows.length) return err(res, '추천할 메뉴가 없습니다.', 404);
+    let rows;
+    if (scope === 'today') {
+      const todayStr = toKSTDateStr(new Date());
+      [rows] = await pool.execute(
+        `SELECT COALESCE(m.name,m2.name,d.name) AS name, COALESCE(m.cat,m2.cat,d.cat) AS cat
+         FROM daily_menus d
+         LEFT JOIN menus m  ON m.id=d.menu_id
+         LEFT JOIN menus m2 ON m2.name=d.name
+         WHERE d.date=? AND d.stock<>0`,
+        [todayStr]
+      );
+      if (!rows.length) return err(res, '오늘 등록된 메뉴가 없어서 오늘의 메뉴 기준으로는 추천할 수 없어요. "전체 메뉴중에서 추천 받기"로 다시 시도해보세요.', 404);
+    } else {
+      [rows] = await pool.execute('SELECT name, cat FROM menus ORDER BY count DESC, name');
+      if (!rows.length) return err(res, '추천할 메뉴가 없습니다.', 404);
+    }
     const menuLines = rows.map(r => r.name + ' (' + (r.cat || '기타') + ')').join('\n');
 
     const reqLines = [];
@@ -1237,11 +1252,14 @@ app.post('/api/recommend', async (req, res) => {
     if (budget) reqLines.push('- 예산 범위(총액 기준): ' + budget);
     if (!reqLines.length) reqLines.push('- 특별한 조건 없음, 아무거나 골고루 추천');
 
-    const prompt = '당신은 반찬가게 "온반"의 메뉴 추천 도우미입니다. 아래는 현재 판매 중인 전체 메뉴 목록입니다.\n\n'
+    const scopeDesc = scope === 'today' ? '아래는 오늘 판매 중인 메뉴 목록입니다.' : '아래는 지금까지 판매해온 전체 메뉴 목록입니다.';
+    const prompt = '당신은 반찬가게 "온반"의 메뉴 추천 도우미입니다. ' + scopeDesc + '\n\n'
       + menuLines + '\n\n'
       + '고객 요청:\n' + reqLines.join('\n') + '\n\n'
       + '위 목록 중에서 고객 요청에 가장 잘 맞는 메뉴를 3~6개 골라 추천해주세요. '
-      + '반드시 목록에 있는 이름을 정확히 그대로 사용하세요(오타·변형 금지).';
+      + '반드시 목록에 있는 이름을 정확히 그대로 사용하세요(오타·변형 금지). '
+      + '만약 여러 조건을 동시에 만족하는 메뉴가 목록에 하나도 없다면, picks는 빈 배열로 두고 '
+      + 'reason에 어떤 조건들이 서로 충돌해서 못 골랐는지 구체적으로 설명해 고객이 조건을 조정할 수 있게 해주세요.';
 
     const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -1260,8 +1278,8 @@ app.post('/api/recommend', async (req, res) => {
           input_schema: {
             type: 'object',
             properties: {
-              picks: { type: 'array', items: { type: 'string' }, description: '추천 메뉴 이름(목록에 있는 정확한 이름), 3~6개' },
-              reason: { type: 'string', description: '한두 문장으로 된 추천 이유' },
+              picks: { type: 'array', items: { type: 'string' }, description: '추천 메뉴 이름(목록에 있는 정확한 이름), 조건에 맞는 게 있으면 3~6개, 하나도 없으면 빈 배열' },
+              reason: { type: 'string', description: '추천 이유(picks가 있을 때) 또는 못 고른 구체적 이유(picks가 비었을 때), 한두 문장' },
             },
             required: ['picks', 'reason'],
           },
@@ -1279,7 +1297,7 @@ app.post('/api/recommend', async (req, res) => {
 
     const validNames = new Set(rows.map(r => r.name));
     const picks = (toolBlock.input.picks || []).filter(n => validNames.has(n));
-    if (!picks.length) return err(res, '조건에 맞는 메뉴를 찾지 못했습니다.', 404);
+    if (!picks.length) return err(res, toolBlock.input.reason || '조건에 맞는 메뉴를 찾지 못했습니다.', 404);
 
     ok(res, { picks, reason: toolBlock.input.reason || '' });
   } catch (e) { err(res, e.message); }
