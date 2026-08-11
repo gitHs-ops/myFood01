@@ -81,6 +81,15 @@
   .rf-status { margin-top:12px; font-size:13px; color:#086266; text-align:center; }
   .recommend-result h3 { font-size:18px; color:#086266; margin-bottom:14px; }
   .recommend-result-text { font-size:14px; color:#333; line-height:1.6; margin-bottom:20px; white-space:pre-wrap; }
+  .edit-child-toggle { display:flex; align-items:center; gap:6px; font-size:13px; color:#555; margin-bottom:14px; cursor:pointer; user-select:none; }
+  .edit-divider { border:none; border-top:1px solid #eee; margin:14px 0; }
+  .edit-img-btn-row { display:flex; gap:8px; margin-bottom:8px; }
+  .edit-img-btn-upload { flex:1; background:#086266; color:#fff; border:none; border-radius:10px; padding:10px; font-size:13px; font-weight:700; font-family:inherit; cursor:pointer; }
+  .edit-img-btn-delete { background:#fff; color:#e05; border:1.5px solid #f5c0c0; border-radius:10px; padding:10px 14px; font-size:13px; font-weight:700; font-family:inherit; cursor:pointer; }
+  .edit-img-status { display:none; text-align:center; padding:6px 0; font-size:13px; color:#086266; margin-bottom:6px; }
+  .edit-img-preview { width:100%; aspect-ratio:4/3; border-radius:12px; overflow:hidden; background:#f0faf9; border:1.5px dashed #cde8e7; display:flex; align-items:center; justify-content:center; margin-bottom:8px; }
+  .edit-img-preview img { width:100%; height:100%; object-fit:cover; }
+  .edit-close-btn { flex:1; background:#eee; color:#555; border:none; border-radius:10px; padding:12px; font-size:15px; font-weight:700; cursor:pointer; font-family:inherit; }
   .modal-name { font-size:19px; font-weight:700; color:#0b3c3e; margin-bottom:8px; }
   .modal-meta { display:flex; align-items:center; gap:10px; }
   .modal-meta .cat { font-size:13px; }
@@ -186,7 +195,59 @@
     </div>
   </div>
 
+  <div class="modal-overlay" id="editOverlay">
+    <div class="modal-box recommend-box">
+      <button class="modal-close" id="editClose">&times;</button>
+      <div class="recommend-form">
+        <h3 id="editTitle">메뉴 편집</h3>
+        <div class="rf-group">
+          <label class="rf-label">메뉴명</label>
+          <input type="text" id="editName" class="rf-input">
+        </div>
+        <div style="display:flex;gap:10px;">
+          <div class="rf-group" style="flex:1;">
+            <label class="rf-label">금액 (천원)</label>
+            <input type="number" id="editPrice" class="rf-input" min="0">
+          </div>
+          <div class="rf-group" style="flex:1;">
+            <label class="rf-label">재고 (개)</label>
+            <input type="number" id="editStock" class="rf-input" min="-1">
+          </div>
+        </div>
+        <div class="rf-group">
+          <label class="rf-label">카테고리</label>
+          <select id="editCat" class="rf-input"></select>
+        </div>
+        <label class="edit-child-toggle"><input type="checkbox" id="editChild"> 어린이도 먹을 수 있는 메뉴</label>
+        <div class="rf-group">
+          <label class="rf-label">메뉴 설명 (선택)</label>
+          <textarea id="editDesc" class="rf-input" rows="2" placeholder="고객 상세 팝업에 표시됩니다" style="resize:vertical;font-family:inherit;"></textarea>
+        </div>
+        <hr class="edit-divider">
+        <div class="rf-group">
+          <label class="rf-label">이미지 URL <span style="font-size:10px;color:#aaa;font-weight:400;">(직접 입력 또는 아래 업로드)</span></label>
+          <input type="text" id="editImgUrl" class="rf-input" placeholder="https://..." style="font-size:12px;color:#444;">
+        </div>
+        <input type="file" id="editImgFileInput" accept="image/*" style="display:none">
+        <div class="edit-img-btn-row">
+          <button type="button" id="editImgUploadBtn" class="edit-img-btn-upload">📁 사진 선택</button>
+          <button type="button" id="editImgDeleteBtn" class="edit-img-btn-delete" style="display:none;">삭제</button>
+        </div>
+        <div class="edit-img-status" id="editImgStatus"></div>
+        <div class="edit-img-preview" id="editImgPreviewWrap"><span style="font-size:26px;">🍽️</span></div>
+        <div style="display:flex;gap:8px;margin-top:14px;">
+          <button type="button" id="editSaveBtn" class="rf-run-btn" style="flex:1;">저장</button>
+          <button type="button" id="editCancelBtn" class="edit-close-btn">닫기</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
+    // 관리자 인증 상태(index.html/menu-manager.html과 같은 방식) — 인증된 기기에서만 카드 클릭 시 편집 가능
+    const ONBAN_ADMIN_KEY = 'onban@1dl34';
+    const isAdmin = localStorage.getItem('onban_admin_auth') === ('ok_' + ONBAN_ADMIN_KEY);
+    const IMGBB_KEY = 'b5a6e9481bb9cb4791108cf50761a459';
     const searchAllInput = document.getElementById('searchAllInput');
     const searchCatInput = document.getElementById('searchCatInput');
     const grid = document.getElementById('grid');
@@ -198,7 +259,7 @@
       var thumbHtml = m.imgUrl
         ? '<div class="thumb"><img src="' + escapeHtml(m.imgUrl) + '" alt="' + escapeHtml(m.name) + '" loading="lazy"></div>'
         : '<div class="thumb thumb-placeholder">🍽️</div>';
-      return '<div class="card">'
+      return '<div class="card" data-menu-id="' + (m.menuId || '') + '">'
         + thumbHtml
         + '<div class="info">'
           + '<div class="name">' + escapeHtml(m.name) + '</div>'
@@ -206,7 +267,9 @@
         + '</div>'
         + '</div>';
     }
+    let menusCache = []; // menuId -> 원본 필드(child/desc/icon 등, 카드 DOM엔 없는 값) 조회용
     function renderCards(menus) {
+      menusCache = menus;
       grid.innerHTML = menus.map(cardHtml).join('');
       cards = document.querySelectorAll('.card');
       cards.forEach(c => c.addEventListener('click', () => cardClick(c)));
@@ -319,7 +382,7 @@
     function closeModal() { modalOverlay.classList.remove('open'); }
     document.getElementById('modalClose').addEventListener('click', closeModal);
     modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeModal(); });
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeModal(); closeRecommendModal(); closeRecommendResultModal(); } });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeModal(); closeRecommendModal(); closeRecommendResultModal(); closeEditPopup(); } });
 
     // ── 오늘의 메뉴 모드 ──
     const API_URL = 'https://myfood01-production.up.railway.app';
@@ -346,6 +409,8 @@
       } else if (reserveMode) {
         // '예약 주문 신청하기'와 동일한 기능 — 예약주문 페이지에서 해당 항목을 바로 선택해 팝업까지 오픈
         window.location.href = 'onban01.html?openReserve=' + encodeURIComponent(name);
+      } else if (isAdmin) {
+        openEditPopup(card);
       } else {
         openModal(card);
       }
@@ -576,6 +641,170 @@
         .catch(() => {});
     }
     loadCategoriesFromServer();
+
+    // ── 관리자 메뉴 편집(마스터 단건 수정) — isAdmin일 때만 카드 클릭이 여기로 옴 ──
+    const editOverlay = document.getElementById('editOverlay');
+    let editTargetId = null;
+    let editPendingImgUrl = null;
+
+    function populateEditCatSelect(selected) {
+      var sel = document.getElementById('editCat');
+      var names = Array.from(getCatBtns()).map(b => b.dataset.cat).filter(c => c && c !== '전체');
+      sel.innerHTML = names.map(c => '<option value="' + escapeHtml(c) + '"' + (c === selected ? ' selected' : '') + '>' + escapeHtml(c) + '</option>').join('');
+    }
+    function setEditImgPreview(url) {
+      var w = document.getElementById('editImgPreviewWrap');
+      if (url) { w.innerHTML = '<img src="' + escapeHtml(url) + '" alt="미리보기">'; }
+      else { w.innerHTML = '<span style="font-size:26px;">🍽️</span>'; }
+    }
+    function setEditImgStatus(msg, loading) {
+      var el = document.getElementById('editImgStatus');
+      var btn = document.getElementById('editImgUploadBtn');
+      el.textContent = msg; el.style.display = msg ? 'block' : 'none'; btn.disabled = loading;
+    }
+    function openEditPopup(card) {
+      var id = Number(card.dataset.menuId);
+      var m = menusCache.find(x => x.menuId === id);
+      if (!m) return;
+      editTargetId = id;
+      editPendingImgUrl = null;
+      document.getElementById('editTitle').textContent = '메뉴 편집 — ' + m.name;
+      document.getElementById('editName').value = m.name || '';
+      document.getElementById('editPrice').value = m.price || 0;
+      document.getElementById('editStock').value = m.stock || 0;
+      populateEditCatSelect(m.cat || '기타');
+      document.getElementById('editChild').checked = !!m.child;
+      document.getElementById('editDesc').value = m.desc || '';
+      document.getElementById('editImgUrl').value = m.imgUrl || '';
+      setEditImgPreview(m.imgUrl || null);
+      setEditImgStatus('', false);
+      document.getElementById('editImgUploadBtn').textContent = m.imgUrl ? '📁 사진 변경' : '📁 사진 선택';
+      document.getElementById('editImgDeleteBtn').style.display = m.imgUrl ? '' : 'none';
+      document.getElementById('editImgFileInput').value = '';
+      editOverlay.classList.add('open');
+    }
+    function closeEditPopup() {
+      editOverlay.classList.remove('open');
+      editTargetId = null;
+      editPendingImgUrl = null;
+    }
+    document.getElementById('editClose').addEventListener('click', closeEditPopup);
+    document.getElementById('editCancelBtn').addEventListener('click', closeEditPopup);
+    editOverlay.addEventListener('click', (e) => { if (e.target === editOverlay) closeEditPopup(); });
+    document.getElementById('editImgUrl').addEventListener('input', (e) => { setEditImgPreview(e.target.value || null); });
+    document.getElementById('editImgUploadBtn').addEventListener('click', () => { document.getElementById('editImgFileInput').click(); });
+    document.getElementById('editImgDeleteBtn').addEventListener('click', () => {
+      document.getElementById('editImgUrl').value = '';
+      editPendingImgUrl = null;
+      setEditImgPreview(null);
+      document.getElementById('editImgUploadBtn').textContent = '📁 사진 선택';
+      document.getElementById('editImgDeleteBtn').style.display = 'none';
+    });
+
+    function onEditImgFileSelected(e) {
+      var file = e.target.files[0];
+      if (!file) return;
+      setEditImgStatus('이미지 준비 중...', true);
+      var reader = new FileReader();
+      reader.onload = function (ev) {
+        var img = new Image();
+        img.onload = function () {
+          var MAX = 600, w = img.width, h = img.height;
+          if (w > MAX || h > MAX) { if (w > h) { h = Math.round(h * MAX / w); w = MAX; } else { w = Math.round(w * MAX / h); h = MAX; } }
+          var c = document.createElement('canvas');
+          c.width = w; c.height = h;
+          c.getContext('2d').drawImage(img, 0, 0, w, h);
+          uploadEditImgBB(c.toDataURL('image/jpeg', 0.82).split(',')[1]);
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+    function uploadEditImgBB(b64) {
+      setEditImgStatus('업로드 중...', true);
+      var form = new FormData();
+      form.append('key', IMGBB_KEY);
+      form.append('image', b64);
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', 'https://api.imgbb.com/1/upload', true);
+      xhr.onload = function () {
+        if (xhr.status === 200) {
+          try {
+            var data = JSON.parse(xhr.responseText);
+            if (data.success) {
+              var url = data.data.url;
+              editPendingImgUrl = url;
+              document.getElementById('editImgUrl').value = url;
+              setEditImgPreview(url);
+              setEditImgStatus('업로드 완료! 저장 버튼으로 적용하세요.', false);
+              document.getElementById('editImgDeleteBtn').style.display = '';
+            } else {
+              setEditImgStatus('업로드 실패: ' + ((data.error && data.error.message) || '알 수 없는 오류'), false);
+            }
+          } catch (e) { setEditImgStatus('응답 파싱 오류: ' + e.message, false); }
+        } else { setEditImgStatus('서버 오류 (HTTP ' + xhr.status + ')', false); }
+      };
+      xhr.onerror = function () { setEditImgStatus('연결 실패 — 인터넷 연결을 확인해주세요.', false); };
+      xhr.ontimeout = function () { setEditImgStatus('업로드 시간 초과. 다시 시도해주세요.', false); };
+      xhr.timeout = 30000;
+      xhr.send(form);
+    }
+    document.getElementById('editImgFileInput').addEventListener('change', onEditImgFileSelected);
+
+    function updateCardAfterEdit(id, payload) {
+      var m = menusCache.find(x => x.menuId === id);
+      if (m) Object.assign(m, payload);
+      var card = Array.from(cards).find(c => Number(c.dataset.menuId) === id);
+      if (!card) return;
+      card.querySelector('.name').textContent = payload.name;
+      card.querySelector('.cat').textContent = payload.cat || '기타';
+      card.querySelector('.price').textContent = payload.price + '천원';
+      var thumb = card.querySelector('.thumb');
+      if (payload.imgUrl) {
+        thumb.className = 'thumb';
+        thumb.innerHTML = '<img src="' + escapeHtml(payload.imgUrl) + '" alt="' + escapeHtml(payload.name) + '" loading="lazy">';
+      } else {
+        thumb.className = 'thumb thumb-placeholder';
+        thumb.innerHTML = '🍽️';
+      }
+      applyFilter(); // card-number 배지 등 재계산
+    }
+    document.getElementById('editSaveBtn').addEventListener('click', () => {
+      if (editTargetId === null) return;
+      var name = document.getElementById('editName').value.trim();
+      if (!name) { alert('메뉴명을 입력해주세요.'); return; }
+      var saveBtn = document.getElementById('editSaveBtn');
+      var payload = {
+        id: editTargetId,
+        name: name,
+        price: parseInt(document.getElementById('editPrice').value) || 0,
+        stock: parseInt(document.getElementById('editStock').value) || 0,
+        cat: document.getElementById('editCat').value,
+        child: document.getElementById('editChild').checked,
+        desc: document.getElementById('editDesc').value.trim(),
+        imgUrl: editPendingImgUrl || document.getElementById('editImgUrl').value.trim() || '',
+      };
+      saveBtn.disabled = true;
+      saveBtn.textContent = '저장 중...';
+      fetch(API_URL + '/api/menu/master/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-token': ONBAN_ADMIN_KEY },
+        body: JSON.stringify(payload),
+      })
+        .then(r => r.json())
+        .then(d => {
+          saveBtn.disabled = false;
+          saveBtn.textContent = '저장';
+          if (!d.success) { alert('저장 실패: ' + (d.error || '')); return; }
+          updateCardAfterEdit(editTargetId, payload);
+          closeEditPopup();
+        })
+        .catch(() => {
+          saveBtn.disabled = false;
+          saveBtn.textContent = '저장';
+          alert('저장 요청에 실패했어요. 다시 시도해주세요.');
+        });
+    });
 
     loadCardsFromServer(applyFilter);
   </script>

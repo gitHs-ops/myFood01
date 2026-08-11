@@ -280,7 +280,7 @@ app.get('/api/events', (req, res) => {
 
 // ── 헬스체크 ────────────────────────────────────────────────
 // build 표식 — 설정을 바꾸기 전에 배포가 실제로 반영됐는지 확인하는 용도
-app.get('/health', (req, res) => res.json({ ok: true, build: 'ai-recommend-result-popup-1' }));
+app.get('/health', (req, res) => res.json({ ok: true, build: 'gallery-admin-edit-1' }));
 
 // ══════════════════════════════════════════════════════════════
 // 메뉴 창고 (등록된모든메뉴)
@@ -331,6 +331,33 @@ app.post('/api/menu/all', requireAdmin, async (req, res) => {
       ok(res, { count: list.length });
     } catch(e) { await conn.rollback(); conn.release(); throw e; }
   } catch(e) { err(res, e.message); }
+});
+
+// 마스터 단건 수정 (POST /api/menu/master/update)
+// 전체 목록 동기화(POST /api/menu/all)와 달리 딱 한 행만 갱신 — 다른 마스터 항목은 전혀 건드리지 않음
+app.post('/api/menu/master/update', requireAdmin, async (req, res) => {
+  try {
+    const body = req.body.data || req.body;
+    const id = body.id || 0;
+    if (!id) return err(res, '메뉴 id가 필요합니다.', 400);
+    const name = String(body.name || '').trim();
+    if (!name) return err(res, '메뉴명을 입력해주세요.', 400);
+    const cat = String(body.cat || '기타').trim() || '기타';
+
+    const conn = await pool.getConnection();
+    try {
+      const catId = await _resolveCatId(conn, cat);
+      const [result] = await conn.execute(
+        `UPDATE menus SET name=?,cat=?,cat_id=?,price=?,stock=?,child=?,img_url=?,icon=?,menu_desc=?,updated_at=? WHERE id=?`,
+        [name, cat, catId, Number(body.price) || 0, Number(body.stock) || 0, body.child ? 1 : 0, body.imgUrl || '', body.icon || '', body.desc || '', Date.now(), id]
+      );
+      if (!result.affectedRows) { conn.release(); return err(res, '해당 메뉴를 찾을 수 없습니다.', 404); }
+      // rename 전파: 연결된 daily_menus의 비정규화 name도 갱신
+      await conn.execute(`UPDATE daily_menus SET name=? WHERE menu_id=? AND name<>?`, [name, id, name]);
+      conn.release();
+      ok(res, { updated: true });
+    } catch (e) { conn.release(); throw e; }
+  } catch (e) { err(res, e.message); }
 });
 
 // 마스터 병합 (POST /api/menu/master/merge)
