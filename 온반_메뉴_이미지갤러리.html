@@ -79,6 +79,8 @@
   .rf-run-btn:hover { background:#0a7a7f; }
   .rf-run-btn:disabled { background:#aac9c8; cursor:default; }
   .rf-status { margin-top:12px; font-size:13px; color:#086266; text-align:center; }
+  .recommend-result h3 { font-size:18px; color:#086266; margin-bottom:14px; }
+  .recommend-result-text { font-size:14px; color:#333; line-height:1.6; margin-bottom:20px; white-space:pre-wrap; }
   .modal-name { font-size:19px; font-weight:700; color:#0b3c3e; margin-bottom:8px; }
   .modal-meta { display:flex; align-items:center; gap:10px; }
   .modal-meta .cat { font-size:13px; }
@@ -95,7 +97,6 @@
       <a href="onban01.html" class="header-list-link">📋 일일메뉴 목록으로 가기</a>
     </div>
     <div id="todayStatus" class="today-status" style="display:none;"></div>
-    <div id="recommendStatus" class="today-status" style="display:none;"></div>
     <div class="cat-filter" id="catFilter">
       <button class="cat-btn active" data-cat="전체">전체</button>
     </div>
@@ -170,6 +171,17 @@
         </div>
         <button type="button" id="rfRun" class="rf-run-btn">실행</button>
         <div id="rfStatus" class="rf-status" style="display:none;"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="recommendResultOverlay">
+    <div class="modal-box recommend-box">
+      <button class="modal-close" id="recommendResultClose">&times;</button>
+      <div class="recommend-result">
+        <h3>🎯 AI 추천 결과</h3>
+        <p id="recommendResultText" class="recommend-result-text"></p>
+        <button type="button" id="recommendResultOk" class="rf-run-btn">메뉴 보러가기</button>
       </div>
     </div>
   </div>
@@ -307,7 +319,7 @@
     function closeModal() { modalOverlay.classList.remove('open'); }
     document.getElementById('modalClose').addEventListener('click', closeModal);
     modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeModal(); });
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeModal(); closeRecommendModal(); } });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeModal(); closeRecommendModal(); closeRecommendResultModal(); } });
 
     // ── 오늘의 메뉴 모드 ──
     const API_URL = 'https://myfood01-production.up.railway.app';
@@ -319,7 +331,6 @@
     let reserveMode = false;
     const reserveBtn = document.getElementById('reserveBtn');
     const recommendBtn = document.getElementById('recommendBtn');
-    const recommendStatus = document.getElementById('recommendStatus');
 
     function todayISO() {
       const kst = new Date(Date.now() + 9 * 60 * 60 * 1000);
@@ -453,6 +464,18 @@
     document.getElementById('recommendClose').addEventListener('click', closeRecommendModal);
     recommendOverlay.addEventListener('click', (e) => { if (e.target === recommendOverlay) closeRecommendModal(); });
 
+    // 추천 결과를 알려주는 팝업 — AI 메시지를 배너가 아니라 별도 창으로 제시
+    const recommendResultOverlay = document.getElementById('recommendResultOverlay');
+    const recommendResultText = document.getElementById('recommendResultText');
+    function openRecommendResultModal(reason) {
+      recommendResultText.textContent = reason || '요청하신 조건에 맞는 메뉴예요.';
+      recommendResultOverlay.classList.add('open');
+    }
+    function closeRecommendResultModal() { recommendResultOverlay.classList.remove('open'); }
+    document.getElementById('recommendResultClose').addEventListener('click', closeRecommendResultModal);
+    document.getElementById('recommendResultOk').addEventListener('click', closeRecommendResultModal);
+    recommendResultOverlay.addEventListener('click', (e) => { if (e.target === recommendResultOverlay) closeRecommendResultModal(); });
+
     function applyRecommendMode(picks, reason) {
       recommendPicks = new Set(picks);
       if (todayMode) {
@@ -466,14 +489,12 @@
       searchCatInput.value = '';
       activeCat = '전체';
       getCatBtns().forEach(b => b.classList.remove('active'));
-      recommendStatus.style.display = 'block';
-      recommendStatus.textContent = '🎯 AI 추천: ' + (reason || '요청하신 조건에 맞는 메뉴예요.');
       applyFilter();
+      openRecommendResultModal(reason);
     }
     function exitRecommendMode(doApplyFilter) {
       if (!recommendPicks) return;
       recommendPicks = null;
-      recommendStatus.style.display = 'none';
       recommendBtn.classList.remove('active');
       if (doApplyFilter !== false) applyFilter();
     }
