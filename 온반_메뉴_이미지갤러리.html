@@ -68,7 +68,7 @@
   .modal-img img { width:100%; height:100%; object-fit:cover; display:block; }
   .ai-img-badge { position:absolute; bottom:12px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,.82); color:#fff; font-size:12px; font-weight:800; padding:5px 14px; border-radius:20px; letter-spacing:.2px; pointer-events:none; box-shadow:0 2px 8px rgba(0,0,0,.4); white-space:nowrap; }
   .modal-info { padding:18px 20px 22px; }
-  .recommend-box { max-width:460px; padding:24px 22px 22px; max-height:calc(100vh - 48px); overflow-y:auto; }
+  .recommend-box { max-width:460px; padding:24px 22px 22px; max-height:calc(100vh - 48px); overflow-y:auto; overscroll-behavior:contain; }
   .recommend-form h3 { font-size:18px; color:#086266; margin-bottom:16px; }
   .rf-group { margin-bottom:16px; }
   .rf-scope-group { margin-bottom:18px; padding-bottom:16px; border-bottom:1px solid #eee; }
@@ -331,6 +331,12 @@
     let _scrollLockCount = 0;
     function lockBodyScroll() { _scrollLockCount++; document.body.style.overflow = 'hidden'; }
     function unlockBodyScroll() { _scrollLockCount = Math.max(0, _scrollLockCount - 1); if (_scrollLockCount === 0) document.body.style.overflow = ''; }
+    // 팝업 내용(모달박스) 바깥의 어두운 배경 부분에서 휠/터치스크롤 시 그게 바탕 페이지로 새는 것 방지.
+    // 팝업박스 안쪽 스크롤(overflow-y:auto)은 target이 overlay 자신이 아니므로 그대로 동작함.
+    document.querySelectorAll('.modal-overlay').forEach(function (overlay) {
+      overlay.addEventListener('wheel', function (e) { if (e.target === overlay) e.preventDefault(); }, { passive: false });
+      overlay.addEventListener('touchmove', function (e) { if (e.target === overlay) e.preventDefault(); }, { passive: false });
+    });
     function escapeHtml(s) {
       return (s == null ? '' : String(s)).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
