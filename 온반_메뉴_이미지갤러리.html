@@ -84,8 +84,12 @@
   .rf-run-btn { width:100%; padding:12px; background:#086266; color:#fff; border:none; border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; font-family:inherit; transition:background .12s; }
   .rf-run-btn:hover { background:#0a7a7f; }
   .rf-run-btn:disabled { background:#aac9c8; cursor:default; }
-  .recommend-result h3 { font-size:18px; color:#086266; margin-bottom:14px; }
-  .recommend-result-text { font-size:14px; color:#333; line-height:1.6; margin-bottom:20px; white-space:pre-wrap; }
+  .rf-result { margin-top:16px; padding-top:16px; border-top:1px solid #eee; }
+  .rf-result-text { font-size:14px; color:#333; line-height:1.6; margin-bottom:14px; white-space:pre-wrap; }
+  .rf-result-actions { display:flex; gap:8px; }
+  .rf-result-actions .rf-run-btn { flex:1; }
+  .rf-cancel-btn { flex:1; padding:12px; background:#eee; color:#555; border:none; border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; font-family:inherit; transition:background .12s; }
+  .rf-cancel-btn:hover { background:#e0e0e0; }
   .edit-child-toggle { display:flex; align-items:center; gap:6px; font-size:13px; color:#555; margin-bottom:14px; cursor:pointer; user-select:none; }
   .edit-divider { border:none; border-top:1px solid #eee; margin:14px 0; }
   .edit-img-btn-row { display:flex; gap:8px; margin-bottom:8px; }
@@ -129,7 +133,7 @@
     <div class="search-box">
       <button class="stat-badge today-btn" id="todayBtn">📅 오늘의 메뉴</button>
       <button class="stat-badge today-btn" id="reserveBtn">📝 예약주문</button>
-      <button class="stat-badge today-btn" id="recommendBtn">🎯 오늘 메뉴 AI추천</button>
+      <button class="stat-badge today-btn" id="recommendBtn">🎯 AI추천메뉴</button>
       <span class="search-all-label" style="margin-left:8px;">대상건수</span>
       <span class="result-count" id="resultCount"></span>
     </div>
@@ -154,7 +158,7 @@
     <div class="modal-box recommend-box">
       <button class="modal-close" id="recommendClose">&times;</button>
       <div class="recommend-form">
-        <h3>🎯 오늘 메뉴 AI추천</h3>
+        <h3>🎯 AI추천메뉴</h3>
         <div class="rf-group rf-scope-group">
           <div class="rf-options rf-single rf-scope" id="rfScope">
             <button type="button" class="rf-opt rf-scope-opt selected" data-val="today">오늘의 메뉴에서<br>추천받기</button>
@@ -254,17 +258,13 @@
           </div>
         </div>
         <button type="button" id="rfRun" class="rf-run-btn">실행</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="modal-overlay" id="recommendResultOverlay">
-    <div class="modal-box recommend-box">
-      <button class="modal-close" id="recommendResultClose">&times;</button>
-      <div class="recommend-result">
-        <h3>🎯 AI 추천 결과</h3>
-        <p id="recommendResultText" class="recommend-result-text"></p>
-        <button type="button" id="recommendResultOk" class="rf-run-btn">메뉴 보러가기</button>
+        <div id="rfResult" class="rf-result" style="display:none;">
+          <p id="rfResultText" class="rf-result-text"></p>
+          <div class="rf-result-actions">
+            <button type="button" id="rfApplyBtn" class="rf-run-btn">메뉴 적용</button>
+            <button type="button" id="rfCancelBtn" class="rf-cancel-btn">취소</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -472,7 +472,7 @@
     function closeModal() { modalOverlay.classList.remove('open'); unlockBodyScroll(); }
     document.getElementById('modalClose').addEventListener('click', closeModal);
     modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeModal(); });
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeModal(); closeRecommendModal(); closeRecommendResultModal(); closeEditPopup(); } });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeModal(); closeRecommendModal(); closeEditPopup(); } });
 
     // ── 오늘의 메뉴 모드 ──
     const API_URL = 'https://myfood01-production.up.railway.app';
@@ -616,7 +616,7 @@
       reserveBtn.classList.add('active');
     });
 
-    // ── 오늘 메뉴 AI추천 ──
+    // ── AI추천메뉴 ──
     const recommendOverlay = document.getElementById('recommendOverlay');
     // 단일선택 그룹: 같은 그룹 안에서 하나만 선택(다시 누르면 해제). 다중선택 그룹: 여러 개 토글.
     const RF_SINGLE_IDS = ['rfPurpose', 'rfMealType', 'rfCuisine', 'rfBroth', 'rfTemp', 'rfMealKit', 'rfBudget'];
@@ -663,20 +663,7 @@
     document.getElementById('recommendClose').addEventListener('click', closeRecommendModal);
     recommendOverlay.addEventListener('click', (e) => { if (e.target === recommendOverlay) closeRecommendModal(); });
 
-    // 추천 결과를 알려주는 팝업 — AI 메시지를 배너가 아니라 별도 창으로 제시
-    const recommendResultOverlay = document.getElementById('recommendResultOverlay');
-    const recommendResultText = document.getElementById('recommendResultText');
-    function openRecommendResultModal(reason) {
-      recommendResultText.textContent = reason || '요청하신 조건에 맞는 메뉴예요.';
-      recommendResultOverlay.classList.add('open');
-      lockBodyScroll();
-    }
-    function closeRecommendResultModal() { recommendResultOverlay.classList.remove('open'); unlockBodyScroll(); }
-    document.getElementById('recommendResultClose').addEventListener('click', closeRecommendResultModal);
-    document.getElementById('recommendResultOk').addEventListener('click', closeRecommendResultModal);
-    recommendResultOverlay.addEventListener('click', (e) => { if (e.target === recommendResultOverlay) closeRecommendResultModal(); });
-
-    function applyRecommendMode(picks, reason) {
+    function applyRecommendMode(picks) {
       recommendPicks = new Set(picks);
       if (todayMode) {
         todayMode = false;
@@ -692,7 +679,6 @@
       grid.classList.add('select-mode');
       cards.forEach(c => { var cb = c.querySelector('.card-select-input'); if (cb) cb.checked = true; });
       applyFilter();
-      openRecommendResultModal(reason);
     }
     function exitRecommendMode(doApplyFilter) {
       if (!recommendPicks) return;
@@ -701,10 +687,14 @@
       grid.classList.remove('select-mode');
       if (doApplyFilter !== false) applyFilter();
     }
+    const rfResultEl = document.getElementById('rfResult');
+    const rfResultTextEl = document.getElementById('rfResultText');
+    let _rfLastPicks = null;
     document.getElementById('rfRun').addEventListener('click', () => {
       const runBtn = document.getElementById('rfRun');
       const allergy = document.getElementById('rfAllergy').value.trim();
       runBtn.disabled = true;
+      rfResultEl.style.display = 'none'; // 재실행 시 이전 결과 숨김
       showGalleryToast('AI가 메뉴를 고르는 중...', 0); // 응답 올 때까지 안 사라짐
       fetch(API_URL + '/api/recommend', {
         method: 'POST',
@@ -727,18 +717,35 @@
         .then(r => r.json())
         .then(d => {
           runBtn.disabled = false;
+          hideGalleryToast();
           if (!d.success || !d.picks || !d.picks.length) {
             showGalleryToast(d.error || '조건에 맞는 메뉴를 찾지 못했어요. 조건을 바꿔보세요.', 5000);
             return;
           }
-          hideGalleryToast();
-          applyRecommendMode(d.picks, d.reason);
-          closeRecommendModal();
+          _rfLastPicks = d.picks;
+          rfResultTextEl.textContent = d.reason || '요청하신 조건에 맞는 메뉴예요.';
+          rfResultEl.style.display = 'block';
         })
         .catch(() => {
           runBtn.disabled = false;
           showGalleryToast('추천 요청에 실패했어요. 다시 시도해주세요.', 4000);
         });
+    });
+    document.getElementById('rfApplyBtn').addEventListener('click', () => {
+      if (!_rfLastPicks) return;
+      applyRecommendMode(_rfLastPicks);
+      closeRecommendModal();
+    });
+    document.getElementById('rfCancelBtn').addEventListener('click', () => {
+      // 취소 = AI 추천 적용 안 함 → 전체 메뉴로 표시
+      exitRecommendMode(false);
+      activeCat = '전체';
+      getCatBtns().forEach(b => b.classList.remove('active'));
+      if (getCatBtns()[0]) getCatBtns()[0].classList.add('active');
+      searchAllInput.value = '';
+      searchCatInput.value = '';
+      applyFilter();
+      closeRecommendModal();
     });
 
     // 예약 이벤트 안내 카드 — 카테고리 메뉴 다음 줄에 표시, 클릭 시 예약주문 페이지에서 이벤트 신청 팝업 자동 오픈(기존 기능 재사용)
