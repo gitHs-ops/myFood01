@@ -657,7 +657,12 @@
       btn.classList.add('selected');
       rfScopeVal = btn.dataset.val;
     });
-    function openRecommendModal() { recommendOverlay.classList.add('open'); lockBodyScroll(); }
+    function openRecommendModal() {
+      recommendOverlay.classList.add('open');
+      lockBodyScroll();
+      rfResultEl.style.display = 'none';
+      document.getElementById('rfRun').style.display = '';
+    }
     function closeRecommendModal() { recommendOverlay.classList.remove('open'); unlockBodyScroll(); }
     recommendBtn.addEventListener('click', openRecommendModal);
     document.getElementById('recommendClose').addEventListener('click', closeRecommendModal);
@@ -725,6 +730,7 @@
           _rfLastPicks = d.picks;
           rfResultTextEl.textContent = d.reason || '요청하신 조건에 맞는 메뉴예요.';
           rfResultEl.style.display = 'block';
+          runBtn.style.display = 'none';
         })
         .catch(() => {
           runBtn.disabled = false;
