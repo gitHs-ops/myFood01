@@ -684,11 +684,19 @@
       btn.classList.add('selected');
       rfScopeVal = btn.dataset.val;
     });
+    let _rfPrevState = null; // 팝업 열기 직전 화면 상태 — 취소 시 이 상태로 복귀
     function openRecommendModal() {
       recommendOverlay.classList.add('open');
       lockBodyScroll();
       rfResultEl.style.display = 'none';
       document.getElementById('rfRun').style.display = '';
+      _rfPrevState = {
+        recommendPicks: recommendPicks ? new Set(recommendPicks) : null,
+        activeCat: activeCat,
+        searchAll: searchAllInput.value,
+        searchCat: searchCatInput.value,
+        selectMode: grid.classList.contains('select-mode'),
+      };
     }
     function closeRecommendModal() { recommendOverlay.classList.remove('open'); unlockBodyScroll(); }
     recommendBtn.addEventListener('click', openRecommendModal);
@@ -777,13 +785,15 @@
       closeRecommendModal();
     });
     document.getElementById('rfCancelBtn').addEventListener('click', () => {
-      // 취소 = AI 추천 적용 안 함 → 전체 메뉴로 표시
-      exitRecommendMode(false);
-      activeCat = '전체';
-      getCatBtns().forEach(b => b.classList.remove('active'));
-      if (getCatBtns()[0]) getCatBtns()[0].classList.add('active');
-      searchAllInput.value = '';
-      searchCatInput.value = '';
+      // 취소 = AI 추천 적용 안 함 → 팝업 열기 전 화면(카테고리·검색·이전 추천 상태)으로 복귀
+      if (_rfPrevState) {
+        recommendPicks = _rfPrevState.recommendPicks;
+        activeCat = _rfPrevState.activeCat;
+        searchAllInput.value = _rfPrevState.searchAll;
+        searchCatInput.value = _rfPrevState.searchCat;
+        getCatBtns().forEach(b => b.classList.toggle('active', b.dataset.cat === activeCat));
+        grid.classList.toggle('select-mode', _rfPrevState.selectMode);
+      }
       applyFilter();
       closeRecommendModal();
     });
