@@ -191,10 +191,6 @@
           </div>
         </div>
         <div class="rf-group">
-          <label class="rf-label">몇 인분</label>
-          <input type="number" id="rfServings" class="rf-input" min="1" value="2" style="width:80px;">
-        </div>
-        <div class="rf-group">
           <label class="rf-label">국물 유무</label>
           <div class="rf-options rf-single" id="rfBroth">
             <button type="button" class="rf-opt" data-val="국물 있음(국·찌개·탕)">국물 있음</button>
@@ -330,6 +326,11 @@
     const searchCatInput = document.getElementById('searchCatInput');
     const grid = document.getElementById('grid');
     let cards = [];
+    // 팝업(모달)이 열려있는 동안 배경 페이지 스크롤이 같이 움직이지 않도록 잠금 — 팝업 안 스크롤과 뒤섞이는 문제 방지.
+    // 카운터 방식: 결과팝업이 뜬 채로 요청폼이 닫히는 순간처럼 두 팝업이 겹칠 때도 마지막 하나가 닫힐 때까지 잠금 유지.
+    let _scrollLockCount = 0;
+    function lockBodyScroll() { _scrollLockCount++; document.body.style.overflow = 'hidden'; }
+    function unlockBodyScroll() { _scrollLockCount = Math.max(0, _scrollLockCount - 1); if (_scrollLockCount === 0) document.body.style.overflow = ''; }
     function escapeHtml(s) {
       return (s == null ? '' : String(s)).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
@@ -460,8 +461,9 @@
       modalCat.textContent = card.querySelector('.cat').textContent;
       modalPrice.textContent = card.querySelector('.price').textContent;
       modalOverlay.classList.add('open');
+      lockBodyScroll();
     }
-    function closeModal() { modalOverlay.classList.remove('open'); }
+    function closeModal() { modalOverlay.classList.remove('open'); unlockBodyScroll(); }
     document.getElementById('modalClose').addEventListener('click', closeModal);
     modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) closeModal(); });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeModal(); closeRecommendModal(); closeRecommendResultModal(); closeEditPopup(); } });
@@ -484,6 +486,12 @@
 
     function cardClick(card) {
       const name = card.querySelector('.name').textContent;
+      if (recommendPicks) {
+        // AI 추천 선택 모드: 카드 전체가 체크박스 역할(작은 체크박스만이 아니라)
+        const cb = card.querySelector('.card-select-input');
+        if (cb) cb.checked = !cb.checked;
+        return;
+      }
       if (todayMode) {
         const info = todayMap && todayMap.get(name);
         if (info && info.stock <= 0) return; // 품절 클릭 무시
@@ -643,8 +651,8 @@
       btn.classList.add('selected');
       rfScopeVal = btn.dataset.val;
     });
-    function openRecommendModal() { recommendOverlay.classList.add('open'); }
-    function closeRecommendModal() { recommendOverlay.classList.remove('open'); }
+    function openRecommendModal() { recommendOverlay.classList.add('open'); lockBodyScroll(); }
+    function closeRecommendModal() { recommendOverlay.classList.remove('open'); unlockBodyScroll(); }
     recommendBtn.addEventListener('click', openRecommendModal);
     document.getElementById('recommendClose').addEventListener('click', closeRecommendModal);
     recommendOverlay.addEventListener('click', (e) => { if (e.target === recommendOverlay) closeRecommendModal(); });
@@ -655,8 +663,9 @@
     function openRecommendResultModal(reason) {
       recommendResultText.textContent = reason || '요청하신 조건에 맞는 메뉴예요.';
       recommendResultOverlay.classList.add('open');
+      lockBodyScroll();
     }
-    function closeRecommendResultModal() { recommendResultOverlay.classList.remove('open'); }
+    function closeRecommendResultModal() { recommendResultOverlay.classList.remove('open'); unlockBodyScroll(); }
     document.getElementById('recommendResultClose').addEventListener('click', closeRecommendResultModal);
     document.getElementById('recommendResultOk').addEventListener('click', closeRecommendResultModal);
     recommendResultOverlay.addEventListener('click', (e) => { if (e.target === recommendResultOverlay) closeRecommendResultModal(); });
@@ -688,7 +697,6 @@
     }
     document.getElementById('rfRun').addEventListener('click', () => {
       const runBtn = document.getElementById('rfRun');
-      const servings = Number(document.getElementById('rfServings').value) || 0;
       const allergy = document.getElementById('rfAllergy').value.trim();
       runBtn.disabled = true;
       showGalleryToast('AI가 메뉴를 고르는 중...', 0); // 응답 올 때까지 안 사라짐
@@ -700,7 +708,6 @@
           purpose: rfSingleVals.rfPurpose,
           mealType: rfSingleVals.rfMealType,
           cuisine: rfSingleVals.rfCuisine,
-          servings: servings,
           broth: rfSingleVals.rfBroth,
           taste: Array.from(rfMultiVals.rfTaste),
           temp: rfSingleVals.rfTemp,
@@ -812,11 +819,13 @@
       document.getElementById('editImgDeleteBtn').style.display = m.imgUrl ? '' : 'none';
       document.getElementById('editImgFileInput').value = '';
       editOverlay.classList.add('open');
+      lockBodyScroll();
     }
     function closeEditPopup() {
       editOverlay.classList.remove('open');
       editTargetId = null;
       editPendingImgUrl = null;
+      unlockBodyScroll();
     }
     document.getElementById('editClose').addEventListener('click', closeEditPopup);
     document.getElementById('editCancelBtn').addEventListener('click', closeEditPopup);

@@ -280,7 +280,7 @@ app.get('/api/events', (req, res) => {
 
 // ── 헬스체크 ────────────────────────────────────────────────
 // build 표식 — 설정을 바꾸기 전에 배포가 실제로 반영됐는지 확인하는 용도
-app.get('/health', (req, res) => res.json({ ok: true, build: 'recommend-scope-toast-1' }));
+app.get('/health', (req, res) => res.json({ ok: true, build: 'gallery-select-scroll-1' }));
 
 // ══════════════════════════════════════════════════════════════
 // 메뉴 창고 (등록된모든메뉴)
@@ -1209,7 +1209,6 @@ app.post('/api/recommend', async (req, res) => {
     const purpose = String(body.purpose || '').trim();
     const mealType = String(body.mealType || '').trim();
     const cuisine = String(body.cuisine || '').trim();
-    const servings = Number(body.servings) || 0;
     const broth = String(body.broth || '').trim();
     const taste = Array.isArray(body.taste) ? body.taste.filter(Boolean).map(String) : [];
     const temp = String(body.temp || '').trim();
@@ -1241,7 +1240,6 @@ app.post('/api/recommend', async (req, res) => {
     if (purpose) reqLines.push('- 식사 목적: ' + purpose);
     if (mealType) reqLines.push('- 식사 형태: ' + mealType);
     if (cuisine) reqLines.push('- 음식 종류: ' + cuisine);
-    if (servings) reqLines.push('- 인원수: ' + servings + '인분');
     if (broth) reqLines.push('- 국물 유무: ' + broth);
     if (taste.length) reqLines.push('- 맛/매운정도: ' + taste.join(', '));
     if (temp) reqLines.push('- 온도감: ' + temp);
