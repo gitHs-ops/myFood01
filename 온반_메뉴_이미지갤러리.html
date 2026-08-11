@@ -46,6 +46,7 @@
   .card { background:#fff; border-radius:14px; overflow:hidden; box-shadow:0 4px 14px rgba(0,0,0,0.12); transition:transform .18s ease, box-shadow .18s ease; }
   .card:hover { transform:translateY(-4px); box-shadow:0 10px 22px rgba(0,0,0,0.18); }
   .thumb { position:relative; width:100%; aspect-ratio:1/1; background:#f2f2f2; overflow:hidden; }
+  .thumb-placeholder { display:flex; align-items:center; justify-content:center; font-size:48px; color:#bbb; }
   .thumb img { width:100%; height:100%; object-fit:cover; display:block; }
   .info { padding:12px 14px 14px; }
   .name { font-size:14px; font-weight:700; color:#0b3c3e; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -127,8 +128,11 @@
       return (s == null ? '' : String(s)).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
     function cardHtml(m) {
+      var thumbHtml = m.imgUrl
+        ? '<div class="thumb"><img src="' + escapeHtml(m.imgUrl) + '" alt="' + escapeHtml(m.name) + '" loading="lazy"></div>'
+        : '<div class="thumb thumb-placeholder">🍽️</div>';
       return '<div class="card">'
-        + '<div class="thumb"><img src="' + escapeHtml(m.imgUrl) + '" alt="' + escapeHtml(m.name) + '" loading="lazy"></div>'
+        + thumbHtml
         + '<div class="info">'
           + '<div class="name">' + escapeHtml(m.name) + '</div>'
           + '<div class="meta"><span class="cat">' + escapeHtml(m.cat || '기타') + '</span><span class="price">' + (Number(m.price) || 0) + '천원</span></div>'
@@ -140,12 +144,12 @@
       cards = document.querySelectorAll('.card');
       cards.forEach(c => c.addEventListener('click', () => cardClick(c)));
     }
-    // 마스터 메뉴(실시간)에서 카드 목록을 그려냄 — 사진 등록된 항목만 대상(이미지 갤러리 취지)
+    // 마스터 메뉴(실시간)에서 카드 목록을 그려냄 — 사진 없는 항목은 플레이스홀더로 표시
     function loadCardsFromServer(cb) {
       fetch(API_URL + '/api/menu/all', { cache: 'no-store' })
         .then(r => r.json())
         .then(d => {
-          const menus = (d && d.success && Array.isArray(d.menus)) ? d.menus.filter(m => m.imgUrl) : [];
+          const menus = (d && d.success && Array.isArray(d.menus)) ? d.menus : [];
           renderCards(menus);
           if (cb) cb();
         })
@@ -224,9 +228,16 @@
     function isAiImg(src) { return !!(src && src.startsWith('https://d8j0ntlcm91z4.cloudfront.net')); }
     function openModal(card) {
       const img = card.querySelector('.thumb img');
-      modalImg.src = img.src;
-      modalImg.alt = img.alt;
-      modalAiBadge.style.display = isAiImg(img.src) ? '' : 'none';
+      if (img) {
+        modalImg.style.display = '';
+        modalImg.src = img.src;
+        modalImg.alt = img.alt;
+        modalAiBadge.style.display = isAiImg(img.src) ? '' : 'none';
+      } else {
+        modalImg.style.display = 'none';
+        modalImg.removeAttribute('src');
+        modalAiBadge.style.display = 'none';
+      }
       modalName.textContent = card.querySelector('.name').textContent;
       modalCat.textContent = card.querySelector('.cat').textContent;
       modalPrice.textContent = card.querySelector('.price').textContent;
