@@ -163,6 +163,7 @@
           <div class="rf-options rf-single rf-scope" id="rfScope">
             <button type="button" class="rf-opt rf-scope-opt selected" data-val="today">오늘의 메뉴에서<br>추천받기</button>
             <button type="button" class="rf-opt rf-scope-opt" data-val="all">전체 메뉴중에서<br>추천 받기</button>
+            <button type="button" class="rf-opt rf-scope-opt" data-val="persona">개인취향으로<br>추천받기</button>
           </div>
         </div>
         <div class="rf-group">
@@ -731,6 +732,7 @@
       showGalleryToast('AI가 메뉴를 고르는 중...', 0); // 응답 올 때까지 안 사라짐
       const reqBody = {
         scope: rfScopeVal,
+        deviceId: getDeviceId(),
         purpose: rfSingleVals.rfPurpose,
         mealType: rfSingleVals.rfMealType,
         cuisine: rfSingleVals.rfCuisine,

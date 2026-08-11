@@ -280,7 +280,7 @@ app.get('/api/events', (req, res) => {
 
 // ── 헬스체크 ────────────────────────────────────────────────
 // build 표식 — 설정을 바꾸기 전에 배포가 실제로 반영됐는지 확인하는 용도
-app.get('/health', (req, res) => res.json({ ok: true, build: 'my-tracker-view-1' }));
+app.get('/health', (req, res) => res.json({ ok: true, build: 'recommend-persona-scope-1' }));
 
 // ══════════════════════════════════════════════════════════════
 // 메뉴 창고 (등록된모든메뉴)
@@ -1205,7 +1205,8 @@ app.post('/api/recommend', async (req, res) => {
   try {
     if (!process.env.ANTHROPIC_API_KEY) return err(res, 'AI 추천 기능이 아직 설정되지 않았습니다.', 503);
     const body = req.body || {};
-    const scope = body.scope === 'today' ? 'today' : 'all';
+    const scope = ['today', 'all', 'persona'].includes(body.scope) ? body.scope : 'all';
+    const deviceId = String(body.deviceId || '').trim();
     const purpose = String(body.purpose || '').trim();
     const mealType = String(body.mealType || '').trim();
     const cuisine = String(body.cuisine || '').trim();
@@ -1250,10 +1251,34 @@ app.post('/api/recommend', async (req, res) => {
     if (budget) reqLines.push('- 예산 범위(총액 기준): ' + budget);
     if (!reqLines.length) reqLines.push('- 특별한 조건 없음, 아무거나 골고루 추천');
 
+    let personaContext = '';
+    if (scope === 'persona' && deviceId) {
+      const [recRows] = await pool.execute(
+        'SELECT picks FROM recommend_selection_log WHERE device_id=? ORDER BY created_at DESC LIMIT 5',
+        [deviceId]
+      );
+      const [clickRows] = await pool.execute(
+        'SELECT menu_name, COUNT(*) AS cnt FROM menu_click_log WHERE device_id=? GROUP BY menu_name ORDER BY cnt DESC LIMIT 5',
+        [deviceId]
+      );
+      const personaLines = [];
+      if (clickRows.length) {
+        personaLines.push('- 자주 살펴본 메뉴(관심 순): ' + clickRows.map(r => r.menu_name + '(' + r.cnt + '회)').join(', '));
+      }
+      const pastPicks = Array.from(new Set(recRows.flatMap(r => {
+        const picks = typeof r.picks === 'string' ? JSON.parse(r.picks) : (r.picks || []);
+        return picks;
+      })));
+      if (pastPicks.length) personaLines.push('- 과거 AI추천에서 실제로 선택했던 메뉴: ' + pastPicks.join(', '));
+      personaContext = personaLines.length
+        ? '\n\n[고객 개인 취향 데이터]\n' + personaLines.join('\n') + '\n위 데이터를 참고해서 이 고객이 좋아할 만한 메뉴 위주로 추천해주세요.'
+        : '\n\n[고객 개인 취향 데이터] 아직 이 고객의 취향 데이터가 쌓이지 않았습니다. 인기 있는 메뉴 위주로 추천해주세요.';
+    }
+
     const scopeDesc = scope === 'today' ? '아래는 오늘 판매 중인 메뉴 목록입니다.' : '아래는 지금까지 판매해온 전체 메뉴 목록입니다.';
     const prompt = '당신은 반찬가게 "온반"의 메뉴 추천 도우미입니다. ' + scopeDesc + '\n\n'
       + menuLines + '\n\n'
-      + '고객 요청:\n' + reqLines.join('\n') + '\n\n'
+      + '고객 요청:\n' + reqLines.join('\n') + personaContext + '\n\n'
       + '위 목록 중에서 고객 요청에 가장 잘 맞는 메뉴를 3~6개 골라 추천해주세요. '
       + '반드시 목록에 있는 이름을 정확히 그대로 사용하세요(오타·변형 금지). '
       + '만약 여러 조건을 동시에 만족하는 메뉴가 목록에 하나도 없다면, picks는 빈 배열로 두고 '
