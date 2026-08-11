@@ -280,7 +280,7 @@ app.get('/api/events', (req, res) => {
 
 // ── 헬스체크 ────────────────────────────────────────────────
 // build 표식 — 설정을 바꾸기 전에 배포가 실제로 반영됐는지 확인하는 용도
-app.get('/health', (req, res) => res.json({ ok: true, build: 'reserve-multi-item-1' }));
+app.get('/health', (req, res) => res.json({ ok: true, build: 'recommend-form-expand-1' }));
 
 // ══════════════════════════════════════════════════════════════
 // 메뉴 창고 (등록된모든메뉴)
@@ -1205,20 +1205,38 @@ app.post('/api/recommend', async (req, res) => {
   try {
     if (!process.env.ANTHROPIC_API_KEY) return err(res, 'AI 추천 기능이 아직 설정되지 않았습니다.', 503);
     const body = req.body || {};
+    const purpose = String(body.purpose || '').trim();
+    const mealType = String(body.mealType || '').trim();
     const cuisine = String(body.cuisine || '').trim();
     const servings = Number(body.servings) || 0;
+    const broth = String(body.broth || '').trim();
+    const taste = Array.isArray(body.taste) ? body.taste.filter(Boolean).map(String) : [];
+    const temp = String(body.temp || '').trim();
+    const diet = Array.isArray(body.diet) ? body.diet.filter(Boolean).map(String) : [];
+    const mealKit = String(body.mealKit || '').trim();
     const ingredients = String(body.ingredients || '').trim();
+    const allergy = String(body.allergy || '').trim();
     const drinks = Array.isArray(body.drinks) ? body.drinks.filter(Boolean).map(String) : [];
+    const budget = String(body.budget || '').trim();
 
     const [rows] = await pool.execute('SELECT name, cat FROM menus ORDER BY count DESC, name');
     if (!rows.length) return err(res, '추천할 메뉴가 없습니다.', 404);
     const menuLines = rows.map(r => r.name + ' (' + (r.cat || '기타') + ')').join('\n');
 
     const reqLines = [];
+    if (purpose) reqLines.push('- 식사 목적: ' + purpose);
+    if (mealType) reqLines.push('- 식사 형태: ' + mealType);
     if (cuisine) reqLines.push('- 음식 종류: ' + cuisine);
     if (servings) reqLines.push('- 인원수: ' + servings + '인분');
+    if (broth) reqLines.push('- 국물 유무: ' + broth);
+    if (taste.length) reqLines.push('- 맛/매운정도: ' + taste.join(', '));
+    if (temp) reqLines.push('- 온도감: ' + temp);
+    if (diet.length) reqLines.push('- 식단/칼로리: ' + diet.join(', '));
+    if (mealKit) reqLines.push('- 밀키트 여부: ' + mealKit);
     if (ingredients) reqLines.push('- 보유 중인 주재료: ' + ingredients);
+    if (allergy) reqLines.push('- 알레르기·비선호 재료(반드시 제외): ' + allergy);
     if (drinks.length) reqLines.push('- 곁들일 음료: ' + drinks.join(', '));
+    if (budget) reqLines.push('- 예산 범위(총액 기준): ' + budget);
     if (!reqLines.length) reqLines.push('- 특별한 조건 없음, 아무거나 골고루 추천');
 
     const prompt = '당신은 반찬가게 "온반"의 메뉴 추천 도우미입니다. 아래는 현재 판매 중인 전체 메뉴 목록입니다.\n\n'

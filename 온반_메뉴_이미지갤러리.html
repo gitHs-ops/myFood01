@@ -68,7 +68,7 @@
   .modal-img img { width:100%; height:100%; object-fit:cover; display:block; }
   .ai-img-badge { position:absolute; bottom:12px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,.82); color:#fff; font-size:12px; font-weight:800; padding:5px 14px; border-radius:20px; letter-spacing:.2px; pointer-events:none; box-shadow:0 2px 8px rgba(0,0,0,.4); white-space:nowrap; }
   .modal-info { padding:18px 20px 22px; }
-  .recommend-box { max-width:460px; padding:24px 22px 22px; }
+  .recommend-box { max-width:460px; padding:24px 22px 22px; max-height:calc(100vh - 48px); overflow-y:auto; }
   .recommend-form h3 { font-size:18px; color:#086266; margin-bottom:16px; }
   .rf-group { margin-bottom:16px; }
   .rf-label { display:block; font-size:13px; font-weight:700; color:#555; margin-bottom:8px; }
@@ -127,7 +127,7 @@
     <div class="search-box">
       <button class="stat-badge today-btn" id="todayBtn">📅 오늘의 메뉴</button>
       <button class="stat-badge today-btn" id="reserveBtn">📝 예약주문</button>
-      <button class="stat-badge today-btn" id="recommendBtn">🎯 오늘의 추천 메뉴</button>
+      <button class="stat-badge today-btn" id="recommendBtn">🎯 오늘 메뉴 AI추천</button>
       <span class="search-all-label" style="margin-left:8px;">대상건수</span>
       <span class="result-count" id="resultCount"></span>
     </div>
@@ -152,10 +152,29 @@
     <div class="modal-box recommend-box">
       <button class="modal-close" id="recommendClose">&times;</button>
       <div class="recommend-form">
-        <h3>🎯 오늘의 추천 메뉴</h3>
+        <h3>🎯 오늘 메뉴 AI추천</h3>
+        <div class="rf-group">
+          <label class="rf-label">식사 목적</label>
+          <div class="rf-options rf-single" id="rfPurpose">
+            <button type="button" class="rf-opt" data-val="혼밥">혼밥</button>
+            <button type="button" class="rf-opt" data-val="가족 식사">가족 식사</button>
+            <button type="button" class="rf-opt" data-val="손님 초대">손님 초대</button>
+            <button type="button" class="rf-opt" data-val="홈파티">홈파티</button>
+            <button type="button" class="rf-opt" data-val="혼술 안주">혼술 안주</button>
+          </div>
+        </div>
+        <div class="rf-group">
+          <label class="rf-label">식사 형태</label>
+          <div class="rf-options rf-single" id="rfMealType">
+            <button type="button" class="rf-opt" data-val="점심">점심</button>
+            <button type="button" class="rf-opt" data-val="저녁">저녁</button>
+            <button type="button" class="rf-opt" data-val="야식">야식</button>
+            <button type="button" class="rf-opt" data-val="간식">간식</button>
+          </div>
+        </div>
         <div class="rf-group">
           <label class="rf-label">음식 종류</label>
-          <div class="rf-options" id="rfCuisine">
+          <div class="rf-options rf-single" id="rfCuisine">
             <button type="button" class="rf-opt" data-val="한식">한식</button>
             <button type="button" class="rf-opt" data-val="중식">중식</button>
             <button type="button" class="rf-opt" data-val="일식">일식</button>
@@ -168,17 +187,70 @@
           <input type="number" id="rfServings" class="rf-input" min="1" value="2" style="width:80px;">
         </div>
         <div class="rf-group">
+          <label class="rf-label">국물 유무</label>
+          <div class="rf-options rf-single" id="rfBroth">
+            <button type="button" class="rf-opt" data-val="국물 있음(국·찌개·탕)">국물 있음</button>
+            <button type="button" class="rf-opt" data-val="국물 없음(볶음·구이·조림)">국물 없음</button>
+          </div>
+        </div>
+        <div class="rf-group">
+          <label class="rf-label">맛/매운정도 <span style="font-size:10px;color:#aaa;font-weight:400;">(복수선택 가능)</span></label>
+          <div class="rf-options" id="rfTaste">
+            <button type="button" class="rf-opt" data-val="순한맛">순한맛</button>
+            <button type="button" class="rf-opt" data-val="매운맛">매운맛</button>
+            <button type="button" class="rf-opt" data-val="짭조름한 맛">짭조름한 맛</button>
+            <button type="button" class="rf-opt" data-val="담백한 맛">담백한 맛</button>
+          </div>
+        </div>
+        <div class="rf-group">
+          <label class="rf-label">온도감</label>
+          <div class="rf-options rf-single" id="rfTemp">
+            <button type="button" class="rf-opt" data-val="따뜻한 음식">따뜻한 음식</button>
+            <button type="button" class="rf-opt" data-val="시원한·차가운 음식">시원한·차가운 음식</button>
+          </div>
+        </div>
+        <div class="rf-group">
+          <label class="rf-label">식단/칼로리 <span style="font-size:10px;color:#aaa;font-weight:400;">(복수선택 가능)</span></label>
+          <div class="rf-options" id="rfDiet">
+            <button type="button" class="rf-opt" data-val="다이어트·저칼로리">다이어트·저칼로리</button>
+            <button type="button" class="rf-opt" data-val="고단백">고단백</button>
+            <button type="button" class="rf-opt" data-val="식이섬유 위주">식이섬유 위주</button>
+          </div>
+        </div>
+        <div class="rf-group">
+          <label class="rf-label">밀키트 여부</label>
+          <div class="rf-options rf-single" id="rfMealKit">
+            <button type="button" class="rf-opt" data-val="밀키트">밀키트</button>
+            <button type="button" class="rf-opt" data-val="완조리 반찬">완조리 반찬</button>
+          </div>
+        </div>
+        <div class="rf-group">
           <label class="rf-label">보유 중인 주재료 (선택)</label>
           <input type="text" id="rfIngredients" class="rf-input" placeholder="예: 두부, 김치, 돼지고기">
         </div>
         <div class="rf-group">
-          <label class="rf-label">곁들일 음료</label>
+          <label class="rf-label">알레르기·비선호 재료 (선택)</label>
+          <input type="text" id="rfAllergy" class="rf-input" placeholder="예: 견과류, 갑각류, 오이">
+        </div>
+        <div class="rf-group">
+          <label class="rf-label">곁들일 음료 <span style="font-size:10px;color:#aaa;font-weight:400;">(복수선택 가능)</span></label>
           <div class="rf-options" id="rfDrinks">
             <button type="button" class="rf-opt" data-val="소주">소주</button>
             <button type="button" class="rf-opt" data-val="맥주">맥주</button>
             <button type="button" class="rf-opt" data-val="와인">와인</button>
+            <button type="button" class="rf-opt" data-val="막걸리">막걸리</button>
             <button type="button" class="rf-opt" data-val="콜라">콜라</button>
             <button type="button" class="rf-opt" data-val="사이다">사이다</button>
+          </div>
+        </div>
+        <div class="rf-group">
+          <label class="rf-label">예산 범위</label>
+          <div class="rf-options rf-single" id="rfBudget">
+            <button type="button" class="rf-opt" data-val="1만원대(1만원~2만원 미만)">1만원대</button>
+            <button type="button" class="rf-opt" data-val="2~3만원">2~3만원</button>
+            <button type="button" class="rf-opt" data-val="3~5만원">3~5만원</button>
+            <button type="button" class="rf-opt" data-val="5~10만원">5~10만원</button>
+            <button type="button" class="rf-opt" data-val="10~20만원">10~20만원</button>
           </div>
         </div>
         <button type="button" id="rfRun" class="rf-run-btn">실행</button>
@@ -521,24 +593,37 @@
       reserveBtn.classList.add('active');
     });
 
-    // ── 오늘의 추천 메뉴(AI) ──
+    // ── 오늘 메뉴 AI추천 ──
     const recommendOverlay = document.getElementById('recommendOverlay');
-    let rfCuisineVal = '';
-    const rfDrinksVal = new Set();
-    document.getElementById('rfCuisine').addEventListener('click', (e) => {
-      const btn = e.target.closest('.rf-opt');
-      if (!btn) return;
-      const already = btn.classList.contains('selected');
-      document.querySelectorAll('#rfCuisine .rf-opt').forEach(b => b.classList.remove('selected'));
-      if (!already) { btn.classList.add('selected'); rfCuisineVal = btn.dataset.val; }
-      else { rfCuisineVal = ''; }
+    // 단일선택 그룹: 같은 그룹 안에서 하나만 선택(다시 누르면 해제). 다중선택 그룹: 여러 개 토글.
+    const RF_SINGLE_IDS = ['rfPurpose', 'rfMealType', 'rfCuisine', 'rfBroth', 'rfTemp', 'rfMealKit', 'rfBudget'];
+    const RF_MULTI_IDS = ['rfTaste', 'rfDiet', 'rfDrinks'];
+    const rfSingleVals = {};
+    const rfMultiVals = {};
+    RF_SINGLE_IDS.forEach(id => {
+      rfSingleVals[id] = '';
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener('click', (e) => {
+        const btn = e.target.closest('.rf-opt');
+        if (!btn) return;
+        const already = btn.classList.contains('selected');
+        el.querySelectorAll('.rf-opt').forEach(b => b.classList.remove('selected'));
+        if (!already) { btn.classList.add('selected'); rfSingleVals[id] = btn.dataset.val; }
+        else { rfSingleVals[id] = ''; }
+      });
     });
-    document.getElementById('rfDrinks').addEventListener('click', (e) => {
-      const btn = e.target.closest('.rf-opt');
-      if (!btn) return;
-      btn.classList.toggle('selected');
-      if (btn.classList.contains('selected')) rfDrinksVal.add(btn.dataset.val);
-      else rfDrinksVal.delete(btn.dataset.val);
+    RF_MULTI_IDS.forEach(id => {
+      rfMultiVals[id] = new Set();
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener('click', (e) => {
+        const btn = e.target.closest('.rf-opt');
+        if (!btn) return;
+        btn.classList.toggle('selected');
+        if (btn.classList.contains('selected')) rfMultiVals[id].add(btn.dataset.val);
+        else rfMultiVals[id].delete(btn.dataset.val);
+      });
     });
     function openRecommendModal() { recommendOverlay.classList.add('open'); }
     function closeRecommendModal() { recommendOverlay.classList.remove('open'); }
@@ -588,6 +673,7 @@
       const status = document.getElementById('rfStatus');
       const servings = Number(document.getElementById('rfServings').value) || 0;
       const ingredients = document.getElementById('rfIngredients').value.trim();
+      const allergy = document.getElementById('rfAllergy').value.trim();
       runBtn.disabled = true;
       status.style.display = 'block';
       status.textContent = 'AI가 메뉴를 고르는 중...';
@@ -595,10 +681,19 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          cuisine: rfCuisineVal,
+          purpose: rfSingleVals.rfPurpose,
+          mealType: rfSingleVals.rfMealType,
+          cuisine: rfSingleVals.rfCuisine,
           servings: servings,
+          broth: rfSingleVals.rfBroth,
+          taste: Array.from(rfMultiVals.rfTaste),
+          temp: rfSingleVals.rfTemp,
+          diet: Array.from(rfMultiVals.rfDiet),
+          mealKit: rfSingleVals.rfMealKit,
           ingredients: ingredients,
-          drinks: Array.from(rfDrinksVal),
+          allergy: allergy,
+          drinks: Array.from(rfMultiVals.rfDrinks),
+          budget: rfSingleVals.rfBudget,
         }),
       })
         .then(r => r.json())
