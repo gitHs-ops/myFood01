@@ -551,6 +551,31 @@ select.reserve-info-inp{appearance:none;-webkit-appearance:none;background:#fff 
 .reserve-confirm-btn{flex:2;background:var(--teal);color:#fff;border:none;border-radius:14px;padding:13px 0;font-size:15px;font-weight:800;cursor:pointer;}
 .reserve-close-btn{flex:1;background:#fff;color:var(--red);border:1.5px solid #f5c0c0;border-radius:14px;padding:13px 0;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;}
 .hist-status.reserve{background:#ede7f6;color:#6a1b9a;}
+/* ── AI 추천메뉴 팝업(오늘의 메뉴 전용) ── */
+.ai-rec-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:flex-end;justify-content:center;}
+.ai-rec-overlay.open{display:flex;}
+.ai-rec-modal{background:#fff;border-radius:20px 20px 0 0;width:100%;max-height:88vh;overflow-y:auto;overflow-x:hidden;padding-bottom:20px;}
+.ai-rec-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid #f0faf9;position:sticky;top:0;background:#fff;z-index:1;}
+.ai-rec-title{font-size:16px;font-weight:800;color:#1a1a1a;}
+.ai-rec-close{background:#f0f0f0;border:none;border-radius:50%;width:32px;height:32px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.ai-rec-body{padding:14px 16px 0;}
+.rf-group{margin-bottom:16px;}
+.rf-label{display:block;font-size:13px;font-weight:700;color:#555;margin-bottom:8px;}
+.rf-options{display:flex;flex-wrap:wrap;gap:6px;}
+.rf-opt{background:#f2f7f6;border:1.5px solid #d5e6e4;border-radius:20px;padding:6px 14px;font-size:13px;font-weight:600;color:#086266;cursor:pointer;font-family:inherit;transition:background .12s,border-color .12s;}
+.rf-opt:hover{background:#e0f0ee;}
+.rf-opt.selected{background:#086266;color:#fff;border-color:#086266;}
+.rf-input{width:100%;padding:8px 12px;border-radius:8px;border:1.5px solid #d5e6e4;font-family:inherit;font-size:14px;outline:none;box-sizing:border-box;}
+.rf-input:focus{border-color:#086266;}
+.rf-run-btn{width:100%;padding:12px;background:var(--teal);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .12s;}
+.rf-run-btn:hover{background:#0a7a7f;}
+.rf-run-btn:disabled{background:#aac9c8;cursor:default;}
+.rf-result{margin-top:4px;padding:16px 0 6px;border-top:1px solid #eee;}
+.rf-result-text{font-size:14px;color:#333;line-height:1.6;margin-bottom:14px;white-space:pre-wrap;}
+.rf-result-actions{display:flex;gap:8px;}
+.rf-result-actions .rf-run-btn{flex:1;}
+.rf-cancel-btn{flex:1;padding:12px;background:#eee;color:#555;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .12s;}
+.rf-cancel-btn:hover{background:#e0e0e0;}
 </style>
 </head>
 <body>
@@ -567,7 +592,7 @@ select.reserve-info-inp{appearance:none;-webkit-appearance:none;background:#fff 
         <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
         메뉴 목록
       </button>
-      <button class="top-btn" onclick="window.location.href='온반_메뉴_이미지갤러리.html?openRecommend=1'">
+      <button class="top-btn" onclick="openAiRecModal()">
         🎯 AI 추천메뉴
       </button>
       <button class="top-btn" onclick="window.open('고객페이지_사용매뉴얼.html','_blank')">
@@ -739,6 +764,118 @@ select.reserve-info-inp{appearance:none;-webkit-appearance:none;background:#fff 
   </div>
 </div>
 
+<!-- AI 추천메뉴 팝업(오늘의 메뉴 기준, 간소화 — 스코프 선택 없음) -->
+<div class="ai-rec-overlay" id="aiRecOverlay" onclick="if(event.target===this)closeAiRecModal()">
+  <div class="ai-rec-modal">
+    <div class="ai-rec-head">
+      <span class="ai-rec-title">🎯 AI추천메뉴</span>
+      <button class="ai-rec-close" onclick="closeAiRecModal()">✕</button>
+    </div>
+    <div class="ai-rec-body">
+      <div class="rf-group">
+        <label class="rf-label">식사 목적</label>
+        <div class="rf-options rf-single" id="rfPurpose">
+          <button type="button" class="rf-opt" data-val="혼밥">혼밥</button>
+          <button type="button" class="rf-opt" data-val="가족 식사">가족 식사</button>
+          <button type="button" class="rf-opt" data-val="손님 초대">손님 초대</button>
+          <button type="button" class="rf-opt" data-val="홈파티">홈파티</button>
+          <button type="button" class="rf-opt" data-val="안주">안주</button>
+        </div>
+      </div>
+      <div class="rf-group">
+        <label class="rf-label">식사 형태</label>
+        <div class="rf-options rf-single" id="rfMealType">
+          <button type="button" class="rf-opt" data-val="점심">점심</button>
+          <button type="button" class="rf-opt" data-val="저녁">저녁</button>
+          <button type="button" class="rf-opt" data-val="야식">야식</button>
+          <button type="button" class="rf-opt" data-val="간식">간식</button>
+        </div>
+      </div>
+      <div class="rf-group">
+        <label class="rf-label">음식 종류</label>
+        <div class="rf-options rf-single" id="rfCuisine">
+          <button type="button" class="rf-opt" data-val="한식">한식</button>
+          <button type="button" class="rf-opt" data-val="중식">중식</button>
+          <button type="button" class="rf-opt" data-val="일식">일식</button>
+          <button type="button" class="rf-opt" data-val="양식">양식</button>
+          <button type="button" class="rf-opt" data-val="퓨전">퓨전</button>
+        </div>
+      </div>
+      <div class="rf-group">
+        <label class="rf-label">국물 유무</label>
+        <div class="rf-options rf-single" id="rfBroth">
+          <button type="button" class="rf-opt" data-val="국물 있음(국·찌개·탕)">국물 있음</button>
+          <button type="button" class="rf-opt" data-val="국물 없음(볶음·구이·조림)">국물 없음</button>
+        </div>
+      </div>
+      <div class="rf-group">
+        <label class="rf-label">맛/매운정도 <span style="font-size:10px;color:#aaa;font-weight:400;">(복수선택 가능)</span></label>
+        <div class="rf-options" id="rfTaste">
+          <button type="button" class="rf-opt" data-val="순한맛">순한맛</button>
+          <button type="button" class="rf-opt" data-val="매운맛">매운맛</button>
+          <button type="button" class="rf-opt" data-val="짭조름한 맛">짭조름한 맛</button>
+          <button type="button" class="rf-opt" data-val="담백한 맛">담백한 맛</button>
+        </div>
+      </div>
+      <div class="rf-group">
+        <label class="rf-label">온도감</label>
+        <div class="rf-options rf-single" id="rfTemp">
+          <button type="button" class="rf-opt" data-val="따뜻한 음식">따뜻한 음식</button>
+          <button type="button" class="rf-opt" data-val="시원한·차가운 음식">시원한·차가운 음식</button>
+        </div>
+      </div>
+      <div class="rf-group">
+        <label class="rf-label">식단/칼로리 <span style="font-size:10px;color:#aaa;font-weight:400;">(복수선택 가능)</span></label>
+        <div class="rf-options" id="rfDiet">
+          <button type="button" class="rf-opt" data-val="다이어트·저칼로리">다이어트·저칼로리</button>
+          <button type="button" class="rf-opt" data-val="고단백">고단백</button>
+          <button type="button" class="rf-opt" data-val="식이섬유 위주">식이섬유 위주</button>
+        </div>
+      </div>
+      <div class="rf-group">
+        <label class="rf-label">밀키트 여부</label>
+        <div class="rf-options rf-single" id="rfMealKit">
+          <button type="button" class="rf-opt" data-val="밀키트">밀키트</button>
+          <button type="button" class="rf-opt" data-val="완조리 반찬">완조리 반찬</button>
+        </div>
+      </div>
+      <div class="rf-group">
+        <label class="rf-label">곁들일 음료 <span style="font-size:10px;color:#aaa;font-weight:400;">(복수선택 가능)</span></label>
+        <div class="rf-options" id="rfDrinks">
+          <button type="button" class="rf-opt" data-val="소주">소주</button>
+          <button type="button" class="rf-opt" data-val="맥주">맥주</button>
+          <button type="button" class="rf-opt" data-val="와인">와인</button>
+          <button type="button" class="rf-opt" data-val="막걸리">막걸리</button>
+          <button type="button" class="rf-opt" data-val="콜라">콜라</button>
+          <button type="button" class="rf-opt" data-val="사이다">사이다</button>
+        </div>
+      </div>
+      <div class="rf-group">
+        <label class="rf-label">예산 범위</label>
+        <div class="rf-options rf-single" id="rfBudget">
+          <button type="button" class="rf-opt" data-val="1만원대(1만원~2만원 미만)">1만원대</button>
+          <button type="button" class="rf-opt" data-val="2~3만원">2~3만원</button>
+          <button type="button" class="rf-opt" data-val="3~5만원">3~5만원</button>
+          <button type="button" class="rf-opt" data-val="5~10만원">5~10만원</button>
+          <button type="button" class="rf-opt" data-val="10~20만원">10~20만원</button>
+        </div>
+      </div>
+      <div class="rf-group">
+        <label class="rf-label">알레르기·비선호 재료 (선택)</label>
+        <input type="text" id="rfAllergy" class="rf-input" placeholder="예: 견과류, 갑각류, 오이">
+      </div>
+      <button type="button" id="rfRun" class="rf-run-btn">실행</button>
+      <div id="rfResult" class="rf-result" style="display:none;">
+        <p id="rfResultText" class="rf-result-text"></p>
+        <div class="rf-result-actions">
+          <button type="button" id="rfApplyBtn" class="rf-run-btn">메뉴 적용</button>
+          <button type="button" id="rfCancelBtn" class="rf-cancel-btn">취소</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 var CAT_COLOR={'메인':'#1D9E75','한우':'#C0392B','한돈':'#8E44AD','반찬':'#378ADD','김치':'#D4537E','밀키트':'#E9A826','기타':'#888780'};
 var CAT_EMOJI={'메인':'🍳','한우':'🥩','한돈':'🐷','반찬':'🥗','김치':'🥬','밀키트':'📦','기타':'🍽'};
@@ -841,12 +978,116 @@ function fmtDT(date,time){
   }
   return mmdd+(dow?' '+dow:'')+(hhmm?' '+hhmm:'');
 }
-function showToast(msg){
+function showToast(msg,duration){
   var t=document.getElementById('toast');
   t.textContent=msg;t.classList.add('show');
   clearTimeout(t._t);
-  t._t=setTimeout(function(){t.classList.remove('show');},2000);
+  if(duration!==0)t._t=setTimeout(function(){t.classList.remove('show');},duration||2000);
 }
+function hideToast(){
+  var t=document.getElementById('toast');
+  clearTimeout(t._t);
+  t.classList.remove('show');
+}
+// ── AI 추천메뉴(오늘의 메뉴 전용 — 스코프 선택 없이 항상 오늘 메뉴 기준, 적용 시 바로 장바구니) ──
+var RF_SINGLE_IDS=['rfPurpose','rfMealType','rfCuisine','rfBroth','rfTemp','rfMealKit','rfBudget'];
+var RF_MULTI_IDS=['rfTaste','rfDiet','rfDrinks'];
+var rfSingleVals={},rfMultiVals={};
+RF_SINGLE_IDS.forEach(function(id){
+  rfSingleVals[id]='';
+  var el=document.getElementById(id);
+  if(!el)return;
+  el.addEventListener('click',function(e){
+    var btn=e.target.closest('.rf-opt');
+    if(!btn)return;
+    var already=btn.classList.contains('selected');
+    el.querySelectorAll('.rf-opt').forEach(function(b){b.classList.remove('selected');});
+    if(!already){btn.classList.add('selected');rfSingleVals[id]=btn.dataset.val;}
+    else rfSingleVals[id]='';
+  });
+});
+RF_MULTI_IDS.forEach(function(id){
+  rfMultiVals[id]=new Set();
+  var el=document.getElementById(id);
+  if(!el)return;
+  el.addEventListener('click',function(e){
+    var btn=e.target.closest('.rf-opt');
+    if(!btn)return;
+    btn.classList.toggle('selected');
+    if(btn.classList.contains('selected'))rfMultiVals[id].add(btn.dataset.val);
+    else rfMultiVals[id].delete(btn.dataset.val);
+  });
+});
+function openAiRecModal(){
+  document.getElementById('aiRecOverlay').classList.add('open');
+  document.getElementById('rfResult').style.display='none';
+  document.getElementById('rfRun').style.display='';
+}
+function closeAiRecModal(){
+  document.getElementById('aiRecOverlay').classList.remove('open');
+}
+var _rfLastPicks=null,_rfLastConditions=null,_rfLastReason='';
+document.getElementById('rfRun').addEventListener('click',function(){
+  var runBtn=document.getElementById('rfRun');
+  var allergy=document.getElementById('rfAllergy').value.trim();
+  runBtn.disabled=true;
+  document.getElementById('rfResult').style.display='none';
+  showToast('AI가 메뉴를 고르는 중...',0);
+  var reqBody={
+    scope:'today',
+    deviceId:getDeviceId(),
+    purpose:rfSingleVals.rfPurpose,
+    mealType:rfSingleVals.rfMealType,
+    cuisine:rfSingleVals.rfCuisine,
+    broth:rfSingleVals.rfBroth,
+    taste:Array.from(rfMultiVals.rfTaste),
+    temp:rfSingleVals.rfTemp,
+    diet:Array.from(rfMultiVals.rfDiet),
+    mealKit:rfSingleVals.rfMealKit,
+    allergy:allergy,
+    drinks:Array.from(rfMultiVals.rfDrinks),
+    budget:rfSingleVals.rfBudget,
+  };
+  fetch(API_URL+'/api/recommend',{
+    method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(reqBody),
+  }).then(function(r){return r.json();}).then(function(d){
+    runBtn.disabled=false;
+    hideToast();
+    if(!d.success||!d.picks||!d.picks.length){
+      showToast(d.error||'조건에 맞는 메뉴를 찾지 못했어요. 조건을 바꿔보세요.',5000);
+      return;
+    }
+    _rfLastPicks=d.picks;
+    _rfLastConditions=reqBody;
+    _rfLastReason=d.reason||'';
+    document.getElementById('rfResultText').textContent=d.reason||'요청하신 조건에 맞는 메뉴예요.';
+    document.getElementById('rfResult').style.display='block';
+    runBtn.style.display='none';
+  }).catch(function(){
+    runBtn.disabled=false;
+    showToast('추천 요청에 실패했어요. 다시 시도해주세요.',4000);
+  });
+});
+document.getElementById('rfApplyBtn').addEventListener('click',function(){
+  if(!_rfLastPicks)return;
+  fetch(API_URL+'/api/track/recommend-apply',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({deviceId:getDeviceId(),scope:'today',conditions:_rfLastConditions,picks:_rfLastPicks,reason:_rfLastReason}),
+  }).catch(function(){});
+  _rfLastPicks.forEach(function(name){
+    var mm=allMenus.find(function(x){return x.name===name;});
+    if(!mm||(mm.stock||0)===0)return;
+    var exx=cart.find(function(c){return c.name===mm.name;});
+    if(exx){exx.qty++;}
+    else{cart.push({menuId:(mm.menuId!=null?mm.menuId:null),name:mm.name,cat:mm.cat||'',price:mm.price,qty:1,imgUrl:mm.imgUrl||null,child:mm.child,checked:true});}
+  });
+  updateCartCount();
+  closeAiRecModal();
+  goPage('cart');
+});
+document.getElementById('rfCancelBtn').addEventListener('click',function(){
+  closeAiRecModal();
+});
 function goPage(name,cb){
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
   document.getElementById('page-'+name).classList.add('active');
@@ -2927,11 +3168,6 @@ window.onload=function(){
     var _openReserveMultiRaw=_urlParams.get('openReserveMulti');
     if(_openReserveMultiRaw)_openReserveMultiNames=JSON.parse(_openReserveMultiRaw)||[];
   }catch(e){_openReserveMultiNames=[];}
-  var _addToCartNames=[];
-  try{
-    var _addToCartRaw=_urlParams.get('addToCart');
-    if(_addToCartRaw)_addToCartNames=JSON.parse(_addToCartRaw)||[];
-  }catch(e){_addToCartNames=[];}
   var _refDecoded=document.referrer;
   try{_refDecoded=decodeURIComponent(_refDecoded);}catch(e){}
   if(/온반_메뉴_이미지갤러리\.html/.test(_refDecoded)){
@@ -2951,18 +3187,6 @@ window.onload=function(){
         updateCartCount();
         goPage('cart');
       }
-    }
-    if(_addToCartNames.length){
-      // 갤러리 AI추천(오늘의 메뉴 목록 진입 경로)에서 '메뉴 적용' → 담고 바로 장바구니로
-      _addToCartNames.forEach(function(name){
-        var mm=allMenus.find(function(x){return x.name===name;});
-        if(!mm||(mm.stock||0)===0)return;
-        var exx=cart.find(function(c){return c.name===mm.name;});
-        if(exx){exx.qty++;}
-        else{cart.push({menuId:(mm.menuId!=null?mm.menuId:null),name:mm.name,cat:mm.cat||'',price:mm.price,qty:1,imgUrl:mm.imgUrl||null,child:mm.child,checked:true});}
-      });
-      updateCartCount();
-      goPage('cart');
     }
   });
   if(_openReserveEvent){

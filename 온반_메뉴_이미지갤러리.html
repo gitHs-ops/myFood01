@@ -478,8 +478,6 @@
 
     // ── 오늘의 메뉴 모드 ──
     const API_URL = 'https://myfood01-production.up.railway.app';
-    // 고객페이지 '오늘의 메뉴' 목록에서 AI추천메뉴 버튼으로 들어온 경우 — 스코프 선택 없이 오늘 메뉴만, 적용 시 장바구니로 바로 연결
-    const _fromMenuPage = !!new URLSearchParams(window.location.search).get('openRecommend');
     // 고객 개인별 취향 추적용 기기 식별자 — onban01.html의 getDeviceId()와 동일한 키/형식(UUID v4)을 공유
     function getDeviceId() {
       var k = 'onban_device_id';
@@ -692,7 +690,6 @@
       lockBodyScroll();
       rfResultEl.style.display = 'none';
       document.getElementById('rfRun').style.display = '';
-      document.querySelector('.rf-scope-group').style.display = _fromMenuPage ? 'none' : '';
       _rfPrevState = {
         recommendPicks: recommendPicks ? new Set(recommendPicks) : null,
         activeCat: activeCat,
@@ -784,11 +781,6 @@
     document.getElementById('rfApplyBtn').addEventListener('click', () => {
       if (!_rfLastPicks) return;
       trackRecommendApply(_rfLastPicks, _rfLastConditions, _rfLastReason);
-      if (_fromMenuPage) {
-        // 오늘의 메뉴 목록에서 들어온 경우 — 갤러리에 남지 않고 바로 고객페이지 장바구니로
-        window.location.href = 'onban01.html?addToCart=' + encodeURIComponent(JSON.stringify(_rfLastPicks));
-        return;
-      }
       applyRecommendMode(_rfLastPicks);
       closeRecommendModal();
     });
@@ -1018,8 +1010,8 @@
 
     loadCardsFromServer(applyFilter);
 
-    // 고객페이지 상단 'AI 추천메뉴' 버튼 등 외부에서 딥링크로 들어오면 추천 폼을 바로 오픈
-    if (_fromMenuPage) {
+    // 외부에서 딥링크로 들어오면 추천 폼을 바로 오픈(현재는 갤러리 자체 딥링크 용도로만 유지)
+    if (new URLSearchParams(window.location.search).get('openRecommend')) {
       openRecommendModal();
     }
   </script>
