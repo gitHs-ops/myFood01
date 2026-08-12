@@ -1149,6 +1149,13 @@ function getDeviceId(){
   }
   return id;
 }
+// 메뉴 상세를 열어볼 때마다 '나의 기록 > 자주 살펴본 메뉴'용으로 기록. 실패해도 화면엔 영향 없음.
+function trackMenuClick(name,cat){
+  fetch(API_URL+'/api/track/menu-click',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({deviceId:getDeviceId(),name:name,cat:cat}),
+  }).catch(function(){});
+}
 function loadMenus(silent,cb){
   var iso=toISO(new Date());
   menuDate=iso;
@@ -1327,6 +1334,7 @@ function renderMenuGrid(){
 function showMenuModal(id){
   var m=allMenus.find(function(x){return String(x.id)===String(id);});
   if(!m)return;
+  trackMenuClick(m.name,m.cat);
   var overlay=document.createElement('div');
   overlay.className='menu-modal-overlay';
   overlay.onclick=function(e){if(e.target===overlay)document.body.removeChild(overlay);};
