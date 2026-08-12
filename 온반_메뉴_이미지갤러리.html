@@ -528,9 +528,11 @@
       if (todayMode) {
         const info = todayMap && todayMap.get(name);
         if (info && info.stock <= 0) return; // 품절 클릭 무시
+        trackMenuClick(name, card.querySelector('.cat').textContent);
         window.location.href = 'onban01.html?openMenu=' + encodeURIComponent(name);
       } else if (reserveMode) {
         // '예약 주문 신청하기'와 동일한 기능 — 예약주문 페이지에서 해당 항목을 바로 선택해 팝업까지 오픈
+        trackMenuClick(name, card.querySelector('.cat').textContent);
         window.location.href = 'onban01.html?openReserve=' + encodeURIComponent(name);
       } else if (isAdmin) {
         openEditPopup(card);

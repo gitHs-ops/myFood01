@@ -2180,6 +2180,40 @@ function _doRenderTracker(el,ordersRes,trackerRes){
     +'<div class="trk-stat"><div class="trk-stat-num">'+reserveOrders.length+'</div><div class="trk-stat-label">총 예약</div></div>';
   el.appendChild(sumRow);
 
+  // 실제 주문(취소 제외) 항목을 메뉴별로 집계 — 클릭·AI추천과 달리 '진짜 산' 메뉴만 모아서 별도로 보여줌
+  var orderedMenuMap={};
+  orders.forEach(function(o){
+    if(o.status==='cancelled')return;
+    (o.items||[]).forEach(function(it){
+      var key=it.name;
+      if(!orderedMenuMap[key])orderedMenuMap[key]={name:it.name,cat:it.cat||'',qty:0};
+      orderedMenuMap[key].qty+=(it.qty||1);
+    });
+  });
+  var orderedMenus=Object.keys(orderedMenuMap).map(function(k){return orderedMenuMap[k];}).sort(function(a,b){return b.qty-a.qty;}).slice(0,10);
+
+  var ordTitle=document.createElement('div');
+  ordTitle.className='trk-section-title';
+  ordTitle.textContent='📦 실제 주문한 메뉴';
+  el.appendChild(ordTitle);
+  if(!orderedMenus.length){
+    el.appendChild(_trkEmpty('아직 주문한 메뉴가 없어요.'));
+  }else{
+    var ordWrap=document.createElement('div');
+    ordWrap.className='hist-list';
+    orderedMenus.forEach(function(m,i){
+      var row=document.createElement('div');
+      row.className='hist-li';
+      row.style.cursor='default';
+      row.innerHTML=
+        '<div class="trk-rank">'+(i+1)+'</div>'
+        +'<div class="hist-li-main"><div class="hist-li-sum-text" style="font-size:14px;font-weight:700;color:#333;">'+_escTrk(menuDisplayName(m.name,m.cat))+'</div></div>'
+        +'<div class="hist-li-right"><span class="hist-li-total">'+m.qty+'개</span></div>';
+      ordWrap.appendChild(row);
+    });
+    el.appendChild(ordWrap);
+  }
+
   var recTitle=document.createElement('div');
   recTitle.className='trk-section-title';
   recTitle.textContent='🎯 AI추천 선택 내역';
