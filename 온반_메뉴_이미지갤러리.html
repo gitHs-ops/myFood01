@@ -68,12 +68,12 @@
   .modal-img img { width:100%; height:100%; object-fit:cover; display:block; }
   .ai-img-badge { position:absolute; bottom:12px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,.82); color:#fff; font-size:12px; font-weight:800; padding:5px 14px; border-radius:20px; letter-spacing:.2px; pointer-events:none; box-shadow:0 2px 8px rgba(0,0,0,.4); white-space:nowrap; }
   .modal-info { padding:18px 20px 22px; }
-  .recommend-box { max-width:460px; padding:24px 22px 22px; max-height:calc(100vh - 48px); overflow-y:auto; overscroll-behavior:contain; }
+  .recommend-box { max-width:400px; padding:24px 22px 22px; max-height:calc(100vh - 48px); overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; }
   .recommend-form h3 { font-size:18px; color:#086266; margin-bottom:16px; }
   .rf-group { margin-bottom:16px; }
   .rf-scope-group { margin-bottom:18px; padding-bottom:16px; border-bottom:1px solid #eee; }
   .rf-scope { gap:8px; }
-  .rf-scope .rf-opt { flex:1; text-align:center; padding:10px 6px; font-size:12.5px; line-height:1.4; }
+  .rf-scope .rf-opt { flex:1; min-width:0; text-align:center; padding:10px 6px; font-size:12.5px; line-height:1.4; }
   .rf-label { display:block; font-size:13px; font-weight:700; color:#555; margin-bottom:8px; }
   .rf-options { display:flex; flex-wrap:wrap; gap:6px; }
   .rf-opt { background:#f2f7f6; border:1.5px solid #d5e6e4; border-radius:20px; padding:6px 14px; font-size:13px; font-weight:600; color:#086266; cursor:pointer; font-family:inherit; transition:background .12s,border-color .12s; }
@@ -478,6 +478,8 @@
 
     // ── 오늘의 메뉴 모드 ──
     const API_URL = 'https://myfood01-production.up.railway.app';
+    // 고객페이지 '오늘의 메뉴' 목록에서 AI추천메뉴 버튼으로 들어온 경우 — 스코프 선택 없이 오늘 메뉴만, 적용 시 장바구니로 바로 연결
+    const _fromMenuPage = !!new URLSearchParams(window.location.search).get('openRecommend');
     // 고객 개인별 취향 추적용 기기 식별자 — onban01.html의 getDeviceId()와 동일한 키/형식(UUID v4)을 공유
     function getDeviceId() {
       var k = 'onban_device_id';
@@ -690,6 +692,7 @@
       lockBodyScroll();
       rfResultEl.style.display = 'none';
       document.getElementById('rfRun').style.display = '';
+      document.querySelector('.rf-scope-group').style.display = _fromMenuPage ? 'none' : '';
       _rfPrevState = {
         recommendPicks: recommendPicks ? new Set(recommendPicks) : null,
         activeCat: activeCat,
@@ -781,6 +784,11 @@
     document.getElementById('rfApplyBtn').addEventListener('click', () => {
       if (!_rfLastPicks) return;
       trackRecommendApply(_rfLastPicks, _rfLastConditions, _rfLastReason);
+      if (_fromMenuPage) {
+        // 오늘의 메뉴 목록에서 들어온 경우 — 갤러리에 남지 않고 바로 고객페이지 장바구니로
+        window.location.href = 'onban01.html?addToCart=' + encodeURIComponent(JSON.stringify(_rfLastPicks));
+        return;
+      }
       applyRecommendMode(_rfLastPicks);
       closeRecommendModal();
     });
@@ -1011,7 +1019,7 @@
     loadCardsFromServer(applyFilter);
 
     // 고객페이지 상단 'AI 추천메뉴' 버튼 등 외부에서 딥링크로 들어오면 추천 폼을 바로 오픈
-    if (new URLSearchParams(window.location.search).get('openRecommend')) {
+    if (_fromMenuPage) {
       openRecommendModal();
     }
   </script>
