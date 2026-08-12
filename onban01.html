@@ -284,8 +284,6 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 
 /* ── 공통 ── */
 .section-title{font-size:15px;font-weight:700;padding:16px 16px 10px;color:#fff;display:flex;align-items:center;justify-content:space-between;}
-.section-back-btn{background:none;border:none;color:rgba(255,255,255,.75);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:4px;padding:4px 6px;}
-.section-back-btn:hover{color:#fff;}
 .toast{
   position:fixed;top:50%;left:50%;transform:translate(-50%,calc(-50% + 10px));
   background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:999px;
@@ -377,6 +375,7 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 .trk-pick-chip{font-size:11px;font-weight:700;background:#e6f4f3;color:#086266;border-radius:999px;padding:3px 10px;}
 .trk-reason{font-size:11px;color:var(--sub);margin-top:5px;line-height:1.5;}
 .trk-rank{width:22px;height:22px;border-radius:50%;background:#f4fafa;color:#086266;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.trk-del-btn{flex-shrink:0;}
 /* ── 주문 상세 팝업 ── */
 .order-detail-overlay{position:fixed;inset:0;background:rgba(0,0,0,.52);z-index:600;display:none;align-items:flex-start;justify-content:center;padding:18px 8px 40px;overflow-y:auto;}
 .order-detail-overlay.open{display:flex;}
@@ -641,10 +640,7 @@ select.reserve-info-inp{appearance:none;-webkit-appearance:none;background:#fff 
 
 <!-- ════ 페이지: 장바구니 ════ -->
 <div id="page-cart" class="page">
-  <div class="section-title">
-    <span>장바구니</span>
-    <button class="section-back-btn" onclick="goPage('list')">← 메뉴 목록으로 돌아가기</button>
-  </div>
+  <div class="section-title">장바구니</div>
   <div id="cartContent"></div>
 </div>
 
@@ -1564,7 +1560,12 @@ function renderCart(){
   btnOrd.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" width="20" height="20"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/></svg>주문하기';
   btnOrd.onclick=cartOrder;
 
-  actions.appendChild(btnAll); actions.appendChild(btnDel); actions.appendChild(btnOrd);
+  var btnCancel=document.createElement('button');
+  btnCancel.className='btn-select-all';
+  btnCancel.textContent='취소';
+  btnCancel.onclick=function(){goPage('list');};
+
+  actions.appendChild(btnAll); actions.appendChild(btnDel); actions.appendChild(btnOrd); actions.appendChild(btnCancel);
   el.appendChild(actions);
 }
 function toggleCheck(i,v){cart[i].checked=v;renderCart();}
@@ -2191,8 +2192,19 @@ function _doRenderTracker(el,ordersRes,trackerRes){
           +'<div class="hist-li-top"><span class="hist-li-dt">'+_fmtTrkDT(r.createdAt)+'</span><span class="hist-li-badge reorder">'+scopeLabel+'</span></div>'
           +'<div class="trk-picks">'+picksHtml+'</div>'
           +(r.reason?'<div class="trk-reason">'+_escTrk(r.reason)+'</div>':'')
-        +'</div>';
+        +'</div>'
+        +'<button type="button" class="hist-item-del trk-del-btn">✕</button>';
+      row.querySelector('.trk-del-btn').dataset.id=r.id;
       recWrap.appendChild(row);
+    });
+    recWrap.addEventListener('click',function(e){
+      var btn=e.target.closest('.trk-del-btn');
+      if(!btn)return;
+      var id=btn.dataset.id;
+      fetch(API_URL+'/api/tracker/recommend/'+encodeURIComponent(id)+'?deviceId='+encodeURIComponent(getDeviceId()),{method:'DELETE'})
+        .then(function(r){return r.json();})
+        .then(function(d){ if(d.success)renderTracker(); else showToast(d.error||'삭제 실패'); })
+        .catch(function(){ showToast('삭제 실패'); });
     });
     el.appendChild(recWrap);
   }
@@ -2213,8 +2225,19 @@ function _doRenderTracker(el,ordersRes,trackerRes){
       row.innerHTML=
         '<div class="trk-rank">'+(i+1)+'</div>'
         +'<div class="hist-li-main"><div class="hist-li-sum-text" style="font-size:14px;font-weight:700;color:#333;">'+_escTrk(menuDisplayName(m.name,m.cat))+'</div></div>'
-        +'<div class="hist-li-right"><span class="hist-li-total">'+m.count+'회</span></div>';
+        +'<div class="hist-li-right"><span class="hist-li-total">'+m.count+'회</span></div>'
+        +'<button type="button" class="hist-item-del trk-del-btn">✕</button>';
+      row.querySelector('.trk-del-btn').dataset.name=m.name;
       clickWrap.appendChild(row);
+    });
+    clickWrap.addEventListener('click',function(e){
+      var btn=e.target.closest('.trk-del-btn');
+      if(!btn)return;
+      var name=btn.dataset.name;
+      fetch(API_URL+'/api/tracker/click?deviceId='+encodeURIComponent(getDeviceId())+'&name='+encodeURIComponent(name),{method:'DELETE'})
+        .then(function(r){return r.json();})
+        .then(function(d){ if(d.success)renderTracker(); else showToast(d.error||'삭제 실패'); })
+        .catch(function(){ showToast('삭제 실패'); });
     });
     el.appendChild(clickWrap);
   }

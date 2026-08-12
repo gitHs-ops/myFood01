@@ -280,7 +280,7 @@ app.get('/api/events', (req, res) => {
 
 // ── 헬스체크 ────────────────────────────────────────────────
 // build 표식 — 설정을 바꾸기 전에 배포가 실제로 반영됐는지 확인하는 용도
-app.get('/health', (req, res) => res.json({ ok: true, build: 'cart-page-close-btn-1' }));
+app.get('/health', (req, res) => res.json({ ok: true, build: 'tracker-card-delete-1' }));
 
 // ══════════════════════════════════════════════════════════════
 // 메뉴 창고 (등록된모든메뉴)
@@ -1360,7 +1360,7 @@ app.get('/api/tracker/mine', async (req, res) => {
     const deviceId = String(req.query.deviceId || '').trim();
     if (!deviceId) return err(res, 'deviceId 필요', 400);
     const [recRows] = await pool.execute(
-      'SELECT scope, conditions, picks, reason, created_at FROM recommend_selection_log WHERE device_id=? ORDER BY created_at DESC LIMIT 10',
+      'SELECT id, scope, conditions, picks, reason, created_at FROM recommend_selection_log WHERE device_id=? ORDER BY created_at DESC LIMIT 10',
       [deviceId]
     );
     const [clickRows] = await pool.execute(
@@ -1369,6 +1369,7 @@ app.get('/api/tracker/mine', async (req, res) => {
     );
     const toTS = d => { if (!d) return null; const ms = d instanceof Date ? d.getTime() : new Date(String(d).replace(' ', 'T')).getTime(); return isNaN(ms) ? null : ms + 9 * 60 * 60 * 1000; };
     const recommendLogs = recRows.map(r => ({
+      id: r.id,
       scope: r.scope,
       conditions: typeof r.conditions === 'string' ? JSON.parse(r.conditions) : (r.conditions || {}),
       picks: typeof r.picks === 'string' ? JSON.parse(r.picks) : (r.picks || []),
@@ -1377,6 +1378,31 @@ app.get('/api/tracker/mine', async (req, res) => {
     }));
     const topMenus = clickRows.map(r => ({ name: r.menu_name, cat: r.cat, count: r.cnt, lastAt: toTS(r.last_at) }));
     ok(res, { recommendLogs, topMenus });
+  } catch (e) { err(res, e.message); }
+});
+
+// DELETE /api/tracker/recommend/:id?deviceId=xxx — '나의 기록'에서 AI추천 이력 카드 1건 삭제
+app.delete('/api/tracker/recommend/:id', async (req, res) => {
+  try {
+    const deviceId = String(req.query.deviceId || '').trim();
+    if (!deviceId) return err(res, 'deviceId 필요', 400);
+    const [r] = await pool.execute(
+      'DELETE FROM recommend_selection_log WHERE id=? AND device_id=?',
+      [req.params.id, deviceId]
+    );
+    if (r.affectedRows === 0) return err(res, '삭제할 기록을 찾지 못했습니다.', 404);
+    ok(res, {});
+  } catch (e) { err(res, e.message); }
+});
+
+// DELETE /api/tracker/click?deviceId=xxx&name=xxx — '나의 기록'에서 관심 메뉴 카드 1건 삭제(해당 메뉴 열람 이력 전체 삭제)
+app.delete('/api/tracker/click', async (req, res) => {
+  try {
+    const deviceId = String(req.query.deviceId || '').trim();
+    const name = String(req.query.name || '').trim();
+    if (!deviceId || !name) return err(res, 'deviceId, name 필요', 400);
+    await pool.execute('DELETE FROM menu_click_log WHERE device_id=? AND menu_name=?', [deviceId, name]);
+    ok(res, {});
   } catch (e) { err(res, e.message); }
 });
 
