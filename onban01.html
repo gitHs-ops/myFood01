@@ -284,6 +284,8 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 
 /* ── 공통 ── */
 .section-title{font-size:15px;font-weight:700;padding:16px 16px 10px;color:#fff;display:flex;align-items:center;justify-content:space-between;}
+.section-back-btn{background:none;border:none;color:rgba(255,255,255,.75);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:4px;padding:4px 6px;}
+.section-back-btn:hover{color:#fff;}
 .toast{
   position:fixed;top:50%;left:50%;transform:translate(-50%,calc(-50% + 10px));
   background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:999px;
@@ -639,7 +641,10 @@ select.reserve-info-inp{appearance:none;-webkit-appearance:none;background:#fff 
 
 <!-- ════ 페이지: 장바구니 ════ -->
 <div id="page-cart" class="page">
-  <div class="section-title">장바구니</div>
+  <div class="section-title">
+    <span>장바구니</span>
+    <button class="section-back-btn" onclick="goPage('list')">← 메뉴 목록으로 돌아가기</button>
+  </div>
   <div id="cartContent"></div>
 </div>
 
