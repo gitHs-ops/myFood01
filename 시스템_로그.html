@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>시스템 로그 — 오늘의 반찬</title>
+<script>
+(function(){
+  var ONBAN_ADMIN_KEY='onban@1dl34';
+  var AUTH_VAL='ok_'+ONBAN_ADMIN_KEY;
+  if(localStorage.getItem('onban_admin_auth')===AUTH_VAL)return;
+  var input=(prompt('관리자 비밀번호를 입력하세요 (영문 모드로 전환 후 입력)')||'').trim();
+  if(input===ONBAN_ADMIN_KEY){localStorage.setItem('onban_admin_auth',AUTH_VAL);}
+  else{
+    alert(input?'비밀번호가 다릅니다.\n키보드가 한글 모드가 아닌지 확인해주세요.':'접근 권한이 없습니다.');
+    location.replace('index.html');
+  }
+})();
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --teal:#086266;--teal2:#0a7a7f;
+  --amber:#E9A826;--green:#1D9E75;--red:#e05;
+  --bg:#f7fafa;--dark:#1a1a1a;--sub:#666;--light:#aaa;
+  --ease:cubic-bezier(.16,1,.3,1);
+}
+html,body{min-height:100vh;font-family:'Noto Sans KR',sans-serif;background:linear-gradient(to bottom,#1a3838,#000000) fixed;color:var(--dark);}
+* { transition: background-color .2s ease, border-color .2s ease, color .2s ease, box-shadow .2s ease, transform .2s var(--ease); }
+
+.topbar{padding:22px 20px 18px;text-align:center;}
+.topbar h1{font-size:20px;font-weight:900;color:#fff;letter-spacing:-.3px;}
+.topbar .sub{font-size:12px;color:rgba(255,255,255,.65);margin-top:6px;}
+.topbar a.back{display:inline-flex;align-items:center;gap:5px;margin-top:12px;padding:6px 14px;background:rgba(255,255,255,.15);color:#fff;border-radius:999px;font-size:12px;font-weight:700;text-decoration:none;border:1px solid rgba(255,255,255,.3);}
+
+.wrap{max-width:760px;margin:0 auto;padding:0 16px 60px;}
+
+.panel{background:#fff;border-radius:20px;box-shadow:0 4px 24px rgba(8,98,102,.14);padding:16px;animation:rise .5s var(--ease) both;}
+@keyframes rise{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;}
+.tab{background:#f2f7f6;border:1.5px solid #d5e6e4;border-radius:999px;padding:6px 13px;font-size:12.5px;font-weight:700;color:var(--teal);cursor:pointer;font-family:inherit;white-space:nowrap;}
+.tab:hover{background:#e0f0ee;}
+.tab.active{background:var(--teal);color:#fff;border-color:var(--teal);}
+.btn-export{background:#fff;border:1.5px solid #d6efee;border-radius:999px;padding:6px 13px;font-size:12.5px;font-weight:700;color:var(--sub);cursor:pointer;font-family:inherit;white-space:nowrap;}
+.btn-export:hover{background:#f4fafa;color:var(--teal);}
+
+.log-empty{text-align:center;padding:50px 20px;color:var(--light);font-size:13px;}
+.log-empty span{font-size:38px;display:block;margin-bottom:10px;}
+
+.log-item{border-bottom:1px solid #f0faf9;padding:11px 4px;cursor:pointer;animation:fadeIn .3s var(--ease) both;}
+.log-item:last-child{border-bottom:none;}
+.log-item:hover{background:#fafefe;}
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+.log-top{display:flex;align-items:center;gap:8px;margin-bottom:4px;}
+.log-badge{font-size:10.5px;font-weight:800;border-radius:999px;padding:2px 9px;flex-shrink:0;}
+.log-badge.ai_recommend{background:#ede7f6;color:#6a1b9a;}
+.log-badge.order_customer{background:#e8f8f2;color:#0e6e4e;}
+.log-badge.abnormal_access{background:#fff3e0;color:#b8860b;}
+.log-badge.error{background:#fde2e0;color:#c0392b;}
+.log-dt{font-size:11px;color:var(--light);white-space:nowrap;}
+.log-ip{font-size:10.5px;color:#ccc;margin-left:auto;white-space:nowrap;}
+.log-summary{font-size:13px;color:#222;line-height:1.5;word-break:break-all;}
+.log-detail{display:none;font-size:11px;color:var(--sub);background:#f7fafa;border-radius:8px;padding:8px 10px;margin-top:7px;white-space:pre-wrap;word-break:break-all;font-family:'D2Coding','Consolas',monospace;}
+.log-item.open .log-detail{display:block;}
+
+.load-more{display:block;width:100%;margin-top:10px;padding:11px;border-radius:12px;border:1.5px solid #d6efee;background:#fff;color:var(--sub);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;}
+.load-more:hover{background:#f4fafa;}
+
+@media (prefers-reduced-motion: reduce){ *{animation:none!important;transition-duration:.01ms!important;} }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>📊 시스템 로그</h1>
+  <div class="sub">AI추천 호출(토큰 비용) · 주문 고객정보 · 비정상 접근 · 서버 에러</div>
+  <a class="back" href="index.html">← 처음으로</a>
+</div>
+
+<div class="wrap">
+  <div class="panel">
+    <div class="toolbar">
+      <div class="tabs" id="tabs">
+        <button type="button" class="tab active" data-type="">전체</button>
+        <button type="button" class="tab" data-type="ai_recommend">🎯 AI추천</button>
+        <button type="button" class="tab" data-type="order_customer">📦 주문고객정보</button>
+        <button type="button" class="tab" data-type="abnormal_access">⚠️ 비정상접근</button>
+        <button type="button" class="tab" data-type="error">❌ 에러</button>
+      </div>
+      <button type="button" class="btn-export" id="btnExport">📁 파일로 내보내기</button>
+    </div>
+    <div id="logList"></div>
+    <button type="button" class="load-more" id="btnLoadMore" style="display:none;">더 보기</button>
+  </div>
+</div>
+
+<script>
+var API_URL='https://myfood01-production.up.railway.app';
+var ONBAN_ADMIN_KEY='onban@1dl34';
+var TYPE_LABEL={ai_recommend:'🎯 AI추천',order_customer:'📦 주문고객정보',abnormal_access:'⚠️ 비정상접근',error:'❌ 에러'};
+var curType='';
+var curLogs=[];
+var curLimit=200;
+
+function escHtml(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function fmtDT(ts){
+  if(!ts)return'';
+  try{return new Date(ts).toLocaleString('ko-KR',{year:'numeric',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'});}catch(e){return'';}
+}
+
+function loadLogs(){
+  var list=document.getElementById('logList');
+  list.innerHTML='<div class="log-empty"><span>⏳</span>불러오는 중...</div>';
+  var url=API_URL+'/api/system-log?limit='+curLimit+(curType?('&type='+encodeURIComponent(curType)):'');
+  fetch(url,{headers:{'x-admin-token':ONBAN_ADMIN_KEY},cache:'no-store'})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(!d.success){
+        list.innerHTML='<div class="log-empty"><span>⚠️</span>'+escHtml(d.error||'조회 실패')+'</div>';
+        return;
+      }
+      curLogs=d.logs||[];
+      renderList();
+    })
+    .catch(function(){
+      list.innerHTML='<div class="log-empty"><span>📶</span>네트워크 오류가 발생했어요.</div>';
+    });
+}
+
+function renderList(){
+  var list=document.getElementById('logList');
+  if(!curLogs.length){
+    list.innerHTML='<div class="log-empty"><span>🗒️</span>기록이 없어요.</div>';
+    document.getElementById('btnLoadMore').style.display='none';
+    return;
+  }
+  list.innerHTML=curLogs.map(function(l,i){
+    var detail='';
+    try{detail=l.detail?JSON.stringify(l.detail,null,2):'';}catch(e){detail='';}
+    return '<div class="log-item" data-i="'+i+'">'
+      +'<div class="log-top">'
+        +'<span class="log-badge '+escHtml(l.type)+'">'+(TYPE_LABEL[l.type]||l.type)+'</span>'
+        +'<span class="log-dt">'+fmtDT(l.createdAt)+'</span>'
+        +(l.ip?'<span class="log-ip">'+escHtml(l.ip)+'</span>':'')
+      +'</div>'
+      +'<div class="log-summary">'+escHtml(l.summary)+'</div>'
+      +(detail?'<div class="log-detail">'+escHtml(detail)+'</div>':'')
+    +'</div>';
+  }).join('');
+  list.querySelectorAll('.log-item').forEach(function(el){
+    el.addEventListener('click',function(){el.classList.toggle('open');});
+  });
+  document.getElementById('btnLoadMore').style.display=(curLogs.length>=curLimit)?'block':'none';
+}
+
+document.getElementById('tabs').addEventListener('click',function(e){
+  var btn=e.target.closest('.tab');
+  if(!btn)return;
+  document.querySelectorAll('#tabs .tab').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+  curType=btn.dataset.type;
+  curLimit=200;
+  loadLogs();
+});
+
+document.getElementById('btnLoadMore').addEventListener('click',function(){
+  curLimit+=200;
+  loadLogs();
+});
+
+document.getElementById('btnExport').addEventListener('click',function(){
+  if(!curLogs.length){alert('내보낼 기록이 없어요.');return;}
+  var lines=curLogs.map(function(l){
+    var detail='';
+    try{detail=l.detail?JSON.stringify(l.detail):'';}catch(e){detail='';}
+    return [fmtDT(l.createdAt),l.type,l.ip||'',l.summary,detail].join('\t');
+  });
+  var content='시각\t종류\tIP\t요약\t상세\n'+lines.join('\n');
+  var blob=new Blob(['﻿'+content],{type:'text/plain;charset=utf-8'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  var stamp=new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+  a.download='시스템로그_'+(curType||'전체')+'_'+stamp+'.txt';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+});
+
+loadLogs();
+</script>
+</body>
+</html>

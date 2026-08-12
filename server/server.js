@@ -49,15 +49,32 @@ const pool = mysql.createPool({
   charset:           'utf8mb4'
 });
 
+// 시스템 로그 — AI추천(토큰 비용 발생) 호출 / 주문 고객정보 / 비정상 접근 / 서버 에러 기록.
+// type: 'ai_recommend' | 'order_customer' | 'abnormal_access' | 'error'
+async function sysLog(type, summary, detail, ip) {
+  try {
+    await pool.execute(
+      'INSERT INTO system_log (type, summary, detail, ip) VALUES (?,?,?,?)',
+      [type, String(summary || '').slice(0, 500), detail ? JSON.stringify(detail) : null, ip || null]
+    );
+  } catch (e) { console.error('sysLog 실패:', e.message); }
+}
+
 const ok  = (res, data={}) => res.json({ success: true,  ...data });
-const err = (res, msg, status=500) => res.status(status).json({ success: false, error: msg });
+const err = (res, msg, status=500) => {
+  if (status >= 500) sysLog('error', String(msg || '').slice(0, 300), { status, path: res.req && res.req.originalUrl }, res.req && res.req.ip).catch(() => {});
+  return res.status(status).json({ success: false, error: msg });
+};
 
 // ── 관리자 인증 ─────────────────────────────────────────────
 // Railway 환경변수 ADMIN_TOKEN 설정 필요. 관리자 전용 API는 X-Admin-Token 헤더로 검증.
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN;
 function requireAdmin(req, res, next) {
   if (!ADMIN_TOKEN) return err(res, '서버에 ADMIN_TOKEN이 설정되지 않았습니다.', 500);
-  if (req.headers['x-admin-token'] !== ADMIN_TOKEN) return err(res, '인증이 필요합니다.', 401);
+  if (req.headers['x-admin-token'] !== ADMIN_TOKEN) {
+    sysLog('abnormal_access', '관리자 인증 실패: ' + req.originalUrl, { method: req.method }, req.ip).catch(() => {});
+    return err(res, '인증이 필요합니다.', 401);
+  }
   next();
 }
 const toKSTDateStr = d => {
@@ -280,7 +297,7 @@ app.get('/api/events', (req, res) => {
 
 // ── 헬스체크 ────────────────────────────────────────────────
 // build 표식 — 설정을 바꾸기 전에 배포가 실제로 반영됐는지 확인하는 용도
-app.get('/health', (req, res) => res.json({ ok: true, build: 'tracker-full-coverage-orders-1' }));
+app.get('/health', (req, res) => res.json({ ok: true, build: 'system-log-1' }));
 
 // ══════════════════════════════════════════════════════════════
 // 메뉴 창고 (등록된모든메뉴)
@@ -774,6 +791,12 @@ app.post('/api/orders', async (req, res) => {
       broadcast('order_new', { orderId: order.id, date });
       ok(res, { action: 'inserted' });
       _notifyOrder(order, !!order.isReorder);
+      sysLog(
+        'order_customer',
+        (order.name || '(이름없음)') + '님 주문(' + (order.phone || '연락처없음') + ')' + (isReserve ? ' — 예약주문' : ''),
+        { orderId: order.id, phone: order.phone || '', name: order.name || '', total: serverTotal, isReserve },
+        req.ip
+      ).catch(() => {});
     } catch(e) { await conn.rollback(); conn.release(); throw e; }
   } catch(e) { err(res, e.message); }
 });
@@ -1310,6 +1333,13 @@ app.post('/api/recommend', async (req, res) => {
         tool_choice: { type: 'tool', name: 'recommend_menus' },
       }),
     });
+    // AI 추천은 호출될 때마다 Anthropic API 토큰 비용이 발생하므로, 성공/실패와 무관하게 호출 자체를 기록
+    sysLog(
+      'ai_recommend',
+      'AI추천 호출 — scope:' + scope + (deviceId ? (', device:' + deviceId) : ''),
+      { scope, deviceId, purpose, mealType, cuisine, broth, taste, temp, diet, mealKit, allergy, drinks, budget, httpStatus: aiRes.status },
+      req.ip
+    ).catch(() => {});
     if (!aiRes.ok) {
       const errText = await aiRes.text().catch(() => '');
       return err(res, 'AI 호출 실패(' + aiRes.status + '): ' + errText.slice(0, 300));
@@ -1403,6 +1433,29 @@ app.delete('/api/tracker/click', async (req, res) => {
     if (!deviceId || !name) return err(res, 'deviceId, name 필요', 400);
     await pool.execute('DELETE FROM menu_click_log WHERE device_id=? AND menu_name=?', [deviceId, name]);
     ok(res, {});
+  } catch (e) { err(res, e.message); }
+});
+
+// GET /api/system-log?type=&limit= — 관리자 전용. type 생략 시 전체 종류를 최신순으로.
+app.get('/api/system-log', requireAdmin, async (req, res) => {
+  try {
+    const type = String(req.query.type || '').trim();
+    const limit = Math.min(Math.max(Number(req.query.limit) || 200, 1), 1000);
+    let sql = 'SELECT id, created_at, type, summary, detail, ip FROM system_log';
+    const params = [];
+    if (type) { sql += ' WHERE type=?'; params.push(type); }
+    sql += ' ORDER BY created_at DESC, id DESC LIMIT ' + limit;
+    const [rows] = await pool.execute(sql, params);
+    const toTS = d => { if (!d) return null; const ms = d instanceof Date ? d.getTime() : new Date(String(d).replace(' ', 'T')).getTime(); return isNaN(ms) ? null : ms + 9 * 60 * 60 * 1000; };
+    const logs = rows.map(r => ({
+      id: r.id,
+      createdAt: toTS(r.created_at),
+      type: r.type,
+      summary: r.summary,
+      detail: typeof r.detail === 'string' ? (() => { try { return JSON.parse(r.detail); } catch (e) { return null; } })() : r.detail,
+      ip: r.ip,
+    }));
+    ok(res, { logs });
   } catch (e) { err(res, e.message); }
 });
 
@@ -1508,6 +1561,17 @@ async function initDB() {
       reason TEXT,
       created_at DATETIME DEFAULT NOW(),
       INDEX idx_device (device_id)
+    )`,
+    // 시스템 로그 — AI추천 API 호출(토큰 비용) / 주문 고객정보 / 비정상 접근 / 서버 에러
+    `CREATE TABLE IF NOT EXISTS system_log (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      created_at DATETIME DEFAULT NOW(),
+      type VARCHAR(30),
+      summary VARCHAR(500),
+      detail TEXT,
+      ip VARCHAR(100),
+      INDEX idx_type (type),
+      INDEX idx_created (created_at)
     )`
   ];
   const conn = await pool.getConnection();
@@ -1630,7 +1694,13 @@ async function _saveCategories(conn, list) {
   return blocked;
 }
 
-
+// 정의되지 않은 API 경로 접근 — 비정상 조회로 기록(정적 파일 404는 노이즈라 제외)
+app.use((req, res) => {
+  if (req.path.startsWith('/api/')) {
+    sysLog('abnormal_access', '정의되지 않은 API 경로: ' + req.method + ' ' + req.originalUrl, {}, req.ip).catch(() => {});
+  }
+  res.status(404).json({ success: false, error: 'Not Found' });
+});
 
 initDB()
   .then(() => app.listen(PORT, () => console.log(`onban-api running on :${PORT}`)))

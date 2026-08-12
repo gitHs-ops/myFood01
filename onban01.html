@@ -47,6 +47,7 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
   display:flex;align-items:center;justify-content:space-between;gap:8px;
 }
 .date-refresh-countdown{font-size:12px;font-weight:700;color:#fff;background:rgba(8,98,102,.6);border-radius:20px;padding:3px 10px;white-space:nowrap;min-width:46px;text-align:center;flex-shrink:0;}
+.date-gallery-btn{font-size:12px;font-weight:700;color:var(--teal);background:#e6f4f3;border-radius:20px;padding:3px 10px;white-space:nowrap;text-decoration:none;flex-shrink:0;}
 
 /* ── 카테고리 탭 ── */
 .cat-tabs{padding:10px 16px 8px;}
@@ -628,7 +629,7 @@ select.reserve-info-inp{appearance:none;-webkit-appearance:none;background:#fff 
 
 <!-- ════ 페이지: 메뉴 목록 ════ -->
 <div id="page-list" class="page active">
-  <div class="date-banner" id="dateBanner"><span id="dateBannerText">&#128197; 오늘의 메뉴</span><span id="dateRefreshCountdown" class="date-refresh-countdown">🔄 10</span></div>
+  <div class="date-banner" id="dateBanner"><span id="dateBannerText">&#128197; 오늘의 메뉴</span><a href="온반_메뉴_이미지갤러리.html" class="date-gallery-btn">🖼️ 이미지갤러리</a><span id="dateRefreshCountdown" class="date-refresh-countdown">🔄 10</span></div>
   <div id="menuListEventCard"></div>
   <div class="cat-tabs" id="catTabs"></div>
   <div class="menu-grid" id="menuGrid"></div>
