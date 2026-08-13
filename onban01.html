@@ -373,10 +373,12 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 .trk-stat-num{font-size:22px;font-weight:800;color:var(--teal);}
 .trk-stat-label{font-size:12px;color:var(--sub);margin-top:2px;}
 .trk-picks{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;}
-.trk-pick-chip{font-size:11px;font-weight:700;background:#e6f4f3;color:#086266;border-radius:999px;padding:3px 10px;}
+.trk-pick-chip{font-size:11px;font-weight:700;background:#e6f4f3;color:#086266;border-radius:999px;padding:3px 10px;cursor:pointer;}
 .trk-reason{font-size:11px;color:var(--sub);margin-top:5px;line-height:1.5;}
 .trk-rank{width:22px;height:22px;border-radius:50%;background:#f4fafa;color:#086266;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .trk-del-btn{flex-shrink:0;}
+.trk-more-hidden{display:none;}
+.trk-more-btn{text-align:center;padding:11px;color:var(--teal);font-size:13px;font-weight:700;cursor:pointer;background:#fff;border-radius:14px;box-shadow:var(--shadow);margin-bottom:10px;}
 /* ── 주문 상세 팝업 ── */
 .order-detail-overlay{position:fixed;inset:0;background:rgba(0,0,0,.52);z-index:600;display:none;align-items:flex-start;justify-content:center;padding:18px 8px 40px;overflow-y:auto;}
 .order-detail-overlay.open{display:flex;}
@@ -2148,19 +2150,73 @@ function _migrateLegacyMemo(all){
 }
 
 // ── 나의 기록 (개인 소비 패턴) ──
+var _trkAllMenus=[]; // '나의 기록' 상세팝업용 — 오늘 등록 여부와 무관하게 전체 마스터 메뉴에서 이름으로 찾기 위함
 function renderTracker(){
   var el=document.getElementById('trackerContent');
   el.innerHTML='<div style="text-align:center;padding:40px;color:#aaa;font-size:13px;">불러오는 중...</div>';
   var did=getDeviceId();
   Promise.all([
     fetch(API_URL+'/api/orders?deviceId='+encodeURIComponent(did),{cache:'no-store'}).then(function(r){return r.json();}),
-    fetch(API_URL+'/api/tracker/mine?deviceId='+encodeURIComponent(did),{cache:'no-store'}).then(function(r){return r.json();})
+    fetch(API_URL+'/api/tracker/mine?deviceId='+encodeURIComponent(did),{cache:'no-store'}).then(function(r){return r.json();}),
+    fetch(API_URL+'/api/menu/all',{cache:'no-store'}).then(function(r){return r.json();})
   ])
-  .then(function(results){ _doRenderTracker(el,results[0],results[1]); })
+  .then(function(results){
+    _trkAllMenus=(results[2]&&results[2].success&&Array.isArray(results[2].menus))?results[2].menus:[];
+    _doRenderTracker(el,results[0],results[1]);
+  })
   .catch(function(){
     el.innerHTML='<div class="hist-empty"><span>📶</span><p>네트워크 오류가 발생했어요.<br>'
       +'<button onclick="renderTracker()" style="margin-top:10px;padding:7px 20px;border-radius:20px;border:none;background:#086266;color:#fff;font-size:13px;font-weight:700;cursor:pointer;">다시 시도</button></p></div>';
   });
+}
+// '나의 기록'의 리스트 항목(실제 주문/AI추천 픽/살펴본 메뉴) 클릭 시 상세정보를 읽기 전용으로 보여줌
+// showMenuModal과 달리 오늘 등록 여부와 무관하게 전체 마스터에서 찾고, 장바구니 담기 버튼은 넣지 않음(오늘 안 팔 수도 있어서)
+function _trkShowDetail(name){
+  var m=_trkAllMenus.find(function(x){return x.name===name;});
+  if(!m){showToast('메뉴 정보를 찾을 수 없어요.');return;}
+  var overlay=document.createElement('div');
+  overlay.className='menu-modal-overlay';
+  overlay.onclick=function(e){if(e.target===overlay)document.body.removeChild(overlay);};
+  var modal=document.createElement('div');
+  modal.className='menu-modal';
+  var imgWrap=document.createElement('div');
+  imgWrap.className='menu-modal-img';
+  var _mImg=_validUrl(m.imgUrl)||_validUrl(m.icon);
+  if(_mImg){var img=document.createElement('img');img.src=_mImg;img.alt=m.name;img.onerror=function(){imgWrap.textContent=getMenuEmoji(m.name,m.cat);};imgWrap.appendChild(img);}
+  else{imgWrap.textContent=getMenuEmoji(m.name,m.cat);}
+  var closeBtn=document.createElement('button');
+  closeBtn.className='menu-modal-close';
+  closeBtn.textContent='✕';
+  closeBtn.onclick=function(){document.body.removeChild(overlay);};
+  var body=document.createElement('div');
+  body.className='menu-modal-body';
+  var badges=document.createElement('div');
+  badges.className='detail-badges';
+  var catB=document.createElement('span');
+  catB.className='badge badge-cat';
+  catB.style.background=CAT_COLOR[m.cat]||'#888';
+  catB.textContent=m.cat||'기타';
+  badges.appendChild(catB);
+  var nameEl=document.createElement('div');
+  nameEl.className='menu-modal-name';
+  nameEl.textContent=menuDisplayName(m.name,m.cat);
+  var priceEl=document.createElement('div');
+  priceEl.className='menu-modal-price';
+  priceEl.innerHTML=comma(m.price)+'<span>천원</span>';
+  body.appendChild(badges);
+  body.appendChild(nameEl);
+  body.appendChild(priceEl);
+  if(m.desc){
+    var descEl=document.createElement('div');
+    descEl.className='menu-modal-desc';
+    descEl.textContent=m.desc;
+    body.appendChild(descEl);
+  }
+  modal.appendChild(imgWrap);
+  modal.appendChild(closeBtn);
+  modal.appendChild(body);
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
 }
 function _doRenderTracker(el,ordersRes,trackerRes){
   el.innerHTML='';
@@ -2204,15 +2260,31 @@ function _doRenderTracker(el,ordersRes,trackerRes){
     ordWrap.className='hist-list';
     orderedMenus.forEach(function(m,i){
       var row=document.createElement('div');
-      row.className='hist-li';
-      row.style.cursor='default';
+      row.className='hist-li'+(i>=3?' trk-more-hidden':'');
+      row.style.cursor='pointer';
+      row.dataset.name=m.name;
       row.innerHTML=
         '<div class="trk-rank">'+(i+1)+'</div>'
         +'<div class="hist-li-main"><div class="hist-li-sum-text" style="font-size:14px;font-weight:700;color:#333;">'+_escTrk(menuDisplayName(m.name,m.cat))+'</div></div>'
         +'<div class="hist-li-right"><span class="hist-li-total">'+m.qty+'개</span></div>';
       ordWrap.appendChild(row);
     });
+    ordWrap.addEventListener('click',function(e){
+      var row=e.target.closest('.hist-li');
+      if(!row||!row.dataset.name)return;
+      _trkShowDetail(row.dataset.name);
+    });
     el.appendChild(ordWrap);
+    if(orderedMenus.length>3){
+      var moreBtn=document.createElement('div');
+      moreBtn.className='trk-more-btn';
+      moreBtn.textContent='더보기 ('+(orderedMenus.length-3)+'개 더)';
+      moreBtn.onclick=function(){
+        ordWrap.querySelectorAll('.trk-more-hidden').forEach(function(r){r.classList.remove('trk-more-hidden');});
+        moreBtn.remove();
+      };
+      el.appendChild(moreBtn);
+    }
   }
 
   var recTitle=document.createElement('div');
@@ -2242,12 +2314,16 @@ function _doRenderTracker(el,ordersRes,trackerRes){
     });
     recWrap.addEventListener('click',function(e){
       var btn=e.target.closest('.trk-del-btn');
-      if(!btn)return;
-      var id=btn.dataset.id;
-      fetch(API_URL+'/api/tracker/recommend/'+encodeURIComponent(id)+'?deviceId='+encodeURIComponent(getDeviceId()),{method:'DELETE'})
-        .then(function(r){return r.json();})
-        .then(function(d){ if(d.success)renderTracker(); else showToast(d.error||'삭제 실패'); })
-        .catch(function(){ showToast('삭제 실패'); });
+      if(btn){
+        var id=btn.dataset.id;
+        fetch(API_URL+'/api/tracker/recommend/'+encodeURIComponent(id)+'?deviceId='+encodeURIComponent(getDeviceId()),{method:'DELETE'})
+          .then(function(r){return r.json();})
+          .then(function(d){ if(d.success)renderTracker(); else showToast(d.error||'삭제 실패'); })
+          .catch(function(){ showToast('삭제 실패'); });
+        return;
+      }
+      var chip=e.target.closest('.trk-pick-chip');
+      if(chip){ _trkShowDetail(chip.textContent); }
     });
     el.appendChild(recWrap);
   }
@@ -2264,7 +2340,8 @@ function _doRenderTracker(el,ordersRes,trackerRes){
     topMenus.forEach(function(m,i){
       var row=document.createElement('div');
       row.className='hist-li';
-      row.style.cursor='default';
+      row.style.cursor='pointer';
+      row.dataset.name=m.name;
       row.innerHTML=
         '<div class="trk-rank">'+(i+1)+'</div>'
         +'<div class="hist-li-main"><div class="hist-li-sum-text" style="font-size:14px;font-weight:700;color:#333;">'+_escTrk(menuDisplayName(m.name,m.cat))+'</div></div>'
@@ -2275,12 +2352,16 @@ function _doRenderTracker(el,ordersRes,trackerRes){
     });
     clickWrap.addEventListener('click',function(e){
       var btn=e.target.closest('.trk-del-btn');
-      if(!btn)return;
-      var name=btn.dataset.name;
-      fetch(API_URL+'/api/tracker/click?deviceId='+encodeURIComponent(getDeviceId())+'&name='+encodeURIComponent(name),{method:'DELETE'})
-        .then(function(r){return r.json();})
-        .then(function(d){ if(d.success)renderTracker(); else showToast(d.error||'삭제 실패'); })
-        .catch(function(){ showToast('삭제 실패'); });
+      if(btn){
+        var name=btn.dataset.name;
+        fetch(API_URL+'/api/tracker/click?deviceId='+encodeURIComponent(getDeviceId())+'&name='+encodeURIComponent(name),{method:'DELETE'})
+          .then(function(r){return r.json();})
+          .then(function(d){ if(d.success)renderTracker(); else showToast(d.error||'삭제 실패'); })
+          .catch(function(){ showToast('삭제 실패'); });
+        return;
+      }
+      var row=e.target.closest('.hist-li');
+      if(row&&row.dataset.name){ _trkShowDetail(row.dataset.name); }
     });
     el.appendChild(clickWrap);
   }
