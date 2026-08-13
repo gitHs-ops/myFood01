@@ -79,6 +79,8 @@
   .rf-opt { background:#f2f7f6; border:1.5px solid #d5e6e4; border-radius:20px; padding:6px 14px; font-size:13px; font-weight:600; color:#086266; cursor:pointer; font-family:inherit; transition:background .12s,border-color .12s; }
   .rf-opt:hover { background:#e0f0ee; }
   .rf-opt.selected { background:#086266; color:#fff; border-color:#086266; }
+  .rf-opt-na { border-style:dashed; color:#999; }
+  .rf-opt-na.selected { background:#888; border-color:#888; color:#fff; }
   .rf-input { width:100%; padding:8px 12px; border-radius:8px; border:1.5px solid #d5e6e4; font-family:inherit; font-size:14px; outline:none; box-sizing:border-box; }
   .rf-input:focus { border-color:#086266; }
   .rf-run-btn { width:100%; padding:12px; background:#086266; color:#fff; border:none; border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; font-family:inherit; transition:background .12s; }
@@ -174,6 +176,7 @@
             <button type="button" class="rf-opt" data-val="손님 초대">손님 초대</button>
             <button type="button" class="rf-opt" data-val="홈파티">홈파티</button>
             <button type="button" class="rf-opt" data-val="안주">안주</button>
+            <button type="button" class="rf-opt rf-opt-na" data-val="">해당없음</button>
           </div>
         </div>
         <div class="rf-group">
@@ -183,6 +186,7 @@
             <button type="button" class="rf-opt" data-val="저녁">저녁</button>
             <button type="button" class="rf-opt" data-val="야식">야식</button>
             <button type="button" class="rf-opt" data-val="간식">간식</button>
+            <button type="button" class="rf-opt rf-opt-na" data-val="">해당없음</button>
           </div>
         </div>
         <div class="rf-group">
@@ -193,6 +197,7 @@
             <button type="button" class="rf-opt" data-val="일식">일식</button>
             <button type="button" class="rf-opt" data-val="양식">양식</button>
             <button type="button" class="rf-opt" data-val="퓨전">퓨전</button>
+            <button type="button" class="rf-opt rf-opt-na" data-val="">해당없음</button>
           </div>
         </div>
         <div class="rf-group">
@@ -200,6 +205,7 @@
           <div class="rf-options rf-single" id="rfBroth">
             <button type="button" class="rf-opt" data-val="국물 있음(국·찌개·탕)">국물 있음</button>
             <button type="button" class="rf-opt" data-val="국물 없음(볶음·구이·조림)">국물 없음</button>
+            <button type="button" class="rf-opt rf-opt-na" data-val="">해당없음</button>
           </div>
         </div>
         <div class="rf-group">
@@ -209,6 +215,7 @@
             <button type="button" class="rf-opt" data-val="매운맛">매운맛</button>
             <button type="button" class="rf-opt" data-val="짭조름한 맛">짭조름한 맛</button>
             <button type="button" class="rf-opt" data-val="담백한 맛">담백한 맛</button>
+            <button type="button" class="rf-opt rf-opt-na" data-val="">해당없음</button>
           </div>
         </div>
         <div class="rf-group">
@@ -216,6 +223,7 @@
           <div class="rf-options rf-single" id="rfTemp">
             <button type="button" class="rf-opt" data-val="따뜻한 음식">따뜻한 음식</button>
             <button type="button" class="rf-opt" data-val="시원한·차가운 음식">시원한·차가운 음식</button>
+            <button type="button" class="rf-opt rf-opt-na" data-val="">해당없음</button>
           </div>
         </div>
         <div class="rf-group">
@@ -224,6 +232,7 @@
             <button type="button" class="rf-opt" data-val="다이어트·저칼로리">다이어트·저칼로리</button>
             <button type="button" class="rf-opt" data-val="고단백">고단백</button>
             <button type="button" class="rf-opt" data-val="식이섬유 위주">식이섬유 위주</button>
+            <button type="button" class="rf-opt rf-opt-na" data-val="">해당없음</button>
           </div>
         </div>
         <div class="rf-group">
@@ -231,6 +240,7 @@
           <div class="rf-options rf-single" id="rfMealKit">
             <button type="button" class="rf-opt" data-val="밀키트">밀키트</button>
             <button type="button" class="rf-opt" data-val="완조리 반찬">완조리 반찬</button>
+            <button type="button" class="rf-opt rf-opt-na" data-val="">해당없음</button>
           </div>
         </div>
         <div class="rf-group">
@@ -242,6 +252,7 @@
             <button type="button" class="rf-opt" data-val="막걸리">막걸리</button>
             <button type="button" class="rf-opt" data-val="콜라">콜라</button>
             <button type="button" class="rf-opt" data-val="사이다">사이다</button>
+            <button type="button" class="rf-opt rf-opt-na" data-val="">해당없음</button>
           </div>
         </div>
         <div class="rf-group">
@@ -252,6 +263,7 @@
             <button type="button" class="rf-opt" data-val="3~5만원">3~5만원</button>
             <button type="button" class="rf-opt" data-val="5~10만원">5~10만원</button>
             <button type="button" class="rf-opt" data-val="10~20만원">10~20만원</button>
+            <button type="button" class="rf-opt rf-opt-na" data-val="">해당없음</button>
           </div>
         </div>
         <div class="rf-group">
@@ -672,6 +684,15 @@
       el.addEventListener('click', (e) => {
         const btn = e.target.closest('.rf-opt');
         if (!btn) return;
+        if (btn.dataset.val === '') {
+          // 해당없음: 이 항목만 선택 상태로 두고 나머지는 모두 해제
+          el.querySelectorAll('.rf-opt').forEach(b => b.classList.remove('selected'));
+          rfMultiVals[id].clear();
+          btn.classList.add('selected');
+          return;
+        }
+        const naBtn = el.querySelector('.rf-opt[data-val=""]');
+        if (naBtn) naBtn.classList.remove('selected');
         btn.classList.toggle('selected');
         if (btn.classList.contains('selected')) rfMultiVals[id].add(btn.dataset.val);
         else rfMultiVals[id].delete(btn.dataset.val);
@@ -734,6 +755,10 @@
     let _rfLastPicks = null;
     let _rfLastConditions = null;
     let _rfLastReason = '';
+    // 결과/실패 사유가 한 문장씩 붙어 한 줄로만 보이지 않도록 문장 끝(.!?)마다 줄바꿈
+    function _rfFormatReason(text) {
+      return String(text || '').replace(/([.!?])\s+(?=\S)/g, '$1\n');
+    }
     document.getElementById('rfRun').addEventListener('click', () => {
       const runBtn = document.getElementById('rfRun');
       const allergy = document.getElementById('rfAllergy').value.trim();
@@ -766,7 +791,7 @@
           hideGalleryToast();
           if (!d.success || !d.picks || !d.picks.length) {
             _rfLastPicks = null;
-            rfResultTextEl.textContent = d.error || '조건에 맞는 메뉴를 찾지 못했어요. 조건을 바꿔보세요.';
+            rfResultTextEl.textContent = _rfFormatReason(d.error || '조건에 맞는 메뉴를 찾지 못했어요. 조건을 바꿔보세요.');
             document.getElementById('rfApplyBtn').style.display = 'none';
             rfResultEl.style.display = 'block';
             return;
@@ -774,7 +799,7 @@
           _rfLastPicks = d.picks;
           _rfLastConditions = reqBody;
           _rfLastReason = d.reason || '';
-          rfResultTextEl.textContent = d.reason || '요청하신 조건에 맞는 메뉴예요.';
+          rfResultTextEl.textContent = _rfFormatReason(d.reason || '요청하신 조건에 맞는 메뉴예요.');
           document.getElementById('rfApplyBtn').style.display = '';
           rfResultEl.style.display = 'block';
           runBtn.style.display = 'none';
