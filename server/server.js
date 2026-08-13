@@ -297,7 +297,7 @@ app.get('/api/events', (req, res) => {
 
 // ── 헬스체크 ────────────────────────────────────────────────
 // build 표식 — 설정을 바꾸기 전에 배포가 실제로 반영됐는지 확인하는 용도
-app.get('/health', (req, res) => res.json({ ok: true, build: 'fix-stale-addr-cache-1' }));
+app.get('/health', (req, res) => res.json({ ok: true, build: 'recommend-budget-price-1' }));
 
 // ══════════════════════════════════════════════════════════════
 // 메뉴 창고 (등록된모든메뉴)
@@ -1246,7 +1246,8 @@ app.post('/api/recommend', async (req, res) => {
     if (scope === 'today') {
       const todayStr = toKSTDateStr(new Date());
       [rows] = await pool.execute(
-        `SELECT COALESCE(m.name,m2.name,d.name) AS name, COALESCE(m.cat,m2.cat,d.cat) AS cat
+        `SELECT COALESCE(m.name,m2.name,d.name) AS name, COALESCE(m.cat,m2.cat,d.cat) AS cat,
+                COALESCE(m.price,m2.price,d.price) AS price
          FROM daily_menus d
          LEFT JOIN menus m  ON m.id=d.menu_id
          LEFT JOIN menus m2 ON m2.name=d.name
@@ -1255,10 +1256,11 @@ app.post('/api/recommend', async (req, res) => {
       );
       if (!rows.length) return err(res, '오늘 등록된 메뉴가 없어서 오늘의 메뉴 기준으로는 추천할 수 없어요. "전체 메뉴중에서 추천 받기"로 다시 시도해보세요.', 404);
     } else {
-      [rows] = await pool.execute('SELECT name, cat FROM menus ORDER BY count DESC, name');
+      [rows] = await pool.execute('SELECT name, cat, price FROM menus ORDER BY count DESC, name');
       if (!rows.length) return err(res, '추천할 메뉴가 없습니다.', 404);
     }
-    const menuLines = rows.map(r => r.name + ' (' + (r.cat || '기타') + ')').join('\n');
+    // price는 천원 단위로 저장되므로 원 단위로 환산해서 AI에게 알려줘야 예산 계산이 가능함
+    const menuLines = rows.map(r => r.name + ' (' + (r.cat || '기타') + ', ' + Math.round((Number(r.price) || 0) * 1000).toLocaleString() + '원)').join('\n');
 
     const reqLines = [];
     if (purpose) reqLines.push('- 식사 목적: ' + purpose);
@@ -1299,13 +1301,18 @@ app.post('/api/recommend', async (req, res) => {
     }
 
     const scopeDesc = scope === 'today' ? '아래는 오늘 판매 중인 메뉴 목록입니다.' : '아래는 지금까지 판매해온 전체 메뉴 목록입니다.';
+    const budgetNote = budget
+      ? ('\n\n예산 조건이 있으니 특히 신경 써주세요: 메뉴 목록에 적힌 가격을 보고, picks로 고른 메뉴들의 가격을 전부 더한 총액이 "' + budget + '" 범위 안에 들어오도록 골라야 합니다. '
+        + '총액이 범위를 벗어나면 메뉴 개수를 줄이거나 다른 가격대의 메뉴로 바꿔서라도 반드시 범위 안에 맞추세요.')
+      : '';
     const prompt = '당신은 반찬가게 "온반"의 메뉴 추천 도우미입니다. ' + scopeDesc + '\n\n'
       + menuLines + '\n\n'
       + '고객 요청:\n' + reqLines.join('\n') + personaContext + '\n\n'
       + '위 목록 중에서 고객 요청에 가장 잘 맞는 메뉴를 3~6개 골라 추천해주세요. '
       + '반드시 목록에 있는 이름을 정확히 그대로 사용하세요(오타·변형 금지). '
       + '만약 여러 조건을 동시에 만족하는 메뉴가 목록에 하나도 없다면, picks는 빈 배열로 두고 '
-      + 'reason에 어떤 조건들이 서로 충돌해서 못 골랐는지 구체적으로 설명해 고객이 조건을 조정할 수 있게 해주세요.';
+      + 'reason에 어떤 조건들이 서로 충돌해서 못 골랐는지 구체적으로 설명해 고객이 조건을 조정할 수 있게 해주세요.'
+      + budgetNote;
 
     const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
