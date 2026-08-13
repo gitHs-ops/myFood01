@@ -1058,13 +1058,17 @@ document.getElementById('rfRun').addEventListener('click',function(){
     runBtn.disabled=false;
     hideToast();
     if(!d.success||!d.picks||!d.picks.length){
-      showToast(d.error||'조건에 맞는 메뉴를 찾지 못했어요. 조건을 바꿔보세요.',5000);
+      _rfLastPicks=null;
+      document.getElementById('rfResultText').textContent=d.error||'조건에 맞는 메뉴를 찾지 못했어요. 조건을 바꿔보세요.';
+      document.getElementById('rfApplyBtn').style.display='none';
+      document.getElementById('rfResult').style.display='block';
       return;
     }
     _rfLastPicks=d.picks;
     _rfLastConditions=reqBody;
     _rfLastReason=d.reason||'';
     document.getElementById('rfResultText').textContent=d.reason||'요청하신 조건에 맞는 메뉴예요.';
+    document.getElementById('rfApplyBtn').style.display='';
     document.getElementById('rfResult').style.display='block';
     runBtn.style.display='none';
   }).catch(function(){
