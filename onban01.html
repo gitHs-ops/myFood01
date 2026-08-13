@@ -1607,7 +1607,6 @@ function renderOrdererPage(){
       .then(function(d){
         if(d.success&&d.items&&d.items.length){
           var m=d.items[0];
-          _cachedMaster=m;
           var nEl=document.getElementById('ordererName');
           var pEl=document.getElementById('ordererPhone');
           var aEl=document.getElementById('ordererAddr');
@@ -1744,24 +1743,17 @@ function _pickPickup(){
 
 // ── 배송 주소 목록 ──
 // ── 주소록 (customers_master) ─────────────────────────────────
-var _cachedMaster=null;
 var _addrTarget='orderer';
 
+// 팝업을 열 때마다 항상 서버(DB)에서 최신 주소록을 조회한다 — 예전엔 페이지 진입 시
+// 자동완성용으로 한 번 받아둔 값(_cachedMaster)을 그대로 재사용해서, 방금 수정 저장한
+// 주소가 반영 안 된 채로 다시 뜨는 치명적인 문제가 있었음(캐시 자체를 완전히 제거)
 function showAddrList(target){
   _addrTarget=target||'orderer';
   document.getElementById('addrListOverlay').style.display='flex';
-  if(_cachedMaster){
-    _renderAddrFromCache(_cachedMaster);
-  } else {
-    var phoneId=_addrTarget==='reserve'?'reservePhone':'ordererPhone';
-    var phone=(document.getElementById(phoneId).value||'').replace(/[^0-9]/g,'');
-    _loadAddrList(phone);
-  }
-}
-function _renderAddrFromCache(m){
-  var el=document.getElementById('addrListContent');
-  el.innerHTML='';
-  el.appendChild(_buildAddrItem(m,true));
+  var phoneId=_addrTarget==='reserve'?'reservePhone':'ordererPhone';
+  var phone=(document.getElementById(phoneId).value||'').replace(/[^0-9]/g,'');
+  _loadAddrList(phone);
 }
 function _loadAddrList(phone){
   var el=document.getElementById('addrListContent');
@@ -3182,7 +3174,6 @@ function openReservePopup(){
       .then(function(d){
         if(d.success&&d.items&&d.items.length){
           var m=d.items[0];
-          _cachedMaster=m;
           if(m.name) nEl.value=m.name;
           if(m.phone) pEl.value=formatPhone(m.phone);
           var aEl=document.getElementById('reserveAddr');
