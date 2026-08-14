@@ -3379,6 +3379,11 @@ window.onload=function(){
     var _openReserveMultiRaw=_urlParams.get('openReserveMulti');
     if(_openReserveMultiRaw)_openReserveMultiNames=JSON.parse(_openReserveMultiRaw)||[];
   }catch(e){_openReserveMultiNames=[];}
+  var _openCartMultiNames=[];
+  try{
+    var _openCartMultiRaw=_urlParams.get('openCartMulti');
+    if(_openCartMultiRaw)_openCartMultiNames=JSON.parse(_openCartMultiRaw)||[];
+  }catch(e){_openCartMultiNames=[];}
   var _refDecoded=document.referrer;
   try{_refDecoded=decodeURIComponent(_refDecoded);}catch(e){}
   if(/온반_메뉴_이미지갤러리\.html/.test(_refDecoded)){
@@ -3398,6 +3403,17 @@ window.onload=function(){
         updateCartCount();
         goPage('cart');
       }
+    } else if(_openCartMultiNames.length){
+      // 갤러리 '오늘의 메뉴'/AI추천 결과에서 체크박스로 여러 항목 선택 후 '장바구니로' → 전부 담아 장바구니 진입
+      _openCartMultiNames.forEach(function(name){
+        var mm=allMenus.find(function(x){return x.name===name;});
+        if(!mm)return;
+        var ex=cart.find(function(c){return c.name===mm.name;});
+        if(ex){ex.qty++;}
+        else{cart.push({menuId:(mm.menuId!=null?mm.menuId:null),name:mm.name,cat:mm.cat||'',price:mm.price,qty:1,imgUrl:mm.imgUrl||null,child:mm.child,checked:true});}
+      });
+      updateCartCount();
+      goPage('cart');
     }
   });
   if(_openReserveEvent){

@@ -16,8 +16,15 @@
   .header-title { display:flex; align-items:center; gap:10px; }
   .header-logo { height:40px; mix-blend-mode:lighten; flex-shrink:0; cursor:pointer; }
   .header-page-label { font-size:26px; font-weight:800; color:rgba(255,255,255,0.9); white-space:nowrap; }
-  .header-list-link { display:inline-flex; align-items:center; gap:6px; padding:8px 16px; background:rgba(255,255,255,0.18); border:1px solid rgba(255,255,255,0.4); border-radius:20px; font-size:13px; font-weight:700; color:#fff; text-decoration:none; white-space:nowrap; backdrop-filter:blur(4px); transition:background .15s; }
+  .header-nav-links { display:flex; gap:8px; flex-wrap:wrap; }
+  .header-list-link { display:inline-flex; align-items:center; gap:6px; padding:8px 16px; background:rgba(255,255,255,0.18); border:1px solid rgba(255,255,255,0.4); border-radius:20px; font-size:13px; font-weight:700; color:#fff; text-decoration:none; white-space:nowrap; backdrop-filter:blur(4px); transition:background .15s; cursor:pointer; font-family:'Pretendard',sans-serif; }
   .header-list-link:hover { background:rgba(255,255,255,0.3); }
+  .header-list-link:disabled { opacity:.35; cursor:not-allowed; pointer-events:none; }
+  .confirm-box { max-width:300px; padding:26px 22px 22px; text-align:center; }
+  .confirm-box p { font-size:14px; line-height:1.6; color:#1a1a1a; margin-bottom:20px; }
+  .confirm-actions { display:flex; gap:10px; }
+  .confirm-actions button { flex:1; padding:11px; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; border:1.5px solid #ddd; background:#fff; color:#666; font-family:'Pretendard',sans-serif; }
+  .confirm-actions button.confirm-yes { background:#086266; border-color:#086266; color:#fff; }
   .stats { display:inline-flex; gap:10px; margin-top:14px; flex-wrap:wrap; justify-content:center; }
   .stat-badge { background:rgba(255,255,255,0.18); border:1px solid rgba(255,255,255,0.4); border-radius:20px; padding:6px 16px; font-size:13px; color:#fff; backdrop-filter:blur(4px); }
   .today-btn { cursor:pointer; font-family:'Pretendard',sans-serif; font-weight:700; transition:background .15s; }
@@ -114,7 +121,10 @@
         <img src="온반_로고.png" alt="온반" class="header-logo" title="첫 페이지로 가기" onclick="window.location.href='index.html'">
         <span class="header-page-label">메뉴 갤러리</span>
       </div>
-      <a href="onban01.html" class="header-list-link">📋 일일메뉴 목록으로 가기</a>
+      <div class="header-nav-links">
+        <button type="button" class="header-list-link" id="dailyMenuLinkBtn">📋 일일메뉴로</button>
+        <button type="button" class="header-list-link" id="galleryCartBtn">🛒 장바구니로</button>
+      </div>
     </div>
     <div id="todayStatus" class="today-status" style="display:none;"></div>
     <div class="cat-filter" id="catFilter">
@@ -139,6 +149,16 @@
   <div class="grid" id="grid"></div>
     <div id="emptyState" style="display:none;text-align:center;color:#fff;font-size:14px;padding:60px 20px;">🔍 조건에 맞는 메뉴가 없어요.</div>
   <footer>감성소프트웨어 &middot; Onban Menu Gallery</footer>
+
+  <div class="modal-overlay" id="galleryConfirmOverlay">
+    <div class="modal-box confirm-box">
+      <p id="galleryConfirmMsg"></p>
+      <div class="confirm-actions">
+        <button type="button" id="galleryConfirmNo">아니오</button>
+        <button type="button" class="confirm-yes" id="galleryConfirmYes">네</button>
+      </div>
+    </div>
+  </div>
 
   <div class="modal-overlay" id="modalOverlay">
     <div class="modal-box">
@@ -518,24 +538,30 @@
       return kst.toISOString().slice(0, 10);
     }
 
+    // 선택모드(체크박스 표시) 여부는 오늘의메뉴/예약주문/AI추천 셋 중 하나라도 켜져 있으면 켠다.
+    // 모드에 새로 들어갈 때는 전부 체크된 상태로 시작(마음에 안 드는 것만 해제하는 방식).
+    function syncSelectMode(justEntered) {
+      const on = todayMode || reserveMode || !!recommendPicks;
+      grid.classList.toggle('select-mode', on);
+      if (on && justEntered) {
+        cards.forEach(c => { const cb = c.querySelector('.card-select-input'); if (cb) cb.checked = true; });
+      }
+    }
+
     function cardClick(card) {
       const name = card.querySelector('.name').textContent;
-      if (recommendPicks) {
-        // AI 추천 선택 모드: 카드 전체가 체크박스 역할(작은 체크박스만이 아니라)
+      if (recommendPicks || todayMode || reserveMode) {
+        // 선택 모드(AI추천/오늘의메뉴/예약주문): 카드 전체가 체크박스 역할 — 여러 개 골라 '장바구니로'로 한 번에 넘김
+        if (todayMode) {
+          const info = todayMap && todayMap.get(name);
+          if (info && info.stock <= 0) return; // 품절은 선택 불가
+        }
+        if (todayMode || reserveMode) trackMenuClick(name, card.querySelector('.cat').textContent);
         const cb = card.querySelector('.card-select-input');
         if (cb) cb.checked = !cb.checked;
         return;
       }
-      if (todayMode) {
-        const info = todayMap && todayMap.get(name);
-        if (info && info.stock <= 0) return; // 품절 클릭 무시
-        trackMenuClick(name, card.querySelector('.cat').textContent);
-        window.location.href = 'onban01.html?openMenu=' + encodeURIComponent(name);
-      } else if (reserveMode) {
-        // '예약 주문 신청하기'와 동일한 기능 — 예약주문 페이지에서 해당 항목을 바로 선택해 팝업까지 오픈
-        trackMenuClick(name, card.querySelector('.cat').textContent);
-        window.location.href = 'onban01.html?openReserve=' + encodeURIComponent(name);
-      } else if (isAdmin) {
+      if (isAdmin) {
         openEditPopup(card);
       } else {
         openModal(card);
@@ -578,6 +604,7 @@
       getCatBtns().forEach(b => b.classList.remove('active'));
       getCatBtns()[0].classList.add('active');
       exitRecommendMode(false);
+      syncSelectMode();
       applyFilter();
     }
 
@@ -617,6 +644,7 @@
           todayMode = true;
           todayBtn.classList.add('active');
           applyTodayView();
+          syncSelectMode(true);
           if (!todayMap.size) showGalleryToast('📅 오늘 등록된 메뉴가 없어요.');
         })
         .catch(() => { todayStatus.textContent = '오늘의 메뉴를 불러오지 못했어요.'; });
@@ -626,23 +654,15 @@
       reserveMode = false;
       reserveBtn.classList.remove('active');
       todayStatus.style.display = 'none';
+      syncSelectMode();
     }
     reserveBtn.addEventListener('click', () => {
-      if (recommendPicks) {
-        // 추천 결과에서 체크박스로 고른 항목들을 한 번에 예약주문으로 넘김
-        var checkedNames = Array.from(cards)
-          .filter(c => c.style.display !== 'none')
-          .filter(c => { var cb = c.querySelector('.card-select-input'); return cb && cb.checked; })
-          .map(c => c.querySelector('.name').textContent);
-        if (!checkedNames.length) { showGalleryToast('예약할 메뉴를 선택해주세요.'); return; }
-        window.location.href = 'onban01.html?openReserveMulti=' + encodeURIComponent(JSON.stringify(checkedNames));
-        return;
-      }
       if (reserveMode) { exitReserveMode(); return; }
       if (todayMode) exitTodayMode();
       exitRecommendMode(false);
       reserveMode = true;
       reserveBtn.classList.add('active');
+      syncSelectMode(true);
     });
 
     // ── AI추천메뉴 ──
@@ -725,15 +745,14 @@
       searchCatInput.value = '';
       activeCat = '전체';
       getCatBtns().forEach(b => b.classList.remove('active'));
-      grid.classList.add('select-mode');
-      cards.forEach(c => { var cb = c.querySelector('.card-select-input'); if (cb) cb.checked = true; });
+      syncSelectMode(true);
       applyFilter();
     }
     function exitRecommendMode(doApplyFilter) {
       if (!recommendPicks) return;
       recommendPicks = null;
       recommendBtn.classList.remove('active');
-      grid.classList.remove('select-mode');
+      syncSelectMode();
       if (doApplyFilter !== false) applyFilter();
     }
     const rfResultEl = document.getElementById('rfResult');
@@ -1024,6 +1043,60 @@
           saveBtn.textContent = '저장';
           alert('저장 요청에 실패했어요. 다시 시도해주세요.');
         });
+    });
+
+    // ── 헤더 '일일메뉴로' / '장바구니로' — 고객 메뉴 페이지(onban01.html)에서 들어왔을 때만 활성화 ──
+    const dailyMenuLinkBtn = document.getElementById('dailyMenuLinkBtn');
+    const galleryCartBtn = document.getElementById('galleryCartBtn');
+    const _fromCustomerPage = /onban01\.html/i.test(document.referrer);
+    dailyMenuLinkBtn.disabled = !_fromCustomerPage;
+    galleryCartBtn.disabled = !_fromCustomerPage;
+
+    function _checkedVisibleNames() {
+      if (!grid.classList.contains('select-mode')) return [];
+      return Array.from(cards)
+        .filter(c => c.style.display !== 'none')
+        .filter(c => { const cb = c.querySelector('.card-select-input'); return cb && cb.checked; })
+        .map(c => c.querySelector('.name').textContent);
+    }
+
+    const galleryConfirmOverlay = document.getElementById('galleryConfirmOverlay');
+    const galleryConfirmMsg = document.getElementById('galleryConfirmMsg');
+    let _galleryConfirmYesCb = null;
+    function showGalleryConfirm(msg, onYes) {
+      galleryConfirmMsg.textContent = msg;
+      _galleryConfirmYesCb = onYes;
+      galleryConfirmOverlay.classList.add('open');
+    }
+    document.getElementById('galleryConfirmNo').addEventListener('click', () => {
+      galleryConfirmOverlay.classList.remove('open');
+      _galleryConfirmYesCb = null;
+    });
+    document.getElementById('galleryConfirmYes').addEventListener('click', () => {
+      galleryConfirmOverlay.classList.remove('open');
+      const cb = _galleryConfirmYesCb; _galleryConfirmYesCb = null;
+      if (cb) cb();
+    });
+
+    dailyMenuLinkBtn.addEventListener('click', () => {
+      const names = _checkedVisibleNames();
+      if (names.length) {
+        showGalleryConfirm('선택된 메뉴를 무시하고 일일메뉴로 돌아갑니다.', () => { window.location.href = 'onban01.html'; });
+      } else {
+        window.location.href = 'onban01.html';
+      }
+    });
+    galleryCartBtn.addEventListener('click', () => {
+      const names = _checkedVisibleNames();
+      if (reserveMode) {
+        window.location.href = names.length
+          ? 'onban01.html?openReserveMulti=' + encodeURIComponent(JSON.stringify(names))
+          : 'onban01.html?goto=reserve';
+      } else {
+        window.location.href = names.length
+          ? 'onban01.html?openCartMulti=' + encodeURIComponent(JSON.stringify(names))
+          : 'onban01.html?goto=cart';
+      }
     });
 
     loadCardsFromServer(applyFilter);
