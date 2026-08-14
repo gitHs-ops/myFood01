@@ -1064,20 +1064,21 @@ function closeNewMenuPopup(e){
   document.getElementById('newMenuOverlay').classList.remove('open');
 }
 // 가격은 항상 천원 단위 숫자로 입력(예: 6.5 = 6,500원). 1000 이상이면 실제 금액을
-// 그대로 입력한 실수일 가능성이 높아 한 번 더 확인시킴(저장은 막지 않음)
+// 그대로 입력한 실수일 가능성이 높으므로 저장을 막고 다시 확인하게 함
 function _checkPriceUnit(val){
-  if(val>=1000)showToast('⚠️ 가격 '+val.toLocaleString()+'을(를) 천원 단위로 입력했는지 확인해주세요.');
+  if(val>=1000){showToast('⚠️ 가격 '+val.toLocaleString()+'을(를) 천원 단위로 입력했는지 확인해주세요.');return false;}
+  return true;
 }
 function saveNewMasterMenu(){
   var name=document.getElementById('newMenuName').value.trim();
   var price=parseInt(document.getElementById('newMenuPrice').value)||0;
-  _checkPriceUnit(price);
   var stock=parseInt(document.getElementById('newMenuStock').value)||0;
   var cat=document.getElementById('newMenuCat').value;
   var child=document.getElementById('newMenuChild').checked;
   var desc=document.getElementById('newMenuDesc').value.trim();
   if(!name){alert('메뉴명을 입력해주세요.');return;}
   if(!price){alert('금액을 입력해주세요.');return;}
+  if(!_checkPriceUnit(price))return;
   var ts=Date.now();
   var existingIdx=allMenus.findIndex(function(m){return (m.name||'').trim()===name&&(m.cat||'').trim()===cat;});
   function _doSaveNewMaster(){
@@ -1274,7 +1275,6 @@ function renderCal(){
 function addMenu(){
   var name=document.getElementById('menuName').value.trim();
   var price=parseInt(document.getElementById('menuPrice').value)||0;
-  _checkPriceUnit(price);
   var stock=parseInt(document.getElementById('menuStock').value)||0;
   var cat=document.getElementById('menuCat').value;
   var child=document.getElementById('menuChild').checked;
@@ -1282,6 +1282,7 @@ function addMenu(){
   if(!name){alert('메뉴명을 입력해주세요.');return;}
   if(!price){alert('금액을 입력해주세요.');return;}
   if(cat==='전체'){alert('카테고리를 선택해주세요.');return;}
+  if(!_checkPriceUnit(price))return;
   function _doAddMenu(){
     var _ref=allMenus.find(function(m){return (m.name||'').trim()===name;});
     if(_addMenuMode==='new'&&!_ref){
@@ -1325,7 +1326,7 @@ function deleteMenu(id){
 }
 function changeStock(id,d){var m=menus.find(function(x){return x.id===id;});if(!m)return;m.stock=Math.max(-1,(m.stock||0)+d);touch(m);save();renderMenuList();renderStats();}
 function startEditPrice(id){document.getElementById('pd_'+id).style.display='none';var inp=document.getElementById('pi_'+id);inp.style.display='inline-block';inp.focus();inp.select();}
-function commitPrice(id){var inp=document.getElementById('pi_'+id);var val=parseInt(inp.value)||0;_checkPriceUnit(val);var m=menus.find(function(x){return x.id===id;});if(m){m.price=val;touch(m);save();}var disp=document.getElementById('pd_'+id);if(disp){disp.textContent=val.toLocaleString()+'천원';disp.style.display='';}inp.style.display='none';renderKakao();}
+function commitPrice(id){var inp=document.getElementById('pi_'+id);var val=parseInt(inp.value)||0;if(!_checkPriceUnit(val)){inp.focus();return;}var m=menus.find(function(x){return x.id===id;});if(m){m.price=val;touch(m);save();}var disp=document.getElementById('pd_'+id);if(disp){disp.textContent=val.toLocaleString()+'천원';disp.style.display='';}inp.style.display='none';renderKakao();}
 function cancelPrice(id){var m=menus.find(function(x){return x.id===id;});var inp=document.getElementById('pi_'+id);var disp=document.getElementById('pd_'+id);if(inp&&m)inp.value=m.price||0;if(disp)disp.style.display='';if(inp)inp.style.display='none';}
 
 function openImgPopup(id,ctx){
@@ -1534,10 +1535,11 @@ function saveMenuEditAll(){
   if(!m)return;
   var name=document.getElementById('editMenuName').value.trim();
   if(!name){alert('메뉴명을 입력해주세요.');return;}
+  var price=parseInt(document.getElementById('editMenuPrice').value)||0;
+  if(!_checkPriceUnit(price))return;
   var oldName=m.name;  // 이름 변경 추적
   m.name=name;
-  m.price=parseInt(document.getElementById('editMenuPrice').value)||0;
-  _checkPriceUnit(m.price);
+  m.price=price;
   m.stock=parseInt(document.getElementById('editMenuStock').value)||0;
   m.cat=document.getElementById('editMenuCat').value;
   m.child=document.getElementById('editMenuChild').checked;
@@ -1849,7 +1851,7 @@ function syncAllMenuToMenus(m, oldName){
 }
 function changeAllStock(id,d){var m=allMenus.find(function(x){return x.id===id;});if(!m)return;m.stock=Math.max(-1,(m.stock||0)+d);touch(m);saveAllMenus();syncAllMenuToMenus(m);renderAllMenus();}
 function startEditAllPrice(id){document.getElementById('apd_'+id).style.display='none';var inp=document.getElementById('api_'+id);inp.style.display='inline-block';inp.focus();inp.select();}
-function commitAllPrice(id){var inp=document.getElementById('api_'+id);var val=parseInt(inp.value)||0;_checkPriceUnit(val);var m=allMenus.find(function(x){return x.id===id;});if(m){m.price=val;touch(m);saveAllMenus();syncAllMenuToMenus(m);}var disp=document.getElementById('apd_'+id);if(disp){disp.textContent=val.toLocaleString()+'천원';disp.style.display='';}inp.style.display='none';}
+function commitAllPrice(id){var inp=document.getElementById('api_'+id);var val=parseInt(inp.value)||0;if(!_checkPriceUnit(val)){inp.focus();return;}var m=allMenus.find(function(x){return x.id===id;});if(m){m.price=val;touch(m);saveAllMenus();syncAllMenuToMenus(m);}var disp=document.getElementById('apd_'+id);if(disp){disp.textContent=val.toLocaleString()+'천원';disp.style.display='';}inp.style.display='none';}
 function cancelAllPrice(id){var m=allMenus.find(function(x){return x.id===id;});var inp=document.getElementById('api_'+id);var disp=document.getElementById('apd_'+id);if(inp&&m)inp.value=m.price||0;if(disp)disp.style.display='';if(inp)inp.style.display='none';}
 function deleteAllMenu(id){
   var m=allMenus.find(function(x){return x.id===id;});
@@ -3322,7 +3324,7 @@ function saveReserveEvent(){
     price:Number(document.getElementById('cfgEventPrice').value)||0,
     deadline:document.getElementById('cfgEventDeadline').value||''
   };
-  _checkPriceUnit(ev.price);
+  if(!_checkPriceUnit(ev.price))return;
   apiPost('/api/settings',{reserveEvent:ev},function(err,d){
     if(err||!d||d.success===false){showToast('⚠️ 저장 실패');return;}
     var el=document.getElementById('settingSavedEvent');
