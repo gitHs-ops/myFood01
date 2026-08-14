@@ -697,6 +697,8 @@
     });
     let _rfPrevState = null; // 팝업 열기 직전 화면 상태 — 취소 시 이 상태로 복귀
     function openRecommendModal() {
+      const poolCount = rfScopeVal === 'today' ? (todayMap ? todayMap.size : 0) : cards.length;
+      if (poolCount <= 10) { showGalleryToast('대상 메뉴가 ' + poolCount + '개뿐이라 AI 추천을 사용할 수 없어요.'); return; }
       recommendOverlay.classList.add('open');
       lockBodyScroll();
       rfResultEl.style.display = 'none';

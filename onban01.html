@@ -1054,6 +1054,7 @@ RF_MULTI_IDS.forEach(function(id){
   });
 });
 function openAiRecModal(){
+  if(allMenus.length<=10){showToast('오늘 등록된 메뉴가 '+allMenus.length+'개뿐이라 AI 추천을 사용할 수 없어요.');return;}
   document.getElementById('aiRecOverlay').classList.add('open');
   document.getElementById('rfResult').style.display='none';
   document.getElementById('rfRun').style.display='';
