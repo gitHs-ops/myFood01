@@ -2880,7 +2880,7 @@ function cancelOrder(id){
 
 function deleteOrder(id){
   var _o=_ordersCache[id];
-  var _delMsg=(_o&&_o.status==='confirmed')?'주문 취소가 아니고 데이터를 삭제합니다.\n정말 삭제할까요?':'이 주문을 삭제할까요?';
+  var _delMsg=(_o&&(_o.status==='confirmed'||_o.status==='delivered'))?'주문 취소가 아니고 데이터를 삭제합니다.\n정말 삭제할까요?':'이 주문을 삭제할까요?';
   showConfirm(_delMsg,function(){
     closeAdminOrderDetail();
     delete _ordersCache[id];

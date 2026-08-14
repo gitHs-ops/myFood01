@@ -876,8 +876,8 @@ app.put('/api/orders/:id/status', async (req, res) => {
       // 주문취소는 거래 내용이 사라지는 일이라 반드시 기록으로 남긴다.
       // 업주 문자는 고객이 취소했을 때만 — 관리자가 직접 취소한 건 본인이 이미 안다.
       if (status === 'cancelled' && prev !== 'cancelled') {
-        const who = isAdmin ? '관리자' : '고객';
-        _appendOrderLog(req.params.id, [`${who}가 주문취소`]);
+        const who = isAdmin ? '관리자가' : '고객이';
+        _appendOrderLog(req.params.id, [`${who} 주문취소`]);
         if (!isAdmin) _notifyOwnerChange(req.params.id, '고객 주문취소', null);
       }
     } catch(e) { await conn.rollback(); conn.release(); throw e; }
