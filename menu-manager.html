@@ -3003,13 +3003,14 @@ function _playNewOrderSound(){
 var _origTitle=document.title;
 var _titleTimer=null;
 var _newOrderCount=0;
-function _startTitleBlink(){
+function _startTitleBlink(label){
+  label=label||'새 주문';
   _newOrderCount++;
   if(_titleTimer)return;
   var on=false;
   _titleTimer=setInterval(function(){
     on=!on;
-    document.title=on?('🔔 새 주문 '+_newOrderCount+'건!'):_origTitle;
+    document.title=on?('🔔 '+label+' '+_newOrderCount+'건!'):_origTitle;
   },900);
 }
 function _stopTitleBlink(){
@@ -3027,6 +3028,12 @@ function _notifyNewOrder(){
   _startTitleBlink();
   showToast('🔔 새 주문이 들어왔어요!');
 }
+// 고객이 추가요청사항을 입력·저장했을 때도 새 주문과 동일하게 소리·진동·탭 깜빡임으로 알림
+function _notifyNewAddReq(){
+  _playNewOrderSound();
+  _startTitleBlink('새 요청');
+  showToast('📝 새 추가요청이 들어왔어요!');
+}
 
 function startSSE(){
   if(_sse){_sse.close();_sse=null;}
@@ -3040,8 +3047,9 @@ function startSSE(){
     try{
       var msg=null;
       try{msg=JSON.parse(e.data);}catch(_){}
-      // 새 주문일 때만 알린다 (상태변경·수정 등 나머지 신호는 조용히 다시 그리기만)
+      // 새 주문·새 추가요청만 소리로 알린다 (상태변경 등 나머지 신호는 조용히 다시 그리기만)
       if(msg&&msg.type==='order_new')_notifyNewOrder();
+      else if(msg&&msg.type==='order_request'&&msg.hasText)_notifyNewAddReq();
       _debouncedRenderOrders();
     }catch(ex){}
   };

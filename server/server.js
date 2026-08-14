@@ -297,7 +297,7 @@ app.get('/api/events', (req, res) => {
 
 // ── 헬스체크 ────────────────────────────────────────────────
 // build 표식 — 설정을 바꾸기 전에 배포가 실제로 반영됐는지 확인하는 용도
-app.get('/health', (req, res) => res.json({ ok: true, build: 'extra-req-editable-plus-notify-1' }));
+app.get('/health', (req, res) => res.json({ ok: true, build: 'popup-parity-plus-sound-1' }));
 
 // ══════════════════════════════════════════════════════════════
 // 메뉴 창고 (등록된모든메뉴)
@@ -990,7 +990,8 @@ app.put('/api/orders/:id/request', async (req, res) => {
     // 고객이 추가요청사항을 저장할 때마다 관리자 확인 여부를 다시 미확인으로 돌려서
     // 관리자 페이지에 "새 추가 요청" 알림 배지가 뜨게 함
     await pool.execute('UPDATE orders SET additional_request=?, addreq_acked=0 WHERE id=?', [text||'', req.params.id]);
-    broadcast('order_request', { orderId: req.params.id });
+    // hasText: 내용을 지워서 저장(빈 값)한 경우는 알림 소리를 울릴 필요가 없어 구분해서 보냄
+    broadcast('order_request', { orderId: req.params.id, hasText: !!(text && text.trim()) });
     ok(res);
   } catch(e) { err(res, e.message); }
 });

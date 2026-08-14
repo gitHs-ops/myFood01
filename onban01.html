@@ -2664,7 +2664,8 @@ function _buildOrderCard(o){
       btnCloseR.textContent='닫기';
       btnCloseR.onclick=function(){_closeOrderDetailGuarded();};
       acts.appendChild(btnCloseR);
-    } else if(o.status==='confirmed'){
+    } else if(o.status==='confirmed'||o.status==='delivered'){
+      // 주문접수/배송완료는 팝업 기능이 동일해야 함(상단 상태 라벨만 다름) — 닫기 버튼만 제공
       var btnCloseC=document.createElement('button');
       btnCloseC.className='hist-btn-cancel';
       btnCloseC.textContent='닫기';
