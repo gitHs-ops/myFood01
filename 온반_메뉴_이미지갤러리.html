@@ -158,8 +158,8 @@
         <h3>🎯 AI추천메뉴</h3>
         <div class="rf-group rf-scope-group">
           <div class="rf-options rf-single rf-scope" id="rfScope">
-            <button type="button" class="rf-opt rf-scope-opt selected" data-val="today">오늘의 메뉴에서<br>추천받기</button>
-            <button type="button" class="rf-opt rf-scope-opt" data-val="all">전체 메뉴중에서<br>추천 받기</button>
+            <button type="button" class="rf-opt rf-scope-opt" data-val="today">오늘의 메뉴에서<br>추천받기</button>
+            <button type="button" class="rf-opt rf-scope-opt selected" data-val="all">전체 메뉴중에서<br>추천 받기</button>
             <button type="button" class="rf-opt rf-scope-opt" data-val="persona">개인취향으로<br>추천받기</button>
           </div>
         </div>
@@ -687,7 +687,7 @@
       });
     });
     // 오늘의메뉴/전체메뉴 스코프 — 다른 단일선택과 달리 항상 하나는 선택된 상태를 유지(재클릭해도 해제 안 됨)
-    let rfScopeVal = 'today';
+    let rfScopeVal = 'all';
     document.getElementById('rfScope').addEventListener('click', (e) => {
       const btn = e.target.closest('.rf-opt');
       if (!btn) return;
@@ -697,8 +697,6 @@
     });
     let _rfPrevState = null; // 팝업 열기 직전 화면 상태 — 취소 시 이 상태로 복귀
     function openRecommendModal() {
-      const poolCount = rfScopeVal === 'today' ? (todayMap ? todayMap.size : 0) : cards.length;
-      if (poolCount <= 10) { showGalleryToast('대상 메뉴가 ' + poolCount + '개뿐이라 AI 추천을 사용할 수 없어요.'); return; }
       recommendOverlay.classList.add('open');
       lockBodyScroll();
       rfResultEl.style.display = 'none';
@@ -748,8 +746,6 @@
       return String(text || '').replace(/([.!?])\s+(?=\S)/g, '$1\n');
     }
     document.getElementById('rfRun').addEventListener('click', () => {
-      const poolCount = rfScopeVal === 'today' ? (todayMap ? todayMap.size : 0) : cards.length;
-      if (poolCount <= 10) { showGalleryToast('대상 메뉴가 ' + poolCount + '개뿐이라 AI 추천을 사용할 수 없어요.'); return; }
       const runBtn = document.getElementById('rfRun');
       const allergy = document.getElementById('rfAllergy').value.trim();
       runBtn.disabled = true;
