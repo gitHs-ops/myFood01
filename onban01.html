@@ -2524,6 +2524,7 @@ function _buildOrderCard(o){
     var deliveryFee=(!isPickupMemo&&itemsSum>=20)?1:0;
     var total=itemsSum+deliveryFee;
     var isFinished=(o.status==='cancelled'||o.status==='delivered');
+    var canEditDelivery=(o.status==='pending'); // 배송방법 변경은 대기중(주문 확정 전)에만 허용
     var card=document.createElement('div');
     card.className='hist-card';
     card.id='histcard-'+o.id;
@@ -2585,19 +2586,13 @@ function _buildOrderCard(o){
     totRow.id='histtotal-'+o.id;
     totRow.innerHTML='<span>합계</span><span class="hist-total-val">'+comma(total)+'천원</span>';
     card.appendChild(totRow);
-    // 배송방법 (memo) — 편집 가능
-    if(!isFinished){
+    // 배송방법 (memo) — 대기중일 때만 변경 가능, 주문접수 이후(주문접수/배송완료/취소됨)엔 주문 당시 값만 표시
+    if(canEditDelivery){
       var memoWrap=document.createElement('div');
       memoWrap.className='hist-req-wrap';
       memoWrap.id='histmemo-'+o.id;
       memoWrap.innerHTML=_histMemoHtml(o.id, o.memo||'');
       card.appendChild(memoWrap);
-      // 추가요청사항 (additionalRequest) — 편집 가능
-      var extraWrap=document.createElement('div');
-      extraWrap.className='hist-req-wrap';
-      extraWrap.id='histextra-'+o.id;
-      extraWrap.innerHTML=_histExtraHtml(o.id, o.additionalRequest||'');
-      card.appendChild(extraWrap);
     } else {
       var delivery=(o.memo||'').split(' / ')[0].trim();
       if(delivery){
@@ -2606,6 +2601,15 @@ function _buildOrderCard(o){
         mr.textContent='🚚 '+delivery;
         card.appendChild(mr);
       }
+    }
+    // 추가요청사항 (additionalRequest) — 편집 가능 범위는 기존과 동일(완료/취소 전까지)
+    if(!isFinished){
+      var extraWrap=document.createElement('div');
+      extraWrap.className='hist-req-wrap';
+      extraWrap.id='histextra-'+o.id;
+      extraWrap.innerHTML=_histExtraHtml(o.id, o.additionalRequest||'');
+      card.appendChild(extraWrap);
+    } else {
       if(o.additionalRequest){
         var ar=document.createElement('div');
         ar.className='hist-req-wrap';
