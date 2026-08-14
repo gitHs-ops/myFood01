@@ -2302,7 +2302,7 @@ function _doRenderTracker(el,ordersRes,trackerRes){
       orderedMenuMap[key].qty+=(it.qty||1);
     });
   });
-  var orderedMenus=Object.keys(orderedMenuMap).map(function(k){return orderedMenuMap[k];}).sort(function(a,b){return b.qty-a.qty;}).slice(0,10);
+  var orderedMenus=Object.keys(orderedMenuMap).map(function(k){return orderedMenuMap[k];}).sort(function(a,b){return b.qty-a.qty;});
 
   var ordTitle=document.createElement('div');
   ordTitle.className='trk-section-title';
