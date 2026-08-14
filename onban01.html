@@ -619,7 +619,7 @@ select.reserve-info-inp{appearance:none;-webkit-appearance:none;background:#fff 
       장바구니
       <span class="cart-count" id="cartCount">0</span>
     </button>
-    <button class="top-btn top-btn-secondary" onclick="goPage('history')">
+    <button class="top-btn" onclick="goPage('history')">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
       주문내역
     </button>
@@ -1067,6 +1067,7 @@ function _rfFormatReason(text){
   return String(text||'').replace(/([.!?])\s+(?=\S)/g,'$1\n');
 }
 document.getElementById('rfRun').addEventListener('click',function(){
+  if(allMenus.length<=10){showToast('오늘 등록된 메뉴가 '+allMenus.length+'개뿐이라 AI 추천을 사용할 수 없어요.');return;}
   var runBtn=document.getElementById('rfRun');
   var allergy=document.getElementById('rfAllergy').value.trim();
   runBtn.disabled=true;

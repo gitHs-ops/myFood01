@@ -36,8 +36,6 @@
   .search-box .today-btn { flex-shrink:0; white-space:nowrap; }
   .search-all-label { font-size:12px; color:rgba(255,255,255,0.85); white-space:nowrap; flex-shrink:0; }
   .search-line { max-width:1200px; margin:10px auto 0; display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:flex-start; }
-  .search-group { display:flex; align-items:center; gap:8px; }
-  .search-group + .search-group { margin-left:24px; }
   .result-count { font-size:12px; color:rgba(255,255,255,0.85); white-space:nowrap; }
   .cat-filter { max-width:1200px; margin:14px auto 0; display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-start; align-items:center; }
   .cat-btn { background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.4); border-radius:20px; padding:6px 16px; font-size:13px; font-weight:600; color:#fff; cursor:pointer; font-family:'Pretendard',sans-serif; transition:background .15s; }
@@ -60,13 +58,7 @@
   .price { color:#b8860b; font-weight:700; }
   .card { cursor:pointer; }
   @media (max-width:980px) { .grid { grid-template-columns:repeat(3,1fr); } }
-  @media (max-width:600px) {
-    .grid { grid-template-columns:repeat(2,1fr); } header h1 { font-size:22px; }
-    .search-line { flex-direction:column; align-items:flex-start; }
-    .search-group { width:100%; }
-    .search-group + .search-group { margin-left:0; }
-    .search-input-wrap { flex:1 1 auto; }
-  }
+  @media (max-width:600px) { .grid { grid-template-columns:repeat(2,1fr); } header h1 { font-size:22px; } }
   footer { max-width:1200px; margin:32px auto 0; text-align:center; color:#fff; opacity:0.85; font-size:12px; }
   .modal-overlay { display:none; position:fixed; inset:0; background:rgba(8,20,20,0.75); z-index:999; align-items:center; justify-content:center; padding:24px; }
   .modal-overlay.open { display:flex; }
@@ -129,19 +121,10 @@
       <button class="cat-btn active" data-cat="전체">전체</button>
     </div>
     <div class="search-line">
-      <div class="search-group">
-        <span class="search-all-label">전체 검색</span>
-        <div class="search-input-wrap">
-          <input type="text" id="searchAllInput" placeholder="메뉴명 검색...">
-          <span class="search-icon">🔍</span>
-        </div>
-      </div>
-      <div class="search-group">
-        <span class="search-all-label">카테고리내 검색</span>
-        <div class="search-input-wrap">
-          <input type="text" id="searchCatInput" placeholder="메뉴명 검색...">
-          <span class="search-icon">🔍</span>
-        </div>
+      <span class="search-all-label">카테고리내 검색</span>
+      <div class="search-input-wrap">
+        <input type="text" id="searchCatInput" placeholder="메뉴명 검색...">
+        <span class="search-icon">🔍</span>
       </div>
     </div>
     <div class="search-box">
@@ -347,7 +330,6 @@
     const ONBAN_ADMIN_KEY = 'onban@1dl34';
     const isAdmin = localStorage.getItem('onban_admin_auth') === ('ok_' + ONBAN_ADMIN_KEY);
     const IMGBB_KEY = 'b5a6e9481bb9cb4791108cf50761a459';
-    const searchAllInput = document.getElementById('searchAllInput');
     const searchCatInput = document.getElementById('searchCatInput');
     const grid = document.getElementById('grid');
     let cards = [];
@@ -403,9 +385,8 @@
     let activeCat = '전체';
     let recommendPicks = null; // Set<string> | null — AI 추천 결과로 필터링 중일 때
     function applyFilter() {
-      const qAll = searchAllInput.value.trim().toLowerCase();
       const qCat = searchCatInput.value.trim().toLowerCase();
-      const searching = !!(qAll || qCat);
+      const searching = !!qCat;
       let visibleCount = 0;
       cards.forEach(c => {
         const name = c.querySelector('.name').textContent;
@@ -414,9 +395,6 @@
         if (recommendPicks) {
           // AI 추천 모드: 추천받은 메뉴만
           show = recommendPicks.has(name);
-        } else if (qAll) {
-          // 전체 검색: 카테고리 무관, 이름만 매치
-          show = name.toLowerCase().includes(qAll);
         } else if (qCat) {
           // 카테고리내 검색: 현재 선택된 카테고리 안에서만 이름 매치
           show = name.toLowerCase().includes(qCat) && (activeCat === '전체' || cat === activeCat);
@@ -448,7 +426,6 @@
       }
       recommendBtn.classList.toggle('active', !!recommendPicks);
     }
-    searchAllInput.addEventListener('input', applyFilter);
     searchCatInput.addEventListener('input', applyFilter);
     // 카테고리 버튼은 서버에서 동적으로 추가되므로, 개별 바인딩 대신 상위 컨테이너에
     // 이벤트 위임으로 한 번만 등록 — 나중에 추가되는 버튼에도 자동으로 적용됨
@@ -591,7 +568,6 @@
       todayBtn.classList.remove('active');
       todayStatus.style.display = 'none';
       catFilter.style.display = '';
-      searchAllInput.value = '';
       searchCatInput.value = '';
       cards.forEach(c => {
         c.style.opacity = '';
@@ -728,7 +704,6 @@
       _rfPrevState = {
         recommendPicks: recommendPicks ? new Set(recommendPicks) : null,
         activeCat: activeCat,
-        searchAll: searchAllInput.value,
         searchCat: searchCatInput.value,
         selectMode: grid.classList.contains('select-mode'),
       };
@@ -747,7 +722,6 @@
         cards.forEach(c => { c.style.opacity = ''; const b = c.querySelector('.soldout-badge'); if (b) b.remove(); });
       }
       if (reserveMode) exitReserveMode();
-      searchAllInput.value = '';
       searchCatInput.value = '';
       activeCat = '전체';
       getCatBtns().forEach(b => b.classList.remove('active'));
@@ -772,6 +746,8 @@
       return String(text || '').replace(/([.!?])\s+(?=\S)/g, '$1\n');
     }
     document.getElementById('rfRun').addEventListener('click', () => {
+      const poolCount = rfScopeVal === 'today' ? (todayMap ? todayMap.size : 0) : cards.length;
+      if (poolCount <= 10) { showGalleryToast('대상 메뉴가 ' + poolCount + '개뿐이라 AI 추천을 사용할 수 없어요.'); return; }
       const runBtn = document.getElementById('rfRun');
       const allergy = document.getElementById('rfAllergy').value.trim();
       runBtn.disabled = true;
@@ -832,7 +808,6 @@
       if (_rfPrevState) {
         recommendPicks = _rfPrevState.recommendPicks;
         activeCat = _rfPrevState.activeCat;
-        searchAllInput.value = _rfPrevState.searchAll;
         searchCatInput.value = _rfPrevState.searchCat;
         getCatBtns().forEach(b => b.classList.toggle('active', b.dataset.cat === activeCat));
         grid.classList.toggle('select-mode', _rfPrevState.selectMode);
