@@ -372,7 +372,7 @@
         ? '<div class="thumb"><img src="' + escapeHtml(m.imgUrl) + '" alt="' + escapeHtml(m.name) + '" loading="lazy"></div>'
         : '<div class="thumb thumb-placeholder">🍽️</div>';
       return '<div class="card" data-menu-id="' + (m.menuId || '') + '">'
-        + '<label class="card-select"><input type="checkbox" class="card-select-input" checked></label>'
+        + '<label class="card-select"><input type="checkbox" class="card-select-input"></label>'
         + thumbHtml
         + '<div class="info">'
           + '<div class="name">' + escapeHtml(m.name) + '</div>'
@@ -544,7 +544,9 @@
       const on = todayMode || reserveMode || !!recommendPicks;
       grid.classList.toggle('select-mode', on);
       if (on && justEntered) {
-        cards.forEach(c => { const cb = c.querySelector('.card-select-input'); if (cb) cb.checked = true; });
+        // 모드에 새로 들어갈 때마다 항상 빈 체크박스로 시작(전체 선택 방지 — 잘못 눌러 전체 카탈로그를
+        // 한 번에 예약/장바구니로 보내는 사고를 막는다. 필요한 것만 직접 고르는 방식).
+        cards.forEach(c => { const cb = c.querySelector('.card-select-input'); if (cb) cb.checked = false; });
       }
     }
 
@@ -1088,6 +1090,10 @@
     });
     galleryCartBtn.addEventListener('click', () => {
       const names = _checkedVisibleNames();
+      if (names.length > 50) {
+        showGalleryToast('한 번에 담을 수 있는 메뉴는 최대 50개예요. 선택한 메뉴를 줄여주세요.');
+        return;
+      }
       if (reserveMode) {
         window.location.href = names.length
           ? 'onban01.html?openReserveMulti=' + encodeURIComponent(JSON.stringify(names))

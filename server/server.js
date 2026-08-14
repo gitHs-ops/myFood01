@@ -692,6 +692,16 @@ app.post('/api/orders', async (req, res) => {
     const isReserve = !!order.reserveDate;
     const isEventOrder = items.some(it => it.menuId === 'EVENT');
 
+    // 항목이 비정상적으로 많으면(예: 화면에서 실수로 전체선택 후 제출) 뒤의 가격검산 루프가
+    // 항목 수만큼 순차 쿼리를 돌게 되어 요청이 타임아웃되고, 그 경우 에러가 catch에 닿지 못해
+    // 시스템 로그에도 안 남긴 채 그냥 조용히 실패한다. 여기서 미리 걸러서 원인을 남긴다.
+    const MAX_ORDER_ITEMS = 50;
+    if (items.length > MAX_ORDER_ITEMS) {
+      sysLog('abnormal_order', '비정상적으로 많은 항목(' + items.length + '개) 주문 시도 차단',
+        { itemCount: items.length, phone: order.phone || null, reserveDate: order.reserveDate || null }, req.ip).catch(() => {});
+      return err(res, '한 번에 담을 수 있는 메뉴는 최대 ' + MAX_ORDER_ITEMS + '개예요. 선택한 메뉴를 줄여서 다시 시도해주세요.', 400);
+    }
+
     // 같은 전화번호로 같은 날짜에 동일 예약 이벤트를 중복 신청하는 것을 방지
     if (isEventOrder && order.reserveDate && order.phone) {
       const [dupRows] = await pool.execute(
