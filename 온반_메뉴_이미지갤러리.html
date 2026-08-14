@@ -29,7 +29,7 @@
   .card-select { display:none; position:absolute; top:8px; left:8px; z-index:2; width:26px; height:26px; align-items:center; justify-content:center; background:rgba(255,255,255,0.92); border-radius:50%; box-shadow:0 1px 4px rgba(0,0,0,0.25); cursor:pointer; }
   .card-select-input { width:18px; height:18px; accent-color:#086266; cursor:pointer; }
   .grid.select-mode .card-select { display:flex; }
-  .search-box { max-width:1200px; margin:14px auto 0; display:flex; gap:8px; align-items:center; justify-content:flex-start; }
+  .search-box { max-width:1200px; margin:14px auto 0; display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:flex-start; }
   .search-input-wrap { position:relative; flex:0 1 130px; min-width:0; }
   .search-input-wrap input { width:100%; padding:6px 38px 6px 16px; border-radius:4px; border:none; font-family:'Pretendard',sans-serif; font-size:14px; outline:none; box-sizing:border-box; }
   .search-icon { position:absolute; right:14px; top:50%; transform:translateY(-50%); font-size:15px; opacity:0.55; pointer-events:none; }
@@ -782,6 +782,7 @@
             rfResultTextEl.textContent = _rfFormatReason(d.error || '조건에 맞는 메뉴를 찾지 못했어요. 조건을 바꿔보세요.');
             document.getElementById('rfApplyBtn').style.display = 'none';
             rfResultEl.style.display = 'block';
+            rfResultEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             return;
           }
           _rfLastPicks = d.picks;
@@ -790,6 +791,7 @@
           rfResultTextEl.textContent = _rfFormatReason(d.reason || '요청하신 조건에 맞는 메뉴예요.');
           document.getElementById('rfApplyBtn').style.display = '';
           rfResultEl.style.display = 'block';
+          rfResultEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
           runBtn.style.display = 'none';
         })
         .catch(() => {

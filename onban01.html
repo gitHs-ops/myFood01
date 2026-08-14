@@ -1098,6 +1098,7 @@ document.getElementById('rfRun').addEventListener('click',function(){
       document.getElementById('rfResultText').textContent=_rfFormatReason(d.error||'조건에 맞는 메뉴를 찾지 못했어요. 조건을 바꿔보세요.');
       document.getElementById('rfApplyBtn').style.display='none';
       document.getElementById('rfResult').style.display='block';
+      document.getElementById('rfResult').scrollIntoView({behavior:'smooth',block:'nearest'});
       return;
     }
     _rfLastPicks=d.picks;
@@ -1106,6 +1107,7 @@ document.getElementById('rfRun').addEventListener('click',function(){
     document.getElementById('rfResultText').textContent=_rfFormatReason(d.reason||'요청하신 조건에 맞는 메뉴예요.');
     document.getElementById('rfApplyBtn').style.display='';
     document.getElementById('rfResult').style.display='block';
+    document.getElementById('rfResult').scrollIntoView({behavior:'smooth',block:'nearest'});
     runBtn.style.display='none';
   }).catch(function(){
     runBtn.disabled=false;
