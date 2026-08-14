@@ -344,6 +344,12 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 }
 .top-btn:hover{background:rgba(255,255,255,.30);}
 .top-btn svg{width:16px;height:16px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;}
+.top-more-btn{display:none;}
+@media (max-width:600px){
+  .top-btn-secondary{display:none;}
+  .top-bar.top-more-open .top-btn-secondary{display:flex;}
+  .top-more-btn{display:flex;}
+}
 /* 기존 .history-btn 호환 (다른 곳 참조 없음) */
 .history-btn{display:none;}
 /* ── 주문 내역 페이지 ── */
@@ -601,29 +607,33 @@ select.reserve-info-inp{appearance:none;-webkit-appearance:none;background:#fff 
       <button class="top-btn" onclick="openAiRecModal()">
         🎯 AI 추천메뉴
       </button>
-      <button class="top-btn" onclick="window.open('고객페이지_사용매뉴얼.html','_blank')">
+      <button class="top-btn top-btn-secondary" onclick="window.open('고객페이지_사용매뉴얼.html','_blank')">
         <svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
         설명서
       </button>
     </div>
   </div>
-  <div style="display:flex;gap:5px;align-items:center;justify-content:flex-end;">
+  <div style="display:flex;gap:5px;align-items:center;justify-content:flex-end;flex-wrap:wrap;">
     <button class="top-btn" onclick="goPage('cart')">
       <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
       장바구니
       <span class="cart-count" id="cartCount">0</span>
     </button>
-    <button class="top-btn" onclick="goPage('history')">
+    <button class="top-btn top-btn-secondary" onclick="goPage('history')">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
       주문내역
     </button>
-    <button class="top-btn" onclick="goPage('reserve')">
+    <button class="top-btn top-btn-secondary" onclick="goPage('reserve')">
       <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
       예약주문
     </button>
-    <button class="top-btn" onclick="goPage('tracker')">
+    <button class="top-btn top-btn-secondary" onclick="goPage('tracker')">
       <svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>
       나의 기록
+    </button>
+    <button class="top-btn top-more-btn" id="topMoreBtn" onclick="toggleTopMore()">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/><circle cx="5" cy="12" r="1.6"/></svg>
+      더보기
     </button>
   </div>
 </div>
@@ -1121,7 +1131,23 @@ document.getElementById('rfApplyBtn').addEventListener('click',function(){
 document.getElementById('rfCancelBtn').addEventListener('click',function(){
   closeAiRecModal();
 });
+// 모바일 상단 메뉴 '더보기' — 접힌 보조 버튼(설명서/주문내역/예약주문/나의기록)을 펼침/닫음
+function _topMoreClosedHTML(){
+  return '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/><circle cx="5" cy="12" r="1.6"/></svg>더보기';
+}
+function toggleTopMore(){
+  var bar=document.querySelector('.top-bar');
+  var open=bar.classList.toggle('top-more-open');
+  document.getElementById('topMoreBtn').innerHTML = open
+    ? '<svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>접기'
+    : _topMoreClosedHTML();
+}
 function goPage(name,cb){
+  var _topBar=document.querySelector('.top-bar');
+  if(_topBar&&_topBar.classList.contains('top-more-open')){
+    _topBar.classList.remove('top-more-open');
+    document.getElementById('topMoreBtn').innerHTML=_topMoreClosedHTML();
+  }
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
   document.getElementById('page-'+name).classList.add('active');
   window.scrollTo(0,0);
