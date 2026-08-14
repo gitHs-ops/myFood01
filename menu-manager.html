@@ -2396,7 +2396,9 @@ function ackAddReq(orderId){
     method:'PUT',headers:{'Content-Type':'application/json'}
   }).catch(function(){});
 }
-function _isNewAddReq(o){return !!(o.additionalRequest&&!o.addreqAcked&&o.status==='pending');}
+// 예전엔 대기중 주문만 대상이었지만, 고객이 주문접수·배송완료 상태에서도 추가요청사항을
+// 수정할 수 있게 되면서 그 경우도 놓치지 않도록 취소된 주문만 제외하고 전부 대상으로 넓힘
+function _isNewAddReq(o){return !!(o.additionalRequest&&!o.addreqAcked&&o.status!=='cancelled');}
 // 예약주문 판별은 오직 reserve_date 유무로만 — status나 추가요청 텍스트는 사용하지 않음
 function _isReserveOrder(o){
   return !!o.reserveDate;

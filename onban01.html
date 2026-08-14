@@ -2523,8 +2523,8 @@ function _buildOrderCard(o){
     var isPickupMemo=(o.memo||'').startsWith('매장픽업');
     var deliveryFee=(!isPickupMemo&&itemsSum>=20)?1:0;
     var total=itemsSum+deliveryFee;
-    var isFinished=(o.status==='cancelled'||o.status==='delivered');
     var canEditDelivery=(o.status==='pending'); // 배송방법 변경은 대기중(주문 확정 전)에만 허용
+    var canEditExtra=(o.status!=='cancelled'); // 추가요청사항은 취소된 주문만 아니면 계속 편집 가능(주문접수·배송완료 동일)
     var card=document.createElement('div');
     card.className='hist-card';
     card.id='histcard-'+o.id;
@@ -2602,8 +2602,8 @@ function _buildOrderCard(o){
         card.appendChild(mr);
       }
     }
-    // 추가요청사항 (additionalRequest) — 편집 가능 범위는 기존과 동일(완료/취소 전까지)
-    if(!isFinished){
+    // 추가요청사항 (additionalRequest) — 취소된 주문이 아니면 계속 편집 가능(주문접수/배송완료 동일)
+    if(canEditExtra){
       var extraWrap=document.createElement('div');
       extraWrap.className='hist-req-wrap';
       extraWrap.id='histextra-'+o.id;
