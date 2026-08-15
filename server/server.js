@@ -558,6 +558,8 @@ app.post('/api/menu/daily', requireAdmin, async (req, res) => {
     }
     await conn.commit();
     conn.release();
+    sysLog('daily_menu_save', '일일 메뉴 저장 — ' + dates.join(', ') + ' (' + list.length + '건)',
+      { dates, count: list.length }, req.ip).catch(() => {});
     ok(res, { sheets: dates.length, count: list.length });
   } catch(e) { err(res, e.message); }
 });
@@ -1476,6 +1478,18 @@ app.get('/api/system-log', requireAdmin, async (req, res) => {
       ip: r.ip,
     }));
     ok(res, { logs });
+  } catch (e) { err(res, e.message); }
+});
+
+// POST /api/system-log/delete — 관리자 전용. 화면에서 방금 내보낸(파일로 저장한) 항목의 id만 지정해 지운다.
+// 로그가 계속 쌓이기만 하면 끝없이 길어지므로, "내보내기 → 그 내보낸 만큼만 삭제"로 크기를 관리한다.
+app.post('/api/system-log/delete', requireAdmin, async (req, res) => {
+  try {
+    const ids = Array.isArray(req.body.ids) ? req.body.ids.map(Number).filter(n => Number.isInteger(n)) : [];
+    if (!ids.length) return err(res, '삭제할 항목이 없습니다.', 400);
+    const ph = ids.map(() => '?').join(',');
+    const [r] = await pool.execute('DELETE FROM system_log WHERE id IN (' + ph + ')', ids);
+    ok(res, { deleted: r.affectedRows });
   } catch (e) { err(res, e.message); }
 });
 

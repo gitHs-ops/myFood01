@@ -59,6 +59,8 @@ html,body{min-height:100vh;font-family:'Noto Sans KR',sans-serif;background:line
 .log-badge.ai_recommend{background:#ede7f6;color:#6a1b9a;}
 .log-badge.order_customer{background:#e8f8f2;color:#0e6e4e;}
 .log-badge.abnormal_access{background:#fff3e0;color:#b8860b;}
+.log-badge.abnormal_order{background:#fff0ee;color:#c0392b;}
+.log-badge.daily_menu_save{background:#e6f3fb;color:#0a6ebd;}
 .log-badge.error{background:#fde2e0;color:#c0392b;}
 .log-dt{font-size:11px;color:var(--light);white-space:nowrap;}
 .log-ip{font-size:10.5px;color:#ccc;margin-left:auto;white-space:nowrap;}
@@ -87,7 +89,9 @@ html,body{min-height:100vh;font-family:'Noto Sans KR',sans-serif;background:line
         <button type="button" class="tab active" data-type="">전체</button>
         <button type="button" class="tab" data-type="ai_recommend">🎯 AI추천</button>
         <button type="button" class="tab" data-type="order_customer">📦 주문고객정보</button>
+        <button type="button" class="tab" data-type="daily_menu_save">🍱 일일메뉴저장</button>
         <button type="button" class="tab" data-type="abnormal_access">⚠️ 비정상접근</button>
+        <button type="button" class="tab" data-type="abnormal_order">🚫 대량주문차단</button>
         <button type="button" class="tab" data-type="error">❌ 에러</button>
       </div>
       <button type="button" class="btn-export" id="btnExport">📁 파일로 내보내기</button>
@@ -100,7 +104,7 @@ html,body{min-height:100vh;font-family:'Noto Sans KR',sans-serif;background:line
 <script>
 var API_URL='https://myfood01-production.up.railway.app';
 var ONBAN_ADMIN_KEY='onban@1dl34';
-var TYPE_LABEL={ai_recommend:'🎯 AI추천',order_customer:'📦 주문고객정보',abnormal_access:'⚠️ 비정상접근',error:'❌ 에러'};
+var TYPE_LABEL={ai_recommend:'🎯 AI추천',order_customer:'📦 주문고객정보',daily_menu_save:'🍱 일일메뉴저장',abnormal_access:'⚠️ 비정상접근',abnormal_order:'🚫 대량주문차단',error:'❌ 에러'};
 var curType='';
 var curLogs=[];
 var curLimit=200;
@@ -173,6 +177,7 @@ document.getElementById('btnLoadMore').addEventListener('click',function(){
 
 document.getElementById('btnExport').addEventListener('click',function(){
   if(!curLogs.length){alert('내보낼 기록이 없어요.');return;}
+  var exportedIds=curLogs.map(function(l){return l.id;});
   var lines=curLogs.map(function(l){
     var detail='';
     try{detail=l.detail?JSON.stringify(l.detail):'';}catch(e){detail='';}
@@ -187,6 +192,17 @@ document.getElementById('btnExport').addEventListener('click',function(){
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
+  // 로그가 계속 쌓이기만 하면 끝없이 길어지므로, 방금 파일로 저장한 만큼만 지울지 물어본다.
+  // '아니오'는 그냥 되돌아가기 — 로그는 그대로 남는다.
+  if(confirm('내보내기 완료. 방금 내보낸 '+exportedIds.length+'건을 로그에서 삭제할까요?')){
+    fetch(API_URL+'/api/system-log/delete',{
+      method:'POST',headers:{'Content-Type':'application/json','x-admin-token':ONBAN_ADMIN_KEY},
+      body:JSON.stringify({ids:exportedIds})
+    }).then(function(r){return r.json();}).then(function(d){
+      if(d&&d.success){loadLogs();}
+      else{alert('삭제 실패: '+(d&&d.error||'')); }
+    }).catch(function(){alert('삭제 요청에 실패했어요.');});
+  }
 });
 
 loadLogs();
