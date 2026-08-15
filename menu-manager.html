@@ -1241,12 +1241,13 @@ var _menuPollTimer=null;
 function _startMenuSSE(date){
   if(_menuPollTimer){clearInterval(_menuPollTimer);_menuPollTimer=null;}
   _menuPollTimer=setInterval(function(){
-    if(_menuDirty||!date)return;
+    if(_menuDirty||_editingPrice||!date)return;
     loadMenus(date);
   },3000);
 }
 
 function selectDate(iso){
+  _editingPrice=false;   // 가격 편집 중 다른 날짜로 넘어가면 폴링이 영영 안 멈춰있지 않도록 리셋
   workDate=iso;
   document.getElementById('dateDisplayBtn').textContent=fmtDate(iso);
   loadMenus(iso);filterCat='전체';renderAll();renderHistory();renderOrders();
@@ -1325,9 +1326,13 @@ function deleteMenu(id){
   });
 }
 function changeStock(id,d){var m=menus.find(function(x){return x.id===id;});if(!m)return;m.stock=Math.max(-1,(m.stock||0)+d);touch(m);save();renderMenuList();renderStats();}
-function startEditPrice(id){document.getElementById('pd_'+id).style.display='none';var inp=document.getElementById('pi_'+id);inp.style.display='inline-block';inp.focus();inp.select();}
-function commitPrice(id){var inp=document.getElementById('pi_'+id);var val=parseInt(inp.value)||0;if(!_checkPriceUnit(val)){inp.focus();return;}var m=menus.find(function(x){return x.id===id;});if(m){m.price=val;touch(m);save();}var disp=document.getElementById('pd_'+id);if(disp){disp.textContent=val.toLocaleString()+'천원';disp.style.display='';}inp.style.display='none';renderKakao();}
-function cancelPrice(id){var m=menus.find(function(x){return x.id===id;});var inp=document.getElementById('pi_'+id);var disp=document.getElementById('pd_'+id);if(inp&&m)inp.value=m.price||0;if(disp)disp.style.display='';if(inp)inp.style.display='none';}
+// 가격 입력 중엔 3초 폴링(_startMenuSSE)이 목록을 통째로 다시 그려서 입력칸이 사라지고
+// 포커스가 날아가던 문제가 있었음(_menuDirty는 커밋 후에만 켜져서 편집 "중"은 못 막았음).
+// 편집을 시작하면 폴링을 잠깐 멈추고, 끝나면(커밋/취소) 다시 켠다.
+var _editingPrice=false;
+function startEditPrice(id){_editingPrice=true;document.getElementById('pd_'+id).style.display='none';var inp=document.getElementById('pi_'+id);inp.style.display='inline-block';inp.focus();inp.select();}
+function commitPrice(id){var inp=document.getElementById('pi_'+id);var val=parseInt(inp.value)||0;if(!_checkPriceUnit(val)){inp.focus();return;}_editingPrice=false;var m=menus.find(function(x){return x.id===id;});if(m){m.price=val;touch(m);save();}var disp=document.getElementById('pd_'+id);if(disp){disp.textContent=val.toLocaleString()+'천원';disp.style.display='';}inp.style.display='none';renderKakao();}
+function cancelPrice(id){_editingPrice=false;var m=menus.find(function(x){return x.id===id;});var inp=document.getElementById('pi_'+id);var disp=document.getElementById('pd_'+id);if(inp&&m)inp.value=m.price||0;if(disp)disp.style.display='';if(inp)inp.style.display='none';}
 
 function openImgPopup(id,ctx){
   imgCtx=ctx||'menus';
