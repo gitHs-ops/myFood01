@@ -3223,6 +3223,7 @@ function _cancelReserveSelection(){
   _reserveSel={};
   _renderReserveList();
   _renderReserveBar();
+  goPage('list');
 }
 function openReservePopup(){
   if(!Object.keys(_reserveSel).length){showToast('메뉴를 선택해주세요.');return;}
