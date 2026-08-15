@@ -535,6 +535,8 @@ select.orderer-input{appearance:none;-webkit-appearance:none;background:#fff url
 .reserve-submit-bar{position:fixed;bottom:0;left:0;right:0;background:var(--teal);padding:10px 14px;z-index:200;display:flex;align-items:center;gap:10px;}
 .reserve-submit-bar button{flex:1;background:var(--amber);color:#1a1a1a;border:none;border-radius:20px;padding:10px 0;font-size:14px;font-weight:800;cursor:pointer;}
 .reserve-submit-badge{background:#e05;color:#fff;border-radius:50%;width:22px;height:22px;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.reserve-cancel-btn{flex:0 0 auto!important;background:transparent!important;color:#fff!important;border:1.5px solid rgba(255,255,255,.55)!important;border-radius:20px;padding:10px 18px!important;font-size:13px!important;font-weight:700!important;cursor:pointer;}
+.reserve-cancel-btn:disabled{opacity:.4;cursor:not-allowed;}
 /* ── 예약주문 팝업 ── */
 .reserve-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:flex-end;justify-content:center;}
 .reserve-overlay.open{display:flex;}
@@ -3212,8 +3214,15 @@ function _renderReserveBar(){
   bar.className='reserve-submit-bar';
   bar.id='reserveSubmitBar';
   bar.innerHTML='<div class="reserve-submit-badge">'+cnt+'</div>'
-    +'<button onclick="openReservePopup()"'+(cnt===0?' disabled style="opacity:.5;cursor:not-allowed;"':'')+'>예약 주문 신청하기</button>';
+    +'<button onclick="openReservePopup()"'+(cnt===0?' disabled style="opacity:.5;cursor:not-allowed;"':'')+'>예약 주문 신청하기</button>'
+    +'<button class="reserve-cancel-btn" onclick="_cancelReserveSelection()"'+(cnt===0?' disabled':'')+'>취소</button>';
   document.body.appendChild(bar);   // 뷰포트 기준 진짜 플로팅 — 부모 컨테이너 영향 배제
+}
+// 예약 선택 전체 취소 — 서버에 아직 아무것도 안 보낸 상태(선택만 초기화)라 확인창 없이 바로 비움
+function _cancelReserveSelection(){
+  _reserveSel={};
+  _renderReserveList();
+  _renderReserveBar();
 }
 function openReservePopup(){
   if(!Object.keys(_reserveSel).length){showToast('메뉴를 선택해주세요.');return;}
