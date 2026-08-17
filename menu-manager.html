@@ -17,8 +17,10 @@ var ONBAN_ADMIN_KEY='onban@1dl34';
   if(localStorage.getItem('onban_admin_auth')===AUTH_VAL)return;
   // 실패하면 다른 페이지로 보내지 않고 로그인 프롬프트를 다시 띄운다(맞는 비밀번호 입력 전까진 못 벗어남)
   function tryLogin(){
+    var raw=prompt('관리자 비밀번호를 입력하세요 (영문 모드로 전환 후 입력)');
+    if(raw===null){tryLogin();return;}   // 취소 → 알림 없이 바로 로그인 화면 다시
     // 모바일 키보드가 뒤에 공백을 붙이거나 붙여넣기에 공백이 딸려오는 경우가 있어 다듬어서 비교
-    var input=(prompt('관리자 비밀번호를 입력하세요 (영문 모드로 전환 후 입력)')||'').trim();
+    var input=raw.trim();
     if(input===ONBAN_ADMIN_KEY){localStorage.setItem('onban_admin_auth',AUTH_VAL);return;}
     alert(input?'비밀번호가 다릅니다.\n키보드가 한글 모드가 아닌지 확인해주세요.':'비밀번호를 입력해주세요.');
     tryLogin();
