@@ -528,11 +528,11 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
   <div class="card">
     <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
       카카오채널 발송 텍스트
-      <button class="kakao-edit-btn" id="kakaoEditBtn" onclick="toggleKakaoEdit()" title="편집">✏️ 내용 수정</button>
+      <button class="kakao-edit-btn" id="kakaoEditBtn" onclick="toggleKakaoEdit()" title="편집" style="display:none">✏️ 내용 수정</button>
     </div>
     <div class="kakao-box">
       <div class="kakao-header">메뉴 안내</div>
-      <div class="kakao-body" id="kakaoText" contenteditable="false">메뉴를 먼저 입력해주세요.</div>
+      <div class="kakao-body editable" id="kakaoText" contenteditable="true">메뉴를 먼저 입력해주세요.</div>
     </div>
     <div style="display:flex;gap:8px;margin-top:0;margin-bottom:8px;">
       <button class="copy-btn" onclick="loadTodayToKakao()" style="flex:1;background:#1D9E75;color:#fff;">오늘메뉴에서 가져오기</button>
@@ -1629,11 +1629,11 @@ function renderMenuList(){
   }).join('');
 }
 var _kakaoPreviewMode=false;   // 카톡창이 '파싱 미리보기 표' 상태 → 폴링/자동갱신이 덮어쓰지 않게 보호
+var _kakaoUserEdited=false;    // 사용자가 카톡창을 직접 편집 → 폴링/자동갱신이 덮어쓰지 않게 보호(항상 편집모드)
 function renderKakao(){
   var el=document.getElementById('kakaoText');
-  if(_kakaoPreviewMode)return;   // 미리보기 편집 중엔 절대 자동 갱신 안 함(편집 데이터 사라짐 방지)
-  // 편집 중이면 자동 갱신 건너뜀
-  if(el.contentEditable==='true')return;
+  // 미리보기 표 상태이거나 사용자가 직접 편집한 상태면 자동 갱신 금지(편집 유실 방지)
+  if(_kakaoPreviewMode||_kakaoUserEdited)return;
   if(!menus.length){el.textContent='메뉴를 먼저 입력해주세요.';return;}
   var dl=new Date(workDate+'T00:00:00').toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'});
   var cats=[...new Set(menus.map(function(m){return m.cat;}))];
@@ -1648,11 +1648,11 @@ function renderKakao(){
 }
 function loadTodayToKakao(){
   var el=document.getElementById('kakaoText');
-  el.contentEditable='false';
-  el.classList.remove('editable');
   _kakaoPreviewMode=false;
+  _kakaoUserEdited=false;   // 오늘 메뉴로 새로 채움(편집 보호 해제)
   _resetParseBtn();
   renderKakao();
+  el.contentEditable='true'; el.classList.add('editable');   // 항상 편집모드 유지
   showToast('오늘 메뉴를 가져왔습니다.');
 }
 function toggleKakaoEdit(){
@@ -1802,8 +1802,8 @@ function _registerFromPreview(text){
     });
     _resetParseBtn();
     _kakaoPreviewMode=false;
-    var el=document.getElementById('kakaoText'); if(el){el.contentEditable='false';el.classList.remove('editable');}
-    var kb=document.getElementById('kakaoEditBtn'); if(kb){kb.textContent='✏️ 내용 수정';kb.title='편집';}
+    _kakaoUserEdited=false;   // 등록 완료 → 편집 보호 해제, 발송 텍스트로 자동 갱신
+    var el=document.getElementById('kakaoText'); if(el){el.contentEditable='true';el.classList.add('editable');}
     renderAll();
     _menuDirty=true;_updateSaveBtn();
     saveMenus(workDate,function(ok){
@@ -3627,6 +3627,8 @@ window.onload=function(){
   workDate=toISO(new Date());loadMenus(workDate);_startMenuSSE(workDate);
   _updateSaveBtn();
   _watchOverlaysForSaveBtn();
+  // 카톡창은 항상 편집모드. 사용자가 직접 입력하면 자동 갱신이 덮어쓰지 않도록 보호.
+  (function(){var _kt=document.getElementById('kakaoText');if(_kt)_kt.addEventListener('input',function(){_kakaoUserEdited=true;});})();
   document.getElementById('dateDisplayBtn').textContent=fmtDate(workDate);
   renderAll();renderHistory();
   renderOrders();   // 진입 즉시 주문관리 탭 건수 배지 표시 (탭 비활성이면 배지만 갱신)
