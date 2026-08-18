@@ -528,6 +528,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
   <div class="card">
     <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
       카카오채널 발송 텍스트
+      <button class="kakao-edit-btn" id="kakaoDraftBtn" onclick="restoreKakaoDraft()" title="임시 보관 내용 불러오기" style="display:none">🗂 임시 보관 내용</button>
       <button class="kakao-edit-btn" id="kakaoEditBtn" onclick="toggleKakaoEdit()" title="편집">✏️ 내용 수정</button>
     </div>
     <div class="kakao-box">
@@ -1628,10 +1629,10 @@ function renderMenuList(){
     '</div>';
   }).join('');
 }
-var _kakaoPreviewMode=false;   // 카톡창이 '파싱 미리보기 표' 상태 → 폴링/자동갱신이 덮어쓰지 않게 보호
+var _kakaoPreviewMode=false, _kakaoDraftActive=false;   // 미리보기표/임시보관 편집 중 → 폴링/자동갱신 보호
 function renderKakao(){
   var el=document.getElementById('kakaoText');
-  if(_kakaoPreviewMode)return;   // 미리보기 편집 중엔 절대 자동 갱신 안 함(편집 데이터 사라짐 방지)
+  if(_kakaoPreviewMode||_kakaoDraftActive)return;   // 미리보기/임시보관 편집 중엔 자동 갱신 안 함(편집 데이터 사라짐 방지)
   // 편집 중이면 자동 갱신 건너뜀
   if(el.contentEditable==='true')return;
   if(!menus.length){el.textContent='메뉴를 먼저 입력해주세요.';return;}
@@ -1651,24 +1652,31 @@ function loadTodayToKakao(){
   el.contentEditable='false';
   el.classList.remove('editable');
   _kakaoPreviewMode=false;
+  _kakaoDraftActive=false;   // 오늘 메뉴를 보여주기 위해 보호 해제(임시 보관 내용은 그대로 유지 — 버튼으로 복원 가능)
   _resetParseBtn();
   renderKakao();
   showToast('오늘 메뉴를 가져왔습니다.');
 }
+function _showDraftBtn(show){var b=document.getElementById('kakaoDraftBtn');if(b)b.style.display=show?'':'none';}
 function toggleKakaoEdit(){
   var el=document.getElementById('kakaoText');
   var btn=document.getElementById('kakaoEditBtn');
   var editing=(el.contentEditable==='true');
   if(editing){
+    // 임시보관: 현재 편집 내용을 로컬에 저장(재편집 대비). 폴링이 덮어쓰지 않게 보호 유지.
+    try{ localStorage.setItem('kakao_draft', el.innerHTML); }catch(e){}
+    _kakaoDraftActive=true;
+    _showDraftBtn(true);
     el.contentEditable='false';
     el.classList.remove('editable');
     btn.textContent='✏️ 내용 수정';
     btn.title='편집';
+    showToast('임시 보관했어요. [🗂 임시 보관 내용]으로 다시 편집할 수 있어요.');
   } else {
     el.contentEditable='true';
     el.classList.add('editable');
-    btn.textContent='✅ 저장';
-    btn.title='편집 완료';
+    btn.textContent='🗂 임시보관';
+    btn.title='임시 보관(재편집용)';
     // 커서를 텍스트 끝으로
     el.focus();
     var range=document.createRange();
@@ -1678,6 +1686,17 @@ function toggleKakaoEdit(){
     sel.removeAllRanges();
     sel.addRange(range);
   }
+}
+function restoreKakaoDraft(){
+  var d=null; try{ d=localStorage.getItem('kakao_draft'); }catch(e){}
+  if(!d){ showToast('임시 보관된 내용이 없어요.'); _showDraftBtn(false); return; }
+  var el=document.getElementById('kakaoText');
+  el.innerHTML=d;
+  el.contentEditable='true'; el.classList.add('editable');
+  _kakaoDraftActive=true;
+  var btn=document.getElementById('kakaoEditBtn'); if(btn){btn.textContent='🗂 임시보관';btn.title='임시 보관(재편집용)';}
+  el.focus();
+  showToast('임시 보관 내용을 불러왔어요. 수정 후 [🗂 임시보관] 하세요.');
 }
 function copyKakao(){
   var el=document.getElementById('kakaoText');
@@ -1802,6 +1821,9 @@ function _registerFromPreview(text){
     });
     _resetParseBtn();
     _kakaoPreviewMode=false;
+    _kakaoDraftActive=false;                                  // 등록까지 마쳤으므로 임시 저장 해제
+    try{ localStorage.removeItem('kakao_draft'); }catch(e){}
+    _showDraftBtn(false);
     var el=document.getElementById('kakaoText'); if(el){el.contentEditable='false';el.classList.remove('editable');}
     var kb=document.getElementById('kakaoEditBtn'); if(kb){kb.textContent='✏️ 내용 수정';kb.title='편집';}
     renderAll();
@@ -3627,6 +3649,7 @@ window.onload=function(){
   workDate=toISO(new Date());loadMenus(workDate);_startMenuSSE(workDate);
   _updateSaveBtn();
   _watchOverlaysForSaveBtn();
+  try{ if(localStorage.getItem('kakao_draft'))_showDraftBtn(true); }catch(e){}   // 임시 보관 있으면 버튼 노출
   document.getElementById('dateDisplayBtn').textContent=fmtDate(workDate);
   renderAll();renderHistory();
   renderOrders();   // 진입 즉시 주문관리 탭 건수 배지 표시 (탭 비활성이면 배지만 갱신)
