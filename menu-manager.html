@@ -2377,6 +2377,7 @@ function switchPage(name){
     else{dateBtn.textContent=fmtDate(workDate);dateBtn.style.opacity='';}
     if(name==='manage'){
       _clearAddForm();
+      filterCat='전체';  // 오늘의 메뉴 진입 시 카테고리 항상 '전체'
       // 진입 시 완전 리프레시 — 서버에서 마스터(자동완성·사진)와 일자별 메뉴 최신 로드
       importAllMenusFromSheet(function(){ loadMenus(workDate); });
     }
