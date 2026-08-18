@@ -1704,12 +1704,21 @@ function _parseRawKakao(text){
     var catMatch=line.match(/^\[(.+)\]$/); if(catMatch){currentCat=catMatch[1].trim();return;}
     if(line.match(/메뉴 안내$|메뉴 주문|https?:\/\//))return;
     line=line.replace(/\s*\([^)]*\)\s*$/,'').trim();
-    var m=line.match(/^(.+?)\s*(👧)?\s*([\d,]+(?:\.\d+)?)\s*(천원|천|원)?\s*$/);
-    if(!m)return;
-    var name=m[1].trim().replace(/\s*👧\s*/g,'').trim();
-    var child=!!m[2]||line.indexOf('👧')>=0;
-    var price=_parsePriceToken(m[3],m[4]);
-    if(name&&price>0)parsed.push({name:name,cat:currentCat,price:price,child:child});
+    var m=line.match(/^(.+?)\s*(👧)?\s*(-?[\d,]+(?:\.\d+)?)\s*(천원|천|원)?\s*$/);
+    if(m){
+      var name=m[1].trim().replace(/\s*👧\s*/g,'').trim();
+      var child=!!m[2]||line.indexOf('👧')>=0;
+      var neg=String(m[3]).indexOf('-')>=0;
+      var price=_parsePriceToken(String(m[3]).replace(/-/g,''),m[4]);
+      if(neg)price=-price;
+      if(name)parsed.push({name:name,cat:currentCat,price:price,child:child});   // 0·음수도 포함 → 미리보기서 적색
+    } else {
+      // 금액 없는 메뉴 후보(짧고 한글/영숫자 포함, 문장 아님) → 금액없음(0)으로 포함
+      var nm=line.replace(/\s*👧\s*/g,'').trim();
+      if(nm && nm.length<=20 && /[가-힣A-Za-z0-9]/.test(nm) && !/[.!?]$/.test(nm)){
+        parsed.push({name:nm,cat:currentCat,price:0,child:line.indexOf('👧')>=0});
+      }
+    }
   });
   return parsed;   // 중복도 그대로 반환 → 미리보기에서 '중복됨'으로 표시(등록 시 자동 제외)
 }
@@ -1737,11 +1746,13 @@ function parseKakaoToMenu(){
     var id=ref?(ref.menuId||'기존'):'—';
     var tag=dup?'중복됨':(ref?'기존':'★신메뉴');
     var highPrice=(m.price>=100);                     // 천원단위 100 = 10만원 이상
+    var noPrice=!(m.price>0);                          // 금액 없음/0/음수
     var broken=_isBroken(m.name);
     if(dup)dupCnt++; else if(!ref)newCnt++;
-    if(highPrice||broken)warnCnt++;
-    var red=(dup||!ref||highPrice||broken);           // 중복/신메뉴/고액/깨진문자 → 라인 전체 적색
-    var text=id+' | '+m.name+(m.child?' 👧':'')+' | '+m.price+'천원 | '+tag+(highPrice?'  ⚠금액확인':'')+(broken?'  ⚠문자깨짐':'');
+    if(highPrice||broken||noPrice)warnCnt++;
+    var red=(dup||!ref||highPrice||broken||noPrice);  // 중복/신메뉴/고액/깨진문자/금액이상 → 라인 전체 적색
+    var priceStr=(m.price>0? m.price+'천원' : '금액없음');
+    var text=id+' | '+m.name+(m.child?' 👧':'')+' | '+priceStr+' | '+tag+(highPrice?'  ⚠금액확인':'')+(noPrice?'  ⚠금액없음':'')+(broken?'  ⚠문자깨짐':'');
     if(!groups[cat]){groups[cat]=[];order.push(cat);}
     groups[cat].push({text:text,red:red});
   });
@@ -1770,9 +1781,9 @@ function _registerFromPreview(text){
     if(cols.length<3)return;                             // 메뉴ID | 메뉴명 | 금액 [| 구분]
     var name=cols[1].replace(/\s*👧\s*/g,'').trim();
     var child=cols[1].indexOf('👧')>=0;
-    var pm=cols[2].match(/([\d,]+(?:\.\d+)?)\s*(천원|천|원)?/); if(!pm)return;
-    var price=_parsePriceToken(pm[1],pm[2]);
-    if(!name||!(price>0)||seen[name])return; seen[name]=true;
+    var pm=cols[2].match(/(-?[\d,]+(?:\.\d+)?)\s*(천원|천|원)?/); if(!pm)return;
+    var price=_parsePriceToken(String(pm[1]).replace(/-/g,''),pm[2]); if(String(pm[1]).indexOf('-')>=0)price=-price;
+    if(!name||!(price>0)||seen[name])return; seen[name]=true;   // 금액없음/0/음수 라인은 등록 제외(미리보기서 적색으로 안내됨)
     parsed.push({name:name,cat:currentCat,price:price,child:child});
   });
   if(!parsed.length){showToast('등록할 메뉴가 없습니다. 표 형식을 확인해주세요.');return;}
