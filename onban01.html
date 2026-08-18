@@ -1169,6 +1169,10 @@ function goPage(name,cb){
     var fw=document.getElementById('floatCartWrap');
     if(fw)fw.style.display='none';
   } else {
+    // 오늘의 메뉴 페이지 진입 시 카테고리는 항상 '전체'로 초기화
+    filterCat='전체';
+    renderCatTabs();
+    renderMenuGrid();
     updateFloatCartBtn();
   }
 }
