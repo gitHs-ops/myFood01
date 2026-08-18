@@ -1729,29 +1729,20 @@ function parseKakaoToMenu(){
   var _seen={};
   parsed=parsed.filter(function(m){var k=(m.name||'').trim();if(!k||_seen[k])return false;_seen[k]=true;return true;});
   showConfirm(parsed.length+'개 메뉴를 일일 메뉴로 등록할까요?\n(기존 메뉴는 초기화됩니다)',function(){
-    // 일반 등록과 동일하게: 마스터(allMenus)에서 이름으로 menuId·이미지·아이콘 연결
-    // (menuId가 있어야 저장 시 서버가 upsert로 매칭 → 중복/증식 방지. 없으면 서버가 이름 기준 재연결)
-    var _masterAdded=false;
+    // menuId는 null로 둔다 → 일일 저장 시 서버가 이름(+카테고리)으로 마스터를 만들고 menuId를 부여.
+    // (같은 이름이 마스터에 없어도 서버가 생성하므로 별도 처리 불필요) 중복은 위에서 이미 제거됨.
+    var ref;
     menus=parsed.map(function(m){
-      var nm=(m.name||'').trim();
-      var ref=allMenus.find(function(a){return (a.name||'').trim()===nm;});
-      if(!ref){
-        // 마스터(창고)에 같은 이름이 없으면 → 일반 등록과 동일하게 창고에도 새로 추가.
-        // menuId는 일일 저장 시 서버가 이름으로 부여(그때 창고도 최신으로 반영됨).
-        ref={id:Date.now()+Math.random(),menuId:null,name:m.name,cat:m.cat,price:m.price,stock:0,child:m.child,desc:'',imgUrl:m.imgUrl||null,icon:null,count:0,updatedAt:Date.now()};
-        allMenus.push(ref);_masterAdded=true;
-      }
+      ref=allMenus.find(function(a){return (a.name||'').trim()===(m.name||'').trim();});
       return {
         id:Date.now()+Math.random(),
-        menuId:ref.menuId||null,
+        menuId:null,
         name:m.name, cat:m.cat, price:m.price, stock:m.stock, child:m.child,
-        desc:ref.desc||'',
-        imgUrl:ref.imgUrl||m.imgUrl||null,
-        icon:ref.icon||null,
+        imgUrl:(ref&&ref.imgUrl)?ref.imgUrl:(m.imgUrl||null),
+        icon:(ref&&ref.icon)?ref.icon:null,
         updatedAt:Date.now()
       };
     });
-    if(_masterAdded)saveAllMenus();
     save();
     renderAll();
     showToast(menus.length+'개 메뉴가 등록되었습니다.');
