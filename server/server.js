@@ -472,7 +472,7 @@ app.get('/api/menu/:date', async (req, res) => {
          COALESCE(m.menu_desc,m2.menu_desc) AS \`desc\`
        FROM daily_menus d
        LEFT JOIN menus m  ON m.id=d.menu_id
-       LEFT JOIN menus m2 ON m2.name=d.name
+       LEFT JOIN menus m2 ON m2.id=(SELECT MIN(mm.id) FROM menus mm WHERE mm.name=d.name)
        WHERE d.date=? ORDER BY d.id`,
       [req.params.date]
     );

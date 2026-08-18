@@ -1706,19 +1706,43 @@ function parseKakaoToMenu(){
 
     // (재고 N개), (품절), (준비중) 등 괄호 제거
     line=line.replace(/\s*\([^)]*\)\s*$/, '').trim();
-    // 이름 [👧] 가격천원  — 👧는 이름 뒤·가격 앞에 위치
-    var priceMatch=line.match(/^(.+?)\s*(👧)?\s*([\d,]+)\s*천원?$/);
+    // 이름 [👧] 금액[단위]  — 단위: 천원 | 천 | 원 | 없음
+    var priceMatch=line.match(/^(.+?)\s*(👧)?\s*([\d,]+(?:\.\d+)?)\s*(천원|천|원)?\s*$/);
     if(priceMatch){
       var name=priceMatch[1].trim().replace(/\s*👧\s*/g,'').trim();
       var child=!!priceMatch[2]||line.indexOf('👧')>=0;
-      var price=Number(String(priceMatch[3]).replace(/,/g,''));
-      parsed.push({name:name,cat:currentCat,price:price,stock:defaultStock,child:child,imgUrl:null});
+      var num=Number(String(priceMatch[3]).replace(/,/g,''));
+      var unit=priceMatch[4];
+      var price;
+      if(unit==='원'){ price=num/1000; }                 // 5,000원 → 5(천원)
+      else if(unit==='천원'||unit==='천'){ price=num; }   // 5천원 / 5천 → 5(천원)
+      else { price=(num>=1000 ? num/1000 : num); }        // 단위없음: 큰 값(6000)은 원, 작은 값(10)은 천원
+      price=Math.round(price*100)/100;
+      if(name && price>0){
+        parsed.push({name:name,cat:currentCat,price:price,stock:defaultStock,child:child,imgUrl:null});
+      }
     }
   });
 
   if(!parsed.length){showToast('파싱된 메뉴가 없습니다. 텍스트 형식을 확인해주세요.');return;}
+  // 같은 이름 중복 제거 (카톡 텍스트에 중복 라인이 있어도 1개만 등록)
+  var _seen={};
+  parsed=parsed.filter(function(m){var k=(m.name||'').trim();if(!k||_seen[k])return false;_seen[k]=true;return true;});
   showConfirm(parsed.length+'개 메뉴를 일일 메뉴로 등록할까요?\n(기존 메뉴는 초기화됩니다)',function(){
-    menus=parsed.map(function(m){return Object.assign({id:Date.now()+Math.random()},m,{updatedAt:Date.now()});});
+    // 일반 등록과 동일하게: 마스터(allMenus)에서 이름으로 menuId·이미지·아이콘 연결
+    // (menuId가 있어야 저장 시 서버가 upsert로 매칭 → 중복/증식 방지. 없으면 서버가 이름 기준 재연결)
+    menus=parsed.map(function(m){
+      var ref=allMenus.find(function(a){return (a.name||'').trim()===(m.name||'').trim();});
+      return {
+        id:Date.now()+Math.random(),
+        menuId:ref?ref.menuId:null,
+        name:m.name, cat:m.cat, price:m.price, stock:m.stock, child:m.child,
+        desc:(ref&&ref.desc)?ref.desc:'',
+        imgUrl:(ref&&ref.imgUrl)?ref.imgUrl:(m.imgUrl||null),
+        icon:(ref&&ref.icon)?ref.icon:null,
+        updatedAt:Date.now()
+      };
+    });
     save();
     renderAll();
     showToast(menus.length+'개 메뉴가 등록되었습니다.');
