@@ -1682,67 +1682,97 @@ function copyKakao(){
     setTimeout(function(){btn.textContent='텍스트 복사하기';btn.classList.remove('copied');},2000);
   });
 }
+// 가격 토큰 → 천원 단위 숫자 (원=÷1000, 천원/천=그대로, 단위없음: 큰 값은 원)
+function _parsePriceToken(numStr,unit){
+  var num=Number(String(numStr).replace(/,/g,''));
+  var price;
+  if(unit==='원') price=num/1000;
+  else if(unit==='천원'||unit==='천') price=num;
+  else price=(num>=1000?num/1000:num);
+  return Math.round(price*100)/100;
+}
+// 원문 카톡 텍스트 → [{name,cat,price,child}] (이름 중복 제거)
+function _parseRawKakao(text){
+  var parsed=[], currentCat='기타';
+  text.split('\n').forEach(function(line){
+    line=line.trim(); if(!line)return;
+    var catMatch=line.match(/^\[(.+)\]$/); if(catMatch){currentCat=catMatch[1].trim();return;}
+    if(line.match(/메뉴 안내$|메뉴 주문|https?:\/\//))return;
+    line=line.replace(/\s*\([^)]*\)\s*$/,'').trim();
+    var m=line.match(/^(.+?)\s*(👧)?\s*([\d,]+(?:\.\d+)?)\s*(천원|천|원)?\s*$/);
+    if(!m)return;
+    var name=m[1].trim().replace(/\s*👧\s*/g,'').trim();
+    var child=!!m[2]||line.indexOf('👧')>=0;
+    var price=_parsePriceToken(m[3],m[4]);
+    if(name&&price>0)parsed.push({name:name,cat:currentCat,price:price,child:child});
+  });
+  var seen={};
+  return parsed.filter(function(x){var k=x.name;if(seen[k])return false;seen[k]=true;return true;});
+}
+function _resetParseBtn(){var pb=document.getElementById('parseKakaoBtn');if(pb)pb.textContent='카카오 톡 내용으로 일일 메뉴 생성';}
+
+// 1단계: 원문 파싱 → 메뉴ID/메뉴명/금액/신메뉴여부 표로 카톡창에 재표시(편집 가능)
+// 2단계: 표 상태에서 다시 누르면 실제 등록
 function parseKakaoToMenu(){
   var el=document.getElementById('kakaoText');
   var text=(el.innerText||el.textContent||'').trim();
   if(!text||text==='메뉴를 먼저 입력해주세요.'){showToast('먼저 메뉴를 입력해주세요.');return;}
 
-  // 기본 재고 설정값 로드
-  var cfg=getSettings();
-  var defaultStock=Number(cfg.stock)||0;
+  if(text.indexOf('# 메뉴ID')>=0){ _registerFromPreview(text); return; }
 
-  var parsed=[];
-  var currentCat='기타';
-  var lines=text.split('\n');
-
-  lines.forEach(function(line){
-    line=line.trim();
-    if(!line)return;
-    // 카테고리 라인: [반찬] 형태
-    var catMatch=line.match(/^\[(.+)\]$/);
-    if(catMatch){currentCat=catMatch[1].trim();return;}
-    // 헤더/링크 라인 제외
-    if(line.match(/메뉴 안내$|메뉴 주문|https?:\/\//))return;
-
-    // (재고 N개), (품절), (준비중) 등 괄호 제거
-    line=line.replace(/\s*\([^)]*\)\s*$/, '').trim();
-    // 이름 [👧] 금액[단위]  — 단위: 천원 | 천 | 원 | 없음
-    var priceMatch=line.match(/^(.+?)\s*(👧)?\s*([\d,]+(?:\.\d+)?)\s*(천원|천|원)?\s*$/);
-    if(priceMatch){
-      var name=priceMatch[1].trim().replace(/\s*👧\s*/g,'').trim();
-      var child=!!priceMatch[2]||line.indexOf('👧')>=0;
-      var num=Number(String(priceMatch[3]).replace(/,/g,''));
-      var unit=priceMatch[4];
-      var price;
-      if(unit==='원'){ price=num/1000; }                 // 5,000원 → 5(천원)
-      else if(unit==='천원'||unit==='천'){ price=num; }   // 5천원 / 5천 → 5(천원)
-      else { price=(num>=1000 ? num/1000 : num); }        // 단위없음: 큰 값(6000)은 원, 작은 값(10)은 천원
-      price=Math.round(price*100)/100;
-      if(name && price>0){
-        parsed.push({name:name,cat:currentCat,price:price,stock:defaultStock,child:child,imgUrl:null});
-      }
-    }
-  });
-
+  var parsed=_parseRawKakao(text);
   if(!parsed.length){showToast('파싱된 메뉴가 없습니다. 텍스트 형식을 확인해주세요.');return;}
-  // 같은 이름 중복 제거 (카톡 텍스트에 중복 라인이 있어도 1개만 등록)
-  var _seen={};
-  parsed=parsed.filter(function(m){var k=(m.name||'').trim();if(!k||_seen[k])return false;_seen[k]=true;return true;});
+
+  var rows=['# 메뉴ID | 메뉴명 | 금액 | 구분   (확인·수정 후 아래 [등록] 버튼을 다시 누르세요. 등록은 메뉴명 기준)'];
+  var curCat=null, newCnt=0;
+  parsed.forEach(function(m){
+    if(m.cat && m.cat!==curCat){ curCat=m.cat; rows.push('['+curCat+']'); }
+    var ref=allMenus.find(function(a){return (a.name||'').trim()===(m.name||'').trim();});
+    if(!ref)newCnt++;
+    var id=ref?(ref.menuId||'기존'):'—';
+    var tag=ref?'기존':'★신메뉴';
+    rows.push(id+' | '+m.name+(m.child?' 👧':'')+' | '+m.price+'천원 | '+tag);
+  });
+  el.innerText=rows.join('\n');
+  el.contentEditable='true'; el.classList.add('editable');
+  var kb=document.getElementById('kakaoEditBtn'); if(kb){kb.textContent='✅ 저장';kb.title='편집 완료';}
+  var pb=document.getElementById('parseKakaoBtn'); if(pb)pb.textContent='✅ 이 내용으로 일일 메뉴 등록';
+  showToast(parsed.length+'개 인식 · 신메뉴 '+newCnt+'개 — 확인·수정 후 [등록] 버튼을 다시 누르세요.');
+}
+
+function _registerFromPreview(text){
+  var defaultStock=Number(getSettings().stock)||0;
+  var parsed=[], currentCat='기타', seen={};
+  text.split('\n').forEach(function(line){
+    line=line.trim();
+    if(!line||line.charAt(0)==='#')return;              // 헤더/주석 제외
+    var catMatch=line.match(/^\[(.+)\]$/); if(catMatch){currentCat=catMatch[1].trim();return;}
+    var cols=line.split('|').map(function(s){return s.trim();});
+    if(cols.length<3)return;                             // 메뉴ID | 메뉴명 | 금액 [| 구분]
+    var name=cols[1].replace(/\s*👧\s*/g,'').trim();
+    var child=cols[1].indexOf('👧')>=0;
+    var pm=cols[2].match(/([\d,]+(?:\.\d+)?)\s*(천원|천|원)?/); if(!pm)return;
+    var price=_parsePriceToken(pm[1],pm[2]);
+    if(!name||!(price>0)||seen[name])return; seen[name]=true;
+    parsed.push({name:name,cat:currentCat,price:price,child:child});
+  });
+  if(!parsed.length){showToast('등록할 메뉴가 없습니다. 표 형식을 확인해주세요.');return;}
   showConfirm(parsed.length+'개 메뉴를 일일 메뉴로 등록할까요?\n(기존 메뉴는 초기화됩니다)',function(){
-    // menuId는 null로 둔다 → 일일 저장 시 서버가 이름(+카테고리)으로 마스터를 만들고 menuId를 부여.
-    // (같은 이름이 마스터에 없어도 서버가 생성하므로 별도 처리 불필요) 중복은 위에서 이미 제거됨.
-    var ref;
+    // menuId는 null → 일일 저장 시 서버가 이름(+카테고리)으로 마스터 생성·연결(편집된 이름도 안전)
     menus=parsed.map(function(m){
-      ref=allMenus.find(function(a){return (a.name||'').trim()===(m.name||'').trim();});
+      var ref=allMenus.find(function(a){return (a.name||'').trim()===(m.name||'').trim();});
       return {
         id:Date.now()+Math.random(),
         menuId:null,
-        name:m.name, cat:m.cat, price:m.price, stock:m.stock, child:m.child,
-        imgUrl:(ref&&ref.imgUrl)?ref.imgUrl:(m.imgUrl||null),
+        name:m.name, cat:(ref&&ref.cat)?ref.cat:m.cat, price:m.price, stock:defaultStock, child:m.child,
+        imgUrl:(ref&&ref.imgUrl)?ref.imgUrl:null,
         icon:(ref&&ref.icon)?ref.icon:null,
         updatedAt:Date.now()
       };
     });
+    _resetParseBtn();
+    var el=document.getElementById('kakaoText'); if(el){el.contentEditable='false';el.classList.remove('editable');}
+    var kb=document.getElementById('kakaoEditBtn'); if(kb){kb.textContent='✏️ 내용 수정';kb.title='편집';}
     renderAll();
     _menuDirty=true;_updateSaveBtn();
     saveMenus(workDate,function(ok){
