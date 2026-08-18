@@ -1727,17 +1727,19 @@ function parseKakaoToMenu(){
   var parsed=_parseRawKakao(text);
   if(!parsed.length){showToast('파싱된 메뉴가 없습니다. 텍스트 형식을 확인해주세요.');return;}
 
-  var rows=['# 메뉴ID | 메뉴명 | 금액 | 구분   (확인·수정 후 아래 [등록] 버튼을 다시 누르세요. 등록은 메뉴명 기준, 중복은 자동 제외)'];
-  var curCat=null, newCnt=0, dupCnt=0, seenName={};
+  var groups={}, order=[], newCnt=0, dupCnt=0, seenName={};
   parsed.forEach(function(m){
-    if(m.cat && m.cat!==curCat){ curCat=m.cat; rows.push('['+curCat+']'); }
     var ref=allMenus.find(function(a){return (a.name||'').trim()===(m.name||'').trim();});
     var dup=!!seenName[m.name]; seenName[m.name]=true;
+    var cat=(ref&&ref.cat)?ref.cat:(m.cat||'기타');   // 기존 메뉴는 마스터 카테고리로 그룹핑
     var id=ref?(ref.menuId||'기존'):'—';
     var tag=dup?'중복됨':(ref?'기존':'★신메뉴');
     if(dup)dupCnt++; else if(!ref)newCnt++;
-    rows.push(id+' | '+m.name+(m.child?' 👧':'')+' | '+m.price+'천원 | '+tag);
+    if(!groups[cat]){groups[cat]=[];order.push(cat);}
+    groups[cat].push(id+' | '+m.name+(m.child?' 👧':'')+' | '+m.price+'천원 | '+tag);
   });
+  var rows=['# 메뉴ID | 메뉴명 | 금액 | 구분   (확인·수정 후 아래 [등록] 버튼을 다시 누르세요. 등록은 메뉴명 기준, 중복은 자동 제외)'];
+  order.forEach(function(cat){ rows.push('['+cat+']'); groups[cat].forEach(function(r){rows.push(r);}); });
   el.innerText=rows.join('\n');
   el.contentEditable='true'; el.classList.add('editable');
   _kakaoPreviewMode=true;   // 폴링이 덮어쓰지 않도록 보호
