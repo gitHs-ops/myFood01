@@ -1727,24 +1727,36 @@ function parseKakaoToMenu(){
   var parsed=_parseRawKakao(text);
   if(!parsed.length){showToast('파싱된 메뉴가 없습니다. 텍스트 형식을 확인해주세요.');return;}
 
-  var groups={}, order=[], newCnt=0, dupCnt=0, seenName={};
+  function _esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  function _isBroken(s){return /[-ÿ�]/.test(s);}
+  var groups={}, order=[], newCnt=0, dupCnt=0, warnCnt=0, seenName={};
   parsed.forEach(function(m){
     var ref=allMenus.find(function(a){return (a.name||'').trim()===(m.name||'').trim();});
     var dup=!!seenName[m.name]; seenName[m.name]=true;
     var cat=(ref&&ref.cat)?ref.cat:(m.cat||'기타');   // 기존 메뉴는 마스터 카테고리로 그룹핑
     var id=ref?(ref.menuId||'기존'):'—';
     var tag=dup?'중복됨':(ref?'기존':'★신메뉴');
+    var highPrice=(m.price>=100);                     // 천원단위 100 = 10만원 이상
+    var broken=_isBroken(m.name);
     if(dup)dupCnt++; else if(!ref)newCnt++;
+    if(highPrice||broken)warnCnt++;
+    var red=(dup||!ref||highPrice||broken);           // 중복/신메뉴/고액/깨진문자 → 라인 전체 적색
+    var text=id+' | '+m.name+(m.child?' 👧':'')+' | '+m.price+'천원 | '+tag+(highPrice?'  ⚠금액확인':'')+(broken?'  ⚠문자깨짐':'');
     if(!groups[cat]){groups[cat]=[];order.push(cat);}
-    groups[cat].push(id+' | '+m.name+(m.child?' 👧':'')+' | '+m.price+'천원 | '+tag);
+    groups[cat].push({text:text,red:red});
   });
-  var rows=['# 메뉴ID | 메뉴명 | 금액 | 구분   (확인·수정 후 아래 [등록] 버튼을 다시 누르세요. 등록은 메뉴명 기준, 중복은 자동 제외)'];
-  order.forEach(function(cat){ rows.push('['+cat+']'); groups[cat].forEach(function(r){rows.push(r);}); });
-  el.innerText=rows.join('\n');
+  var html=['<div style="color:#888;font-size:12px">'+_esc('# 메뉴ID | 메뉴명 | 금액 | 구분  (확인·수정 후 [등록], 중복은 자동 제외 · 적색=확인 필요)')+'</div>'];
+  order.forEach(function(cat){
+    html.push('<div style="font-weight:800;margin-top:6px">'+_esc('['+cat+']')+'</div>');
+    groups[cat].forEach(function(it){
+      html.push('<div'+(it.red?' style="color:#d32f2f;font-weight:700"':'')+'>'+_esc(it.text)+'</div>');
+    });
+  });
+  el.innerHTML=html.join('');
   el.contentEditable='true'; el.classList.add('editable');
   _kakaoPreviewMode=true;   // 폴링이 덮어쓰지 않도록 보호
   var pb=document.getElementById('parseKakaoBtn'); if(pb)pb.textContent='✅ 이 내용으로 일일 메뉴 등록';
-  showToast(parsed.length+'개 인식 · 신메뉴 '+newCnt+'개 · 중복 '+dupCnt+'개 — 확인·수정 후 [등록]을 다시 누르세요.');
+  showToast(parsed.length+'개 인식 · 신메뉴 '+newCnt+' · 중복 '+dupCnt+' · 확인필요 '+warnCnt+' — 적색 라인 점검 후 [등록]을 누르세요.');
 }
 
 function _registerFromPreview(text){
