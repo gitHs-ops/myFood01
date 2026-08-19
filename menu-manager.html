@@ -1695,13 +1695,25 @@ function _parsePriceToken(numStr,unit){
   else price=(num>=1000?num/1000:num);
   return Math.round(price*100)/100;
 }
-// 원문 카톡 텍스트 → [{name,cat,price,child}] (이름 중복 제거)
+// 재고 문자열 → 숫자. '품절'→0, '준비중/조리'→-1, 숫자→그 값, 그 외/빈값→null(미지정)
+function _stockStrToNum(s){
+  if(s==null)return null; s=String(s).trim(); if(!s)return null;
+  if(/품절/.test(s))return 0;
+  if(/준비중|조리/.test(s))return -1;
+  var m=s.match(/-?\d+/); return m?parseInt(m[0],10):null;
+}
+// 라인 끝 괄호에서 재고 추출: (재고 N개)/(품절)/(준비중) → N/0/-1, 없으면 null
+function _parseStockFromParen(line){
+  var p=line.match(/\(([^)]*)\)\s*$/); return p?_stockStrToNum(p[1]):null;
+}
+// 원문 카톡 텍스트 → [{name,cat,price,child,stock}] (이름 중복 제거)
 function _parseRawKakao(text){
   var parsed=[], currentCat='기타';
   text.split('\n').forEach(function(line){
     line=line.trim(); if(!line)return;
     var catMatch=line.match(/^\[(.+)\]$/); if(catMatch){currentCat=catMatch[1].trim();return;}
     if(line.match(/메뉴 안내$|메뉴 주문|https?:\/\//))return;
+    var _stk=_parseStockFromParen(line);   // 괄호에서 재고 추출(없으면 null)
     line=line.replace(/\s*\([^)]*\)\s*$/,'').trim();
     var m=line.match(/^(.+?)\s*(👧)?\s*(-?[\d,]+(?:\.\d+)?)\s*(천원|천|원)?\s*$/);
     if(m){
@@ -1710,12 +1722,12 @@ function _parseRawKakao(text){
       var neg=String(m[3]).indexOf('-')>=0;
       var price=_parsePriceToken(String(m[3]).replace(/-/g,''),m[4]);
       if(neg)price=-price;
-      if(name)parsed.push({name:name,cat:currentCat,price:price,child:child});   // 0·음수도 포함 → 미리보기서 적색
+      if(name)parsed.push({name:name,cat:currentCat,price:price,child:child,stock:_stk});   // 0·음수도 포함 → 미리보기서 적색
     } else {
       // 금액 없는 메뉴 후보(짧고 한글/영숫자 포함, 문장 아님) → 금액없음(0)으로 포함
       var nm=line.replace(/\s*👧\s*/g,'').trim();
       if(nm && nm.length<=20 && /[가-힣A-Za-z0-9]/.test(nm) && !/[.!?]$/.test(nm)){
-        parsed.push({name:nm,cat:currentCat,price:0,child:line.indexOf('👧')>=0});
+        parsed.push({name:nm,cat:currentCat,price:0,child:line.indexOf('👧')>=0,stock:_stk});
       }
     }
   });
@@ -1737,6 +1749,7 @@ function parseKakaoToMenu(){
 
   function _esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
   function _isBroken(s){return /[-ÿ�]/.test(s);}
+  var defaultStock=Number(getSettings().stock)||0;   // 재고 미지정 라인에 채울 기본값
   var groups={}, order=[], newCnt=0, dupCnt=0, warnCnt=0, seenName={};
   parsed.forEach(function(m){
     var ref=allMenus.find(function(a){return (a.name||'').trim()===(m.name||'').trim();});
@@ -1751,11 +1764,13 @@ function parseKakaoToMenu(){
     if(highPrice||broken||noPrice)warnCnt++;
     var red=(dup||!ref||highPrice||broken||noPrice);  // 중복/신메뉴/고액/깨진문자/금액이상 → 라인 전체 적색
     var priceStr=(m.price>0? m.price+'천원' : '금액없음');
-    var text=id+' | '+m.name+(m.child?' 👧':'')+' | '+priceStr+' | '+tag+(highPrice?'  ⚠금액확인':'')+(noPrice?'  ⚠금액없음':'')+(broken?'  ⚠문자깨짐':'');
+    var stk=(m.stock==null)?defaultStock:m.stock;     // 텍스트에 재고 있으면 그 값, 없으면 기본값
+    var stkStr=(stk===-1?'준비중':(stk===0?'품절':stk+'개'));
+    var text=id+' | '+m.name+(m.child?' 👧':'')+' | '+priceStr+' | '+stkStr+' | '+tag+(highPrice?'  ⚠금액확인':'')+(noPrice?'  ⚠금액없음':'')+(broken?'  ⚠문자깨짐':'');
     if(!groups[cat]){groups[cat]=[];order.push(cat);}
     groups[cat].push({text:text,red:red});
   });
-  var html=['<div style="color:#888;font-size:12px">'+_esc('# 메뉴ID | 메뉴명 | 금액 | 구분  (확인·수정 후 [등록], 중복은 자동 제외 · 적색=확인 필요)')+'</div>'];
+  var html=['<div style="color:#888;font-size:12px">'+_esc('# 메뉴ID | 메뉴명 | 금액 | 재고 | 구분  (재고: 숫자·품절·준비중 · 확인·수정 후 [등록], 중복은 자동 제외 · 적색=확인 필요)')+'</div>'];
   order.forEach(function(cat){
     html.push('<div style="font-weight:800;margin-top:6px">'+_esc('['+cat+']')+'</div>');
     groups[cat].forEach(function(it){
@@ -1777,13 +1792,14 @@ function _registerFromPreview(text){
     if(!line||line.charAt(0)==='#')return;              // 헤더/주석 제외
     var catMatch=line.match(/^\[(.+)\]$/); if(catMatch){currentCat=catMatch[1].trim();return;}
     var cols=line.split('|').map(function(s){return s.trim();});
-    if(cols.length<3)return;                             // 메뉴ID | 메뉴명 | 금액 [| 구분]
+    if(cols.length<3)return;                             // 메뉴ID | 메뉴명 | 금액 [| 재고 | 구분]
     var name=cols[1].replace(/\s*👧\s*/g,'').trim();
     var child=cols[1].indexOf('👧')>=0;
     var pm=cols[2].match(/(-?[\d,]+(?:\.\d+)?)\s*(천원|천|원)?/); if(!pm)return;
     var price=_parsePriceToken(String(pm[1]).replace(/-/g,''),pm[2]); if(String(pm[1]).indexOf('-')>=0)price=-price;
     if(!name||!(price>0)||seen[name])return; seen[name]=true;   // 금액없음/0/음수 라인은 등록 제외(미리보기서 적색으로 안내됨)
-    parsed.push({name:name,cat:currentCat,price:price,child:child});
+    var st=(cols.length>=5)?_stockStrToNum(cols[3]):null;       // 5열이면 재고 열 반영, 아니면 기본값
+    parsed.push({name:name,cat:currentCat,price:price,child:child,stock:(st==null?defaultStock:st)});
   });
   if(!parsed.length){showToast('등록할 메뉴가 없습니다. 표 형식을 확인해주세요.');return;}
   showConfirm(parsed.length+'개 메뉴를 일일 메뉴로 등록할까요?\n(기존 메뉴는 초기화됩니다)',function(){
@@ -1793,7 +1809,7 @@ function _registerFromPreview(text){
       return {
         id:Date.now()+Math.random(),
         menuId:null,
-        name:m.name, cat:(ref&&ref.cat)?ref.cat:m.cat, price:m.price, stock:defaultStock, child:m.child,
+        name:m.name, cat:(ref&&ref.cat)?ref.cat:m.cat, price:m.price, stock:(m.stock==null?defaultStock:m.stock), child:m.child,
         imgUrl:(ref&&ref.imgUrl)?ref.imgUrl:null,
         icon:(ref&&ref.icon)?ref.icon:null,
         updatedAt:Date.now()
