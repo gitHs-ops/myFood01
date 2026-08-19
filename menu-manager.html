@@ -2393,6 +2393,14 @@ function switchPage(name){
     if(name==='settings'){loadSettingsForm();renderCatSettings();}
     _updateSaveBtn();
   }
+  // 카톡 미리보기(등록 전) 상태에서 카톡 페이지를 떠나면 경고
+  var _curActive=document.querySelector('.page.active');
+  if(_curActive&&_curActive.id==='page-kakao'&&name!=='kakao'&&_kakaoPreviewMode){
+    showConfirm('아직 \'✅ 이 내용으로 일일 메뉴 등록\'을 누르지 않았어요.\n지금 나가면 미리보기 내용이 등록되지 않습니다.\n그냥 이동할까요?',function(){
+      _doSwitchPage();
+    },'이동할게요');
+    return;
+  }
   if(name!=='manage'){
     var nameInput=document.getElementById('menuName');
     var formHasInput=nameInput&&nameInput.value.trim();
@@ -2406,6 +2414,10 @@ function switchPage(name){
   }
   _doSwitchPage();
 }
+// 카톡 미리보기(등록 전) 상태에서 브라우저 자체를 떠날 때(새로고침/닫기/주소이동) 경고
+window.addEventListener('beforeunload',function(e){
+  if(_kakaoPreviewMode){e.preventDefault();e.returnValue='';return '';}
+});
 function guessCategory(name){if(/밀키트/.test(name))return '밀키트';if(/김치|깍두기|깻잎|열무|소박이|겉절이|쪽파/.test(name))return '김치';if(/국|탕|찌개|전골|찜|구이|볶음밥|덮밥|스테이크|육전|수육|갈비|삼겹|닭|오리|아구|조개/.test(name))return '메인';if(/조림|무침|볶음|샐러드|나물|장조림|스프|뭇국|미역국/.test(name))return '반찬';return '기타';}
 function parseKakao(){
   var raw=document.getElementById('pasteArea').value.trim();if(!raw){alert('텍스트를 붙여넣어 주세요.');return;}
