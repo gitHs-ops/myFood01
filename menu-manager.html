@@ -799,7 +799,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
   <div style="background:#fff;border-radius:16px;padding:24px;width:280px;text-align:center;" onclick="event.stopPropagation()">
     <div id="genericConfirmMsg" style="font-size:15px;font-weight:700;color:#1a1a1a;margin-bottom:18px;white-space:pre-line;"></div>
     <div style="display:flex;gap:10px;">
-      <button style="flex:1;background:#eee;color:#555;border:none;border-radius:10px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;" onclick="closeGenericConfirm()">아니오</button>
+      <button id="genericConfirmNoBtn" style="flex:1;background:#eee;color:#555;border:none;border-radius:10px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;" onclick="closeGenericConfirm()">아니오</button>
       <button id="genericConfirmYesBtn" style="flex:1;background:#e53935;color:#fff;border:none;border-radius:10px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;" onclick="_genericConfirmYes()">네</button>
     </div>
   </div>
@@ -1781,10 +1781,15 @@ function parseKakaoToMenu(){
   el.contentEditable='true'; el.classList.add('editable');
   _kakaoPreviewMode=true;   // 폴링이 덮어쓰지 않도록 보호
   var pb=document.getElementById('parseKakaoBtn'); if(pb)pb.textContent='✅ 이 내용으로 일일 메뉴 등록';
-  showToast(parsed.length+'개 인식 · 신메뉴 '+newCnt+' · 중복 '+dupCnt+' · 확인필요 '+warnCnt+' — 적색 라인 점검 후 [등록]을 누르세요.');
+  // 생성 즉시 확인창(취소/등록). 취소하면 미리보기 표가 남아 수정 후 버튼 재클릭으로 다시 등록 가능.
+  var _sum=parsed.length+'개 인식 · 신메뉴 '+newCnt+' · 중복 '+dupCnt+' · 확인필요 '+warnCnt+'개'
+    +(warnCnt>0?'\n⚠ 적색(확인 필요) 라인이 있어요. [취소] 후 표에서 수정할 수 있습니다.':'')
+    +'\n\n이대로 일일 메뉴로 등록할까요?\n(기존 메뉴는 초기화됩니다)';
+  _confirmRegisterFromPreview(el.innerText, _sum);
 }
 
-function _registerFromPreview(text){
+// 미리보기 표 텍스트 → [{name,cat,price,child,stock}] (금액없음/0/음수·중복 제외)
+function _parsePreviewTable(text){
   var defaultStock=Number(getSettings().stock)||0;
   var parsed=[], currentCat='기타', seen={};
   text.split('\n').forEach(function(line){
@@ -1801,33 +1806,43 @@ function _registerFromPreview(text){
     var st=(cols.length>=5)?_stockStrToNum(cols[3]):null;       // 5열이면 재고 열 반영, 아니면 기본값
     parsed.push({name:name,cat:currentCat,price:price,child:child,stock:(st==null?defaultStock:st)});
   });
-  if(!parsed.length){showToast('등록할 메뉴가 없습니다. 표 형식을 확인해주세요.');return;}
-  showConfirm(parsed.length+'개 메뉴를 일일 메뉴로 등록할까요?\n(기존 메뉴는 초기화됩니다)',function(){
-    // menuId는 null → 일일 저장 시 서버가 이름(+카테고리)으로 마스터 생성·연결(편집된 이름도 안전)
-    menus=parsed.map(function(m){
-      var ref=allMenus.find(function(a){return (a.name||'').trim()===(m.name||'').trim();});
-      return {
-        id:Date.now()+Math.random(),
-        menuId:null,
-        name:m.name, cat:(ref&&ref.cat)?ref.cat:m.cat, price:m.price, stock:(m.stock==null?defaultStock:m.stock), child:m.child,
-        imgUrl:(ref&&ref.imgUrl)?ref.imgUrl:null,
-        icon:(ref&&ref.icon)?ref.icon:null,
-        updatedAt:Date.now()
-      };
-    });
-    _resetParseBtn();
-    _kakaoPreviewMode=false;
-    _kakaoUserEdited=false;   // 등록 완료 → 편집 보호 해제, 발송 텍스트로 자동 갱신
-    var el=document.getElementById('kakaoText'); if(el){el.contentEditable='true';el.classList.add('editable');}
-    renderAll();
-    _menuDirty=true;_updateSaveBtn();
-    saveMenus(workDate,function(ok){
-      _menuDirty=false;_updateSaveBtn();
-      if(ok){showToast(menus.length+'개 메뉴가 등록되었습니다.');loadMenus(workDate);}
-      else showToast('⚠️ 서버 저장 실패 — 관리자 로그인/네트워크 확인 후 다시 시도해주세요.');
-    });
-  },'등록할게요');
+  return parsed;
 }
+// 확정된 목록을 일일 메뉴로 반영·저장
+function _commitPreviewMenus(parsed){
+  var defaultStock=Number(getSettings().stock)||0;
+  // menuId는 null → 일일 저장 시 서버가 이름(+카테고리)으로 마스터 생성·연결(편집된 이름도 안전)
+  menus=parsed.map(function(m){
+    var ref=allMenus.find(function(a){return (a.name||'').trim()===(m.name||'').trim();});
+    return {
+      id:Date.now()+Math.random(),
+      menuId:null,
+      name:m.name, cat:(ref&&ref.cat)?ref.cat:m.cat, price:m.price, stock:(m.stock==null?defaultStock:m.stock), child:m.child,
+      imgUrl:(ref&&ref.imgUrl)?ref.imgUrl:null,
+      icon:(ref&&ref.icon)?ref.icon:null,
+      updatedAt:Date.now()
+    };
+  });
+  _resetParseBtn();
+  _kakaoPreviewMode=false;
+  _kakaoUserEdited=false;   // 등록 완료 → 편집 보호 해제, 발송 텍스트로 자동 갱신
+  var el=document.getElementById('kakaoText'); if(el){el.contentEditable='true';el.classList.add('editable');}
+  renderAll();
+  _menuDirty=true;_updateSaveBtn();
+  saveMenus(workDate,function(ok){
+    _menuDirty=false;_updateSaveBtn();
+    if(ok){showToast(menus.length+'개 메뉴가 등록되었습니다.');loadMenus(workDate);}
+    else showToast('⚠️ 서버 저장 실패 — 관리자 로그인/네트워크 확인 후 다시 시도해주세요.');
+  });
+}
+// 미리보기 표 → 확인창(취소/등록). summaryMsg 있으면 그 문구로 표시.
+function _confirmRegisterFromPreview(text,summaryMsg){
+  var parsed=_parsePreviewTable(text);
+  if(!parsed.length){showToast('등록할 메뉴가 없습니다. 표 형식을 확인해주세요.');return;}
+  var msg=summaryMsg||(parsed.length+'개 메뉴를 일일 메뉴로 등록할까요?\n(기존 메뉴는 초기화됩니다)');
+  showConfirm(msg,function(){_commitPreviewMenus(parsed);},'등록','취소');
+}
+function _registerFromPreview(text){ _confirmRegisterFromPreview(text); }
 var _histLoadDate=null,_histSubTab='dates';
 function saveToday(){
   if(!menus.length){alert('저장할 메뉴가 없어요.');return;}
@@ -2973,10 +2988,11 @@ function deliverOrder(id){
 }
 
 var _genericConfirmCb=null;
-function showConfirm(msg,onYes,yesLabel){
+function showConfirm(msg,onYes,yesLabel,noLabel){
   if(_menuPollTimer){clearInterval(_menuPollTimer);_menuPollTimer=null;}  // 확인창 열린 동안 menus[] id 재생성 방지
   document.getElementById('genericConfirmMsg').textContent=msg;
   document.getElementById('genericConfirmYesBtn').textContent=yesLabel||'네';
+  var _noBtn=document.getElementById('genericConfirmNoBtn'); if(_noBtn)_noBtn.textContent=noLabel||'아니오';
   _genericConfirmCb=onYes;
   document.getElementById('genericConfirmOverlay').classList.add('open');
 }
