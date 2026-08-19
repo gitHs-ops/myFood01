@@ -2442,10 +2442,8 @@ function switchPage(name){
     }
     if(name==='kakao')renderKakao();
     if(name==='history'){
-      _histSubTab='dates';   // 진입 시 항상 '날짜별 메뉴 묶음'으로 초기화
       _datesCache=[];
-      importAllMenusFromSheet(function(){});
-      renderHistory();
+      switchHistSubTab('dates');   // 진입 시 항상 '날짜별 메뉴 묶음' + 컨테이너 표시 정리 + 목록 로드
     }
     if(name==='orders')renderOrders();
     if(name==='settings'){loadSettingsForm();renderCatSettings();}
