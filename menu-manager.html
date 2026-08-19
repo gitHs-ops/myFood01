@@ -2258,13 +2258,41 @@ function _renderDateList(el){
       +'<button class="hist-btn-preview" onclick="event.stopPropagation();openHistPreview(\''+date+'\')">🔍 미리보기</button>'
       +'<button class="hist-btn-select" onclick="event.stopPropagation();openHistLoadModal(\''+date+'\')">선택 →</button>'
       +'</div>';
-    return '<div class="history-item" style="'+border+'"><div class="history-item-header"><div>'
-      +'<div class="history-date">'+label+badge+'</div>'
-      +'</div>'+actBtns+'</div></div>';
+    return '<div class="history-item" style="'+border+'"><div class="history-item-header" style="gap:10px;">'
+      +'<input type="checkbox" class="hist-check" value="'+date+'" onclick="event.stopPropagation();" style="width:18px;height:18px;flex-shrink:0;cursor:pointer;">'
+      +'<div style="flex:1;min-width:0;"><div class="history-date">'+label+badge+'</div></div>'
+      +actBtns+'</div></div>';
   }).join('');
-  el.innerHTML=filterTabs+(items||'<div class="empty">해당 월에 저장된 기록이 없어요.</div>');
+  var delBar=items?('<div style="display:flex;justify-content:flex-end;margin-bottom:10px;">'
+      +'<button onclick="deleteSelectedHistDates()" style="background:#e53935;color:#fff;border:none;border-radius:20px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🗑 선택항목 삭제하기</button>'
+      +'</div>'):'';
+  el.innerHTML=filterTabs+delBar+(items||'<div class="empty">해당 월에 저장된 기록이 없어요.</div>');
 }
 function setHistYM(ym){_histYM=ym;renderHistSubTabs();_renderDateList(document.getElementById('historyList'));}
+// 선택한 날짜별 메뉴 묶음 삭제 — /api/menu/daily 에 빈 목록 저장 = 그 날짜 삭제
+function deleteSelectedHistDates(){
+  var dates=[].slice.call(document.querySelectorAll('#historyList .hist-check:checked')).map(function(c){return c.value;});
+  if(!dates.length){showToast('삭제할 날짜를 선택해주세요.');return;}
+  var workSel=dates.indexOf(workDate)>=0;
+  var msg=dates.length+'개 날짜의 메뉴 묶음을 삭제할까요?'+(workSel?'\n(지금 작업중인 날짜 포함)':'')+'\n되돌릴 수 없습니다.';
+  showConfirm(msg,function(){
+    var done=0,failAny=false;
+    dates.forEach(function(date){
+      fetch(API_URL+'/api/menu/daily',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:[],date:date})})
+        .then(function(r){return r.json();})
+        .then(function(d){if(!(d&&d.success!==false))failAny=true;})
+        .catch(function(){failAny=true;})
+        .then(function(){
+          done++;
+          if(done!==dates.length)return;
+          _datesCache=_datesCache.filter(function(d){return dates.indexOf(d)<0;});
+          if(workSel){menus=[];renderAll();}   // 작업중 날짜를 지웠으면 현재 목록도 비움
+          showToast(failAny?'일부 삭제 실패 — 다시 시도해주세요.':dates.length+'개 삭제 완료');
+          renderHistory();
+        });
+    });
+  },'삭제','취소');
+}
 function fetchHistoryFromSheet(){_datesCache=[];renderHistory();}
 var _histPreviewDate = null;
 function openHistPreview(date){
@@ -2414,10 +2442,10 @@ function switchPage(name){
     }
     if(name==='kakao')renderKakao();
     if(name==='history'){
+      _histSubTab='dates';   // 진입 시 항상 '날짜별 메뉴 묶음'으로 초기화
       _datesCache=[];
-      importAllMenusFromSheet(function(){renderAllMenus();});
+      importAllMenusFromSheet(function(){});
       renderHistory();
-      if(_histSubTab==='reserved')loadReservedOrders();
     }
     if(name==='orders')renderOrders();
     if(name==='settings'){loadSettingsForm();renderCatSettings();}
