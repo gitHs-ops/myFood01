@@ -489,9 +489,13 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
 <div id="page-manage" class="page active">
   <div class="card"><div class="stats-grid" id="statsGrid"></div></div>
   <div class="card">
-    <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+    <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
       <span>일일 메뉴 추가 등록</span>
-      <button onclick="_setAddMenuNew()" style="background:#1D9E75;color:#fff;border:none;border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">+신 메뉴</button>
+      <span style="display:flex;align-items:center;gap:6px;">
+        <input type="text" id="addSearchInput" placeholder="메뉴 검색" onkeydown="if(event.key==='Enter'){event.preventDefault();searchAddMenu();}" style="width:100px;height:30px;padding:0 9px;border:1px solid #ddd;border-radius:8px;font-family:inherit;font-size:13px;box-sizing:border-box;">
+        <button onclick="searchAddMenu()" style="background:#086266;color:#fff;border:none;border-radius:8px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">찾기</button>
+        <button onclick="_setAddMenuNew()" style="background:#1D9E75;color:#fff;border:none;border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">+신 메뉴</button>
+      </span>
     </div>
     <div class="add-grid">
   <select id="menuCat" onchange="onMenuCatChange()"></select>
@@ -1042,6 +1046,27 @@ function pickAc(el){
   }
   _updateAddMenuImg();
   document.getElementById('menuPrice').focus();
+}
+// 마스터에서 메뉴명 검색 → 찾으면 추가 폼에 채움(자동완성 선택과 동일)
+function searchAddMenu(){
+  var inp=document.getElementById('addSearchInput');
+  if(!inp)return;
+  var kw=(inp.value||'').trim();
+  if(!kw){showToast('검색어를 입력해주세요.');return;}
+  var lc=kw.toLowerCase();
+  var m=allMenus.find(function(x){return (x.name||'').toLowerCase().indexOf(lc)===0;})   // 앞부분 우선
+      ||allMenus.find(function(x){return (x.name||'').toLowerCase().indexOf(lc)>=0;});   // 없으면 포함
+  if(!m){showToast('"'+kw+'" 메뉴를 찾을 수 없어요.');return;}
+  document.getElementById('menuName').value=m.name;
+  checkDup(m.name);
+  if(m.price)document.getElementById('menuPrice').value=m.price;
+  if(m.cat)document.getElementById('menuCat').value=m.cat;
+  document.getElementById('menuChild').checked=!!m.child;
+  document.getElementById('menuDesc').value=m.desc||'';
+  _updateAddMenuImg();
+  closeAcList();
+  document.getElementById('menuPrice').focus();
+  showToast('['+m.name+'] 불러왔어요. 금액·재고 확인 후 추가하세요.');
 }
 function _clearAddForm(){
   var s=getSettings();
