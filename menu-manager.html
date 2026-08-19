@@ -2079,6 +2079,11 @@ function renderAllMenus(){
   }
 
   el.innerHTML=
+    '<div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:8px;flex-wrap:wrap;">'+
+      '<button id="mergeBtn" style="background:#7c3aed;color:#fff;border:none;border-radius:20px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:none;align-items:center;gap:4px;" onclick="openMergeModal()">🔀 병합</button>'+
+      '<button id="deleteAllBtn" style="background:#e53935;color:#fff;border:none;border-radius:20px;padding:7px 14px;font-size:12px;font-weight:700;cursor:not-allowed;opacity:.35;font-family:inherit;" disabled onclick="deleteSelectedAllMenus()">🗑 삭제하기</button>'+
+      '<button id="sendToTodayBtn" style="background:#1D9E75;color:#fff;border:none;border-radius:20px;padding:7px 14px;font-size:12px;font-weight:700;cursor:not-allowed;opacity:.35;font-family:inherit;display:inline-flex;align-items:center;gap:5px;" disabled onclick="openSendToTodayPopup()">📤 선택항목을 오늘의 메뉴로 보내기</button>'+
+    '</div>'+
     pageCtrlHtml()+
     '<div class="menu-list" style="margin-top:8px;">'+
     pageItems.map(function(m,i){
@@ -2097,11 +2102,8 @@ function renderAllMenus(){
       '</div>';
     }).join('')+
     '</div>'+
-    pageCtrlHtml()+
-    '<div style="margin-top:12px;display:flex;gap:8px;">'+
-    '<button id="sendToTodayBtn" class="btn btn-add" style="flex:1;background:#1D9E75;font-size:13px;padding:11px 6px;display:flex;align-items:center;justify-content:center;gap:5px;opacity:.35;cursor:not-allowed;" disabled onclick="openSendToTodayPopup()"><span style="font-size:16px;">📤</span>선택항목을 오늘의 메뉴로 보내기</button>'+
-    '<button id="mergeBtn" class="btn" style="flex:0 0 auto;background:#7c3aed;color:#fff;border:none;border-radius:10px;font-size:13px;padding:11px 12px;display:none;align-items:center;justify-content:center;gap:4px;cursor:pointer;font-family:inherit;font-weight:700;" onclick="openMergeModal()">🔀 병합</button>'+
-    '</div>';
+    pageCtrlHtml();
+  updateAllMenuBtns();   // 선택 상태 반영(보내기/삭제/병합 활성화)
 }
 function gotoAllPage(p){
   var total=(_allMenuPage===0&&p<0)?0:p; // 연산 결과 그대로 사용
@@ -2144,9 +2146,36 @@ function updateAllMenuBtns(){
   sendBtn.disabled=!has;
   sendBtn.style.opacity=has?'':'0.35';
   sendBtn.style.cursor=has?'pointer':'not-allowed';
+  // 삭제: 선택 있을 때만 활성
+  var delBtn=document.getElementById('deleteAllBtn');
+  if(delBtn){delBtn.disabled=!has;delBtn.style.opacity=has?'':'0.35';delBtn.style.cursor=has?'pointer':'not-allowed';}
   // 병합: 정확히 2개 선택 시만 노출
   var mergeBtn=document.getElementById('mergeBtn');
-  if(mergeBtn)mergeBtn.style.display=(selectedAllIds.size===2)?'flex':'none';
+  if(mergeBtn)mergeBtn.style.display=(selectedAllIds.size===2)?'inline-flex':'none';
+}
+// 선택한 마스터 메뉴 삭제(사용 중인 메뉴는 서버가 막으면 건너뜀)
+function deleteSelectedAllMenus(){
+  if(!selectedAllIds.size){showToast('메뉴를 선택해주세요.');return;}
+  var sel=Array.from(selectedAllIds).map(function(id){return allMenus.find(function(m){return m.id===id;});}).filter(Boolean);
+  if(!sel.length){showToast('선택 항목을 찾을 수 없어요.');return;}
+  showConfirm(sel.length+'개 마스터 메뉴를 삭제할까요?\n(사용 중인 메뉴는 건너뜁니다)',function(){
+    var done=0,okCnt=0,blocked=[],failed=[];
+    sel.forEach(function(m){
+      apiPost('/api/menu/master/delete',{id:m.menuId||0,name:m.name},function(e,d){
+        if(e)failed.push(m.name);
+        else if(d&&d.blocked)blocked.push(m.name);
+        else if(d&&d.success){allMenus=allMenus.filter(function(x){return x.id!==m.id;});selectedAllIds.delete(m.id);okCnt++;}
+        else failed.push(m.name);
+        done++;
+        if(done!==sel.length)return;
+        renderAllMenus();
+        var msg=okCnt+'개 삭제 완료';
+        if(blocked.length)msg+=' · 사용중 '+blocked.length+'개 건너뜀';
+        if(failed.length)msg+=' · 실패 '+failed.length+'개';
+        showToast(msg);
+      });
+    });
+  },'삭제','취소');
 }
 function openSendToTodayPopup(){
   if(!selectedAllIds.size){showToast('메뉴를 선택해주세요.');return;}
