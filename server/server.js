@@ -413,18 +413,24 @@ app.post('/api/menu/master/delete', requireAdmin, async (req, res) => {
     const body = req.body.data || req.body;
     const id = body.id || 0, name = body.name || '';
     const force = !!body.force;
+    if (!id && !name) return err(res, '삭제 대상 없음', 400);
+    // id가 있으면 그 행만 매칭한다 — "OR name=?"으로 잡으면 같은 이름의 다른 카테고리(중복 이름)
+    // 항목까지 같이 지워진다. name 폴백은 menu_id가 아예 없는 레거시 daily_menus 행 전용.
+    const dailyWhere = id ? 'menu_id=?' : 'menu_id IS NULL AND name=?';
+    const dailyParam = id || name;
     if (!force) {
       const [dates] = await pool.execute(
-        "SELECT DISTINCT DATE_FORMAT(date,'%Y-%m-%d') AS d FROM daily_menus WHERE menu_id=? OR name=? ORDER BY d DESC",
-        [id, name]
+        `SELECT DISTINCT DATE_FORMAT(date,'%Y-%m-%d') AS d FROM daily_menus WHERE ${dailyWhere} ORDER BY d DESC`,
+        [dailyParam]
       );
       if (dates.length) {
         return res.json({ success: false, blocked: true, dates: dates.map(r => r.d) });
       }
     } else {
-      await pool.execute('DELETE FROM daily_menus WHERE menu_id=? OR name=?', [id, name]);
+      await pool.execute(`DELETE FROM daily_menus WHERE ${dailyWhere}`, [dailyParam]);
     }
-    await pool.execute('DELETE FROM menus WHERE id=? OR name=?', [id, name]);
+    if (id) await pool.execute('DELETE FROM menus WHERE id=?', [id]);
+    else     await pool.execute('DELETE FROM menus WHERE name=?', [name]);
     ok(res, { deleted: true });
   } catch(e) { err(res, e.message); }
 });
