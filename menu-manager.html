@@ -1664,6 +1664,15 @@ function renderMenuList(){
   var list=document.getElementById('menuList');
   var filtered=filterCat==='전체'?menus:menus.filter(function(m){return m.cat===filterCat;});
   if(!filtered.length){list.innerHTML='<div class="empty">메뉴가 없어요. 위에서 추가해주세요.</div>';return;}
+  // 전체 보기는 등록된 카테고리 순서(VALID_CATS)대로 묶어서 보여준다 — 그 외 필터는 이미 한 카테고리뿐
+  if(filterCat==='전체'){
+    var _catOrder={};VALID_CATS.forEach(function(c,i){_catOrder[c]=i;});
+    filtered=filtered.slice().sort(function(a,b){
+      var oa=_catOrder[a.cat],ob=_catOrder[b.cat];
+      if(oa==null)oa=999;if(ob==null)ob=999;
+      return oa-ob;
+    });
+  }
   list.innerHTML=filtered.map(function(m){
     var _em=getMenuEmoji(m.name,m.cat);
     var imgEl='<div class="img-btn" onclick="openImgPopup('+m.id+')" title="이미지 등록" style="font-size:18px;">'+_em+'</div>';
@@ -1685,7 +1694,10 @@ function renderKakao(){
   if(_kakaoPreviewMode||_kakaoUserEdited)return;
   if(!menus.length){el.textContent='메뉴를 먼저 입력해주세요.';return;}
   var dl=new Date(workDate+'T00:00:00').toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'});
-  var cats=[...new Set(menus.map(function(m){return m.cat;}))];
+  // 등록된 카테고리 순서(VALID_CATS)대로 나열 — 예전엔 메뉴 배열에 먼저 나온 순서라 뒤죽박죽이었음
+  var _presentCats={};menus.forEach(function(m){_presentCats[m.cat]=true;});
+  var cats=VALID_CATS.filter(function(c){return _presentCats[c];});
+  Object.keys(_presentCats).forEach(function(c){if(cats.indexOf(c)<0)cats.push(c);});  // VALID_CATS에 없는 레거시 카테고리도 안 빠지게 뒤에 붙임
   var lines=[dl+' 메뉴 안내',''];
   cats.forEach(function(cat){
     lines.push('['+cat+']');
