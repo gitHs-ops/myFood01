@@ -1735,7 +1735,9 @@ function _parseStockFromParen(line){
 }
 // 원문 카톡 텍스트 → [{name,cat,price,child,stock}] (이름 중복 제거)
 function _parseRawKakao(text){
-  var parsed=[], currentCat='기타';
+  // currentCat 시작값은 null(미지정) — '기타'로 시작하면 [카테고리] 줄이 한 번도 없던 텍스트가
+  // 전부 조용히 '기타'로 등록돼버린다. null은 _commitPreviewMenus에서 마스터 매칭 실패 시 걸러내는 신호로 씀.
+  var parsed=[], currentCat=null;
   text.split('\n').forEach(function(line){
     line=line.trim(); if(!line)return;
     var catMatch=line.match(/^\[(.+)\]$/); if(catMatch){currentCat=catMatch[1].trim();return;}
@@ -1787,13 +1789,16 @@ function parseKakaoToMenu(){
     var highPrice=(m.price>=100);                     // 천원단위 100 = 10만원 이상
     var noPrice=!(m.price>0);                          // 금액 없음/0/음수
     var broken=_isBroken(m.name);
+    // 마스터 매칭도 안 되고 [카테고리] 줄도 없던 항목 — 등록 시 '기타'로 조용히 새 마스터 행이 생기는
+    // 걸 막기 위해 _commitPreviewMenus에서 제외된다. 미리 표시해서 [카테고리]를 넣고 다시 등록하게 유도.
+    var noCat=!ref&&!m.cat;
     if(dup)dupCnt++; else if(!ref)newCnt++;
-    if(highPrice||broken||noPrice)warnCnt++;
+    if(highPrice||broken||noPrice||noCat)warnCnt++;
     var red=(dup||!ref||highPrice||broken||noPrice);  // 중복/신메뉴/고액/깨진문자/금액이상 → 라인 전체 적색
     var priceStr=(m.price>0? m.price+'천원' : '금액없음');
     var stk=(m.stock==null)?defaultStock:m.stock;     // 텍스트에 재고 있으면 그 값, 없으면 기본값
     var stkStr=(stk===-1?'준비중':(stk===0?'품절':stk+'개'));
-    var text=id+' | '+m.name+(m.child?' 👧':'')+' | '+priceStr+' | '+stkStr+' | '+tag+(highPrice?'  ⚠금액확인':'')+(noPrice?'  ⚠금액없음':'')+(broken?'  ⚠문자깨짐':'');
+    var text=id+' | '+m.name+(m.child?' 👧':'')+' | '+priceStr+' | '+stkStr+' | '+tag+(highPrice?'  ⚠금액확인':'')+(noPrice?'  ⚠금액없음':'')+(broken?'  ⚠문자깨짐':'')+(noCat?'  ⚠카테고리없음(등록시제외)':'');
     if(!groups[cat]){groups[cat]=[];order.push(cat);}
     groups[cat].push({text:text,red:red});
   });
@@ -1818,7 +1823,7 @@ function parseKakaoToMenu(){
 // 미리보기 표 텍스트 → [{name,cat,price,child,stock}] (금액없음/0/음수·중복 제외)
 function _parsePreviewTable(text){
   var defaultStock=Number(getSettings().stock)||0;
-  var parsed=[], currentCat='기타', seen={};
+  var parsed=[], currentCat=null, seen={};  // null=미지정 — 아래 _parseRawKakao와 동일한 이유
   text.split('\n').forEach(function(line){
     line=line.trim();
     if(!line||line.charAt(0)==='#')return;              // 헤더/주석 제외
@@ -1838,18 +1843,29 @@ function _parsePreviewTable(text){
 // 확정된 목록을 일일 메뉴로 반영·저장
 function _commitPreviewMenus(parsed){
   var defaultStock=Number(getSettings().stock)||0;
-  // menuId는 null → 일일 저장 시 서버가 이름(+카테고리)으로 마스터 생성·연결(편집된 이름도 안전)
-  menus=parsed.map(function(m){
+  // menuId는 null → 일일 저장 시 서버가 이름(+카테고리)으로 마스터 생성·연결(편집된 이름도 안전).
+  // 단, 마스터에 이름이 안 걸리고(ref 없음) [카테고리] 표시도 없던(m.cat null) 항목은 여기서 뺀다 —
+  // 안 그러면 서버가 (이름,'기타') 조합으로 마스터를 새로 만들어서, 기존 다른 카테고리 항목과
+  // 이름만 같은 '기타' 중복이 조용히 계속 쌓인다(2026-08-18~20 반복 발생 원인).
+  var skipped=[];
+  var newMenus=[];
+  parsed.forEach(function(m){
     var ref=allMenus.find(function(a){return (a.name||'').trim()===(m.name||'').trim();});
-    return {
+    if(!ref&&!m.cat){skipped.push(m.name);return;}
+    newMenus.push({
       id:Date.now()+Math.random(),
       menuId:null,
       name:m.name, cat:(ref&&ref.cat)?ref.cat:m.cat, price:m.price, stock:(m.stock==null?defaultStock:m.stock), child:m.child,
       imgUrl:(ref&&ref.imgUrl)?ref.imgUrl:null,
       icon:(ref&&ref.icon)?ref.icon:null,
       updatedAt:Date.now()
-    };
+    });
   });
+  if(!newMenus.length){
+    showToast('⚠️ 카테고리를 알 수 없어 등록 가능한 메뉴가 없습니다. 표에 [카테고리]를 표시한 뒤 다시 등록해주세요.');
+    return;
+  }
+  menus=newMenus;
   _resetParseBtn();
   _kakaoPreviewMode=false;
   _kakaoUserEdited=false;   // 등록 완료 → 편집 보호 해제, 발송 텍스트로 자동 갱신
@@ -1858,7 +1874,12 @@ function _commitPreviewMenus(parsed){
   _menuDirty=true;_updateSaveBtn();
   saveMenus(workDate,function(ok){
     _menuDirty=false;_updateSaveBtn();
-    if(ok){showToast(menus.length+'개 메뉴가 등록되었습니다.');loadMenus(workDate);}
+    if(ok){
+      var msg=menus.length+'개 메뉴가 등록되었습니다.';
+      if(skipped.length)msg+=' (카테고리 미지정 '+skipped.length+'개 제외: '+skipped.join(', ')+')';
+      showToast(msg);
+      loadMenus(workDate);
+    }
     else showToast('⚠️ 서버 저장 실패 — 관리자 로그인/네트워크 확인 후 다시 시도해주세요.');
   });
 }
