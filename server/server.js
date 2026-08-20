@@ -317,8 +317,9 @@ app.post('/api/menu/all', requireAdmin, async (req, res) => {
     try {
       // menuId 있으면 id 기준 UPDATE(이름 변경=rename 포함), 없으면 신규 INSERT
       // → menus.id가 진짜 키. 이름을 바꿔도 같은 행을 갱신(중복 생성 방지)
+      const catMap = await _resolveCatIds(conn, list.map(m => m.cat));
       for (const m of list) {
-        const catId = await _resolveCatId(conn, m.cat || '기타');
+        const catId = catMap[(m.cat || '').trim() || '기타'];
         if (m.menuId) {
           await conn.execute(
             `UPDATE menus SET name=?,cat=?,cat_id=?,price=?,stock=?,child=?,img_url=?,icon=?,menu_desc=?,count=?,updated_at=? WHERE id=?`,
@@ -560,6 +561,7 @@ app.post('/api/menu/daily', requireAdmin, async (req, res) => {
     await conn.beginTransaction();
     const dates = Object.keys(byDate);
     try {
+    const catMap = await _resolveCatIds(conn, list.map(m => m.cat));
     for (const date of dates) {
       // 저장 도중 들어온 주문의 재고 차감이 되돌아가지 않도록, 지우기 전에 현재 재고를 읽어둔다.
       // 화면이 보낸 baseStock(불러온 시점의 재고)과 비교해 관리자가 실제로 바꾼 만큼만 현재 재고에 반영.
@@ -585,7 +587,7 @@ app.post('/api/menu/daily', requireAdmin, async (req, res) => {
       await conn.execute('DELETE FROM daily_menus WHERE date=?', [date]);
       const archiveRows = [];
       for (const m of byDate[date]) {
-        const catId = await _resolveCatId(conn, m.cat || '기타');
+        const catId = catMap[(m.cat || '').trim() || '기타'];
         // 마스터 갱신 → menu_id 확보. menuId 있으면 id 기준 UPDATE(rename 포함), 없으면 신규 INSERT
         let menuId = m.menuId || null;
         if (menuId) {
@@ -1800,6 +1802,23 @@ async function _resolveCatId(conn, name) {
   if (row) return row.id;
   const [ins] = await conn.execute('INSERT INTO categories (name,color) VALUES (?,?)', [n, '#888780']);
   return ins.insertId;
+}
+// 여러 항목을 한 번에 저장할 때 항목마다 _resolveCatId를 부르면(카테고리는 몇 개 안 되는데
+// 수백~수천 행이면 그만큼 SELECT가 반복됨) 트랜잭션이 쓸데없이 길어져 락 경합·데드락
+// 위험이 커진다(2026-08-20 /api/menu/all에서 실제 데드락 발생 확인). 한 번만 통째로 조회해서
+// 이름→id 맵으로 돌려주고, 그 맵에서 찾아 쓰게 한다 — 카테고리 개수만큼만 쿼리하면 됨.
+async function _resolveCatIds(conn, names) {
+  const uniq = [...new Set(names.map(n => (n || '').trim() || '기타'))];
+  const [rows] = await conn.execute('SELECT id,name FROM categories');
+  const map = {};
+  rows.forEach(r => { map[r.name] = r.id; });
+  for (const n of uniq) {
+    if (map[n] == null) {
+      const [ins] = await conn.execute('INSERT INTO categories (name,color) VALUES (?,?)', [n, '#888780']);
+      map[n] = ins.insertId;
+    }
+  }
+  return map;
 }
 
 // 카테고리 목록 저장 — id가 있으면 그 행을 수정(이름이 바뀌면 메뉴들의 cat 캐시도 함께 갱신),
