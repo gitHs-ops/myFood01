@@ -808,6 +808,15 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
     </div>
   </div>
 </div>
+<!-- 자동으로 안 사라지는 알림 팝업 — 토스트가 너무 빨리 사라져 읽기 힘든 실패 메시지용 -->
+<div class="cal-overlay" id="genericAlertOverlay" style="z-index:1000;" onclick="if(event.target===this)closeGenericAlert()">
+  <div style="background:#fff;border-radius:16px;padding:24px;width:280px;text-align:center;position:relative;" onclick="event.stopPropagation()">
+    <button onclick="closeGenericAlert()" style="position:absolute;top:10px;right:10px;width:26px;height:26px;border-radius:50%;border:none;background:#f0f0f0;color:#888;font-size:14px;cursor:pointer;line-height:1;">✕</button>
+    <div style="font-size:28px;margin-bottom:8px;">⚠️</div>
+    <div id="genericAlertMsg" style="font-size:14px;font-weight:600;color:#1a1a1a;margin-bottom:18px;white-space:pre-line;"></div>
+    <button style="width:100%;background:#086266;color:#fff;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:600;cursor:pointer;" onclick="closeGenericAlert()">확인</button>
+  </div>
+</div>
 <!-- 카카오 파싱 등록 방식 선택 모달 -->
 <div class="cal-overlay" id="importParsedConfirmOverlay" style="z-index:1000;" onclick="if(event.target===this)closeImportParsedConfirm()">
   <div style="background:#fff;border-radius:16px;padding:24px;width:280px;text-align:center;" onclick="event.stopPropagation()">
@@ -1598,7 +1607,8 @@ function saveMenuEditAll(){
   // 어긋난 채로 남지 않도록, 실패 이유를 토스트로 알리고 서버에서 다시 불러와 맞춘다.
   function _onSaveResult(ok,errMsg){
     if(ok){showToast('메뉴가 수정되었습니다.');return;}
-    showToast('⚠️ 저장 실패: '+(errMsg||'서버 오류')+' — 변경이 반영되지 않았습니다.');
+    // 실패 이유는 꼭 읽어야 하는데 토스트는 금방 사라지므로 팝업으로 표시
+    showAlertPopup('저장 실패\n\n'+(errMsg||'서버 오류')+'\n\n변경이 반영되지 않았습니다.');
     if(editCtx==='menus')loadMenus(workDate);
     else importAllMenusFromSheet(function(){renderAllMenus();});
   }
@@ -3132,6 +3142,16 @@ function _genericConfirmYes(){
   var cb=_genericConfirmCb;
   closeGenericConfirm();
   if(cb)cb();
+}
+// 토스트는 잠깐 뜨고 사라져서 실패 이유처럼 꼭 읽어야 하는 메시지엔 안 맞음 — 확인 누를 때까지 안 사라지는 팝업
+function showAlertPopup(msg){
+  if(_menuPollTimer){clearInterval(_menuPollTimer);_menuPollTimer=null;}  // 팝업 열린 동안 목록 재생성 방지
+  document.getElementById('genericAlertMsg').textContent=msg;
+  document.getElementById('genericAlertOverlay').classList.add('open');
+}
+function closeGenericAlert(){
+  document.getElementById('genericAlertOverlay').classList.remove('open');
+  if(workDate)_startMenuSSE(workDate);  // 팝업 닫히면 폴링 재개
 }
 function cancelOrder(id){
   showConfirm('이 주문을 취소할까요?',function(){
