@@ -521,7 +521,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
     <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
       <span>오늘의 메뉴 목록</span>
       <div style="display:flex;gap:6px;">
-        <button onclick="saveToday()" style="background:#086266;color:#fff;border:none;border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">💾 일일 메뉴 저장</button>
+        <button id="saveTodayBtn" onclick="saveToday()" style="background:#086266;color:#fff;border:none;border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">💾 일일 메뉴 저장</button>
         <button onclick="deleteToday()" style="background:#E9A826;color:#3A1D1D;border:none;border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🗑 일일 메뉴 삭제</button>
       </div>
     </div>
@@ -938,7 +938,7 @@ function saveAllMenus(cb){
     if(cb)cb(ok,err?'네트워크 오류':(d&&d.error));
   });
 }
-function mergeToAllMenus(){
+function mergeToAllMenus(cb){
   allMenus=deduplicateByName(allMenus); // 혹시 남아있는 중복 정리
   var nameMap={};allMenus.forEach(function(m){nameMap[m.name]=m;});
   var changed=false;
@@ -961,7 +961,8 @@ function mergeToAllMenus(){
       existing.count=(existing.count||0)+1;changed=true;
     }
   });
-  if(changed)saveAllMenus();
+  if(changed)saveAllMenus(cb);
+  else if(cb)cb(true);
 }
 
 function parseCsvLine(line){
@@ -1945,18 +1946,29 @@ function _confirmRegisterFromPreview(text,summaryMsg){
 }
 function _registerFromPreview(text){ _confirmRegisterFromPreview(text); }
 var _histLoadDate=null,_histSubTab='dates';
+// 중복 클릭 방지 + 두 저장(마스터 전체 동기화 /api/menu/all, 오늘 목록 /api/menu/daily)을
+// 동시에 안 보내고 순서대로 보낸다 — 둘 다 menus 테이블의 겹치는 행을 건드리는데 동시에
+// 보내면 서로 다른 순서로 락을 잡다가 데드락이 남(2026-08-20 실제 발생 확인).
+var _savingToday=false;
 function saveToday(){
   if(!menus.length){alert('저장할 메뉴가 없어요.');return;}
+  if(_savingToday)return;
+  _savingToday=true;
+  var btn=document.getElementById('saveTodayBtn');
+  if(btn){btn.disabled=true;btn.textContent='저장 중...';}
   _menuDirty=false;
   _updateSaveBtn();
-  mergeToAllMenus();
-  if(_datesCache.length&&_datesCache.indexOf(workDate)<0){_datesCache.unshift(workDate);_datesCache.sort(function(a,b){return b.localeCompare(a);});}
-  // 저장은 한 번만 보낸다 — 두 번 보내면 바꾼 재고가 두 번 반영된다
-  exportMenuToSheet(workDate,function(ok){
-    if(ok)showToast(fmtDate(workDate)+' 메뉴 저장 완료!');
-    else showToast('⚠️ 저장 실패 — 다시 시도해주세요.');
+  mergeToAllMenus(function(){
+    if(_datesCache.length&&_datesCache.indexOf(workDate)<0){_datesCache.unshift(workDate);_datesCache.sort(function(a,b){return b.localeCompare(a);});}
+    // 저장은 한 번만 보낸다 — 두 번 보내면 바꾼 재고가 두 번 반영된다
+    exportMenuToSheet(workDate,function(ok){
+      _savingToday=false;
+      if(btn){btn.disabled=false;btn.textContent='💾 일일 메뉴 저장';}
+      if(ok)showToast(fmtDate(workDate)+' 메뉴 저장 완료!');
+      else showToast('⚠️ 저장 실패 — 다시 시도해주세요.');
+      renderHistory();
+    });
   });
-  renderHistory();
 }
 // 저장 성공 후 기준값을 현재값으로 맞춤 — 연속 저장 시 변경분이 중복 반영되지 않도록
 function _syncBaseStock(){menus.forEach(function(m){m.baseStock=(m.stock==null?0:Number(m.stock));});}
