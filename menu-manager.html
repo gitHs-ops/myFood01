@@ -520,7 +520,10 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
   <div class="card">
     <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
       <span>오늘의 메뉴 목록</span>
-      <button onclick="deleteToday()" style="background:#E9A826;color:#3A1D1D;border:none;border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🗑 일일 메뉴 삭제</button>
+      <div style="display:flex;gap:6px;">
+        <button onclick="saveToday()" style="background:#086266;color:#fff;border:none;border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">💾 일일 메뉴 저장</button>
+        <button onclick="deleteToday()" style="background:#E9A826;color:#3A1D1D;border:none;border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🗑 일일 메뉴 삭제</button>
+      </div>
     </div>
     <div class="legend" id="catLegend"></div>
     <div class="tabs" id="filterTabs"></div>
@@ -922,7 +925,9 @@ var _allMenuPage=0, ALL_PAGE_SIZE=10;
 var selectedAllIds=new Set();
 var _allFiltered=[];
 function _arr(ctx){return ctx==='all'?allMenus:menus;}
-function _save(ctx){if(ctx==='all')saveAllMenus();else save();}
+// 'menus'(일일 메뉴) 쪽은 서버로 바로 안 보낸다 — '일일 메뉴 저장'을 눌러야 반영(실시간 연동 폐지, 2026-08-20).
+// 'all'(메뉴창고 마스터)은 그대로 즉시 저장.
+function _save(ctx){if(ctx==='all')saveAllMenus();else{_menuDirty=true;_updateSaveBtn();}}
 function _render(ctx){if(ctx==='all')renderAllMenus();else renderMenuList();}
 // 수정 타임스탬프 찍기
 function touch(m){m.updatedAt=Date.now();return m;}
@@ -1356,12 +1361,13 @@ function addMenu(){
   function _doAddMenu(){
     var _ref=allMenus.find(function(m){return (m.name||'').trim()===name;});
     if(_addMenuMode==='new'&&!_ref){
+      // 마스터 반영은 여기서 즉시 보내지 않는다 — '일일 메뉴 저장'을 눌러야 mergeToAllMenus가
+      // 한꺼번에 반영(실시간 연동 폐지, 2026-08-20). 로컬 allMenus엔 바로 추가해 화면엔 보이게 함.
       var _newM={id:Date.now(),menuId:null,name:name,cat:cat,price:price,stock:0,child:child,desc:desc,imgUrl:null,icon:null,count:0,updatedAt:Date.now()};
       allMenus.push(_newM);_ref=_newM;
-      saveAllMenus();
     }
     menus.push({id:Date.now(),menuId:_ref?_ref.menuId:null,name:name,price:price,stock:stock,cat:cat,child:child,desc:desc,imgUrl:(_ref&&_ref.imgUrl)?_ref.imgUrl:null,icon:(_ref&&_ref.icon)?_ref.icon:null,updatedAt:Date.now()});
-    save();
+    _menuDirty=true;_updateSaveBtn();
     document.getElementById('menuName').value='';
     document.getElementById('menuPrice').value='';
     document.getElementById('menuStock').value=getSettings().stock||0;
@@ -1380,27 +1386,23 @@ function addMenu(){
     _doAddMenu();
   }
 }
+// 삭제는 로컬 목록에서만 빼고 서버엔 안 보낸다 — '일일 메뉴 저장'을 눌러야 반영된다(실시간 연동 폐지, 2026-08-20).
 function deleteMenu(id){
   var target=menus.find(function(m){return m.id===id;});
   if(!target)return;
   showConfirm('['+target.name+'] 메뉴를 삭제할까요?',function(){
     menus=menus.filter(function(m){return m.id!==id;});
     renderAll();
-    _menuDirty=true;
-    saveMenus(workDate,function(ok){
-      _menuDirty=false;
-      if(ok) loadMenus(workDate);
-      else showToast('⚠️ 삭제 반영 실패 — 다시 시도해주세요.');
-    });
+    _menuDirty=true;_updateSaveBtn();
   });
 }
-function changeStock(id,d){var m=menus.find(function(x){return x.id===id;});if(!m)return;m.stock=Math.max(-1,(m.stock||0)+d);touch(m);save();renderMenuList();renderStats();}
+function changeStock(id,d){var m=menus.find(function(x){return x.id===id;});if(!m)return;m.stock=Math.max(-1,(m.stock||0)+d);touch(m);_menuDirty=true;_updateSaveBtn();renderMenuList();renderStats();}
 // 가격 입력 중엔 3초 폴링(_startMenuSSE)이 목록을 통째로 다시 그려서 입력칸이 사라지고
 // 포커스가 날아가던 문제가 있었음(_menuDirty는 커밋 후에만 켜져서 편집 "중"은 못 막았음).
 // 편집을 시작하면 폴링을 잠깐 멈추고, 끝나면(커밋/취소) 다시 켠다.
 var _editingPrice=false;
 function startEditPrice(id){_editingPrice=true;document.getElementById('pd_'+id).style.display='none';var inp=document.getElementById('pi_'+id);inp.style.display='inline-block';inp.focus();inp.select();}
-function commitPrice(id){var inp=document.getElementById('pi_'+id);var val=parseInt(inp.value)||0;if(!_checkPriceUnit(val)){inp.focus();return;}_editingPrice=false;var m=menus.find(function(x){return x.id===id;});if(m){m.price=val;touch(m);save();}var disp=document.getElementById('pd_'+id);if(disp){disp.textContent=val.toLocaleString()+'천원';disp.style.display='';}inp.style.display='none';renderKakao();}
+function commitPrice(id){var inp=document.getElementById('pi_'+id);var val=parseInt(inp.value)||0;if(!_checkPriceUnit(val)){inp.focus();return;}_editingPrice=false;var m=menus.find(function(x){return x.id===id;});if(m){m.price=val;touch(m);_menuDirty=true;_updateSaveBtn();}var disp=document.getElementById('pd_'+id);if(disp){disp.textContent=val.toLocaleString()+'천원';disp.style.display='';}inp.style.display='none';renderKakao();}
 function cancelPrice(id){_editingPrice=false;var m=menus.find(function(x){return x.id===id;});var inp=document.getElementById('pi_'+id);var disp=document.getElementById('pd_'+id);if(inp&&m)inp.value=m.price||0;if(disp)disp.style.display='';if(inp)inp.style.display='none';}
 
 function openImgPopup(id,ctx){
@@ -1588,7 +1590,7 @@ function saveEditImg(){
   editPendingImgUrl=null;
   document.getElementById('editImgUploadBtn').textContent='📁 사진 변경';
   document.getElementById('editImgDeleteBtn').style.display='';
-  setEditImgStatus('사진이 저장되었습니다!',false);
+  setEditImgStatus(editCtx==='menus'?'사진이 적용됐어요("일일 메뉴 저장" 눌러야 반영)':'사진이 저장되었습니다!',false);
 }
 function deleteEditImg(){
   if(menuEditTargetId===null)return;
@@ -1600,7 +1602,7 @@ function deleteEditImg(){
     setEditImgPreview(null);
     document.getElementById('editImgUploadBtn').textContent='📁 사진 선택';
     document.getElementById('editImgDeleteBtn').style.display='none';
-    setEditImgStatus('이미지가 삭제되었습니다.',false);
+    setEditImgStatus(editCtx==='menus'?'이미지가 빠졌어요("일일 메뉴 저장" 눌러야 반영)':'이미지가 삭제되었습니다.',false);
   });
 }
 function saveMenuEditAll(){
@@ -1627,18 +1629,18 @@ function saveMenuEditAll(){
     if(ok){showToast('메뉴가 수정되었습니다.');return;}
     // 실패 이유는 꼭 읽어야 하는데 토스트는 금방 사라지므로 팝업으로 표시
     showAlertPopup('저장 실패\n\n'+(errMsg||'서버 오류')+'\n\n변경이 반영되지 않았습니다.');
-    if(editCtx==='menus')loadMenus(workDate);
-    else importAllMenusFromSheet(function(){renderAllMenus();});
+    importAllMenusFromSheet(function(){renderAllMenus();});
   }
   if(editCtx==='menus'){
+    // 일일 메뉴 목록의 편집은 서버로 바로 안 보낸다 — '일일 메뉴 저장'을 눌러야 마스터까지
+    // 한꺼번에 반영된다(실시간 연동 폐지, 2026-08-20).
     if(oldName!==m.name){
       var ai=allMenus.find(function(x){return x.name===oldName;});
       if(ai){ai.name=m.name;}
     }
-    mergeToAllMenus();
-    saveMenus(workDate,_onSaveResult);
-    _exportAllMenusSilent();
     renderAll();
+    _menuDirty=true;_updateSaveBtn();
+    showToast('메뉴가 수정되었습니다. ("일일 메뉴 저장"을 눌러야 반영돼요)');
   }else{
     saveAllMenus(_onSaveResult);
     renderAllMenus();
@@ -1658,11 +1660,6 @@ function saveMenuEditAll(){
     document.getElementById('menuDesc').value=m.desc||'';
   }
 }
-function _exportAllMenusSilent(){
-  if(!allMenus.length)return;
-  apiPost('/api/menu/all',deduplicateByName(allMenus),function(){});
-}
-
 function renderAll(){renderStats();renderFilterTabs();renderMenuList();renderKakao();}
 function renderStats(){
   var t=menus.length,s=menus.reduce(function(a,m){return a+(m.stock||0);},0),c=menus.filter(function(m){return m.child;}).length;
