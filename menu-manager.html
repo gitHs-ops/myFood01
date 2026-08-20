@@ -824,11 +824,12 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
 <div class="cal-overlay" id="orphanOverlay" onclick="if(event.target===this)closeOrphanModal()">
   <div style="background:#fff;border-radius:16px;padding:22px;width:320px;max-width:93vw;max-height:80vh;display:flex;flex-direction:column;" onclick="event.stopPropagation()">
     <div style="font-size:15px;font-weight:700;color:#1a1a1a;margin-bottom:6px;">⚠️ 메뉴 창고에 없는 메뉴</div>
-    <p style="font-size:13px;color:#666;margin-bottom:12px;">아래 메뉴는 메뉴 창고(마스터)에 없어요.<br>기본 메뉴로 저장한 뒤 가져갈까요?</p>
+    <p style="font-size:13px;color:#666;margin-bottom:12px;">아래 메뉴는 메뉴 창고(마스터)에 없어요.<br>기본 메뉴로 저장한 뒤 가져갈까요? 원치 않으면 무시하고 나머지만 가져갈 수 있어요.</p>
     <div id="orphanList" style="flex:1;overflow-y:auto;max-height:240px;margin-bottom:14px;"></div>
-    <div style="display:flex;gap:10px;">
-      <button class="btn btn-add" style="flex:2;font-size:14px;" onclick="confirmOrphanSave()">💾 기본 메뉴로 저장</button>
-      <button style="flex:1;background:#eee;color:#555;border:none;border-radius:10px;padding:10px;font-size:14px;cursor:pointer;font-family:inherit;" onclick="closeOrphanModal()">취소</button>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-add" style="flex:1.4;font-size:13px;padding:10px 4px;" onclick="confirmOrphanSave()">💾 기본 메뉴로 저장</button>
+      <button style="flex:1;background:#FCE9C6;color:#7A4E00;border:none;border-radius:10px;padding:10px 4px;font-size:13px;cursor:pointer;font-family:inherit;" onclick="ignoreOrphanAndImport()">무시하고 나머지만</button>
+      <button style="flex:1;background:#eee;color:#555;border:none;border-radius:10px;padding:10px 4px;font-size:13px;cursor:pointer;font-family:inherit;" onclick="closeOrphanModal()">취소</button>
     </div>
   </div>
 </div>
@@ -912,7 +913,13 @@ function _save(ctx){if(ctx==='all')saveAllMenus();else save();}
 function _render(ctx){if(ctx==='all')renderAllMenus();else renderMenuList();}
 // 수정 타임스탬프 찍기
 function touch(m){m.updatedAt=Date.now();return m;}
-function saveAllMenus(){if(!allMenus.length)return;apiPost('/api/menu/all',deduplicateByName(allMenus),function(){});}
+function saveAllMenus(cb){
+  if(!allMenus.length){if(cb)cb(true);return;}
+  apiPost('/api/menu/all',deduplicateByName(allMenus),function(err,d){
+    var ok=!err&&!!(d&&d.success!==false);
+    if(cb)cb(ok,err?'네트워크 오류':(d&&d.error));
+  });
+}
 function mergeToAllMenus(){
   allMenus=deduplicateByName(allMenus); // 혹시 남아있는 중복 정리
   var nameMap={};allMenus.forEach(function(m){nameMap[m.name]=m;});
@@ -1233,7 +1240,7 @@ function loadMenus(iso){
     .catch(function(){});   // 통신 실패 시엔 화면을 건드리지 않는다
 }
 function saveMenus(iso,cb){
-  exportMenuToSheet(iso,function(ok){if(cb)cb(ok);});
+  exportMenuToSheet(iso,function(ok,errMsg){if(cb)cb(ok,errMsg);});
   if(_datesCache.length&&_datesCache.indexOf(iso)<0){_datesCache.unshift(iso);_datesCache.sort(function(a,b){return b.localeCompare(a);});}
 }
 function _updateSaveBtn(){
@@ -1587,17 +1594,25 @@ function saveMenuEditAll(){
   if(editPendingImgUrl){m.imgUrl=editPendingImgUrl;editPendingImgUrl=null;}
   else{m.imgUrl=document.getElementById('editMenuImgUrl').value.trim()||null;}
   touch(m);
+  // 저장 실패(주로 같은 이름+카테고리 조합이 이미 있는 경우) 시 화면이 실제 서버 상태와
+  // 어긋난 채로 남지 않도록, 실패 이유를 토스트로 알리고 서버에서 다시 불러와 맞춘다.
+  function _onSaveResult(ok,errMsg){
+    if(ok){showToast('메뉴가 수정되었습니다.');return;}
+    showToast('⚠️ 저장 실패: '+(errMsg||'서버 오류')+' — 변경이 반영되지 않았습니다.');
+    if(editCtx==='menus')loadMenus(workDate);
+    else importAllMenusFromSheet(function(){renderAllMenus();});
+  }
   if(editCtx==='menus'){
     if(oldName!==m.name){
       var ai=allMenus.find(function(x){return x.name===oldName;});
       if(ai){ai.name=m.name;}
     }
     mergeToAllMenus();
-    saveMenus(workDate);
+    saveMenus(workDate,_onSaveResult);
     _exportAllMenusSilent();
     renderAll();
   }else{
-    _save(editCtx);
+    saveAllMenus(_onSaveResult);
     renderAllMenus();
     syncAllMenuToMenus(m,oldName);
   }
@@ -1614,7 +1629,6 @@ function saveMenuEditAll(){
     document.getElementById('menuChild').checked=!!m.child;
     document.getElementById('menuDesc').value=m.desc||'';
   }
-  showToast('메뉴가 수정되었습니다.');
 }
 function _exportAllMenusSilent(){
   if(!allMenus.length)return;
@@ -1917,9 +1931,9 @@ function exportMenuToSheet(date,cb){
       var ok=!!(d&&d.success!==false);
       // 저장에 성공했으면 기준값을 현재값으로 — 어느 경로로 저장하든 여기 한 곳에서 처리
       if(ok&&date===workDate)_syncBaseStock();
-      if(cb)cb(ok);
+      if(cb)cb(ok,d&&d.error);
     })
-    .catch(function(){clearTimeout(timer);if(cb)cb(false);});
+    .catch(function(){clearTimeout(timer);if(cb)cb(false,'네트워크 오류');});
 }
 var _histYM='전체';
 function renderHistSubTabs(){
@@ -2448,7 +2462,7 @@ function importFromSheetByDate(date,mode){
       var masterNames={};allMenus.forEach(function(m){masterNames[(m.name||'').trim()]=true;});
       var orphans=imported.filter(function(m){return !masterNames[(m.name||'').trim()];});
       if(orphans.length){
-        _pendingImport={date:date,mode:mode,imported:imported};
+        _pendingImport={date:date,mode:mode,imported:imported,orphans:orphans};
         openOrphanModal(orphans);
         return;
       }
@@ -2495,6 +2509,19 @@ function confirmOrphanSave(){
   document.getElementById('orphanOverlay').classList.remove('open');
   _pendingImport=null;
   _applyImportToToday(ctx.date,ctx.mode,ctx.imported);
+}
+// 마스터에 없는(=삭제됐거나 정리된) 메뉴는 새로 되살리지 않고 무시 — 나머지만 가져간다.
+// 예: 중복정리로 마스터에서 지운 메뉴가 옛 메뉴창고 묶음에 남아있는 경우.
+function ignoreOrphanAndImport(){
+  if(!_pendingImport){document.getElementById('orphanOverlay').classList.remove('open');return;}
+  var ctx=_pendingImport;
+  var orphanNames={};(ctx.orphans||[]).forEach(function(m){orphanNames[(m.name||'').trim()]=true;});
+  var filtered=ctx.imported.filter(function(m){return !orphanNames[(m.name||'').trim()];});
+  document.getElementById('orphanOverlay').classList.remove('open');
+  _pendingImport=null;
+  if(!filtered.length){showToast('가져올 메뉴가 없습니다 — 전부 마스터에 없는 메뉴였어요.');return;}
+  showToast((ctx.orphans||[]).length+'개 무시하고 '+filtered.length+'개만 가져갑니다.');
+  _applyImportToToday(ctx.date,ctx.mode,filtered);
 }
 function switchPage(name){
   function _doSwitchPage(){

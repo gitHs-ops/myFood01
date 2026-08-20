@@ -346,7 +346,14 @@ app.post('/api/menu/all', requireAdmin, async (req, res) => {
       );
       await conn.commit(); conn.release();
       ok(res, { count: list.length });
-    } catch(e) { await conn.rollback(); conn.release(); throw e; }
+    } catch(e) {
+      await conn.rollback(); conn.release();
+      // 같은 이름+카테고리 조합이 이미 있으면 UNIQUE KEY 위반 — 원인을 그대로 알려준다
+      if (e.code === 'ER_DUP_ENTRY') {
+        return err(res, '이미 같은 이름의 메뉴가 그 카테고리에 있어요. 메뉴명을 다르게 하거나 기존 메뉴를 수정해주세요.', 409);
+      }
+      throw e;
+    }
   } catch(e) { err(res, e.message); }
 });
 
@@ -548,6 +555,7 @@ app.post('/api/menu/daily', requireAdmin, async (req, res) => {
     const conn = await pool.getConnection();
     await conn.beginTransaction();
     const dates = Object.keys(byDate);
+    try {
     for (const date of dates) {
       // 저장 도중 들어온 주문의 재고 차감이 되돌아가지 않도록, 지우기 전에 현재 재고를 읽어둔다.
       // 화면이 보낸 baseStock(불러온 시점의 재고)과 비교해 관리자가 실제로 바꾼 만큼만 현재 재고에 반영.
@@ -625,6 +633,15 @@ app.post('/api/menu/daily', requireAdmin, async (req, res) => {
     sysLog('daily_menu_save', '일일 메뉴 저장 — ' + dates.join(', ') + ' (' + list.length + '건)',
       { dates, count: list.length }, req.ip).catch(() => {});
     ok(res, { sheets: dates.length, count: list.length });
+    } catch(e) {
+      await conn.rollback(); conn.release();
+      // 같은 이름+카테고리 조합이 이미 있으면 UNIQUE KEY 위반 — 원인을 그대로 알려준다
+      // (편집 팝업에서 카테고리를 바꿨는데 조용히 안 먹던 문제의 실제 원인)
+      if (e.code === 'ER_DUP_ENTRY') {
+        return err(res, '이미 같은 이름의 메뉴가 그 카테고리에 있어요. 메뉴명을 다르게 하거나 기존 메뉴를 수정해주세요.', 409);
+      }
+      throw e;
+    }
   } catch(e) { err(res, e.message); }
 });
 
