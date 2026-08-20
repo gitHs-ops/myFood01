@@ -482,11 +482,51 @@ app.get('/api/menu/:date', async (req, res) => {
   } catch(e) { err(res, e.message); }
 });
 
+// 메뉴창고(이력) 날짜 목록 — daily_menus_archive 기준. 일일메뉴 삭제로 daily_menus가 비어도 안 지워짐
+// (GET /api/menu/archive/dates) — '/api/menu/:date'보다 세그먼트가 하나 더 많아 경로 충돌 없음
+app.get('/api/menu/archive/dates', async (req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      "SELECT DISTINCT DATE_FORMAT(date,'%Y-%m-%d') AS d FROM daily_menus_archive ORDER BY d DESC"
+    );
+    ok(res, { dates: rows.map(r => r.d) });
+  } catch(e) { err(res, e.message); }
+});
+
+// 메뉴창고(이력) 특정 날짜 미리보기/불러오기 — daily_menus_archive 기준
+// (GET /api/menu/archive/:date)
+app.get('/api/menu/archive/:date', async (req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      `SELECT d.menu_id AS menuId,
+         COALESCE(m.name,m2.name,d.name) AS name,
+         COALESCE(m.cat,m2.cat,d.cat) AS cat,
+         COALESCE(m.price,m2.price,d.price) AS price,
+         d.stock,
+         COALESCE(m.child,m2.child,d.child) AS child,
+         COALESCE(m.img_url,m2.img_url) AS imgUrl,
+         COALESCE(m.icon,m2.icon) AS icon,
+         COALESCE(m.menu_desc,m2.menu_desc) AS \`desc\`
+       FROM daily_menus_archive d
+       LEFT JOIN menus m  ON m.id=d.menu_id
+       LEFT JOIN menus m2 ON m2.id=(SELECT MIN(mm.id) FROM menus mm WHERE mm.name=d.name)
+       WHERE d.date=? ORDER BY d.id`,
+      [req.params.date]
+    );
+    if (!rows.length) return err(res, `${req.params.date} 메뉴 없음`, 404);
+    const menus = rows.map(r => ({ ...r, child: !!r.child, price: Number(r.price||0) }));
+    ok(res, { date: req.params.date, menus });
+  } catch(e) { err(res, e.message); }
+});
+
 // 날짜별 메뉴 일괄 저장 (POST /api/menu/daily)
 app.post('/api/menu/daily', requireAdmin, async (req, res) => {
   try {
     const list = req.body.data || req.body;
     const clearDate = req.body.date || null;
+    // 메뉴창고(daily_menus_archive)까지 지울지 여부. 일일메뉴 페이지의 '일일 메뉴 삭제'/개별삭제는
+    // 절대 안 보냄 — 창고 이력은 보존. 메뉴창고 자체의 '선택항목 삭제하기'만 true로 보내 진짜로 지운다.
+    const purgeArchive = !!req.body.purgeArchive;
     if (!Array.isArray(list)) return err(res, '데이터 없음', 400);
     if (!list.length && !clearDate) return err(res, '데이터 없음', 400);
 
@@ -525,6 +565,7 @@ app.post('/api/menu/daily', requireAdmin, async (req, res) => {
       };
 
       await conn.execute('DELETE FROM daily_menus WHERE date=?', [date]);
+      const archiveRows = [];
       for (const m of byDate[date]) {
         const catId = await _resolveCatId(conn, m.cat || '기타');
         // 마스터 갱신 → menu_id 확보. menuId 있으면 id 기준 UPDATE(rename 포함), 없으면 신규 INSERT
@@ -549,11 +590,28 @@ app.post('/api/menu/daily', requireAdmin, async (req, res) => {
           const [[mrow]] = await conn.execute('SELECT id FROM menus WHERE name=? AND cat=?', [m.name, m.cat||'기타']);
           menuId = mrow ? mrow.id : null;
         }
+        const stockVal = resolveStock(m, menuId);
         // 일자별: menu_id + 폴백용 기존 컬럼 동시 저장
         await conn.execute(
           'INSERT INTO daily_menus (date,menu_id,name,cat,cat_id,price,stock,child) VALUES (?,?,?,?,?,?,?,?)',
-          [date, menuId, m.name, m.cat||'기타', catId, m.price||0, resolveStock(m, menuId), m.child?1:0]
+          [date, menuId, m.name, m.cat||'기타', catId, m.price||0, stockVal, m.child?1:0]
         );
+        archiveRows.push([date, menuId, m.name, m.cat||'기타', catId, m.price||0, stockVal, m.child?1:0]);
+      }
+
+      // 메뉴창고(날짜별 이력) 갱신: 이번 저장이 비어있지 않으면 최신 스냅샷으로 교체(개별삭제·수정 반영).
+      // 비어있으면(=일일 메뉴 전체 삭제) purgeArchive를 명시한 경우에만 이력도 지운다 —
+      // 그 외(일일메뉴 페이지의 '일일 메뉴 삭제')는 창고 이력을 그대로 보존한다.
+      if (archiveRows.length) {
+        await conn.execute('DELETE FROM daily_menus_archive WHERE date=?', [date]);
+        for (const row of archiveRows) {
+          await conn.execute(
+            'INSERT INTO daily_menus_archive (date,menu_id,name,cat,cat_id,price,stock,child) VALUES (?,?,?,?,?,?,?,?)',
+            row
+          );
+        }
+      } else if (purgeArchive) {
+        await conn.execute('DELETE FROM daily_menus_archive WHERE date=?', [date]);
       }
     }
     await conn.commit();
@@ -1508,6 +1566,21 @@ async function initDB() {
       INDEX idx_date (date),
       INDEX idx_menu (menu_id)
     )`,
+    // 메뉴창고(날짜별 이력) — daily_menus와 별개 보관. 일일메뉴 페이지에서 삭제해도 여기는 안 지워짐.
+    // 저장할 때마다 최신 스냅샷으로 갱신되고, 메뉴창고 자체의 '선택항목 삭제하기'에서만 진짜로 지운다.
+    `CREATE TABLE IF NOT EXISTS daily_menus_archive (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      date DATE NOT NULL,
+      menu_id INT,
+      name VARCHAR(200) NOT NULL,
+      cat VARCHAR(50) DEFAULT '기타',
+      cat_id INT NULL,
+      price DECIMAL(6,1) DEFAULT 0,
+      stock INT DEFAULT 0,
+      child TINYINT(1) DEFAULT 0,
+      INDEX idx_date (date),
+      INDEX idx_menu (menu_id)
+    )`,
     `CREATE TABLE IF NOT EXISTS menus (
       id INT AUTO_INCREMENT PRIMARY KEY,
       name VARCHAR(200) NOT NULL,
@@ -1617,9 +1690,26 @@ async function initDB() {
     await _ensureColumn(conn, 'daily_menus', 'cat_id', 'cat_id INT NULL');
     console.log('DB 테이블 초기화 완료');
     await _migrateCategoriesToTable(conn);
+    await _migrateDailyMenusArchiveBackfill(conn);
   } finally {
     conn.release();
   }
+}
+
+// daily_menus_archive 신설 1회성 백필 — 이미 daily_menus에 쌓여있던 기존 날짜들을
+// 이력 테이블에도 복사해서, 배포 직후 메뉴창고 날짜 목록이 갑자기 비는 것을 막는다.
+// settings.dailyMenusArchiveBackfillV1 플래그로 두 번째 기동부터는 건너뛴다.
+async function _migrateDailyMenusArchiveBackfill(conn) {
+  const [[flag]] = await conn.execute("SELECT v FROM settings WHERE k='dailyMenusArchiveBackfillV1'");
+  if (flag) return;
+  await conn.execute(
+    `INSERT INTO daily_menus_archive (date,menu_id,name,cat,cat_id,price,stock,child)
+     SELECT date,menu_id,name,cat,cat_id,price,stock,child FROM daily_menus`
+  );
+  await conn.execute(
+    "INSERT INTO settings (k,v) VALUES ('dailyMenusArchiveBackfillV1','1') ON DUPLICATE KEY UPDATE v='1'"
+  );
+  console.log('daily_menus_archive 백필 완료');
 }
 
 async function _ensureColumn(conn, table, column, ddl) {

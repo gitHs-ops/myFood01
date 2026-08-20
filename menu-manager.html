@@ -1256,7 +1256,8 @@ function deleteToday(){
       if(ok){
         showToast('🗑 일일 메뉴 전체 삭제 완료');
         loadMenus(workDate);        // 메뉴 목록·통계·카카오 문구 다시 그리기
-        fetchHistoryFromSheet();    // 날짜 목록에서도 빠지도록 다시 받기
+        // purgeArchive를 안 보냈으므로 메뉴창고(daily_menus_archive) 이력은 그대로 보존됨 — 목록 재조회만
+        fetchHistoryFromSheet();
       }
       else showToast('⚠️ 삭제 반영 실패 — 다시 시도해주세요.');
     });
@@ -2285,7 +2286,7 @@ function renderHistory(){
   var el=document.getElementById('historyList');
   if(!_datesCache.length){
     el.innerHTML='<div class="empty">불러오는 중...</div>';
-    apiFetch('/api/dates',function(err,d){
+    apiFetch('/api/menu/archive/dates',function(err,d){
       if(err||!d||!d.dates||!d.dates.length){el.innerHTML='<div class="empty">저장된 날짜별 메뉴가 없어요.</div>';return;}
       _datesCache=d.dates;
       renderHistSubTabs();
@@ -2324,7 +2325,8 @@ function _renderDateList(el){
   el.innerHTML=filterTabs+delBar+(items||'<div class="empty">해당 월에 저장된 기록이 없어요.</div>');
 }
 function setHistYM(ym){_histYM=ym;renderHistSubTabs();_renderDateList(document.getElementById('historyList'));}
-// 선택한 날짜별 메뉴 묶음 삭제 — /api/menu/daily 에 빈 목록 저장 = 그 날짜 삭제
+// 선택한 날짜별 메뉴 묶음 삭제 — /api/menu/daily 에 빈 목록+purgeArchive:true 저장 = 그 날짜 완전 삭제(창고 이력 포함)
+// 참고: 일일메뉴 페이지의 '일일 메뉴 삭제'는 purgeArchive를 안 보내서 창고 이력은 보존됨(deleteToday 참고)
 function deleteSelectedHistDates(){
   var dates=[].slice.call(document.querySelectorAll('#historyList .hist-check:checked')).map(function(c){return c.value;});
   if(!dates.length){showToast('삭제할 날짜를 선택해주세요.');return;}
@@ -2333,7 +2335,7 @@ function deleteSelectedHistDates(){
   showConfirm(msg,function(){
     var done=0,failAny=false;
     dates.forEach(function(date){
-      fetch(API_URL+'/api/menu/daily',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:[],date:date})})
+      fetch(API_URL+'/api/menu/daily',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:[],date:date,purgeArchive:true})})
         .then(function(r){return r.json();})
         .then(function(d){if(!(d&&d.success!==false))failAny=true;})
         .catch(function(){failAny=true;})
@@ -2357,7 +2359,7 @@ function openHistPreview(date){
   document.getElementById('histPreviewOverlay').classList.add('open');
 
   document.getElementById('histPreviewBody').innerHTML='<div style="text-align:center;padding:24px;color:#aaa;">메뉴 불러오는 중...</div>';
-  fetch(API_URL+'/api/menu/'+date)
+  fetch(API_URL+'/api/menu/archive/'+date)
     .then(function(r){if(!r.ok)throw new Error('날짜 없음');return r.json();})
     .then(function(d){
       renderPreviewBody(d.menus||[]);
@@ -2417,7 +2419,7 @@ function confirmHistLoad(mode){
 var _pendingImport=null;  // {date,mode,imported} — 고아 메뉴 팝업 처리 대기 컨텍스트
 function importFromSheetByDate(date,mode){
   showToast('메뉴 창고에서 불러오는 중...');
-  fetch(API_URL+'/api/menu/'+date)
+  fetch(API_URL+'/api/menu/archive/'+date)
     .then(function(r){if(!r.ok)throw new Error(date+' 날짜를 찾을 수 없습니다.');return r.json();})
     .then(function(d){
       var imported=(d.menus||[]).map(function(m){
