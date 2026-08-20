@@ -148,6 +148,7 @@ function renderList(){
       +'<div class="log-top">'
         +'<span class="log-badge '+escHtml(l.type)+'">'+(TYPE_LABEL[l.type]||l.type)+'</span>'
         +'<span class="log-dt">'+fmtDT(l.createdAt)+'</span>'
+        +(l.deviceId?'<span class="log-ip" title="'+escHtml(l.deviceId)+'">📱 '+escHtml(l.deviceId.slice(0,8))+'</span>':'')
         +(l.ip?'<span class="log-ip">'+escHtml(l.ip)+'</span>':'')
       +'</div>'
       +'<div class="log-summary">'+escHtml(l.summary)+'</div>'
@@ -181,9 +182,9 @@ document.getElementById('btnExport').addEventListener('click',function(){
   var lines=curLogs.map(function(l){
     var detail='';
     try{detail=l.detail?JSON.stringify(l.detail):'';}catch(e){detail='';}
-    return [fmtDT(l.createdAt),l.type,l.ip||'',l.summary,detail].join('\t');
+    return [fmtDT(l.createdAt),l.type,l.deviceId||'',l.ip||'',l.summary,detail].join('\t');
   });
-  var content='시각\t종류\tIP\t요약\t상세\n'+lines.join('\n');
+  var content='시각\t종류\t기기ID\tIP\t요약\t상세\n'+lines.join('\n');
   var blob=new Blob(['﻿'+content],{type:'text/plain;charset=utf-8'});
   var a=document.createElement('a');
   a.href=URL.createObjectURL(blob);

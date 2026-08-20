@@ -51,18 +51,22 @@ const pool = mysql.createPool({
 
 // 시스템 로그 — AI추천(토큰 비용 발생) 호출 / 주문 고객정보 / 비정상 접근 / 서버 에러 기록.
 // type: 'ai_recommend' | 'order_customer' | 'abnormal_access' | 'error'
-async function sysLog(type, summary, detail, ip) {
+async function sysLog(type, summary, detail, ip, deviceId) {
   try {
     await pool.execute(
-      'INSERT INTO system_log (type, summary, detail, ip) VALUES (?,?,?,?)',
-      [type, String(summary || '').slice(0, 500), detail ? JSON.stringify(detail) : null, ip || null]
+      'INSERT INTO system_log (type, summary, detail, ip, device_id) VALUES (?,?,?,?,?)',
+      [type, String(summary || '').slice(0, 500), detail ? JSON.stringify(detail) : null, ip || null, deviceId || null]
     );
   } catch (e) { console.error('sysLog 실패:', e.message); }
+}
+// 관리자 화면(X-Device-Id 헤더)·고객 화면(body.deviceId) 둘 다 지원 — 어느 기기가 요청을 보냈는지 로그에서 구분하기 위함
+function deviceIdOf(req) {
+  return (req && req.headers && req.headers['x-device-id']) || (req && req.body && req.body.deviceId) || null;
 }
 
 const ok  = (res, data={}) => res.json({ success: true,  ...data });
 const err = (res, msg, status=500) => {
-  if (status >= 500) sysLog('error', String(msg || '').slice(0, 300), { status, path: res.req && res.req.originalUrl }, res.req && res.req.ip).catch(() => {});
+  if (status >= 500) sysLog('error', String(msg || '').slice(0, 300), { status, path: res.req && res.req.originalUrl }, res.req && res.req.ip, deviceIdOf(res.req)).catch(() => {});
   return res.status(status).json({ success: false, error: msg });
 };
 
@@ -72,7 +76,7 @@ const ADMIN_TOKEN = process.env.ADMIN_TOKEN;
 function requireAdmin(req, res, next) {
   if (!ADMIN_TOKEN) return err(res, '서버에 ADMIN_TOKEN이 설정되지 않았습니다.', 500);
   if (req.headers['x-admin-token'] !== ADMIN_TOKEN) {
-    sysLog('abnormal_access', '관리자 인증 실패: ' + req.originalUrl, { method: req.method }, req.ip).catch(() => {});
+    sysLog('abnormal_access', '관리자 인증 실패: ' + req.originalUrl, { method: req.method }, req.ip, deviceIdOf(req)).catch(() => {});
     return err(res, '인증이 필요합니다.', 401);
   }
   next();
@@ -631,7 +635,7 @@ app.post('/api/menu/daily', requireAdmin, async (req, res) => {
     await conn.commit();
     conn.release();
     sysLog('daily_menu_save', '일일 메뉴 저장 — ' + dates.join(', ') + ' (' + list.length + '건)',
-      { dates, count: list.length }, req.ip).catch(() => {});
+      { dates, count: list.length }, req.ip, deviceIdOf(req)).catch(() => {});
     ok(res, { sheets: dates.length, count: list.length });
     } catch(e) {
       await conn.rollback(); conn.release();
@@ -781,7 +785,7 @@ app.post('/api/orders', async (req, res) => {
     const MAX_ORDER_ITEMS = 50;
     if (items.length > MAX_ORDER_ITEMS) {
       sysLog('abnormal_order', '비정상적으로 많은 항목(' + items.length + '개) 주문 시도 차단',
-        { itemCount: items.length, phone: order.phone || null, reserveDate: order.reserveDate || null }, req.ip).catch(() => {});
+        { itemCount: items.length, phone: order.phone || null, reserveDate: order.reserveDate || null }, req.ip, deviceIdOf(req)).catch(() => {});
       return err(res, '한 번에 담을 수 있는 메뉴는 최대 ' + MAX_ORDER_ITEMS + '개예요. 선택한 메뉴를 줄여서 다시 시도해주세요.', 400);
     }
 
@@ -888,7 +892,7 @@ app.post('/api/orders', async (req, res) => {
         'order_customer',
         (order.name || '(이름없음)') + '님 주문(' + (order.phone || '연락처없음') + ')' + (isReserve ? ' — 예약주문' : ''),
         { orderId: order.id, phone: order.phone || '', name: order.name || '', total: serverTotal, isReserve },
-        req.ip
+        req.ip, deviceIdOf(req)
       ).catch(() => {});
     } catch(e) { await conn.rollback(); conn.release(); throw e; }
   } catch(e) { err(res, e.message); }
@@ -1441,7 +1445,7 @@ app.post('/api/recommend', async (req, res) => {
       'ai_recommend',
       'AI추천 호출 — scope:' + scope + (deviceId ? (', device:' + deviceId) : ''),
       { scope, deviceId, purpose, mealType, cuisine, broth, taste, temp, diet, mealKit, allergy, drinks, budget, httpStatus: aiRes.status },
-      req.ip
+      req.ip, deviceId
     ).catch(() => {});
     if (!aiRes.ok) {
       const errText = await aiRes.text().catch(() => '');
@@ -1544,7 +1548,7 @@ app.get('/api/system-log', requireAdmin, async (req, res) => {
   try {
     const type = String(req.query.type || '').trim();
     const limit = Math.min(Math.max(Number(req.query.limit) || 200, 1), 1000);
-    let sql = 'SELECT id, created_at, type, summary, detail, ip FROM system_log';
+    let sql = 'SELECT id, created_at, type, summary, detail, ip, device_id FROM system_log';
     const params = [];
     if (type) { sql += ' WHERE type=?'; params.push(type); }
     sql += ' ORDER BY created_at DESC, id DESC LIMIT ' + limit;
@@ -1557,6 +1561,7 @@ app.get('/api/system-log', requireAdmin, async (req, res) => {
       summary: r.summary,
       detail: typeof r.detail === 'string' ? (() => { try { return JSON.parse(r.detail); } catch (e) { return null; } })() : r.detail,
       ip: r.ip,
+      deviceId: r.device_id,
     }));
     ok(res, { logs });
   } catch (e) { err(res, e.message); }
@@ -1700,6 +1705,7 @@ async function initDB() {
       summary VARCHAR(500),
       detail TEXT,
       ip VARCHAR(100),
+      device_id VARCHAR(64),
       INDEX idx_type (type),
       INDEX idx_created (created_at)
     )`
@@ -1711,6 +1717,7 @@ async function initDB() {
     // information_schema로 존재 여부를 직접 확인하는 방식은 모든 버전에서 동작한다.
     await _ensureColumn(conn, 'menus', 'cat_id', 'cat_id INT NULL');
     await _ensureColumn(conn, 'daily_menus', 'cat_id', 'cat_id INT NULL');
+    await _ensureColumn(conn, 'system_log', 'device_id', 'device_id VARCHAR(64) NULL');
     console.log('DB 테이블 초기화 완료');
     await _migrateCategoriesToTable(conn);
     await _migrateDailyMenusArchiveBackfill(conn);
@@ -1844,7 +1851,7 @@ async function _saveCategories(conn, list) {
 // 정의되지 않은 API 경로 접근 — 비정상 조회로 기록(정적 파일 404는 노이즈라 제외)
 app.use((req, res) => {
   if (req.path.startsWith('/api/')) {
-    sysLog('abnormal_access', '정의되지 않은 API 경로: ' + req.method + ' ' + req.originalUrl, {}, req.ip).catch(() => {});
+    sysLog('abnormal_access', '정의되지 않은 API 경로: ' + req.method + ' ' + req.originalUrl, {}, req.ip, deviceIdOf(req)).catch(() => {});
   }
   res.status(404).json({ success: false, error: 'Not Found' });
 });

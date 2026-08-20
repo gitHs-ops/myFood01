@@ -1964,7 +1964,7 @@ function exportMenuToSheet(date,cb){
   var objs=menus.map(function(m){return{date:date,menuId:m.menuId||null,name:m.name,cat:m.cat,price:m.price,stock:m.stock,baseStock:(m.baseStock==null?null:m.baseStock),child:m.child?1:0,imgUrl:m.imgUrl||'',desc:m.desc||''};});
   var ctrl=new AbortController();
   var timer=setTimeout(function(){ctrl.abort();},30000);
-  fetch(API_URL+'/api/menu/daily',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:objs,date:date}),signal:ctrl.signal})
+  fetch(API_URL+'/api/menu/daily',{method:'POST',headers:{'Content-Type':'application/json','X-Device-Id':getAdminDeviceId()},body:JSON.stringify({data:objs,date:date}),signal:ctrl.signal})
     .then(function(r){clearTimeout(timer);return r.json();})
     .then(function(d){
       var ok=!!(d&&d.success!==false);
@@ -2409,7 +2409,7 @@ function deleteSelectedHistDates(){
   showConfirm(msg,function(){
     var done=0,failAny=false;
     dates.forEach(function(date){
-      fetch(API_URL+'/api/menu/daily',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:[],date:date,purgeArchive:true})})
+      fetch(API_URL+'/api/menu/daily',{method:'POST',headers:{'Content-Type':'application/json','X-Device-Id':getAdminDeviceId()},body:JSON.stringify({data:[],date:date,purgeArchive:true})})
         .then(function(r){return r.json();})
         .then(function(d){if(!(d&&d.success!==false))failAny=true;})
         .catch(function(){failAny=true;})
@@ -3428,10 +3428,23 @@ var _banks=[];
 function getSettings(){return _settings;}
 function getAdminInfo(){return _adminInfo;}
 // ── API POST 유틸 (대용량 데이터용) ──
+// 이 기기(관리자 브라우저)를 구분하는 값 — 시스템 로그에서 "어느 기기가 이 요청을 보냈는지"
+// 알아보기 위함(localStorage 금지 규칙의 device_id 예외). onban01.html의 getDeviceId와 같은 방식.
+function getAdminDeviceId(){
+  var k='onban_admin_device_id';
+  var id=localStorage.getItem(k);
+  if(!id){
+    id='xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){
+      var r=Math.random()*16|0;return(c==='x'?r:(r&0x3|0x8)).toString(16);
+    });
+    localStorage.setItem(k,id);
+  }
+  return id;
+}
 function apiPost(path,data,cb){
   var ctrl=new AbortController();
   var timer=setTimeout(function(){ctrl.abort();},30000);
-  fetch(API_URL+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:data}),signal:ctrl.signal})
+  fetch(API_URL+path,{method:'POST',headers:{'Content-Type':'application/json','X-Device-Id':getAdminDeviceId()},body:JSON.stringify({data:data}),signal:ctrl.signal})
     .then(function(r){clearTimeout(timer);return r.json();})
     .then(function(d){cb(null,d);})
     .catch(function(e){clearTimeout(timer);cb(e,null);});
@@ -3441,7 +3454,7 @@ function apiFetch(path,cb){
   function attempt(retry){
     var ctrl=new AbortController();
     var timer=setTimeout(function(){ctrl.abort();},15000);
-    fetch(API_URL+path,{signal:ctrl.signal})
+    fetch(API_URL+path,{headers:{'X-Device-Id':getAdminDeviceId()},signal:ctrl.signal})
       .then(function(r){clearTimeout(timer);return r.json();})
       .then(function(d){cb(null,d);})
       .catch(function(e){
