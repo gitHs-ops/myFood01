@@ -1296,9 +1296,23 @@ var _menuPollTimer=null;
 function _startMenuSSE(date){
   if(_menuPollTimer){clearInterval(_menuPollTimer);_menuPollTimer=null;}
   _menuPollTimer=setInterval(function(){
-    if(_menuDirty||_editingPrice||!date)return;
+    if(_menuDirty||_editingPrice||_menuListInteracting||!date)return;
     loadMenus(date);
   },3000);
+}
+// 폴링이 3초마다 목록 전체를 다시 그리는데(renderMenuList의 innerHTML 교체), 하필 그 순간에
+// 삭제(X) 버튼을 누르고 있으면(mousedown~click 사이) 버튼 DOM이 통째로 바뀌어 클릭이 씹힌다
+// — 아무 메시지도 없이 삭제가 안 되던 문제(2026-08-20). 목록을 누르는 순간엔 잠깐 폴링을 막는다.
+var _menuListInteracting=false;
+function _watchMenuListInteraction(){
+  var list=document.getElementById('menuList');
+  if(!list)return;
+  function guard(){
+    _menuListInteracting=true;
+    setTimeout(function(){_menuListInteracting=false;},400);
+  }
+  list.addEventListener('mousedown',guard);
+  list.addEventListener('touchstart',guard,{passive:true});
 }
 
 function selectDate(iso){
@@ -3837,6 +3851,7 @@ window.onload=function(){
   workDate=toISO(new Date());loadMenus(workDate);_startMenuSSE(workDate);
   _updateSaveBtn();
   _watchOverlaysForSaveBtn();
+  _watchMenuListInteraction();
   // 카톡창은 항상 편집모드. 사용자가 직접 입력하면 자동 갱신이 덮어쓰지 않도록 보호.
   (function(){var _kt=document.getElementById('kakaoText');if(_kt)_kt.addEventListener('input',function(){_kakaoUserEdited=true;});})();
   document.getElementById('dateDisplayBtn').textContent=fmtDate(workDate);
