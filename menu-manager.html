@@ -1677,6 +1677,7 @@ function loadTodayToKakao(){
   _resetParseBtn();
   renderKakao();
   el.contentEditable='true'; el.classList.add('editable');   // 항상 편집모드 유지
+  if(!menus.length){showToast('등록된 오늘 메뉴가 없어요.');return;}
   showToast('오늘 메뉴를 가져왔습니다.');
 }
 function toggleKakaoEdit(){
