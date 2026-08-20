@@ -76,7 +76,7 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 }
 .menu-card.child-ok{border-left:4px solid #FEE500;}
 .menu-cat-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
-.menu-cat-title{display:flex;align-items:center;gap:7px;font-size:14px;font-weight:800;color:#086266;margin:14px 2px 2px;}
+.menu-cat-title{display:flex;align-items:center;gap:7px;font-size:14px;font-weight:800;color:#fff;margin:14px 2px 2px;}
 .menu-cat-title:first-child{margin-top:4px;}
 .menu-cat-title .menu-cat-dot{width:9px;height:9px;}
 .menu-thumb{width:44px;height:44px;border-radius:10px;flex-shrink:0;background:linear-gradient(135deg,#e8f5f4,#c8ebe9);display:flex;align-items:center;justify-content:center;font-size:26px;overflow:hidden;}
@@ -648,7 +648,7 @@ select.reserve-info-inp{appearance:none;-webkit-appearance:none;background:#fff 
 
 <!-- ════ 페이지: 메뉴 목록 ════ -->
 <div id="page-list" class="page active">
-  <div class="date-banner" id="dateBanner"><span id="dateBannerText">&#128197; 오늘의 메뉴</span><a href="온반_메뉴_이미지갤러리.html" class="date-gallery-btn">🖼️ 이미지갤러리</a><span id="dateRefreshCountdown" class="date-refresh-countdown">🔄 10</span></div>
+  <div class="date-banner" id="dateBanner"><span id="dateBannerText">오늘의 메뉴</span><a href="온반_메뉴_이미지갤러리.html" class="date-gallery-btn">🖼️ 이미지갤러리</a><span id="dateRefreshCountdown" class="date-refresh-countdown">🔄 10</span></div>
   <div id="menuListEventCard"></div>
   <div class="cat-tabs" id="catTabs"></div>
   <div class="menu-grid" id="menuGrid"></div>
@@ -1227,7 +1227,7 @@ function loadMenus(silent,cb){
   var iso=toISO(new Date());
   menuDate=iso;
   var label=new Date(iso+'T00:00:00').toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'});
-  if(!silent)document.getElementById('dateBannerText').textContent='📅 '+label+' 오늘의 메뉴 불러오는 중...';
+  if(!silent)document.getElementById('dateBannerText').textContent=label+' 오늘의 메뉴 불러오는 중...';
 
   fetch(API_URL+'/api/menu/'+iso,{cache:'no-store'})
     .then(function(r){
@@ -1245,14 +1245,14 @@ function loadMenus(silent,cb){
           price:Number(m.price)||0,stock:Number(m.stock)||0,
           child:!!m.child,imgUrl:m.imgUrl||null,icon:m.icon||null,desc:''});
       });
-      document.getElementById('dateBannerText').textContent='📅 '+label+(allMenus.length?' 오늘의 메뉴':' 준비 중입니다');
+      document.getElementById('dateBannerText').textContent=label+(allMenus.length?' 오늘의 메뉴':' 준비 중입니다');
       renderCatTabs();renderMenuGrid();
       if(cb)cb();
     })
     .catch(function(){
       // 네트워크 오류 등 진짜 실패일 때만 silent 가드 — 일시적 통신 장애로 화면을 비우지 않기 위함
       if(!silent){
-        document.getElementById('dateBannerText').textContent='📅 '+label+' 불러오기 실패';
+        document.getElementById('dateBannerText').textContent=label+' 불러오기 실패';
       }
       if(cb)cb();
     });
@@ -1270,7 +1270,6 @@ function _startMenuAutoRefresh(){
     if(!listActive||modalOpen||document.hidden){_setRefreshLabel('🔄 대기');return;}
     _refreshSec--;
     if(_refreshSec<=0){
-      _setRefreshLabel('🔄 갱신중');
       loadMenus(true);
       _refreshSec=_MENU_REFRESH_SEC;
     }else{
