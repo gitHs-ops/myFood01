@@ -2391,19 +2391,15 @@ function openHistLoadModal(date){
   _histLoadDate=date;
   var label=new Date(date+'T00:00:00').toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'});
   document.getElementById('histLoadTitle').textContent=label+' 메뉴';
+  // 작업 날짜와 같아도 추가/대체로 의도가 구분되므로 막지 않는다 — 특히 '대체'는
+  // 오늘 창고 저장본(스냅샷)으로 되돌리는 용도로 유용함(예: 일일 메뉴 삭제 후 복구).
   var isSameDate=date===workDate;
   var addBtn=document.querySelector('#histLoadOverlay .btn-add');
   var replBtn=document.querySelector('#histLoadOverlay .btn:not(.btn-add)');
   var desc=document.querySelector('#histLoadOverlay p');
-  if(isSameDate){
-    if(addBtn){addBtn.disabled=true;addBtn.style.opacity='.35';addBtn.style.cursor='not-allowed';}
-    if(replBtn){replBtn.disabled=true;replBtn.style.opacity='.35';replBtn.style.cursor='not-allowed';}
-    if(desc)desc.textContent='현재 작업 날짜와 동일합니다.';
-  }else{
-    if(addBtn){addBtn.disabled=false;addBtn.style.opacity='';addBtn.style.cursor='';}
-    if(replBtn){replBtn.disabled=false;replBtn.style.opacity='';replBtn.style.cursor='';}
-    if(desc)desc.textContent='현재 메뉴 목록에 어떻게 적용할까요?';
-  }
+  if(addBtn){addBtn.disabled=false;addBtn.style.opacity='';addBtn.style.cursor='';}
+  if(replBtn){replBtn.disabled=false;replBtn.style.opacity='';replBtn.style.cursor='';}
+  if(desc)desc.textContent=isSameDate?'현재 작업 날짜의 창고 저장본입니다 — 추가/대체 중 선택하세요.':'현재 메뉴 목록에 어떻게 적용할까요?';
   document.getElementById('histLoadOverlay').classList.add('open');
 }
 function closeHistLoadModal(e){
