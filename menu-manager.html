@@ -931,11 +931,25 @@ function _save(ctx){if(ctx==='all')saveAllMenus();else{_menuDirty=true;_updateSa
 function _render(ctx){if(ctx==='all')renderAllMenus();else renderMenuList();}
 // 수정 타임스탬프 찍기
 function touch(m){m.updatedAt=Date.now();return m;}
+// /api/menu/all, /api/menu/daily 둘 다 menus 테이블의 겹치는 행을 건드리는데, 저장 버튼·삭제
+// 버튼·카톡등록·창고 불러오기/보내기 등 어느 화면 동작에서 왔든 동시에 서버로 나가면 락을
+// 서로 다른 순서로 잡다가 데드락이 남(2026-08-20 반복 확인). 어디서 부르든 이 큐를 거쳐야만
+// 실제 요청이 나가게 해서, 이 두 저장이 절대 동시에 안 나가고 순서대로만 나가도록 한다.
+var _menuWriteQueue=Promise.resolve();
+function _queueMenuWrite(startFn){
+  _menuWriteQueue=_menuWriteQueue.then(function(){
+    return new Promise(function(resolve){startFn(resolve);});
+  });
+  return _menuWriteQueue;
+}
 function saveAllMenus(cb){
   if(!allMenus.length){if(cb)cb(true);return;}
-  apiPost('/api/menu/all',deduplicateByName(allMenus),function(err,d){
-    var ok=!err&&!!(d&&d.success!==false);
-    if(cb)cb(ok,err?'네트워크 오류':(d&&d.error));
+  _queueMenuWrite(function(done){
+    apiPost('/api/menu/all',deduplicateByName(allMenus),function(err,d){
+      var ok=!err&&!!(d&&d.success!==false);
+      done();
+      if(cb)cb(ok,err?'네트워크 오류':(d&&d.error));
+    });
   });
 }
 function mergeToAllMenus(cb){
@@ -1151,8 +1165,8 @@ function saveNewMasterMenu(){
       allMenus.push(newMaster);
     }
     var _savedDesc=desc;
-    apiPost('/api/menu/all',deduplicateByName(allMenus),function(e,d){
-      if(e||(d&&!d.success))showToast('⚠️ 마스터 저장 실패: '+(d&&d.error||'서버 오류'));
+    saveAllMenus(function(ok,errMsg){
+      if(!ok)showToast('⚠️ 마스터 저장 실패: '+(errMsg||'서버 오류'));
     });
     document.getElementById('newMenuOverlay').classList.remove('open');
     document.getElementById('menuName').value=name;
@@ -1240,7 +1254,19 @@ function onMenuNameKey(e){
 
 function toISO(d){var kst=new Date(d.getTime()+9*60*60*1000);return kst.getUTCFullYear()+'-'+String(kst.getUTCMonth()+1).padStart(2,'0')+'-'+String(kst.getUTCDate()).padStart(2,'0');}
 function fmtDate(iso){var d=new Date(iso+'T00:00:00');var s=d.toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'short'});return iso===toISO(new Date())?s+' (오늘)':s;}
-function loadMenus(iso){
+// 목록 내용을 비교하기 위한 서명 — id(클라 합성값)는 빼고 실제 내용만 비교
+function _menuListSignature(list){
+  return JSON.stringify((list||[]).map(function(m){
+    return [m.menuId||0,m.name,m.cat,m.price,m.stock,m.child?1:0,m.imgUrl||'',m.icon||'',m.desc||''];
+  }));
+}
+// silent=true(폴링에서만 씀)면, 받아온 내용이 지금 화면과 완전히 같을 때 다시 안 그린다.
+// renderAll()이 목록 DOM을 통째로 교체하는데, 하필 그 순간 삭제(X) 버튼을 누르고 있으면
+// 버튼 자체가 바뀌면서 클릭이 씹히는 문제가 있었음(2026-08-20) — 폴링은 대부분 내용이
+// 그대로이므로, 실제로 달라졌을 때만 다시 그리면 이 레이스가 생길 여지 자체가 크게 줄어든다.
+// 명시적으로 불러올 때(silent 아님)는 지금처럼 항상 다시 그림 — 예전엔 빈 목록도 건너뛰어
+// 삭제해도 화면이 그대로였던 문제가 있었음, 그 보장은 그대로 유지.
+function loadMenus(iso,silent){
   _menuDirty=false;
   fetch(API_URL+'/api/menu/'+iso)
     .then(function(res){
@@ -1252,8 +1278,9 @@ function loadMenus(iso){
     .then(function(d){
       var idx=Date.now();
       // baseStock — 불러온 시점의 재고. 저장할 때 서버가 "관리자가 바꾼 만큼"만 반영하는 기준값
-      menus=(d&&d.menus)?d.menus.map(function(m){var o=Object.assign({id:idx++,stock:m.stock||0},m);o.baseStock=(m.stock==null?0:Number(m.stock));return o;}):[];
-      // 비어 있어도 반드시 다시 그린다 — 예전엔 여기서 건너뛰어 삭제해도 화면이 그대로였다
+      var next=(d&&d.menus)?d.menus.map(function(m){var o=Object.assign({id:idx++,stock:m.stock||0},m);o.baseStock=(m.stock==null?0:Number(m.stock));return o;}):[];
+      if(silent&&_menuListSignature(next)===_menuListSignature(menus))return;
+      menus=next;
       renderAll();
     })
     .catch(function(){});   // 통신 실패 시엔 화면을 건드리지 않는다
@@ -1303,7 +1330,7 @@ function _startMenuSSE(date){
   if(_menuPollTimer){clearInterval(_menuPollTimer);_menuPollTimer=null;}
   _menuPollTimer=setInterval(function(){
     if(_menuDirty||_editingPrice||_menuListInteracting||!date)return;
-    loadMenus(date);
+    loadMenus(date,true);
   },3000);
 }
 // 폴링이 3초마다 목록 전체를 다시 그리는데(renderMenuList의 innerHTML 교체), 하필 그 순간에
@@ -1974,17 +2001,20 @@ function saveToday(){
 function _syncBaseStock(){menus.forEach(function(m){m.baseStock=(m.stock==null?0:Number(m.stock));});}
 function exportMenuToSheet(date,cb){
   var objs=menus.map(function(m){return{date:date,menuId:m.menuId||null,name:m.name,cat:m.cat,price:m.price,stock:m.stock,baseStock:(m.baseStock==null?null:m.baseStock),child:m.child?1:0,imgUrl:m.imgUrl||'',desc:m.desc||''};});
-  var ctrl=new AbortController();
-  var timer=setTimeout(function(){ctrl.abort();},30000);
-  fetch(API_URL+'/api/menu/daily',{method:'POST',headers:{'Content-Type':'application/json','X-Device-Id':getAdminDeviceId()},body:JSON.stringify({data:objs,date:date}),signal:ctrl.signal})
-    .then(function(r){clearTimeout(timer);return r.json();})
-    .then(function(d){
-      var ok=!!(d&&d.success!==false);
-      // 저장에 성공했으면 기준값을 현재값으로 — 어느 경로로 저장하든 여기 한 곳에서 처리
-      if(ok&&date===workDate)_syncBaseStock();
-      if(cb)cb(ok,d&&d.error);
-    })
-    .catch(function(){clearTimeout(timer);if(cb)cb(false,'네트워크 오류');});
+  _queueMenuWrite(function(done){
+    var ctrl=new AbortController();
+    var timer=setTimeout(function(){ctrl.abort();},30000);
+    fetch(API_URL+'/api/menu/daily',{method:'POST',headers:{'Content-Type':'application/json','X-Device-Id':getAdminDeviceId()},body:JSON.stringify({data:objs,date:date}),signal:ctrl.signal})
+      .then(function(r){clearTimeout(timer);return r.json();})
+      .then(function(d){
+        var ok=!!(d&&d.success!==false);
+        // 저장에 성공했으면 기준값을 현재값으로 — 어느 경로로 저장하든 여기 한 곳에서 처리
+        if(ok&&date===workDate)_syncBaseStock();
+        done();
+        if(cb)cb(ok,d&&d.error);
+      })
+      .catch(function(){clearTimeout(timer);done();if(cb)cb(false,'네트워크 오류');});
+  });
 }
 var _histYM='전체';
 function renderHistSubTabs(){
@@ -2419,20 +2449,23 @@ function deleteSelectedHistDates(){
   var workSel=dates.indexOf(workDate)>=0;
   var msg=dates.length+'개 날짜의 메뉴 묶음을 삭제할까요?'+(workSel?'\n(지금 작업중인 날짜 포함)':'')+'\n되돌릴 수 없습니다.';
   showConfirm(msg,function(){
-    var done=0,failAny=false;
-    dates.forEach(function(date){
-      fetch(API_URL+'/api/menu/daily',{method:'POST',headers:{'Content-Type':'application/json','X-Device-Id':getAdminDeviceId()},body:JSON.stringify({data:[],date:date,purgeArchive:true})})
-        .then(function(r){return r.json();})
-        .then(function(d){if(!(d&&d.success!==false))failAny=true;})
-        .catch(function(){failAny=true;})
-        .then(function(){
-          done++;
-          if(done!==dates.length)return;
-          _datesCache=_datesCache.filter(function(d){return dates.indexOf(d)<0;});
-          if(workSel){menus=[];renderAll();}   // 작업중 날짜를 지웠으면 현재 목록도 비움
-          showToast(failAny?'일부 삭제 실패 — 다시 시도해주세요.':dates.length+'개 삭제 완료');
-          renderHistory();
-        });
+    _queueMenuWrite(function(queueDone){
+      var finished=0,failAny=false;
+      dates.forEach(function(date){
+        fetch(API_URL+'/api/menu/daily',{method:'POST',headers:{'Content-Type':'application/json','X-Device-Id':getAdminDeviceId()},body:JSON.stringify({data:[],date:date,purgeArchive:true})})
+          .then(function(r){return r.json();})
+          .then(function(d){if(!(d&&d.success!==false))failAny=true;})
+          .catch(function(){failAny=true;})
+          .then(function(){
+            finished++;
+            if(finished!==dates.length)return;
+            queueDone();
+            _datesCache=_datesCache.filter(function(d){return dates.indexOf(d)<0;});
+            if(workSel){menus=[];renderAll();}   // 작업중 날짜를 지웠으면 현재 목록도 비움
+            showToast(failAny?'일부 삭제 실패 — 다시 시도해주세요.':dates.length+'개 삭제 완료');
+            renderHistory();
+          });
+      });
     });
   },'삭제','취소');
 }
@@ -3806,9 +3839,12 @@ function migrateHanPrefix(){
     }
     if(!renameCount&&!mergePairs.length){_btnState(false);alert('변경할 메뉴 없음 (마스터: '+allMenus.length+'개)');return;}
     if(!renameCount){_step4(0);return;}
-    apiPost('/api/menu/all',deduped,function(err,d){
-      if(err||(d&&!d.success)){_btnState(false);alert('저장 실패: '+(err?err.message:(d&&d.error)||'서버 오류'));return;}
-      _step4(renameCount);
+    _queueMenuWrite(function(done){
+      apiPost('/api/menu/all',deduped,function(err,d){
+        done();
+        if(err||(d&&!d.success)){_btnState(false);alert('저장 실패: '+(err?err.message:(d&&d.error)||'서버 오류'));return;}
+        _step4(renameCount);
+      });
     });
   });
 }
