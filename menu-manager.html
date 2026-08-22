@@ -964,15 +964,20 @@ function saveAllMenus(cb){
 }
 function mergeToAllMenus(cb){
   allMenus=deduplicateByName(allMenus); // 혹시 남아있는 중복 정리
-  var nameMap={};allMenus.forEach(function(m){nameMap[m.name]=m;});
+  // name만으로 매칭하면 같은 이름이 다른 카테고리에도 있을 때(예: 부대찌개 메인/밀키트)
+  // 엉뚱한 쪽이 매칭돼 그쪽 카테고리가 지금 저장하려는 카테고리로 덮어써지고, 그러면 이미
+  // 그 카테고리에 있던 진짜 레코드와 UNIQUE(name,cat) 충돌이 남 — deduplicateByName은 이미
+  // name+cat 기준이므로 여기도 맞춰야 함(2026-08-22).
+  var nameMap={};allMenus.forEach(function(m){nameMap[(m.name||'').trim()+'|'+(m.cat||'기타')]=m;});
   var changed=false;
   menus.forEach(function(m){
-    if(!nameMap[m.name]){
+    var key=(m.name||'').trim()+'|'+(m.cat||'기타');
+    if(!nameMap[key]){
       allMenus.push({id:Date.now()+Math.random(),name:m.name,cat:m.cat,price:m.price,stock:0,child:m.child,desc:m.desc||'',imgUrl:m.imgUrl||null,icon:m.icon||null,count:1,updatedAt:m.updatedAt||Date.now()});
       changed=true;
     }else{
       // 기존 항목: 타임스탬프 비교 후 더 최신이면 필드 갱신
-      var existing=nameMap[m.name];
+      var existing=nameMap[key];
       var localTs=m.updatedAt||0;
       var existTs=existing.updatedAt||0;
       if(localTs>existTs){
@@ -1259,7 +1264,10 @@ function _updateAddMenuImg(){
   var editBtn=document.getElementById('addMasterEditBtn');
   if(!box)return;
   var name=(document.getElementById('menuName').value||'').trim();
-  var ref=name?allMenus.find(function(m){return (m.name||'').trim()===name;}):null;
+  var cat=(document.getElementById('menuCat').value||'').trim();
+  // 카테고리가 특정돼 있으면(전체 아님) 그 카테고리로 정확히 찾는다 — 같은 이름이 다른
+  // 카테고리에도 있을 때 엉뚱한 쪽(마스터 사진·수정버튼 대상)이 잡히지 않도록.
+  var ref=name?allMenus.find(function(m){return (m.name||'').trim()===name&&(!cat||cat==='전체'||(m.cat||'기타')===cat);}):null;
   _addMenuMasterId=ref?ref.id:null;
   if(_addMenuMode!=='new')_addMenuMode=ref?'select':'new';
   var _refImg=ref?(ref.icon||ref.imgUrl):null;
@@ -1270,7 +1278,10 @@ function _updateAddMenuImg(){
 function closeAcList(){document.getElementById('acList').classList.remove('open');acIndex=-1;_cancelAcCloseTimer();}
 function checkDup(name){
   var warn=document.getElementById('dupWarn');
-  var isDup=name&&menus.some(function(m){return m.name.trim()===name.trim();});
+  var cat=(document.getElementById('menuCat').value||'').trim();
+  // 카테고리가 특정돼 있으면 그 카테고리 기준으로만 중복 판단 — 같은 이름이라도 다른
+  // 카테고리로 추가하는 건 정상적인 경우라 "이미 있다" 경고를 띄우면 안 됨.
+  var isDup=name&&menus.some(function(m){return m.name.trim()===name.trim()&&(!cat||cat==='전체'||(m.cat||'기타')===cat);});
   if(isDup)warn.classList.add('show');else warn.classList.remove('show');
 }
 function onMenuCatChange(){
@@ -1456,7 +1467,11 @@ function addMenu(){
   if(cat==='전체'){alert('카테고리를 선택해주세요.');return;}
   if(!_checkPriceUnit(price))return;
   function _doAddMenu(){
-    var _ref=allMenus.find(function(m){return (m.name||'').trim()===name;});
+    // 이름만으로 찾으면 같은 이름이 다른 카테고리에도 있을 때(예: 나가사끼짬뽕 메인/밀키트)
+    // 엉뚱한 쪽의 menuId가 잡혀서, 저장 시 그 메뉴를 지금 고른 카테고리로 UPDATE하려다
+    // 이미 그 카테고리에 있는 별개 레코드와 UNIQUE(name,cat) 충돌 → 데드락도 아닌데
+    // 조용히 저장 실패(409라 시스템 로그에도 안 남음)로 이어졌음(2026-08-22, 사용자 발견).
+    var _ref=allMenus.find(function(m){return (m.name||'').trim()===name&&(m.cat||'기타')===cat;});
     if(_addMenuMode==='new'&&!_ref){
       // 마스터 반영은 여기서 즉시 보내지 않는다 — '일일 메뉴 저장'을 눌러야 mergeToAllMenus가
       // 한꺼번에 반영(실시간 연동 폐지, 2026-08-20). 로컬 allMenus엔 바로 추가해 화면엔 보이게 함.
@@ -1476,8 +1491,8 @@ function addMenu(){
     closeAcList();
     renderAll();
   }
-  // 현재 목록 중복 확인
-  if(menus.some(function(m){return m.name.trim()===name;})){
+  // 현재 목록 중복 확인 — 같은 이름이라도 다른 카테고리면 정상적인 별개 추가이므로 카테고리까지 같을 때만 확인
+  if(menus.some(function(m){return m.name.trim()===name&&(m.cat||'기타')===cat;})){
     showConfirm('['+name+']이(가) 이미 목록에 있어요.\n그래도 추가할까요?',_doAddMenu,'추가할게요');
   }else{
     _doAddMenu();
