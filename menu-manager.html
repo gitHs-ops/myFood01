@@ -57,6 +57,12 @@ body{font-family:"Noto Sans KR",sans-serif;background:linear-gradient(to bottom,
 .num-field label{font-size:13px;color:#555;white-space:nowrap;font-weight:600;}
 .num-field input[type="number"]{width:56px;padding:10px 6px;text-align:center;border:1.5px solid #cde8e7;border-radius:10px;font-size:14px;font-family:inherit;outline:none;}
 .num-field input[type="number"]:focus{border-color:#086266;}
+/* 모바일: auto 1fr 2단 그리드가 좁아지면 메뉴명 드롭다운·재고 줄(사진 미리보기 포함)이
+   화면 밖으로 잘려나갔음 — 한 줄에 1개씩, 왼쪽 정렬로 쌓이게 바꾼다. */
+@media(max-width:600px){
+  .add-grid{grid-template-columns:1fr;}
+  .num-field{flex-wrap:wrap;justify-content:flex-start;}
+}
 .add-img-preview{width:48px;height:48px;border-radius:8px;border:1.5px solid #cde8e7;background:#f7fafa;display:flex;align-items:center;justify-content:center;color:#bbb;font-size:11px;overflow:hidden;flex-shrink:0;margin-left:10px;}
 .add-img-preview img{width:100%;height:100%;object-fit:cover;}
 select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px;font-size:14px;font-family:inherit;outline:none;color:#333;}
