@@ -1330,20 +1330,26 @@ function _watchOverlaysForSaveBtn(){
 }
 function save(){_menuDirty=true;_updateSaveBtn();saveMenus(workDate,function(ok){_menuDirty=false;_updateSaveBtn();});}
 
-var _menuPollTimer=null;
+// 예전엔 3초마다 무조건 다시 불러왔지만(폴링), 서버 쪽 락·재시도가 저장 왕복시간을 늘리면서
+// 저장 커밋 전에 폴링이 끼어들어 옛 목록으로 덮어쓰는 사고가 남(2026-08-22). 이제는 실제로
+// 재고가 바뀌는 신호(주문 발생·취소·수정, 다른 탭의 저장 — SSE로 옴)가 왔을 때만 다시 불러온다
+// — _maybeRefreshMenus 참고. 이 변수·함수는 팝업 등으로 잠깐 막아둔 자동 새로고침을 다시
+// 허용하는 용도로만 남는다.
+var _menuPopupOpen=false;
 function _startMenuSSE(date){
-  if(_menuPollTimer){clearInterval(_menuPollTimer);_menuPollTimer=null;}
-  _menuPollTimer=setInterval(function(){
-    // _menuDirty는 saveToday() 시작 시점에 바로 false로 꺼지는데(저장 요청 자체는 아직 진행 중),
-    // 그 사이에 폴링이 끼어들면 서버가 아직 커밋 전이라 옛날 목록을 그대로 받아와 덮어써버린다
-    // — 저장했는데 이전 목록이 되살아나는 것처럼 보이던 원인(2026-08-22). 저장 중엔 통째로 건너뛴다.
-    if(_menuDirty||_editingPrice||_menuListInteracting||_savingToday||!date)return;
-    loadMenus(date,true);
-  },3000);
+  _menuPopupOpen=false;
 }
-// 폴링이 3초마다 목록 전체를 다시 그리는데(renderMenuList의 innerHTML 교체), 하필 그 순간에
-// 삭제(X) 버튼을 누르고 있으면(mousedown~click 사이) 버튼 DOM이 통째로 바뀌어 클릭이 씹힌다
-// — 아무 메시지도 없이 삭제가 안 되던 문제(2026-08-20). 목록을 누르는 순간엔 잠깐 폴링을 막는다.
+// SSE로 재고 변경 신호가 오면, 지금 보고 있는 날짜와 같고 위험한 창(팝업/가격편집/목록조작/
+// 저장중)이 열려있지 않을 때만 조용히 다시 불러온다.
+function _maybeRefreshMenus(date){
+  if(date!==workDate)return;
+  if(_menuPopupOpen||_menuDirty||_editingPrice||_menuListInteracting||_savingToday)return;
+  loadMenus(workDate,true);
+}
+// 배경 새로고침(_maybeRefreshMenus)이 목록 전체를 다시 그리는데(renderMenuList의 innerHTML
+// 교체), 하필 그 순간에 삭제(X) 버튼을 누르고 있으면(mousedown~click 사이) 버튼 DOM이
+// 통째로 바뀌어 클릭이 씹힌다 — 아무 메시지도 없이 삭제가 안 되던 문제(2026-08-20).
+// 목록을 누르는 순간엔 잠깐 새로고침을 막는다.
 var _menuListInteracting=false;
 function _watchMenuListInteraction(){
   var list=document.getElementById('menuList');
@@ -1433,9 +1439,9 @@ function deleteMenu(id){
   });
 }
 function changeStock(id,d){var m=menus.find(function(x){return x.id===id;});if(!m)return;m.stock=Math.max(-1,(m.stock||0)+d);touch(m);_menuDirty=true;_updateSaveBtn();renderMenuList();renderStats();}
-// 가격 입력 중엔 3초 폴링(_startMenuSSE)이 목록을 통째로 다시 그려서 입력칸이 사라지고
-// 포커스가 날아가던 문제가 있었음(_menuDirty는 커밋 후에만 켜져서 편집 "중"은 못 막았음).
-// 편집을 시작하면 폴링을 잠깐 멈추고, 끝나면(커밋/취소) 다시 켠다.
+// 가격 입력 중엔 배경 새로고침(_maybeRefreshMenus)이 목록을 통째로 다시 그려서 입력칸이
+// 사라지고 포커스가 날아가던 문제가 있었음(_menuDirty는 커밋 후에만 켜져서 편집 "중"은
+// 못 막았음). 편집을 시작하면 새로고침을 잠깐 막고, 끝나면(커밋/취소) 다시 켠다.
 var _editingPrice=false;
 function startEditPrice(id){_editingPrice=true;document.getElementById('pd_'+id).style.display='none';var inp=document.getElementById('pi_'+id);inp.style.display='inline-block';inp.focus();inp.select();}
 function commitPrice(id){var inp=document.getElementById('pi_'+id);var val=parseInt(inp.value)||0;if(!_checkPriceUnit(val)){inp.focus();return;}_editingPrice=false;var m=menus.find(function(x){return x.id===id;});if(m){m.price=val;touch(m);_menuDirty=true;_updateSaveBtn();}var disp=document.getElementById('pd_'+id);if(disp){disp.textContent=val.toLocaleString()+'천원';disp.style.display='';}inp.style.display='none';renderKakao();}
@@ -1539,7 +1545,7 @@ function openMenuEditPopup(id,ctx){
   editCtx=ctx||'menus';
   var m=_arr(editCtx).find(function(x){return x.id===id;});
   if(!m)return;
-  if(_menuPollTimer){clearInterval(_menuPollTimer);_menuPollTimer=null;}  // 폴링 중단 — 팝업 열린 동안 menus[] id 재생성 방지
+  _menuPopupOpen=true;  // 자동 새로고침 중단 — 팝업 열린 동안 menus[] id 재생성 방지
   menuEditTargetId=id;
   editPendingImgUrl=null;
   document.getElementById('menuEditTitle').textContent='메뉴 편집 — '+m.name;
@@ -3208,7 +3214,7 @@ function deliverOrder(id){
 
 var _genericConfirmCb=null;
 function showConfirm(msg,onYes,yesLabel,noLabel){
-  if(_menuPollTimer){clearInterval(_menuPollTimer);_menuPollTimer=null;}  // 확인창 열린 동안 menus[] id 재생성 방지
+  _menuPopupOpen=true;  // 자동 새로고침 중단 — 확인창 열린 동안 menus[] id 재생성 방지
   document.getElementById('genericConfirmMsg').textContent=msg;
   document.getElementById('genericConfirmYesBtn').textContent=yesLabel||'네';
   var _noBtn=document.getElementById('genericConfirmNoBtn'); if(_noBtn)_noBtn.textContent=noLabel||'아니오';
@@ -3218,7 +3224,7 @@ function showConfirm(msg,onYes,yesLabel,noLabel){
 function closeGenericConfirm(){
   document.getElementById('genericConfirmOverlay').classList.remove('open');
   _genericConfirmCb=null;
-  if(workDate)_startMenuSSE(workDate);  // 확인창 닫히면 폴링 재개
+  if(workDate)_startMenuSSE(workDate);  // 확인창 닫히면 자동 새로고침 재개
 }
 function _genericConfirmYes(){
   var cb=_genericConfirmCb;
@@ -3227,13 +3233,13 @@ function _genericConfirmYes(){
 }
 // 토스트는 잠깐 뜨고 사라져서 실패 이유처럼 꼭 읽어야 하는 메시지엔 안 맞음 — 확인 누를 때까지 안 사라지는 팝업
 function showAlertPopup(msg){
-  if(_menuPollTimer){clearInterval(_menuPollTimer);_menuPollTimer=null;}  // 팝업 열린 동안 목록 재생성 방지
+  _menuPopupOpen=true;  // 자동 새로고침 중단 — 팝업 열린 동안 목록 재생성 방지
   document.getElementById('genericAlertMsg').textContent=msg;
   document.getElementById('genericAlertOverlay').classList.add('open');
 }
 function closeGenericAlert(){
   document.getElementById('genericAlertOverlay').classList.remove('open');
-  if(workDate)_startMenuSSE(workDate);  // 팝업 닫히면 폴링 재개
+  if(workDate)_startMenuSSE(workDate);  // 팝업 닫히면 자동 새로고침 재개
 }
 function cancelOrder(id){
   showConfirm('이 주문을 취소할까요?',function(){
@@ -3420,6 +3426,7 @@ function startSSE(){
   _sse=new EventSource(API_URL+'/api/events');
   _sse.onopen=function(){
     _sseSetUI('on');
+    if(workDate)_maybeRefreshMenus(workDate);   // 끊겼다 재연결되는 사이 놓친 변경분 따라잡기
   };
   _sse.onmessage=function(e){
     try{
@@ -3428,6 +3435,12 @@ function startSSE(){
       // 새 주문·새 추가요청만 소리로 알린다 (상태변경 등 나머지 신호는 조용히 다시 그리기만)
       if(msg&&msg.type==='order_new')_notifyNewOrder();
       else if(msg&&msg.type==='order_request'&&msg.hasText)_notifyNewAddReq();
+      // 재고에 영향을 주는 신호(주문 발생·취소·수정, 다른 탭의 저장)면 오늘의 메뉴 목록도 갱신
+      if(msg&&msg.date&&(msg.type==='order_new'||msg.type==='order_status'||msg.type==='order_items')){
+        _maybeRefreshMenus(msg.date);
+      }else if(msg&&msg.type==='menu_daily_saved'&&Array.isArray(msg.dates)&&msg.dates.indexOf(workDate)>=0){
+        _maybeRefreshMenus(workDate);
+      }
       _debouncedRenderOrders();
     }catch(ex){}
   };

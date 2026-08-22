@@ -668,6 +668,8 @@ app.post('/api/menu/daily', requireAdmin, async (req, res) => { await withMenuWr
     }
     await conn.commit();
     conn.release();
+    // 같은 날짜를 보고 있는 다른 탭·다른 관리자가 3초 폴링 없이도 즉시 반영받도록
+    broadcast('menu_daily_saved', { dates });
     sysLog('daily_menu_save', '일일 메뉴 저장 — ' + dates.join(', ') + ' (' + list.length + '건)',
       { dates, count: list.length }, req.ip, deviceIdOf(req)).catch(() => {});
     ok(res, { sheets: dates.length, count: list.length });
@@ -1105,7 +1107,7 @@ app.put('/api/orders/:id/items', async (req, res) => {
 
       await conn.execute('UPDATE orders SET items=?, total=?, memo=? WHERE id=?', [JSON.stringify(items), total, finalMemo, req.params.id]);
       await conn.commit(); conn.release();
-      broadcast('order_items', { orderId: req.params.id });
+      broadcast('order_items', { orderId: req.params.id, date: orderDate });
       ok(res, { total });
       if (changeLines.length) {
         _appendOrderLog(req.params.id, changeLines);
