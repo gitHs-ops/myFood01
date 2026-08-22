@@ -308,11 +308,10 @@ app.get('/health', (req, res) => res.json({ ok: true, build: 'tracker-nolimit-1'
 // ══════════════════════════════════════════════════════════════
 
 // menu-manager.html의 전역 큐(_queueMenuWrite)는 같은 브라우저 탭 안에서만 저장 요청을
-// 순서대로 내보낸다 — 기기가 다르면(관리자 두 명이 동시에 저장) 서로 못 보고 그대로 부딪힌다.
-// /api/menu/all·daily는 항목 수만큼 UPDATE/INSERT를 반복하는 긴 트랜잭션이라, 두 개가 겹치면
-// 서로 다른 순서로 행을 잠가 데드락이 남(2026-08-22, 기기 2대에서 8초 간격으로 재현).
+// 순서대로 내보낸다. /api/menu/all·daily는 항목 수만큼 UPDATE/INSERT를 반복하는 긴
+// 트랜잭션이라, 이 둘이 서로(또는 스스로) 겹치면 행을 서로 다른 순서로 잠가 데드락이 남.
 // 프로세스가 하나(Procfile: web 1개, 클러스터 아님)이므로, 이 두 엔드포인트만 서버 안에서
-// 항상 하나씩 순서대로 실행되게 묶으면 기기 수와 무관하게 겹칠 일 자체가 없어진다.
+// 항상 하나씩 순서대로 실행되게 묶으면 최소한 이 둘끼리는 겹칠 일 자체가 없어진다.
 let _menuWriteChain = Promise.resolve();
 function withMenuWriteLock(fn) {
   const result = _menuWriteChain.then(fn, fn);
@@ -320,11 +319,29 @@ function withMenuWriteLock(fn) {
   return result;
 }
 
+// 위 락은 이 두 엔드포인트끼리의 충돌만 막는다 — 실제로는 고객 주문(/api/orders,
+// FOR UPDATE로 daily_menus 행을 카트 순서대로 잠금)과 겹쳐도 데드락이 날 수 있고, 그건
+// 관리자 저장을 고객 주문과 통째로 직렬화하지 않는 한(주문 지연 유발이라 안 함) 막을 수 없다.
+// InnoDB 데드락은 한쪽을 롤백시켜 "먼저 하나를 죽여서" 해소하는 정상 동작이라 매뉴얼도
+// 재시도를 권장한다 — 어차피 트랜잭션 전체가 롤백되므로 처음부터 다시 실행해도 안전하다.
+// 지금까지 이걸 관리자가 수동으로("저장 다시 누르기") 하고 있었는데, 여기서 짧게 자동
+// 재시도하면 그게 필요 없어진다.
+async function withDeadlockRetry(fn, retries = 2) {
+  for (let i = 0; ; i++) {
+    try { return await fn(); }
+    catch (e) {
+      if (e.code !== 'ER_LOCK_DEADLOCK' || i >= retries) throw e;
+      await new Promise(r => setTimeout(r, 80 + Math.random() * 120));
+    }
+  }
+}
+
 // 전체 메뉴 저장 (parse_onban_menu.py → POST /api/menu/all)
 app.post('/api/menu/all', requireAdmin, async (req, res) => { await withMenuWriteLock(async () => {
   try {
     const list = req.body.data || req.body;
     if (!Array.isArray(list) || !list.length) return err(res, '데이터 없음', 400);
+    await withDeadlockRetry(async () => {
     const conn = await pool.getConnection();
     await conn.beginTransaction();
     try {
@@ -372,6 +389,7 @@ app.post('/api/menu/all', requireAdmin, async (req, res) => { await withMenuWrit
       }
       throw e;
     }
+    });
   } catch(e) { err(res, e.message); }
 }); });
 
@@ -570,9 +588,10 @@ app.post('/api/menu/daily', requireAdmin, async (req, res) => { await withMenuWr
     // 목록이 비어도 date가 지정되면 해당 날짜를 빈 목록으로 저장(전체 삭제) 허용
     if (clearDate && !byDate[clearDate]) byDate[clearDate] = [];
 
+    const dates = Object.keys(byDate);
+    await withDeadlockRetry(async () => {
     const conn = await pool.getConnection();
     await conn.beginTransaction();
-    const dates = Object.keys(byDate);
     try {
     const catMap = await _resolveCatIds(conn, list.map(m => m.cat));
     for (const date of dates) {
@@ -661,6 +680,7 @@ app.post('/api/menu/daily', requireAdmin, async (req, res) => { await withMenuWr
       }
       throw e;
     }
+    });
   } catch(e) { err(res, e.message); }
 }); });
 
