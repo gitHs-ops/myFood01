@@ -1074,6 +1074,7 @@ function renderAcList(){
 }
 function pickAc(el){
   var val=el.getAttribute('data-val');
+  var cat=el.getAttribute('data-cat');  // 찾기 결과처럼 같은 이름이 여러 카테고리에 있을 때, 정확히 그 항목을 고르기 위함
   document.getElementById('acList').classList.remove('open');
   acIndex=-1;
   if(val==='__NEW__'){
@@ -1084,7 +1085,9 @@ function pickAc(el){
   }
   document.getElementById('menuName').value=val;
   checkDup(val);
-  var ref=allMenus.find(function(m){return m.name.trim()===val.trim();});
+  var ref=cat
+    ?allMenus.find(function(m){return m.name.trim()===val.trim()&&(m.cat||'기타')===cat;})
+    :allMenus.find(function(m){return m.name.trim()===val.trim();});
   if(ref){
     if(ref.price)document.getElementById('menuPrice').value=ref.price;
     if(ref.cat)document.getElementById('menuCat').value=ref.cat;
@@ -1094,7 +1097,9 @@ function pickAc(el){
   _updateAddMenuImg();
   document.getElementById('menuPrice').focus();
 }
-// 마스터+오늘 메뉴명 중 검색어를 포함하는 것들을 메뉴명 드롭다운으로 펼쳐서 고르게 함
+// 마스터+오늘 메뉴명 중 검색어를 포함하는 것들을 메뉴명 드롭다운으로 펼쳐서 고르게 함.
+// 카테고리 구분 없이 전체에서 찾다 보니 같은 이름이 여러 카테고리에 있을 수 있어(예: 메인/밀키트),
+// 표시할 때 "이름(카테고리)"로 구분하고, data-cat을 같이 심어 pickAc()가 정확한 항목을 찾게 한다.
 function searchAddMenu(e){
   if(e)e.stopPropagation();
   var inp=document.getElementById('addSearchInput');
@@ -1102,14 +1107,22 @@ function searchAddMenu(e){
   var kw=(inp.value||'').trim();
   if(!kw){showToast('검색어를 입력해주세요.');return;}
   var lc=kw.toLowerCase();
-  var names=acNames(false).filter(function(n){return n.toLowerCase().indexOf(lc)>=0;});
-  if(!names.length){showToast('"'+kw+'" 메뉴를 찾을 수 없어요.');return;}
+  var matches=allMenus.filter(function(m){return (m.name||'').toLowerCase().indexOf(lc)>=0;})
+    .map(function(m){return {name:m.name.trim(),cat:m.cat||'기타'};});
+  menus.forEach(function(m){
+    var nm=(m.name||'').trim(),mc=m.cat||'기타';
+    if(nm&&nm.toLowerCase().indexOf(lc)>=0&&!matches.some(function(x){return x.name===nm&&x.cat===mc;})){
+      matches.push({name:nm,cat:mc});
+    }
+  });
+  matches.sort(function(a,b){return a.name.localeCompare(b.name,'ko',{numeric:true});});
+  if(!matches.length){showToast('"'+kw+'" 메뉴를 찾을 수 없어요.');return;}
   document.getElementById('menuName').focus();  // focus가 먼저 onMenuNameInput→renderAcList를 태우므로, 검색 결과는 그 뒤에 덮어써야 함
   var list=document.getElementById('acList');
   acIndex=-1;
-  list.innerHTML=names.map(function(n){
-    var hi=n.split(kw).join('<em>'+kw+'</em>');
-    return '<div class="ac-item" data-val="'+n.replace(/"/g,'&quot;')+'" onmousedown="pickAc(this)">'+hi+'</div>';
+  list.innerHTML=matches.map(function(m){
+    var hi=m.name.split(kw).join('<em>'+kw+'</em>');
+    return '<div class="ac-item" data-val="'+m.name.replace(/"/g,'&quot;')+'" data-cat="'+m.cat.replace(/"/g,'&quot;')+'" onmousedown="pickAc(this)">'+hi+' <span style="color:#999;">('+m.cat+')</span></div>';
   }).join('');
   list.classList.add('open');
 }
