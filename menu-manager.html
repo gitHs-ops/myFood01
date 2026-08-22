@@ -987,7 +987,11 @@ function mergeToAllMenus(cb){
         if(m.icon)existing.icon=m.icon;
         existing.updatedAt=localTs;changed=true;
       }
-      existing.count=(existing.count||0)+1;changed=true;
+      // count(사용 횟수) 증가는 이제 /api/menu/daily 저장 시 서버가 직접 처리한다(server.js).
+      // 예전엔 여기서 count++ 하면서 매번 changed=true를 강제해, 정작 바뀐 내용이 없어도
+      // 저장 한 번에 마스터 카탈로그 전체(1300개+)를 /api/menu/all로 다시 보냈음 — 항목 수만큼
+      // 서버가 순차적으로 UPDATE/INSERT를 돌아야 해서 메뉴 1개만 저장해도 느렸던 원인
+      // (2026-08-22). 이제 실제로 이름·가격·카테고리 등 내용이 바뀌었을 때만 다시 보낸다.
     }
   });
   if(changed)saveAllMenus(cb);

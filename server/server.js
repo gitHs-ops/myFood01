@@ -624,17 +624,20 @@ app.post('/api/menu/daily', requireAdmin, async (req, res) => { await withMenuWr
         let menuId = m.menuId || null;
         if (menuId) {
           // menu_desc는 master 전용 — 일일 저장이 덮어쓰지 않음(정합성 보호)
+          // count(사용 횟수, AI 추천 정렬용)는 예전엔 클라이언트가 마스터 카탈로그 전체(1300개+)를
+          // 다시 보내는 방식(/api/menu/all)으로 갱신했음 — 항목 하나 늘리자고 매번 그 큰 걸 다
+          // 순회하는 게 느려서(2026-08-22), 여기서 이미 하는 UPDATE에 실어 서버가 직접 처리한다.
           await conn.execute(
-            `UPDATE menus SET name=?,cat=?,cat_id=?,price=?,child=?,img_url=?,updated_at=? WHERE id=?`,
+            `UPDATE menus SET name=?,cat=?,cat_id=?,price=?,child=?,img_url=?,updated_at=?,count=count+1 WHERE id=?`,
             [m.name, m.cat||'기타', catId, m.price||0, m.child?1:0, m.imgUrl||'', m.updatedAt||Date.now(), menuId]
           );
         } else {
           // 신규행만 desc 초기값 적용. 기존행(중복키) menu_desc는 보호(덮어쓰지 않음)
           await conn.execute(
-            `INSERT INTO menus (name,cat,cat_id,price,child,img_url,menu_desc,updated_at)
-             VALUES (?,?,?,?,?,?,?,?)
+            `INSERT INTO menus (name,cat,cat_id,price,child,img_url,menu_desc,updated_at,count)
+             VALUES (?,?,?,?,?,?,?,?,1)
              ON DUPLICATE KEY UPDATE cat=VALUES(cat),cat_id=VALUES(cat_id),price=VALUES(price),child=VALUES(child),
-               img_url=VALUES(img_url),updated_at=VALUES(updated_at)`,
+               img_url=VALUES(img_url),updated_at=VALUES(updated_at),count=count+1`,
             [m.name, m.cat||'기타', catId, m.price||0, m.child?1:0, m.imgUrl||'', m.desc||'', m.updatedAt||Date.now()]
           );
           // 이름만으로 찾으면 같은 이름의 다른 카테고리(예: 부대찌개 메인/밀키트)에 잘못 연결된다.
