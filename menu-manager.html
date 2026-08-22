@@ -522,7 +522,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
       <span>오늘의 메뉴 목록</span>
       <div style="display:flex;gap:6px;">
         <button id="saveTodayBtn" onclick="saveToday()" style="background:#086266;color:#fff;border:none;border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">💾 일일 메뉴 저장</button>
-        <button onclick="deleteToday()" style="background:#E9A826;color:#3A1D1D;border:none;border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🗑 일일 메뉴 삭제</button>
+        <button id="deleteTodayBtn" onclick="deleteToday()" style="background:#E9A826;color:#3A1D1D;border:none;border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">🗑 일일 메뉴 삭제</button>
       </div>
     </div>
     <div class="legend" id="catLegend"></div>
@@ -1347,6 +1347,7 @@ function _updateSaveBtn(){
   document.getElementById('floatSaveBtn').classList.remove('dirty');
 }
 function deleteToday(){
+  if(_blockIfSaving())return;
   if(!menus.length){showToast('이미 비어있어요.');return;}
   showConfirm(fmtDate(workDate)+'의 메뉴 '+menus.length+'개를 전부 삭제할까요?',function(){
     menus=[];
@@ -1406,6 +1407,7 @@ function _watchMenuListInteraction(){
 }
 
 function selectDate(iso){
+  if(_blockIfSaving())return;
   _editingPrice=false;   // 가격 편집 중 다른 날짜로 넘어가면 폴링이 영영 안 멈춰있지 않도록 리셋
   workDate=iso;
   document.getElementById('dateDisplayBtn').textContent=fmtDate(iso);
@@ -1473,6 +1475,7 @@ function addMenu(){
 }
 // 삭제는 로컬 목록에서만 빼고 서버엔 안 보낸다 — '일일 메뉴 저장'을 눌러야 반영된다(실시간 연동 폐지, 2026-08-20).
 function deleteMenu(id){
+  if(_blockIfSaving())return;
   var target=menus.find(function(m){return m.id===id;});
   if(!target)return;
   showConfirm('['+target.name+'] 메뉴를 삭제할까요?',function(){
@@ -1481,16 +1484,17 @@ function deleteMenu(id){
     _menuDirty=true;_updateSaveBtn();
   });
 }
-function changeStock(id,d){var m=menus.find(function(x){return x.id===id;});if(!m)return;m.stock=Math.max(-1,(m.stock||0)+d);touch(m);_menuDirty=true;_updateSaveBtn();renderMenuList();renderStats();}
+function changeStock(id,d){if(_blockIfSaving())return;var m=menus.find(function(x){return x.id===id;});if(!m)return;m.stock=Math.max(-1,(m.stock||0)+d);touch(m);_menuDirty=true;_updateSaveBtn();renderMenuList();renderStats();}
 // 가격 입력 중엔 배경 새로고침(_maybeRefreshMenus)이 목록을 통째로 다시 그려서 입력칸이
 // 사라지고 포커스가 날아가던 문제가 있었음(_menuDirty는 커밋 후에만 켜져서 편집 "중"은
 // 못 막았음). 편집을 시작하면 새로고침을 잠깐 막고, 끝나면(커밋/취소) 다시 켠다.
 var _editingPrice=false;
-function startEditPrice(id){_editingPrice=true;document.getElementById('pd_'+id).style.display='none';var inp=document.getElementById('pi_'+id);inp.style.display='inline-block';inp.focus();inp.select();}
+function startEditPrice(id){if(_blockIfSaving())return;_editingPrice=true;document.getElementById('pd_'+id).style.display='none';var inp=document.getElementById('pi_'+id);inp.style.display='inline-block';inp.focus();inp.select();}
 function commitPrice(id){var inp=document.getElementById('pi_'+id);var val=parseInt(inp.value)||0;if(!_checkPriceUnit(val)){inp.focus();return;}_editingPrice=false;var m=menus.find(function(x){return x.id===id;});if(m){m.price=val;touch(m);_menuDirty=true;_updateSaveBtn();}var disp=document.getElementById('pd_'+id);if(disp){disp.textContent=val.toLocaleString()+'천원';disp.style.display='';}inp.style.display='none';renderKakao();}
 function cancelPrice(id){_editingPrice=false;var m=menus.find(function(x){return x.id===id;});var inp=document.getElementById('pi_'+id);var disp=document.getElementById('pd_'+id);if(inp&&m)inp.value=m.price||0;if(disp)disp.style.display='';if(inp)inp.style.display='none';}
 
 function openImgPopup(id,ctx){
+  if(_blockIfSaving())return;
   imgCtx=ctx||'menus';
   imgTargetId=id;pendingImgUrl=null;
   var m=_arr(imgCtx).find(function(x){return x.id===id;});if(!m)return;
@@ -1585,6 +1589,7 @@ function deleteImg(){
 
 // ── 메뉴 편집 팝업 ──
 function openMenuEditPopup(id,ctx){
+  if(_blockIfSaving())return;
   editCtx=ctx||'menus';
   var m=_arr(editCtx).find(function(x){return x.id===id;});
   if(!m)return;
@@ -2034,12 +2039,24 @@ var _histLoadDate=null,_histSubTab='dates';
 // 동시에 안 보내고 순서대로 보낸다 — 둘 다 menus 테이블의 겹치는 행을 건드리는데 동시에
 // 보내면 서로 다른 순서로 락을 잡다가 데드락이 남(2026-08-20 실제 발생 확인).
 var _savingToday=false;
+// saveToday()가 실제로 서버에 보낼 목록(menus.map(...))은 저장 버튼을 누른 시점이 아니라
+// mergeToAllMenus→saveAllMenus(/api/menu/all) 왕복이 끝난 뒤에야 캡처된다. 그 사이(락 대기·
+// 데드락 재시도 때문에 몇 초 걸릴 수 있음)에 개별 삭제·재고±·가격수정·"일일 메뉴 삭제"·날짜
+// 이동으로 menus나 workDate를 건드리면, 방금 누른 저장이 그 바뀐(또는 비워진) 상태를 그대로
+// 보내버릴 수 있다 — 저장 버튼 자체만 막는 걸로는 부족함(2026-08-22, 사용자 지적으로 발견).
+// 저장 중엔 이 함수로 그런 동작들 입구에서 막는다.
+function _blockIfSaving(){
+  if(_savingToday){showToast('저장 중이에요. 잠시만 기다려주세요.');return true;}
+  return false;
+}
 function saveToday(){
   if(!menus.length){alert('저장할 메뉴가 없어요.');return;}
   if(_savingToday)return;
   _savingToday=true;
   var btn=document.getElementById('saveTodayBtn');
+  var delBtn=document.getElementById('deleteTodayBtn');
   if(btn){btn.disabled=true;btn.textContent='저장 중...';}
+  if(delBtn)delBtn.disabled=true;
   _menuDirty=false;
   _updateSaveBtn();
   mergeToAllMenus(function(){
@@ -2048,6 +2065,7 @@ function saveToday(){
     exportMenuToSheet(workDate,function(ok){
       _savingToday=false;
       if(btn){btn.disabled=false;btn.textContent='💾 일일 메뉴 저장';}
+      if(delBtn)delBtn.disabled=false;
       if(ok)showToast(fmtDate(workDate)+' 메뉴 저장 완료!');
       else showToast('⚠️ 저장 실패 — 다시 시도해주세요.');
       renderHistory();
