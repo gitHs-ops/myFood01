@@ -2238,7 +2238,7 @@ function renderAllMenus(){
   el.innerHTML=
     '<div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:8px;flex-wrap:wrap;">'+
       '<button id="mergeBtn" style="background:#7c3aed;color:#fff;border:none;border-radius:20px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:none;align-items:center;gap:4px;" onclick="openMergeModal()">🔀 병합</button>'+
-      '<button id="deleteAllBtn" style="background:#e53935;color:#fff;border:none;border-radius:20px;padding:7px 14px;font-size:12px;font-weight:700;cursor:not-allowed;opacity:.35;font-family:inherit;" disabled onclick="deleteSelectedAllMenus()">🗑 삭제하기</button>'+
+      '<button id="deleteAllBtn" style="background:#e53935;color:#fff;border:none;border-radius:20px;padding:7px 14px;font-size:12px;font-weight:700;cursor:not-allowed;opacity:.35;font-family:inherit;" disabled onclick="deleteSelectedAllMenus()">🗑 선택항목 삭제하기</button>'+
       '<button id="sendToTodayBtn" style="background:#1D9E75;color:#fff;border:none;border-radius:20px;padding:7px 14px;font-size:12px;font-weight:700;cursor:not-allowed;opacity:.35;font-family:inherit;display:inline-flex;align-items:center;gap:5px;" disabled onclick="openSendToTodayPopup()">📤 선택항목을 오늘의 메뉴로 보내기</button>'+
     '</div>'+
     pageCtrlHtml()+
