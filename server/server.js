@@ -307,8 +307,21 @@ app.get('/health', (req, res) => res.json({ ok: true, build: 'tracker-nolimit-1'
 // 메뉴 창고 (등록된모든메뉴)
 // ══════════════════════════════════════════════════════════════
 
+// menu-manager.html의 전역 큐(_queueMenuWrite)는 같은 브라우저 탭 안에서만 저장 요청을
+// 순서대로 내보낸다 — 기기가 다르면(관리자 두 명이 동시에 저장) 서로 못 보고 그대로 부딪힌다.
+// /api/menu/all·daily는 항목 수만큼 UPDATE/INSERT를 반복하는 긴 트랜잭션이라, 두 개가 겹치면
+// 서로 다른 순서로 행을 잠가 데드락이 남(2026-08-22, 기기 2대에서 8초 간격으로 재현).
+// 프로세스가 하나(Procfile: web 1개, 클러스터 아님)이므로, 이 두 엔드포인트만 서버 안에서
+// 항상 하나씩 순서대로 실행되게 묶으면 기기 수와 무관하게 겹칠 일 자체가 없어진다.
+let _menuWriteChain = Promise.resolve();
+function withMenuWriteLock(fn) {
+  const result = _menuWriteChain.then(fn, fn);
+  _menuWriteChain = result.then(() => {}, () => {});
+  return result;
+}
+
 // 전체 메뉴 저장 (parse_onban_menu.py → POST /api/menu/all)
-app.post('/api/menu/all', requireAdmin, async (req, res) => {
+app.post('/api/menu/all', requireAdmin, async (req, res) => { await withMenuWriteLock(async () => {
   try {
     const list = req.body.data || req.body;
     if (!Array.isArray(list) || !list.length) return err(res, '데이터 없음', 400);
@@ -360,7 +373,7 @@ app.post('/api/menu/all', requireAdmin, async (req, res) => {
       throw e;
     }
   } catch(e) { err(res, e.message); }
-});
+}); });
 
 // 마스터 단건 수정 (POST /api/menu/master/update)
 // 전체 목록 동기화(POST /api/menu/all)와 달리 딱 한 행만 갱신 — 다른 마스터 항목은 전혀 건드리지 않음
@@ -538,7 +551,7 @@ app.get('/api/menu/archive/:date', async (req, res) => {
 });
 
 // 날짜별 메뉴 일괄 저장 (POST /api/menu/daily)
-app.post('/api/menu/daily', requireAdmin, async (req, res) => {
+app.post('/api/menu/daily', requireAdmin, async (req, res) => { await withMenuWriteLock(async () => {
   try {
     const list = req.body.data || req.body;
     const clearDate = req.body.date || null;
@@ -649,7 +662,7 @@ app.post('/api/menu/daily', requireAdmin, async (req, res) => {
       throw e;
     }
   } catch(e) { err(res, e.message); }
-});
+}); });
 
 // 특정 날짜 재고 업데이트 (PUT /api/menu/:date/stock)
 app.put('/api/menu/:date/stock', requireAdmin, async (req, res) => {
