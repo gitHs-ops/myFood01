@@ -400,10 +400,20 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
 .name-edit:hover .edit-pen{opacity:1;}
 .edit-pen{font-size:12px;opacity:.4;margin-left:4px;transition:opacity .15s;}
 .menu-cb{width:16px;height:16px;accent-color:#086266;cursor:pointer;flex-shrink:0;margin-right:2px;}
+/* ── 일일 메뉴 저장 중 전체 차단 ── */
+/* 저장 왕복 도중 다른 동작(개별삭제·재고±·날짜/페이지이동 등)이 상태를 건드리면 저장이
+   바뀐 상태를 그대로 보내버릴 수 있어(2026-08-22), 저장 중엔 화면 전체를 막는다.
+   기존 팝업(최대 z-index 1000)보다 위에 둬서 이미 열려있던 팝업까지 같이 막는다.
+   "홈으로 가기"만 이 오버레이보다 z-index를 높여 예외로 둔다. */
+.saving-overlay{display:none;position:fixed;inset:0;background:rgba(255,255,255,.55);z-index:1500;align-items:center;justify-content:center;}
+.saving-overlay.open{display:flex;}
+.saving-overlay-msg{background:#086266;color:#fff;padding:12px 22px;border-radius:999px;font-size:14px;font-weight:700;box-shadow:0 4px 16px rgba(0,0,0,.15);}
+#homeLink{position:relative;z-index:1600;}
 </style>
 </head>
 <body>
-<div class="header"><h1><a href="index.html" style="color:inherit;text-decoration:none;cursor:pointer;display:inline-flex;align-items:center;gap:8px;" title="홈으로 가기"><img src="온반_로고.png" alt="온반" style="height:30px;mix-blend-mode:lighten;"></a></h1></div>
+<div class="saving-overlay" id="savingOverlay"><div class="saving-overlay-msg">💾 저장 중이에요. 잠시만 기다려주세요.</div></div>
+<div class="header"><h1><a id="homeLink" href="index.html" style="color:inherit;text-decoration:none;cursor:pointer;display:inline-flex;align-items:center;gap:8px;" title="홈으로 가기"><img src="온반_로고.png" alt="온반" style="height:30px;mix-blend-mode:lighten;"></a></h1></div>
 <div class="date-picker-wrap">
   <button class="date-nav-btn" onclick="moveDate(-1)">&#8249;</button>
   <div class="date-display-group">
@@ -2055,8 +2065,10 @@ function saveToday(){
   _savingToday=true;
   var btn=document.getElementById('saveTodayBtn');
   var delBtn=document.getElementById('deleteTodayBtn');
+  var overlay=document.getElementById('savingOverlay');
   if(btn){btn.disabled=true;btn.textContent='저장 중...';}
   if(delBtn)delBtn.disabled=true;
+  if(overlay)overlay.classList.add('open');
   _menuDirty=false;
   _updateSaveBtn();
   mergeToAllMenus(function(){
@@ -2066,6 +2078,7 @@ function saveToday(){
       _savingToday=false;
       if(btn){btn.disabled=false;btn.textContent='💾 일일 메뉴 저장';}
       if(delBtn)delBtn.disabled=false;
+      if(overlay)overlay.classList.remove('open');
       if(ok)showToast(fmtDate(workDate)+' 메뉴 저장 완료!');
       else showToast('⚠️ 저장 실패 — 다시 시도해주세요.');
       renderHistory();
