@@ -1035,18 +1035,25 @@ function acNames(useCat){
   names.sort(function(a,b){return a.localeCompare(b,'ko',{numeric:true});});
   return names;
 }
-// ▾ 버튼: 선택된 카테고리 기준 목록 표시
+// ▾ 버튼: 선택된 카테고리 기준 목록 표시. 이미 선택된 메뉴명이 있으면(찾기로 방금 고른 경우 등)
+// 그 항목을 강조 표시하고 보이는 위치로 스크롤해서, 목록 맨 위부터 다시 찾지 않게 한다.
 function toggleAcAll(e){
   if(e)e.preventDefault();
   var list=document.getElementById('acList');
   if(list.classList.contains('open')){closeAcList();return;}
   var names=acNames(true);
-  acIndex=-1;
+  var cur=(document.getElementById('menuName').value||'').trim();
+  var curIdx=cur?names.indexOf(cur):-1;
+  acIndex=curIdx>=0?curIdx+1:-1;  // +1: 맨 앞 "✨ 신 메뉴 입력" 항목만큼 밀림(onMenuNameKey와 같은 인덱싱)
   list.innerHTML='<div class="ac-item ac-item-new" data-val="__NEW__" onmousedown="pickAc(this)">✨ 신 메뉴 입력</div>'+
-    names.map(function(n){
-      return '<div class="ac-item" data-val="'+n.replace(/"/g,'&quot;')+'" onmousedown="pickAc(this)">'+n+'</div>';
+    names.map(function(n,i){
+      return '<div class="ac-item'+(i===curIdx?' active':'')+'" data-val="'+n.replace(/"/g,'&quot;')+'" onmousedown="pickAc(this)">'+n+'</div>';
     }).join('');
   list.classList.add('open');
+  if(curIdx>=0){
+    var activeEl=list.querySelector('.ac-item.active');
+    if(activeEl)activeEl.scrollIntoView({block:'nearest'});
+  }
 }
 var acIndex=-1;
 function renderDatalist(){renderAcList();}  // 하위호환 유지
