@@ -1334,7 +1334,10 @@ var _menuPollTimer=null;
 function _startMenuSSE(date){
   if(_menuPollTimer){clearInterval(_menuPollTimer);_menuPollTimer=null;}
   _menuPollTimer=setInterval(function(){
-    if(_menuDirty||_editingPrice||_menuListInteracting||!date)return;
+    // _menuDirty는 saveToday() 시작 시점에 바로 false로 꺼지는데(저장 요청 자체는 아직 진행 중),
+    // 그 사이에 폴링이 끼어들면 서버가 아직 커밋 전이라 옛날 목록을 그대로 받아와 덮어써버린다
+    // — 저장했는데 이전 목록이 되살아나는 것처럼 보이던 원인(2026-08-22). 저장 중엔 통째로 건너뛴다.
+    if(_menuDirty||_editingPrice||_menuListInteracting||_savingToday||!date)return;
     loadMenus(date,true);
   },3000);
 }
