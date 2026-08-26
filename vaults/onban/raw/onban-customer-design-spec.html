@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>온반(溫飯) 고객 페이지 상세설계서</title>
+<style>
+  body { font-family: "맑은 고딕", "Malgun Gothic", sans-serif; font-size: 11pt; line-height: 1.75; color: #1a1a1a; margin: 50px 70px; max-width: 900px; }
+  h1 { font-size: 22pt; font-weight: bold; color: #086266; text-align: center; margin-bottom: 4px; }
+  .subtitle { text-align: center; font-size: 11pt; color: #666; margin-bottom: 32px; }
+  h2 { font-size: 16pt; font-weight: bold; color: #086266; border-bottom: 2.5px solid #086266; padding-bottom: 5px; margin-top: 40px; margin-bottom: 14px; }
+  h3 { font-size: 12.5pt; font-weight: bold; color: #1a4a4a; margin-top: 24px; margin-bottom: 8px; }
+  h4 { font-size: 11pt; font-weight: bold; color: #333; margin-top: 16px; margin-bottom: 6px; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 18px; font-size: 10pt; }
+  th { background: #086266; color: #fff; padding: 8px 10px; text-align: left; font-weight: bold; vertical-align: top; }
+  td { padding: 7px 10px; border: 1px solid #cde8e7; vertical-align: top; }
+  tr:nth-child(even) td { background: #f4fafa; }
+  code { background: #eef6f5; color: #084e52; padding: 1px 6px; border-radius: 4px; font-family: "D2Coding","Consolas",monospace; font-size: 9.5pt; }
+  pre { background: #0c1414; color: #d8f0ef; padding: 14px 18px; border-radius: 8px; overflow-x: auto; font-family: "D2Coding","Consolas",monospace; font-size: 9pt; line-height: 1.55; margin: 12px 0; }
+  pre code { background: none; color: inherit; padding: 0; }
+  .note { background: #fffbea; border-left: 4px solid #E9A826; padding: 10px 14px; margin: 12px 0; font-size: 10pt; border-radius: 4px; }
+  .tip  { background: #f0faf9; border-left: 4px solid #086266; padding: 10px 14px; margin: 12px 0; font-size: 10pt; border-radius: 4px; }
+  .warn { background: #fff5f5; border-left: 4px solid #e05; padding: 10px 14px; margin: 12px 0; font-size: 10pt; border-radius: 4px; }
+  ol, ul { margin: 8px 0 8px 22px; }
+  li { margin-bottom: 5px; }
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 9pt; font-weight: bold; }
+  .badge-teal { background: #086266; color: #fff; }
+  .badge-get { background: #1D9E75; color: #fff; }
+  .badge-post { background: #E9A826; color: #fff; }
+  .badge-put { background: #378ADD; color: #fff; }
+  .badge-del { background: #C0392B; color: #fff; }
+  .toc-box { background: #f4fafa; border: 1.5px solid #9adcda; border-radius: 8px; padding: 16px 28px; margin-bottom: 36px; column-count: 2; }
+  .toc-box h3 { margin-top: 0; color: #086266; column-span: all; }
+  .toc-box a { color: #086266; text-decoration: none; }
+  .toc-box a:hover { text-decoration: underline; }
+  hr { border: none; border-top: 1px solid #e0f0ef; margin: 30px 0; }
+  .cover-info { text-align: center; margin-bottom: 40px; padding: 28px; background: linear-gradient(135deg, #086266, #0a7a7f); color: #fff; border-radius: 14px; }
+  .cover-info h1 { color: #fff; }
+  .cover-info .subtitle { color: rgba(255,255,255,0.82); }
+  .cover-info .meta { font-size: 10pt; color: rgba(255,255,255,0.72); margin-top: 18px; line-height: 1.7; }
+  .arch { background: #f9fffe; border: 1.5px solid #cde8e7; border-radius: 10px; padding: 18px; margin: 16px 0; font-family: "D2Coding","Consolas",monospace; font-size: 9pt; line-height: 1.7; white-space: pre; overflow-x: auto; color: #0c3a3c; }
+  .meta-table td:first-child { font-weight: bold; background: #f0faf9; width: 160px; }
+  .seq { background: #f9fffe; border: 1.5px dashed #9adcda; border-radius: 8px; padding: 14px 18px; margin: 12px 0; font-size: 10pt; }
+  .seq ol { counter-reset: step; list-style: none; margin-left: 0; }
+  .seq ol li { counter-increment: step; position: relative; padding-left: 30px; margin-bottom: 7px; }
+  .seq ol li::before { content: counter(step); position: absolute; left: 0; top: 0; background: #086266; color: #fff; width: 21px; height: 21px; border-radius: 50%; text-align: center; line-height: 21px; font-size: 9pt; font-weight: bold; }
+  .tag-mono { font-family:"D2Coding","Consolas",monospace; font-size:9.5pt; color:#084e52; }
+  .diagram { background:#fff; border:1.5px solid #cde8e7; border-radius:10px; padding:14px; margin:16px 0; overflow-x:auto; }
+  .diagram svg { display:block; min-width:680px; width:100%; height:auto; }
+  .dgm-cap { font-size:9.5pt; color:#666; text-align:center; margin-top:6px; }
+  .legend { font-size:9.5pt; color:#555; margin:6px 0 0; }
+  .legend span { display:inline-block; margin-right:16px; }
+  .legend i { display:inline-block; width:24px; height:0; border-top:2px solid #1a4a4a; vertical-align:middle; margin-right:5px; }
+  .legend i.dash { border-top:2px dashed #1a4a4a; }
+  .legend i.sse { border-top:2px dashed #E9A826; }
+  @media print { body { margin: 18mm 20mm; } h2 { page-break-after: avoid; } table, pre, .arch { page-break-inside: avoid; } .toc-box { column-count: 2; } }
+</style>
+</head>
+<body>
+
+<div class="cover-info">
+  <h1>🍱 온반(溫飯)</h1>
+  <div class="subtitle">고객 주문 페이지 — 상세설계서 (Detailed Design Specification)</div>
+  <div class="meta">
+    문서버전: v1.1 &nbsp;|&nbsp; 작성일: 2026년 6월 30일 (시퀀스·호출그래프 보강)<br>
+    대상 소스: <code style="color:#fff;background:rgba(255,255,255,.15);">onban01.html</code> (Frontend SPA) · <code style="color:#fff;background:rgba(255,255,255,.15);">server/server.js</code> (Backend API)<br>
+    참조 문서: 고객페이지_사용매뉴얼.html
+  </div>
+</div>
+
+<div class="toc-box">
+  <h3>📋 목차</h3>
+  <ol>
+    <li><a href="#s1">문서 개요</a></li>
+    <li><a href="#s2">시스템 아키텍처</a></li>
+    <li><a href="#s3">기술 스택 및 실행 환경</a></li>
+    <li><a href="#s4">화면(페이지) 설계</a></li>
+    <li><a href="#s5">프론트엔드 상태 관리</a></li>
+    <li><a href="#s6">데이터 모델 (DB 스키마)</a></li>
+    <li><a href="#s7">REST API 명세</a></li>
+    <li><a href="#s8">핵심 비즈니스 로직</a></li>
+    <li><a href="#s9">실시간 동기화 (SSE)</a></li>
+    <li><a href="#s10">외부 시스템 연동</a></li>
+    <li><a href="#s11">데이터 정합성·마이그레이션</a></li>
+    <li><a href="#s12">비기능 요구사항·보안</a></li>
+    <li><a href="#s13">시퀀스 다이어그램·호출 그래프</a></li>
+  </ol>
+</div>
+
+<hr>
+
+<!-- ════════════════ 1 ════════════════ -->
+<h2 id="s1">1. 문서 개요</h2>
+
+<h3>1.1 목적</h3>
+<p>본 문서는 온반(溫飯) "오늘의 반찬" 고객 주문 서비스의 고객용 프론트엔드와 이를 지원하는 백엔드 API의 내부 구조·데이터 흐름·비즈니스 로직을 상세히 기술하여, 유지보수·기능확장·장애대응의 기준 자료로 사용하는 것을 목적으로 한다.</p>
+
+<h3>1.2 범위</h3>
+<table>
+  <tr><th>구분</th><th>대상</th><th>설명</th></tr>
+  <tr><td>Frontend</td><td><code>onban01.html</code></td><td>고객 주문 단일 페이지 앱(SPA). 메뉴 조회·장바구니·주문·결제안내·주문내역·나의 기록 전 기능</td></tr>
+  <tr><td>Frontend</td><td><code>온반_메뉴_이미지갤러리.html</code></td><td>메뉴 사진 갤러리 + AI 추천메뉴. onban01.html과 딥링크로 연결되는 별도 페이지(2026-08 신설, 4.11~4.12절)</td></tr>
+  <tr><td>Backend</td><td><code>server/server.js</code></td><td>Express 기반 REST API + SSE 서버. 메뉴/주문/고객/설정 데이터 관리 + Anthropic API 연동(AI 추천)</td></tr>
+  <tr><td>DB</td><td>MySQL</td><td>9개 테이블 (daily_menus, menus, categories, orders, customers_master, settings, access_log, menu_click_log, recommend_selection_log)</td></tr>
+  <tr><td>제외</td><td>관리자 페이지</td><td><code>menu-manager.html</code> 등 관리자 화면은 본 설계서 범위 외 (API 공유 부분만 참조)</td></tr>
+</table>
+
+<h3>1.3 시스템 특징 요약</h3>
+<ul>
+  <li><strong>무(無)로그인 주문</strong> — 디바이스 식별자(<code>device_id</code>, UUID v4) 기반으로 주문자 정보를 자동 인식한다.</li>
+  <li><strong>단일 파일 SPA</strong> — 외부 프레임워크 없이 Vanilla JS로 페이지 전환(<code>.page.active</code> 토글) 방식으로 구현.</li>
+  <li><strong>실시간 동기화</strong> — SSE(Server-Sent Events)로 주문 상태 변경을 즉시 반영.</li>
+  <li><strong>이중 저장 모델</strong> — 주문 내역을 서버 DB(정본)와 <code>localStorage</code>(캐시·항목편집 작업본)에 동기 유지.</li>
+  <li><strong>동시성 안전 재고관리</strong> — 트랜잭션 + <code>SELECT ... FOR UPDATE</code>로 동시 주문 품절을 방지.</li>
+</ul>
+
+<hr>
+
+<!-- ════════════════ 2 ════════════════ -->
+<h2 id="s2">2. 시스템 아키텍처</h2>
+
+<h3>2.1 전체 구성도</h3>
+<div class="arch">┌──────────────────────────── 고객 브라우저 (Mobile Web) ─────────────────────────────┐
+│                                                                                      │
+│   onban01.html (SPA)                                                                 │
+│   ┌──────────┬──────────┬──────────┬──────────┬──────────┬──────────┐                │
+│   │ 메뉴목록  │ 장바구니  │ 주문자정보 │ 주문확인  │ 결제안내  │ 주문내역  │  ← .page 토글  │
+│   └──────────┴──────────┴──────────┴──────────┴──────────┴──────────┘                │
+│        │  localStorage: onban_device_id / orders                                     │
+└────────┼─────────────────────────────────────────────────────────────────────────────┘
+         │ fetch (REST / JSON)              ▲ EventSource (SSE: /api/events)
+         ▼                                  │
+┌──────────────────────── Railway: myfood01-production.up.railway.app ─────────────────┐
+│   server/server.js  (Express + cors + mysql2/promise)                                │
+│   ┌────────────────────────────────────────────────────────────────────────┐        │
+│   │ /api/menu/:date   /api/orders   /api/customers-master   /api/settings    │        │
+│   │ /api/events (SSE broadcast)     /api/menu/all   /api/log                 │        │
+│   └────────────────────────────────────────────────────────────────────────┘        │
+│        │ mysql2 connection pool (timezone +09:00, limit 10)                          │
+└────────┼──────────────────────────────────────────────────────────────────────────────┘
+         ▼
+   ┌─────────────── MySQL ───────────────┐         ┌────── Google Apps Script ──────┐
+   │ daily_menus · menus · orders         │         │ SMS(솔라피) / 카카오 알림톡 발송  │
+   │ customers_master · settings · log    │  ◀──────│  (고객 배송완료 알림 · 관리자 SMS) │
+   └──────────────────────────────────────┘         └────────────────────────────────┘</div>
+<div class="note">📌 <strong>이미지 갤러리 페이지</strong>(<code>온반_메뉴_이미지갤러리.html</code>)는 위 다이어그램의 <code>onban01.html</code>과 나란히 존재하는 별도 정적 페이지로, 같은 <code>API_URL</code>·같은 <code>onban_device_id</code>를 공유하며 상단 버튼/딥링크로 서로 이동한다. 서버 쪽은 <code>POST /api/recommend</code> 호출 시 Anthropic Messages API(<code>claude-sonnet-5</code>)를 추가로 연동한다(4.11~4.12절, 10.3절).</div>
+
+<h3>2.2 레이어 책임</h3>
+<table>
+  <tr><th>레이어</th><th>책임</th></tr>
+  <tr><td>Presentation (HTML/CSS)</td><td>모바일 우선 반응형 UI. onban01.html 8개 페이지 + 이미지 갤러리 페이지 + 모달(메뉴상세·주문상세·주소목록·품절알림·AI추천폼)</td></tr>
+  <tr><td>Client Logic (JS)</td><td>상태관리, 렌더링, API 호출, localStorage 동기화, SSE 수신, 알림 발송 트리거</td></tr>
+  <tr><td>API (Express)</td><td>라우팅, 입력 검증, 트랜잭션 제어, 재고 연산, SSE 브로드캐스트, AI 추천 프롬프트 구성</td></tr>
+  <tr><td>Data (MySQL)</td><td>영속 저장. 정규화된 메뉴 마스터(menus) + 일자별 스냅샷(daily_menus) + 고객 행동 로그(menu_click_log·recommend_selection_log)</td></tr>
+  <tr><td>External</td><td>Google Apps Script 경유 SMS·알림톡, Anthropic Messages API(AI 추천), Railway 정적 호스팅</td></tr>
+</table>
+
+<hr>
+
+<!-- ════════════════ 3 ════════════════ -->
+<h2 id="s3">3. 기술 스택 및 실행 환경</h2>
+
+<table class="meta-table">
+  <tr><td>Frontend</td><td>HTML5, CSS3, Vanilla JavaScript (ES5 호환 문법), Google Fonts(Noto Sans KR)</td></tr>
+  <tr><td>Backend</td><td>Node.js, Express 4, cors, mysql2/promise, dotenv</td></tr>
+  <tr><td>Database</td><td>MySQL (connection pool, <code>timezone:'+09:00'</code>, connectionLimit 10)</td></tr>
+  <tr><td>실시간</td><td>SSE(Server-Sent Events) — <code>text/event-stream</code>, 25초 heartbeat</td></tr>
+  <tr><td>호스팅</td><td>Railway (<code>https://myfood01-production.up.railway.app</code>), <code>Procfile</code> 기동</td></tr>
+  <tr><td>정적 서빙</td><td><code>express.static(repo 루트)</code> — HTML/이미지 파일 직접 서빙</td></tr>
+  <tr><td>외부 연동</td><td>Google Apps Script Web App (SMS 프록시 / 카카오 알림톡), Anthropic Messages API (AI 추천, <code>model:'claude-sonnet-5'</code>, <code>ANTHROPIC_API_KEY</code> 환경변수)</td></tr>
+  <tr><td>클라이언트 저장</td><td>localStorage는 <code>onban_device_id</code>(기기 식별, onban01.html·이미지갤러리 공통)와 <code>orders</code>(주문내역 캐시) 두 키뿐. 설정·계좌·관리자연락처·카테고리는 전부 서버가 원본이며 로컬에 저장하지 않는다(2026-08-08 정리)</td></tr>
+</table>
+
+<div class="note">📌 <strong>API_URL 상수</strong>: 프론트엔드는 <code>var API_URL='https://myfood01-production.up.railway.app'</code> 로 고정된 백엔드를 호출한다. 서버 포트는 <code>process.env.PORT || 3000</code>.</div>
+
+<hr>
+
+<!-- ════════════════ 4 ════════════════ -->
+<h2 id="s4">4. 화면(페이지) 설계</h2>
+
+<h3>4.1 페이지 전환 메커니즘</h3>
+<p>모든 페이지는 하나의 HTML 문서 안에 <code>&lt;div class="page"&gt;</code> 로 존재하며, <code>goPage(name)</code> 함수가 <code>.active</code> 클래스를 토글하여 표시 페이지를 전환한다(<code>display:none ↔ block</code>). 전환 시 해당 페이지의 렌더 함수를 호출하고 <code>window.scrollTo(0,0)</code> 한다.</p>
+
+<table>
+  <tr><th>page id</th><th>화면</th><th>진입 시 호출</th><th>렌더 함수</th></tr>
+  <tr><td><code>page-list</code></td><td>메뉴 목록</td><td>초기 active</td><td><code>renderCatTabs()</code>, <code>renderMenuGrid()</code></td></tr>
+  <tr><td><code>page-cart</code></td><td>장바구니</td><td><code>goPage('cart')</code></td><td><code>renderCart()</code> (+ 선택항목 flush)</td></tr>
+  <tr><td><code>page-orderer</code></td><td>주문자 정보</td><td><code>cartOrder()</code></td><td><code>renderOrdererPage()</code></td></tr>
+  <tr><td><code>page-order</code></td><td>주문 확인</td><td><code>goPage('order')</code></td><td><code>renderOrder()</code></td></tr>
+  <tr><td><code>page-payment</code></td><td>결제 안내</td><td>주문 확정 후</td><td><code>renderPayment()</code></td></tr>
+  <tr><td><code>page-history</code></td><td>주문 내역</td><td><code>goPage('history')</code></td><td><code>renderHistory()</code></td></tr>
+  <tr><td><code>page-reserve</code></td><td>예약 주문</td><td><code>goPage('reserve')</code></td><td><code>loadReserveMenus()</code>, <code>_renderReserveBar()</code></td></tr>
+  <tr><td><code>page-tracker</code></td><td>나의 기록</td><td><code>goPage('tracker')</code></td><td><code>renderTracker()</code> (2026-08 신설, 4.13절)</td></tr>
+</table>
+
+<div class="warn">⚠ <strong>주문상세 팝업 닫기 가드</strong>: 주문내역 상세 팝업에서 수량·배송방법을 편집한 뒤 저장하지 않고 닫으려 하면 <code>_closeOrderDetailGuarded()</code>가 공용 확인창을 띄운다 — <strong>저장하고 닫기</strong> 또는 <strong>되돌리고 닫기</strong>(<code>_revertHistOrder()</code>가 서버 값으로 다시 채움) 중 선택. <code>goPage()</code> 자체에는 페이지 전환 가드가 없다 — 가드는 오직 이 팝업의 닫기 동작(닫기 버튼·바깥 클릭)에만 걸린다.</div>
+
+<h3>4.2 상단 헤더 (공통)</h3>
+<p>검은색 sticky 헤더(<code>.top-bar</code>)에 로고·슬로건과 네비 버튼이 위치한다.</p>
+<table>
+  <tr><th>버튼</th><th>onclick</th><th>비고</th></tr>
+  <tr><td>메뉴 목록</td><td><code>goPage('list')</code></td><td>4-grid 아이콘</td></tr>
+  <tr><td>AI 추천메뉴</td><td><code>window.location.href='온반_메뉴_이미지갤러리.html?openRecommend=1'</code></td><td>갤러리 페이지의 AI 추천 팝업을 바로 오픈하는 딥링크(2026-08 신설, 4.12절)</td></tr>
+  <tr><td>설명서</td><td><code>window.open('고객페이지_사용매뉴얼.html')</code></td><td>새 탭으로 매뉴얼 오픈</td></tr>
+  <tr><td>장바구니</td><td><code>goPage('cart')</code></td><td><code>#cartCount</code> 뱃지 — 수량&gt;0 시 <code>.on</code> 표시</td></tr>
+  <tr><td>주문내역</td><td><code>goPage('history')</code></td><td>시계 아이콘</td></tr>
+  <tr><td>예약주문</td><td><code>goPage('reserve')</code></td><td>달력 아이콘 (4.9절)</td></tr>
+  <tr><td>나의 기록</td><td><code>goPage('tracker')</code></td><td>꺾은선 그래프 아이콘 (2026-08 신설, 4.13절)</td></tr>
+</table>
+
+<h3>4.3 메뉴 목록 페이지</h3>
+<h4>구성</h4>
+<ul>
+  <li><strong>날짜 배너</strong>(<code>#dateBanner</code>) — 오늘 날짜 라벨 + 자동갱신 카운트다운(<code>#dateRefreshCountdown</code>).</li>
+  <li><strong>카테고리 탭</strong>(<code>#catTabs</code>) — '전체' + 실제 존재하는 카테고리만 동적 생성. 어린이 메뉴 존재 시 '어린이' 탭 추가.</li>
+  <li><strong>메뉴 그리드</strong>(<code>#menuGrid</code>) — 카드 리스트. 메뉴 없을 시 <code>#noMenu</code> 표시.</li>
+</ul>
+<h4>메뉴 카드 렌더 규칙 (<code>renderMenuGrid()</code>)</h4>
+<table>
+  <tr><th>조건</th><th>표현</th></tr>
+  <tr><td><code>stock === -1</code></td><td>조리준비중 — 회색 태그, 선택 불가</td></tr>
+  <tr><td><code>stock === 0</code></td><td>품절 — <code>.soldout</code> (opacity 0.55), 선택 불가</td></tr>
+  <tr><td><code>0 &lt; stock ≤ 3</code></td><td>"⚠ N개 남음" 재고 태그(<code>.menu-stock-tag.low</code>)</td></tr>
+  <tr><td><code>child === true</code></td><td>왼쪽 노란 테두리(<code>.child-ok</code>) + 👧 태그</td></tr>
+  <tr><td>썸네일</td><td><code>icon</code> 또는 <code>imgUrl</code>이 유효 URL이면 이미지, 아니면 <code>getMenuEmoji()</code> 이모지</td></tr>
+  <tr><td>가격</td><td><code>comma(price)+'천원'</code> (단위: 천원)</td></tr>
+</table>
+<div class="tip">💡 <strong>썸네일/메뉴명 클릭</strong> → <code>showMenuModal(id)</code> 상세 팝업. <strong>체크박스 클릭</strong> → <code>selectedMenuIds</code> Set에 추가/제거 후 플로팅 버튼(<code>updateFloatCartBtn()</code>) 갱신.</div>
+
+<h4>이모지 매핑 (<code>getMenuEmoji</code>)</h4>
+<p>메뉴명에 포함된 키워드를 <code>_MENU_KW</code> 배열(약 180개 매핑: 삼계탕🐓, 불고기🥩, 고등어🐟 …)에서 순차 검색하여 첫 매칭 이모지를 반환. 미매칭 시 카테고리 기본 이모지(<code>CAT_EMOJI</code>)로 폴백. <strong>동일 매핑 테이블이 백엔드 마이그레이션 로직에도 중복 정의</strong>되어 있다.</p>
+
+<h3>4.4 메뉴 상세 팝업 (<code>showMenuModal</code>)</h3>
+<p>동적 생성 오버레이. 이미지·카테고리 배지·메뉴명·가격·설명·장바구니 버튼으로 구성. 이미지가 Pexels URL(<code>_isPexels</code>)이면 "임시 이미지" 배지 표시. 품절/조리준비중이면 버튼 비활성화(<code>.sold-out</code>).</p>
+
+<h3>4.5 장바구니 페이지 (<code>renderCart</code>)</h3>
+<table>
+  <tr><th>요소</th><th>동작</th></tr>
+  <tr><td>항목 체크박스</td><td><code>toggleCheck(i, v)</code> — 체크된 항목만 합계·주문 대상</td></tr>
+  <tr><td>−/+ 수량</td><td><code>cartQty(i, d)</code> — <code>Math.max(1, qty+d)</code></td></tr>
+  <tr><td>✕ 삭제</td><td><code>cartDel(i)</code> — <code>splice</code></td></tr>
+  <tr><td>합계/배달 안내</td><td>체크 합계 ≥ 20(천원) → "배달 가능(+1천원)", 미만 → 부족액 경고</td></tr>
+  <tr><td>전체선택/선택삭제/주문하기</td><td><code>toggleAll</code> / <code>delSelected</code> / <code>cartOrder</code></td></tr>
+</table>
+<div class="note">📌 장바구니 데이터(<code>cart[]</code>)는 메모리 변수로만 유지 — 새로고침 시 소실된다(매뉴얼 FAQ와 일치).</div>
+
+<h3>4.6 주문자 정보 페이지 (<code>renderOrdererPage</code>)</h3>
+<ul>
+  <li>진입 시 <code>device_id</code>로 <code>/api/customers-master</code> 조회 → 이름·전화·주소1 자동 채움(<code>_cachedMaster</code> 캐시).</li>
+  <li>입력: 이름(필수)·전화(필수)·배송주소(픽업 외 필수)·배송방법(셀렉트)·추가요청(최대 200자).</li>
+  <li>배송방법: 경비원실(기본)·문앞·택배함·현관직접수령·매장픽업.</li>
+  <li>주소 목록 버튼(<code>showAddrList</code>) — 이름+전화 입력 시 활성화. 저장 주소(addr1~3) 선택/수정.</li>
+  <li>확정 시 검증: 이름·전화 필수, 픽업 외 주소 필수, <strong>2만원 미만은 매장픽업만 허용</strong>.</li>
+</ul>
+
+<h3>4.7 결제 안내 페이지 (<code>renderPayment</code>)</h3>
+<p>진입 시 <code>/api/settings</code>에서 은행 계좌 정보(<code>banks</code>, primary 우선)를 최신 조회하여 <code>BANK</code> 갱신 후 렌더. 계좌번호 복사(<code>copyAccount</code> → clipboard), 입금 안내 문구 표시. (시트 조회 실패 시 임시 기본값 <code>국민은행/김현철/118210210117</code>.)</p>
+
+<h3>4.8 주문 내역 페이지 (<code>renderHistory</code> → <code>_doRenderHistory</code>)</h3>
+<ul>
+  <li><code>/api/orders?date=&deviceId=</code>(오늘자)와 <code>/api/orders?deviceId=&reservedForDevice=1</code>(이 기기의 예약일자 보유 주문 전체)을 <code>Promise.all</code>로 병렬 조회해 id 기준 병합한 뒤 <code>localStorage.orders</code>와 동기화한다. 예약주문이 접수(confirmed)되면 서버가 <code>date</code>를 예약일자로 갱신해 첫 번째 조회만으로는 누락되므로, 두 번째 조회로 보완한다.</li>
+  <li>서버 항목으로 status·memo·adminReply·additionalRequest·reserveDate·date를 갱신하되 <strong>items(수량)는 로컬 편집본 유지</strong>.</li>
+  <li>오늘자 "phantom 주문"(DB에 없는 로컬 전용 항목) 제거 — 예약일자 보유 항목은 date가 오늘이 아니므로 이 제거 대상에서 자연히 제외됨.</li>
+  <li>목록 표시 필터: <code>o.date===menuDate || !!o.reserveDate</code> — 오늘자 주문뿐 아니라 예약일자가 미래로 바뀐 접수완료 예약주문/예약이벤트도 함께 표시.</li>
+  <li>상태 뱃지: pending(대기중)·confirmed(주문접수)·delivered(배송완료)·cancelled(취소됨). 예약주문은 별도 status 값을 쓰지 않고 <strong>일반 주문과 동일한 상태 흐름</strong>을 따르며, <code>reserveDate</code>(예약일자)가 존재하는지만으로 판별해 타임스탬프 뒤에 빨간색 "예약주문 (MM/DD)" 라벨을 추가로 표시.</li>
+  <li>항목 클릭 → <code>openOrderDetail(id)</code> 상세 팝업(<code>_buildOrderCard</code>): 수량편집·삭제·배송방법수정·추가요청·저장·취소.</li>
+  <li><strong>저장</strong> 버튼(<code>histSaveItemsNow</code>)은 변경한 내용이 없으면 아무 요청도 보내지 않고 안내만 표시. 변경이 있으면 "변경된 내역으로 재주문하여도 괜찮아요?" 확인창을 띄우고, <strong>네</strong>를 눌러야 <code>PUT /api/orders/:id/items</code>로 반영되며 이때 한 번만 업주에게 변경 문자가 나간다(<code>_histDirty</code> 플래그로 저장 전까지는 화면에만 반영, 2026-08-08 재구현 — 예전엔 수량을 누를 때마다 자동 저장·자동 발송되어 문자가 남발됐음).</li>
+</ul>
+
+<h3>4.9 예약주문 페이지 (<code>goPage('reserve')</code>)</h3>
+<ul>
+  <li>마스터 메뉴 전체(<code>/api/menu/all</code>)를 카테고리 탭 + 페이지네이션(<code>_reservePage</code>)으로 조회, 카드 클릭으로 <code>_reserveSel</code>(Object, menuId→{qty 등})에 토글 선택.</li>
+  <li>1개 이상 선택 시 하단 플로팅 바(<code>#reserveSubmitBar</code>)가 <code>document.body</code>에 직접 부착되어 뷰포트 기준으로 항상 노출된다(스크롤에 밀려 화면 밖으로 사라지는 것을 방지하기 위해 페이지 내부가 아닌 body 직속으로 렌더). 페이지 이탈 시 명시적으로 제거.</li>
+  <li><strong>예약 주문 신청하기</strong> 클릭 → <code>openReservePopup()</code>: 예약 날짜 입력 범위를 <code>오늘+1일 ~ 오늘+7일</code>로 제한(<code>_reserveDateMin/Max</code>). 팝업 타이틀은 "예약주문", 하단 버튼은 <strong>저장</strong>(<code>submitReserveOrder</code>) / <strong>닫기</strong>(<code>closeReservePopup</code>) 2개로 구성.</li>
+  <li>입력 필드 순서·자동채움·주소 목록 로직은 주문자 정보 페이지(4.6)와 동일 컴포넌트를 공유하며, <code>_addrTarget</code>('orderer' | 'reserve') 전역값으로 대상 폼을 구분한다.</li>
+  <li>배달료 로직은 4.6과 동일(2만원 미만 매장픽업만, 이상 시 +1천원) — <code>_updateReserveTotal()</code>에서 실시간 계산 반영.</li>
+  <li>신청(<code>submitReserveOrder</code>) 시 주문 객체: <code>id:'RSV'+ts, status:'pending'(일반 주문과 동일), reserveDate, additionalRequest:요청사항 원문 그대로</code>. 예약 여부는 오직 <code>reserveDate</code> 필드로만 판별하며, status나 추가요청 텍스트에 별도 표식을 넣지 않는다.</li>
+</ul>
+
+<h3>4.10 예약 이벤트 카드 (<code>loadReserveEvent</code> / <code>_renderReserveEventCard</code>)</h3>
+<ul>
+  <li>데이터 저장 위치: 별도 테이블 없이 <code>settings</code> k-v(<code>/api/settings</code>)의 <code>reserveEvent</code> 키에 <code>{name, desc, price, deadline}</code> JSON으로 저장(관리자 설정 화면에서 입력).</li>
+  <li><code>loadReserveEvent()</code>가 <code>window.onload</code>와 <code>loadReserveMenus()</code> 양쪽에서 호출되어, 메뉴 목록 페이지·예약주문 페이지 어디서 진입해도 최신 이벤트 정보를 반영한다. <code>deadline</code>이 오늘보다 과거면 <code>_reserveEventData=null</code>로 카드가 숨겨진다.</li>
+  <li>카드 마크업은 <code>_renderReserveEventCard()</code> 한 곳에서 생성해 <code>#menuListEventCard</code>(오늘의 메뉴 페이지)와 <code>#reserveEventCard</code>(예약주문 페이지) 두 컨테이너에 동일하게 주입한다(배지+설명+기한 한 줄 요약, 두 위치 스타일 통일).</li>
+  <li>카드 클릭 → <code>_selectReserveEvent()</code>: <code>_reserveSel['EVENT']</code>에 <code>{id:'EVENT', name, cat:'이벤트', price, qty:1}</code>을 추가하고 즉시 <code>openReservePopup()</code> 호출. <code>#reserveOverlay</code>가 <code>position:fixed</code> 전역 오버레이라 페이지 이동 없이 어떤 화면에서 클릭하든 바로 예약 팝업이 뜬다.</li>
+  <li><strong>예약 날짜 범위 특례</strong>: <code>openReservePopup()</code>에서 <code>_reserveSel['EVENT']</code>가 있으면 <code>_reserveDateMin=이벤트 deadline</code>, <code>_reserveDateMax=deadline+7일</code>로 재계산한다(일반 예약주문의 "오늘+1~7일"과 다른 규칙). 날짜 입력 힌트(<code>#reserveDateHint</code>)와 유효성 오류 문구도 이벤트 여부에 따라 동적으로 바뀐다.</li>
+</ul>
+
+<h3>4.11 이미지 갤러리 페이지 (<code>온반_메뉴_이미지갤러리.html</code>)</h3>
+<p>onban01.html과는 별도의 정적 HTML 파일이다. 마스터 메뉴(<code>/api/menu/all</code>)를 사진 카드 그리드로 실시간 렌더링하며(<code>renderCards()</code>), onban01.html의 <strong>AI 추천메뉴</strong> 버튼(<code>?openRecommend=1</code> 쿼리) 또는 직접 접속으로 진입한다.</p>
+<table>
+  <tr><th>구성</th><th>설명</th></tr>
+  <tr><td>카드 렌더</td><td><code>cardHtml(m)</code> — 사진 없는 메뉴는 <code>.thumb-placeholder</code>(접시 이모지)로 대체. 카테고리 탭·전체검색·카테고리내검색은 onban01.html과 동일 UX</td></tr>
+  <tr><td>일반 클릭(비관리자)</td><td><code>openModal(card)</code> — 상세 팝업. 열람 시 <code>trackMenuClick()</code>으로 <code>menu_click_log</code>에 조회 이력 기록(4.13절, 6.2절 표 상세)</td></tr>
+  <tr><td>관리자 인증 시 클릭</td><td><code>isAdmin</code>(<code>localStorage.onban_admin_auth</code> 검사) 이면 상세 팝업 대신 <code>openEditPopup(card)</code> 인라인 편집 팝업 오픈 — menu-manager.html의 메뉴 편집 팝업과 동일 UI, <code>POST /api/menu/master/update</code> 단건 저장(7.1절, 관리자 상세설계서 12장 API 명세 교차 참조)</td></tr>
+  <tr><td>오늘의 메뉴 보기</td><td><code>todayBtn</code> — <code>todayMode</code>일 때 오늘 판매 중인 메뉴만 필터링, 품절 배지 표시</td></tr>
+  <tr><td>예약 주문 신청하기</td><td><code>reserveBtn</code> — 일반 모드에서는 카드 클릭 시 단건 예약(<code>onban01.html?openReserve=</code>), 추천 모드(아래 4.12절)에서는 체크된 다건을 <code>onban01.html?openReserveMulti=[...]</code>로 전달</td></tr>
+</table>
+<div class="note">📌 갤러리 전용 <code>.modal-overlay</code> 4개(상세·추천폼·편집)는 배경(overlay 자신) 영역에서 발생하는 <code>wheel</code>/<code>touchmove</code>를 <code>preventDefault</code>로 막아, 팝업이 열려있는 동안 바탕 페이지가 함께 스크롤되는 것을 방지한다. <code>_scrollLockCount</code> 카운터로 팝업이 겹쳐 열려도(추천폼→결과) 마지막 하나가 닫힐 때까지 <code>body{overflow:hidden}</code>을 유지한다.</div>
+
+<h3>4.12 AI 추천메뉴 (<code>#recommendOverlay</code>)</h3>
+<p>고객이 조건을 입력하면 서버가 Anthropic Messages API로 메뉴를 추천하는 기능이다. 팝업 상단에서 추천 범위를 먼저 고른다.</p>
+<table>
+  <tr><th>스코프(<code>rfScopeVal</code>)</th><th>메뉴 풀</th><th>설명</th></tr>
+  <tr><td><code>today</code></td><td><code>daily_menus</code>(오늘)</td><td>오늘 등록된 메뉴가 없으면 404 + "전체 메뉴중에서 추천 받기로 다시 시도" 안내</td></tr>
+  <tr><td><code>all</code></td><td><code>menus</code> 전체(count DESC)</td><td>지금까지 판매해온 전체 메뉴</td></tr>
+  <tr><td><code>persona</code></td><td><code>menus</code> 전체(<code>all</code>과 동일 쿼리)</td><td><strong>개인취향으로 추천받기</strong> — 8.9절 참고</td></tr>
+</table>
+<p>추천 조건 입력 항목(모두 선택式, 비워도 됨): 식사 목적·식사 형태·음식 종류·국물 유무·맛/매운정도(복수)·온도감·식단/칼로리(복수)·밀키트 여부·곁들일 음료(복수)·예산 범위·알레르기·비선호 재료(자유입력, 폼 맨 마지막 항목).</p>
+<ul>
+  <li><strong>실행</strong> 클릭 → <code>POST /api/recommend</code> 호출 중에는 중앙 토스트("AI가 메뉴를 고르는 중...")를 표시하고 <strong>실행</strong> 버튼을 비활성화한다.</li>
+  <li>성공(<code>picks.length&gt;0</code>) 시 <strong>별도 팝업을 띄우지 않고</strong> 같은 폼 하단(<code>#rfResult</code>)에 추천 이유 + <strong>메뉴 적용</strong>/<strong>취소</strong> 버튼을 노출하며 실행 버튼은 숨긴다. 팝업을 다시 열면 <code>openRecommendModal()</code>이 결과 영역을 초기화한다.</li>
+  <li>실패(picks 없음/에러) 시에는 중앙 토스트로 사유를 안내하고(<code>showGalleryToast</code>), 폼은 그대로 열려 있어 조건을 조정해 재시도할 수 있다.</li>
+  <li><strong>메뉴 적용</strong> → <code>applyRecommendMode(picks)</code>: 갤러리를 추천 메뉴만 보이는 선택모드(<code>.select-mode</code>)로 전환, 카드마다 체크박스가 나타나며 기본 전체 선택. 이 시점에 <code>trackRecommendApply()</code>로 <code>recommend_selection_log</code>에 조건·픽·이유를 기록(6.3/7.5절).</li>
+  <li><strong>취소</strong> → 추천을 적용하지 않고 카테고리·검색 상태를 초기화해 전체 메뉴 화면으로 되돌린다.</li>
+  <li>선택모드에서는 카드 전체를 클릭해도 체크박스가 토글된다(작은 체크박스 영역만 클릭 가능했던 이전 동작에서 개선).</li>
+</ul>
+
+<h3>4.13 나의 기록 페이지 (<code>page-tracker</code>, onban01.html)</h3>
+<p>고객이 본인 기기의 이용 이력을 조회하는 화면. 상단 <strong>나의 기록</strong> 버튼(<code>goPage('tracker')</code>) → <code>renderTracker()</code>가 두 API를 병렬 호출해 렌더링한다.</p>
+<table>
+  <tr><th>영역</th><th>데이터 출처</th><th>설명</th></tr>
+  <tr><td>📋 주문·예약 요약</td><td><code>GET /api/orders?deviceId=</code>(신규 호출 아님, 기존 API 재사용)</td><td>응답의 <code>reserveDate</code> 유무로 주문/예약 건수를 클라이언트에서 분리 집계</td></tr>
+  <tr><td>🎯 AI추천 선택 내역</td><td><code>GET /api/tracker/mine</code></td><td><code>recommend_selection_log</code> 최근 10건 — 스코프·픽 목록(칩)·추천 이유</td></tr>
+  <tr><td>👀 자주 살펴본 메뉴</td><td><code>GET /api/tracker/mine</code></td><td><code>menu_click_log</code>를 메뉴명별 COUNT로 집계해 상위 10개, 조회 횟수 순</td></tr>
+</table>
+<div class="tip">💡 주문·예약 데이터는 새 테이블을 만들지 않고 기존 <code>orders.device_id</code>를 그대로 재사용한다 — 이 화면을 위해 백엔드에 추가된 것은 <code>GET /api/tracker/mine</code> 하나뿐이다.</div>
+
+<hr>
+
+<!-- ════════════════ 5 ════════════════ -->
+<h2 id="s5">5. 프론트엔드 상태 관리</h2>
+
+<h3>5.1 전역 상태 변수</h3>
+<table>
+  <tr><th>변수</th><th>타입</th><th>역할</th></tr>
+  <tr><td><code>allMenus</code></td><td>Array</td><td>오늘 메뉴 목록(서버 조회 결과 + 로컬 id 부여)</td></tr>
+  <tr><td><code>filterCat</code></td><td>String</td><td>현재 카테고리 필터('전체'/'어린이'/카테고리명)</td></tr>
+  <tr><td><code>cart</code></td><td>Array</td><td>장바구니(메모리 전용)</td></tr>
+  <tr><td><code>selectedMenuIds</code></td><td>Set</td><td>목록 체크박스 선택 항목(빠른 담기)</td></tr>
+  <tr><td><code>orderItems</code></td><td>Array</td><td>주문 진행 중인 항목(체크된 장바구니 항목)</td></tr>
+  <tr><td><code>ordererInfo</code></td><td>Object</td><td>주문자 정보(name·phone·addr·memo·additionalRequest)</td></tr>
+  <tr><td><code>_deliveryFee</code></td><td>Number</td><td>배달료(0 또는 1천원)</td></tr>
+  <tr><td><code>lastOrderTotal</code></td><td>Number</td><td>결제화면에 표시할 최종 합계</td></tr>
+  <tr><td><code>menuDate</code></td><td>String</td><td>오늘 날짜(KST, ISO) — 주문/내역 필터 키</td></tr>
+  <tr><td><code>_histDirty</code></td><td>Object</td><td>주문내역 항목 미저장 편집 플래그(orderId→true). 저장 성공 또는 되돌리기 시 해당 키 삭제</td></tr>
+</table>
+
+<h3>5.2 localStorage 키</h3>
+<table>
+  <tr><th>키</th><th>내용</th></tr>
+  <tr><td><code>onban_device_id</code></td><td>UUID v4 디바이스 식별자(<code>_getDeviceId</code>). 최초 1회 생성·영구 보관</td></tr>
+  <tr><td><code>orders</code></td><td>주문 내역 캐시 배열. 페이지 진입 시 서버 값으로 동기화되며, 항목 편집 중인 미저장 작업본도 이 배열 안에 함께 보관(저장 또는 되돌리기 전까지)</td></tr>
+  <tr><td><code>onban_admin</code></td><td>관리자 연락처(추가 SMS 발송 대상)</td></tr>
+</table>
+<div class="note">💡 카테고리 색상(<code>CAT_COLOR</code> 오버라이드)은 2026-08-08부로 localStorage가 아니라 <code>GET /api/settings</code>의 <code>categories</code> 값에서 받는다(<code>loadCatColorsFromServer()</code>, 페이지 로드 시 호출). 예전엔 이 기기의 localStorage를 읽었는데, 그 값을 쓰는 코드가 관리자 화면(다른 기기)에만 있어 고객에게는 항상 기본색만 보이던 문제가 있었다.</div>
+
+<div class="warn">⚠ <strong>device_id 함수 중복</strong>: <code>getDeviceId()</code>(prefix <code>dev-</code> 방식)와 <code>_getDeviceId()</code>(표준 UUID v4)가 공존한다. 동일 키(<code>onban_device_id</code>)를 사용하되 생성 형식이 달라, 최초 호출 함수에 따라 형식이 결정된다. → 유지보수 시 통일 권장.</div>
+
+<h3>5.3 핵심 화면 흐름 (주문 시퀀스)</h3>
+<div class="seq">
+<ol>
+  <li>메뉴 목록에서 체크박스/팝업으로 <code>cart</code>에 담기 → <code>updateCartCount()</code></li>
+  <li>장바구니에서 항목 선택 후 "주문하기" → <code>cartOrder()</code>가 체크 항목을 <code>orderItems</code>로 복사 → <code>goPage('orderer')</code></li>
+  <li>주문자 정보 입력·검증 → "주문 확정하기"</li>
+  <li><code>verifyStock()</code> — <code>/api/menu/:date</code> 재조회로 실시간 재고 확인. 부족 시 <code>_notifyOutOfStock()</code> 후 중단</li>
+  <li><code>saveOrder()</code> — <code>POST /api/orders</code> (서버에서 트랜잭션 재고 차감). 성공 시 localStorage 기록</li>
+  <li>고객 알림톡 + 관리자 SMS 발송 → <code>goPage('payment')</code> → <code>loadMenus(true)</code> 재고 갱신</li>
+</ol>
+</div>
+
+<hr>
+
+<!-- ════════════════ 6 ════════════════ -->
+<h2 id="s6">6. 데이터 모델 (DB 스키마)</h2>
+
+<h3>6.1 ERD 개요</h3>
+<div class="arch">menus (메뉴 마스터, 정본)                 daily_menus (일자별 판매 스냅샷)
+  id (PK) ──────────────────────────┐        id (PK)
+  name, cat, price, stock            └──────  menu_id (FK→menus.id)   ← 정규화 링크
+  child, img_url, icon, menu_desc            date, name, cat, price
+  count, updated_at                          stock, child
+  UNIQUE(name, cat)                          INDEX(date), INDEX(menu_id)
+
+orders (주문)                              customers_master (고객 주소록)
+  id (PK, 'ORD'+ts / 'RSV'+ts)                id (PK)
+  date, time, name, phone, addr, memo        name, phone (UNIQUE)
+  items (JSON), total, status                addr1(필수), addr2, addr3
+  admin_reply, reply_at                      memo, device_id
+  additional_request, addreq_acked           created_at, updated_at
+  is_reorder, device_id, created_at
+  reserve_date (예약주문 전용, NULL 가능)
+
+settings (k-v 설정)                        access_log (접속 로그)
+  k (PK), v (TEXT/JSON)                       id, created_at, ip, referrer, page
+
+menu_click_log (메뉴 열람 이력, 신규)         recommend_selection_log (AI추천 적용 이력, 신규)
+  id (PK), device_id, menu_name, cat            id (PK), device_id, scope
+  created_at                                    conditions (JSON), picks (JSON)
+  INDEX(device_id)                              reason, created_at, INDEX(device_id)</div>
+
+<h3>6.2 테이블 상세</h3>
+
+<h4>menus — 메뉴 마스터(정본)</h4>
+<table>
+  <tr><th>컬럼</th><th>타입</th><th>설명</th></tr>
+  <tr><td>id</td><td>INT PK AI</td><td>메뉴 고유 키(진짜 식별자). 이름이 바뀌어도 동일 행 유지</td></tr>
+  <tr><td>name / cat</td><td>VARCHAR</td><td>메뉴명 / 카테고리. <code>UNIQUE(name,cat)</code></td></tr>
+  <tr><td>price</td><td>DECIMAL(6,1)</td><td>가격(천원 단위)</td></tr>
+  <tr><td>img_url</td><td>VARCHAR(1000)</td><td>실사진 URL(없으면 빈값)</td></tr>
+  <tr><td>icon</td><td>VARCHAR(1000)</td><td>이모지(URL 아님 — 이모지 전용으로 정규화됨)</td></tr>
+  <tr><td>menu_desc</td><td>TEXT</td><td>메뉴 설명(MySQL 예약어 회피 위해 <code>desc</code>→<code>menu_desc</code> rename)</td></tr>
+  <tr><td>count</td><td>INT</td><td>판매·등장 횟수(병합 시 우선순위·정렬 기준)</td></tr>
+</table>
+
+<h4>daily_menus — 일자별 판매 스냅샷</h4>
+<p>특정 날짜에 판매하는 메뉴와 그날의 <strong>재고(stock)</strong>를 보관. 정적 속성(이름·사진·설명)은 <code>menu_id</code>로 <code>menus</code>를 조인해 가져오고, <code>stock</code>만 daily에서 관리한다. <code>menu_id</code>가 없는 레거시 행은 <code>name</code> 조인으로 폴백.</p>
+
+<h4>orders — 주문</h4>
+<table>
+  <tr><th>컬럼</th><th>설명</th></tr>
+  <tr><td>id</td><td>VARCHAR PK — 클라이언트 생성 <code>'ORD'+Date.now()</code>(일반) / <code>'RSV'+Date.now()</code>(예약주문)</td></tr>
+  <tr><td>time</td><td>VARCHAR — 저장 형식이 생성 경로마다 다름: 일반 주문은 <code>toLocaleTimeString('ko-KR')</code> 기반 "오후 9:42"(12시간제+한글 오전/오후), 예약주문은 <code>toTimeString()</code> 기반 "21:41:57"(24시간제). 화면 표시 함수(<code>fmtDateTime</code>/<code>fmtDT</code>)가 "오전/오후"·"AM/PM" 표기를 먼저 감지해 24시간제로 정규화한 뒤 재변환하므로 두 형식 모두 정상 표시된다(과거엔 이 정규화가 없어 오후 시간이 AM으로 잘못 표시되는 버그가 있었음).</td></tr>
+  <tr><td>items</td><td>JSON — <code>[{menuId,name,qty,price}]</code></td></tr>
+  <tr><td>status</td><td>pending / confirmed / delivered / cancelled — 예약주문도 <strong>동일한 값만 사용</strong>(전용 상태 없음), <code>reserve_date</code> 유무로만 예약 여부를 구분</td></tr>
+  <tr><td>reserve_date</td><td>DATE NULL — 예약주문 전용 배송 희망일(오늘+1~7일). 접수(confirmed) 처리 시 <code>date</code> 컬럼이 이 값으로 갱신됨. 확정 이후에도 컬럼 자체는 유지되어 "이 주문이 예약 기원인지" 판별에 계속 사용됨</td></tr>
+  <tr><td>memo</td><td>배송방법(레거시 ' / ' 인라인 노트는 마이그레이션으로 분리)</td></tr>
+  <tr><td>additional_request / addreq_acked</td><td>고객 추가요청 원문 / 관리자 확인 플래그. 예약주문 여부와 무관하게 사용자가 입력한 텍스트만 저장(예약 판별용 접두 문구를 넣지 않음)</td></tr>
+  <tr><td>admin_reply / reply_at</td><td>관리자 답변 / 답변 시각(DATETIME). 답변 저장 시 줄바꿈은 <code>&lt;br&gt;</code> 마크업 문자열로 저장(줄바꿈 문자 아님). 2026-08-08부터 고객이 주문을 <strong>저장</strong>하거나 <strong>취소</strong>할 때 <code>[YYYY-MM-DD HH:MM] 변경내역</code> 형식의 로그가 이 필드에 자동으로 이어붙는다(<code>_appendOrderLog</code>) — 관리자 답변과 변경 이력이 같은 필드에 시각순으로 누적됨</td></tr>
+  <tr><td>is_reorder</td><td>레거시 컬럼. 재주문 기능이 프런트엔드에서 완전히 제거되어 이 값을 <code>true</code>로 보내는 코드가 더 이상 없음 — 항상 0으로 저장됨</td></tr>
+  <tr><td>device_id</td><td>주문 디바이스(내역 조회 키)</td></tr>
+  <tr><td>created_at</td><td>DATETIME — 실제 주문 생성 시각. <code>date</code>는 접수 시 예약일로 덮어써지므로, 화면에 "실제 신청 시각"을 표시할 땐 API 응답의 <code>createdDate</code>(created_at 기반)를 사용</td></tr>
+</table>
+
+<div class="note">📌 <strong>시간대 처리</strong>: 풀이 <code>timezone:'+09:00'</code>이라 DATE/DATETIME이 KST로 반환되며 toISOString 변환 시 9시간 보정(<code>toDateStr</code>, <code>toTS</code>)을 적용한다.</div>
+
+<h4>menu_click_log / recommend_selection_log — 고객 행동 로그(2026-08 신설)</h4>
+<p>둘 다 <code>device_id</code> 기준으로만 쌓이는 단순 append-only 로그다. <code>menu_click_log</code>는 갤러리 상세 팝업을 열 때마다 1행씩 기록되며(<code>menu_name, cat</code>), <code>recommend_selection_log</code>는 AI추천에서 <strong>메뉴 적용</strong>을 눌렀을 때만 1행 기록된다(<code>conditions</code>=입력 조건 JSON, <code>picks</code>=추천받아 적용한 메뉴 배열 JSON, <code>reason</code>=AI가 제시한 이유). 둘 다 <code>GET /api/tracker/mine</code>(7.5절)이 조회 전용으로 사용하며, 이 데이터를 보여주는 관리자용 조회 화면은 아직 없다(고객 본인의 "나의 기록"에서만 조회 가능, 4.13절).</p>
+
+<hr>
+
+<!-- ════════════════ 7 ════════════════ -->
+<h2 id="s7">7. REST API 명세</h2>
+
+<h3>7.1 메뉴</h3>
+<table>
+  <tr><th>메서드/경로</th><th>설명</th><th>주요 응답</th></tr>
+  <tr><td><span class="badge badge-get">GET</span> <span class="tag-mono">/api/menu/:date</span></td><td>특정 날짜 메뉴 조회(고객 메인). master 조인으로 정적속성 병합</td><td><code>{success,date,menus[]}</code></td></tr>
+  <tr><td><span class="badge badge-get">GET</span> <span class="tag-mono">/api/menu/all</span></td><td>전체 메뉴 마스터 조회</td><td><code>{success,menus[]}</code></td></tr>
+  <tr><td><span class="badge badge-get">GET</span> <span class="tag-mono">/api/dates</span></td><td>등록된 판매일 목록</td><td><code>{dates[]}</code></td></tr>
+  <tr><td><span class="badge badge-post">POST</span> <span class="tag-mono">/api/menu/all</span></td><td>마스터 일괄 저장(rename·동기화·삭제)</td><td>관리자/배치용</td></tr>
+  <tr><td><span class="badge badge-post">POST</span> <span class="tag-mono">/api/menu/daily</span></td><td>날짜별 메뉴 일괄 저장(날짜 단위 DELETE 후 재삽입)</td><td>관리자용</td></tr>
+  <tr><td><span class="badge badge-put">PUT</span> <span class="tag-mono">/api/menu/:date/stock</span></td><td>재고 절대값 설정</td><td>관리자용</td></tr>
+  <tr><td><span class="badge badge-post">POST</span> <span class="tag-mono">/api/menu/:date/stock-adjust</span></td><td>재고 증감(delta, <code>GREATEST(0,...)</code>)</td><td>관리자용</td></tr>
+  <tr><td><span class="badge badge-post">POST</span> <span class="tag-mono">/api/menu/master/merge·delete</span></td><td>마스터 병합 / 삭제(참조 차단·force)</td><td>관리자용</td></tr>
+  <tr><td><span class="badge badge-post">POST</span> <span class="tag-mono">/api/menu/master/update</span></td><td>마스터 메뉴 단건 수정(name·cat·price·stock·img_url·icon·menu_desc). <code>x-admin-token</code> 헤더 필요. 이미지 갤러리 페이지의 관리자 인라인 편집 팝업 전용 — <code>POST /api/menu/all</code>(전체 재동기화)과 달리 한 건만 안전하게 갱신한다(4.11절)</td><td>관리자용, 2026-08 신설</td></tr>
+</table>
+
+<h3>7.2 주문 (고객 핵심)</h3>
+<table>
+  <tr><th>메서드/경로</th><th>설명</th></tr>
+  <tr><td><span class="badge badge-get">GET</span> <span class="tag-mono">/api/orders?date=&deviceId=</span></td><td>주문 조회. deviceId 우선, 없으면 phone/name. created_at DESC. 응답 각 항목에 <code>reserveDate</code>, <code>createdDate</code>(실제 생성일) 포함</td></tr>
+  <tr><td><span class="badge badge-get">GET</span> <span class="tag-mono">/api/orders?reserved=1&reservedFrom=</span></td><td><strong>예약주문 전용 조회</strong> — <code>reserve_date IS NOT NULL AND status&lt;&gt;'cancelled' AND reserve_date&gt;=reservedFrom</code>(2026-08 수정: 취소 제외 전체 상태 조회로 완화 — 이전엔 confirmed만 조회되어 미확정 예약주문이 화면에서 누락되는 문제가 있었음). reserveDate ASC 정렬. 관리자 "메뉴 창고 &gt; 예약된 메뉴" 탭 + "주문 관리 &gt; 예약주문" 필터에서 사용</td></tr>
+  <tr><td><span class="badge badge-get">GET</span> <span class="tag-mono">/api/orders?createdOn=</span></td><td><code>status='confirmed' AND reserve_date IS NOT NULL AND DATE(created_at)=createdOn</code>인 주문 조회. 접수 시 date가 예약일로 바뀌어 일반 date 조회에서 누락되는, 해당 일자에 신청된 접수완료 예약주문을 보완 조회</td></tr>
+  <tr><td><span class="badge badge-get">GET</span> <span class="tag-mono">/api/orders?deviceId=&reservedForDevice=1</span></td><td><code>device_id=deviceId AND reserve_date IS NOT NULL</code>(status·date 무관) 조회. 고객 주문내역이 접수 후 date가 예약일자(미래)로 바뀐 자신의 예약주문/예약이벤트를 계속 확인할 수 있도록 <code>renderHistory()</code>에서 오늘자 조회와 병렬 호출 후 병합</td></tr>
+  <tr><td><span class="badge badge-post">POST</span> <span class="tag-mono">/api/orders</span></td><td>주문 생성 + <strong>트랜잭션 재고 차감</strong>. 기존 id면 status만 갱신. 재고부족 시 <code>{success:false,soldOut[]}</code>. <code>order.reserveDate</code>가 있으면(=예약주문) 재고 검증을 전체 스킵. 항목에 <code>menuId==='EVENT'</code>(예약 이벤트)가 포함되면, 같은 phone+reserve_date로 취소되지 않은 이벤트 주문이 이미 있는지 검사해 중복 시 <code>409</code> 에러 반환</td></tr>
+  <tr><td><span class="badge badge-put">PUT</span> <span class="tag-mono">/api/orders/:id/status</span></td><td>상태 변경. active→cancelled 시 재고 복원, cancelled→active 시 재차감. <strong>단, reserve_date가 있으면 재고 조작을 전부 스킵</strong>. status가 confirmed로 바뀌고 reserve_date가 있으면 date를 reserve_date로 갱신</td></tr>
+  <tr><td><span class="badge badge-put">PUT</span> <span class="tag-mono">/api/orders/:id/request</span></td><td>추가요청 저장</td></tr>
+  <tr><td><span class="badge badge-put">PUT</span> <span class="tag-mono">/api/orders/:id/memo</span></td><td>배송방법 저장</td></tr>
+  <tr><td><span class="badge badge-put">PUT</span> <span class="tag-mono">/api/orders/:id/reply</span></td><td>관리자 답변 저장(reply_at=NOW)</td></tr>
+  <tr><td><span class="badge badge-put">PUT</span> <span class="tag-mono">/api/orders/:id/addreq-ack</span></td><td>추가요청 확인 처리</td></tr>
+  <tr><td><span class="badge badge-del">DELETE</span> <span class="tag-mono">/api/orders/:id</span></td><td>주문 삭제</td></tr>
+</table>
+<div class="tip">💡 위 변경 API는 모두 처리 후 <code>broadcast(...)</code>로 SSE 이벤트를 발행하여 연결된 모든 클라이언트(고객·관리자)를 실시간 갱신한다.</div>
+
+<h3>7.3 고객 주소록 / 설정 / 기타</h3>
+<table>
+  <tr><th>메서드/경로</th><th>설명</th></tr>
+  <tr><td><span class="badge badge-get">GET</span> <span class="tag-mono">/api/customers-master?device_id=|phone=</span></td><td>device_id만 있으면 기기 자동인식, phone 있으면 device_id 자동 보강</td></tr>
+  <tr><td><span class="badge badge-post">POST</span> / <span class="badge badge-put">PUT</span> / <span class="badge badge-del">DELETE</span> <span class="tag-mono">/api/customers-master/:id</span></td><td>주소록 UPSERT(phone UNIQUE)·수정·삭제</td></tr>
+  <tr><td><span class="badge badge-get">GET</span> / <span class="badge badge-post">POST</span> <span class="tag-mono">/api/settings</span></td><td>k-v 설정 로드/저장(계좌·발송토글·예약 이벤트<code>reserveEvent</code> 등). JSON 자동 직렬화</td></tr>
+  <tr><td><span class="badge badge-get">GET</span> <span class="tag-mono">/api/events</span></td><td>SSE 연결(text/event-stream)</td></tr>
+  <tr><td><span class="badge badge-get">GET</span> <span class="tag-mono">/health</span></td><td>헬스체크 <code>{ok:true}</code></td></tr>
+  <tr><td><span class="badge badge-post">POST</span> <span class="tag-mono">/api/log</span></td><td>접속 로그 기록</td></tr>
+</table>
+
+<h3>7.4 AI 추천 / 고객 행동 로그 (2026-08 신설)</h3>
+<table>
+  <tr><th>메서드/경로</th><th>설명</th></tr>
+  <tr><td><span class="badge badge-post">POST</span> <span class="tag-mono">/api/recommend</span></td><td>AI 추천 실행. body: <code>{scope, deviceId, purpose, mealType, cuisine, broth, taste[], temp, diet[], mealKit, allergy, drinks[], budget}</code>. <code>ANTHROPIC_API_KEY</code> 미설정 시 503. <code>scope==='persona'</code>면 해당 <code>deviceId</code>의 <code>recommend_selection_log</code>·<code>menu_click_log</code>를 조회해 프롬프트에 취향 컨텍스트를 추가한다(8.9절). 응답 <code>{success,picks[],reason}</code>, 조건에 맞는 메뉴가 없으면 <code>404</code>+사유(<code>reason</code>)</td></tr>
+  <tr><td><span class="badge badge-post">POST</span> <span class="tag-mono">/api/track/menu-click</span></td><td>갤러리 상세 팝업 열람 기록. body: <code>{deviceId, name, cat}</code> → <code>menu_click_log</code> INSERT. 인증 불필요(무인증 공개 API), 실패해도 화면에 영향 없음(클라이언트가 fire-and-forget)</td></tr>
+  <tr><td><span class="badge badge-post">POST</span> <span class="tag-mono">/api/track/recommend-apply</span></td><td>AI추천 "메뉴 적용" 클릭 기록. body: <code>{deviceId, scope, conditions, picks[], reason}</code> → <code>recommend_selection_log</code> INSERT(conditions·picks는 JSON 직렬화 저장)</td></tr>
+  <tr><td><span class="badge badge-get">GET</span> <span class="tag-mono">/api/tracker/mine?deviceId=</span></td><td>"나의 기록" 화면용 조회. <code>recommend_selection_log</code> 최근 10건 + <code>menu_click_log</code> 메뉴별 COUNT 상위 10건을 함께 반환(<code>{success,recommendLogs[],topMenus[]}</code>). 주문·예약은 이 API가 아니라 기존 <code>/api/orders?deviceId=</code>로 조회(4.13절)</td></tr>
+</table>
+<div class="note">📌 위 4개 API는 모두 <strong>무인증 공개 API</strong>다. 12.2절 위험 목록("API 인증 부재")과 동일한 한계를 그대로 공유하며, <code>deviceId</code>는 클라이언트가 자체 생성한 값이라 서버가 소유권을 검증하지 않는다(추천/트래커는 개인정보가 아니므로 현재는 낮은 위험으로 판단, 필요 시 향후 device_id 소유 검증 추가 검토).</div>
+
+<h3>7.5 공통 응답 규약</h3>
+<pre><code>성공: { "success": true,  ...data }      // ok(res, data)
+실패: { "success": false, "error": msg } // err(res, msg, status)
+재고부족(주문): { "success": false, "soldOut": [{name, available}] }
+삭제차단(마스터): { "success": false, "blocked": true, "dates": [...] }</code></pre>
+
+<hr>
+
+<!-- ════════════════ 8 ════════════════ -->
+<h2 id="s8">8. 핵심 비즈니스 로직</h2>
+
+<h3>8.1 동시성 안전 재고 차감</h3>
+<p><code>POST /api/orders</code>는 트랜잭션 내에서 각 항목을 <code>SELECT stock ... FOR UPDATE</code>로 잠근 뒤 재고를 확인하고 차감한다. 한 건이라도 부족하면 전체 롤백 후 <code>soldOut</code> 반환. <code>menu_id</code> 우선, 없으면 <code>name</code> 폴백.</p>
+<pre><code>BEGIN
+  for item in items:
+     SELECT stock FROM daily_menus WHERE date=? AND menu_id=? FOR UPDATE
+     if stock < qty: soldOut.push(...)
+  if soldOut: ROLLBACK; return {success:false, soldOut}
+  for item in items:
+     UPDATE daily_menus SET stock = stock - qty WHERE ...
+  INSERT INTO orders (...)
+COMMIT → broadcast('order_new')</code></pre>
+<div class="warn">⚠ 클라이언트도 주문 확정 직전 <code>verifyStock()</code>로 1차 확인하지만, <strong>최종 정합성은 서버 트랜잭션이 보장</strong>한다(이중 방어). 클라이언트 검사 통과 후 서버에서 품절 시 <code>_notifyOutOfStock()</code>로 안내.</p></div>
+
+<h3>8.2 주문 상태 전이의 재고 정합성</h3>
+<table>
+  <tr><th>전이</th><th>재고 처리</th></tr>
+  <tr><td>active(pending/confirmed/delivered) → cancelled</td><td>재고 <strong>복원</strong> (stock + qty)</td></tr>
+  <tr><td>cancelled → active</td><td>재고 <strong>재차감</strong> (GREATEST(stock - qty, 0))</td></tr>
+</table>
+<div class="note">📌 예약주문(<code>reserve_date</code> 보유)은 이 표의 재고 연산을 전부 건너뛴다 — 8.6절 참고.</div>
+
+<h3>8.3 배달료·최소주문 정책</h3>
+<ul>
+  <li>배달료는 <strong>품목 합계 ≥ 20천원(2만원)</strong>이고 매장픽업이 아닐 때만 <strong>+1천원</strong>.</li>
+  <li><strong>2만원 미만 주문은 매장픽업만 허용</strong> — 주문 확정·내역 배송방법 변경 모든 지점에서 강제(<code>_updateDeliveryFee</code>, <code>histMemoSelChange</code>, <code>_updateHistTotal</code>).</li>
+  <li>내역에서 항목 삭제로 2만원 미만이 되면 배송방법을 매장픽업으로 자동 전환 + 경고.</li>
+</ul>
+
+<h3>8.4 주문내역 항목 편집의 "저장 확정" 모델</h3>
+<p>주문내역에서 수량 변경·항목 삭제·배송방법 변경은 <strong>화면(로컬 배열)에만 즉시 반영</strong>되고, 서버에는 <strong>저장</strong> 버튼을 눌러야 반영된다(<code>_histDirty[orderId]=true</code>로 편집 시작을 표시). 이렇게 바뀐 이유는 예전 구현이 수량 버튼을 누를 때마다 0.4초 디바운스 후 자동으로 <code>PUT /:id/items</code>를 호출했기 때문이다 — 여기에 업주 알림 문자를 붙이자 <strong>수량을 한 번 누를 때마다 문자가 나가는 문제</strong>가 드러나 2026-08-08에 저장-확정 모델로 재구현했다.</p>
+<ul>
+  <li><strong>저장</strong>(<code>histSaveItemsNow</code>): <code>_histDirty</code>가 없으면(변경 없음) 아무 요청도 보내지 않음. 있으면 확인창 → 확인 시 <code>PUT /api/orders/:id/items</code>로 서버가 재고·합계를 재계산해 반영, 성공 시 <code>_histDirty</code> 삭제.</li>
+  <li><strong>저장하지 않고 닫기</strong>: <code>_closeOrderDetailGuarded()</code>가 "저장하고 닫기" / "되돌리고 닫기" 확인창을 띄운다. 되돌리기는 <code>_revertHistOrder()</code>가 서버에서 그 주문을 다시 조회해 로컬 배열을 덮어쓰는 방식 — 스냅샷을 따로 들고 있지 않고 항상 서버가 원본이다.</li>
+  <li>주문을 취소하면 <code>_histDirty</code> 플래그도 함께 제거되어, 취소된 주문을 다시 열어도 엉뚱한 확인창이 뜨지 않는다.</li>
+</ul>
+
+<h3>8.5 메뉴 자동 갱신</h3>
+<p><code>_startMenuAutoRefresh()</code>가 1초 인터벌로 카운트다운하여, 메뉴 목록이 활성이고 모달이 닫혀있고 탭이 보일 때 10초마다 <code>loadMenus(true)</code> 재조회. 사용자 활동(click/scroll/key/touch)이 있으면 카운트를 리셋(<code>_markMenuActivity</code>).</p>
+
+<h3>8.6 예약주문의 재고 예외 처리</h3>
+<p>예약주문은 <strong>배송 희망일이 미래</strong>이므로, 재고 검증 대상에서 완전히 제외된다. 예약주문 여부는 <strong>오직 <code>reserve_date</code> 컬럼이 NULL이 아닌지</strong>로만 판별하며, status 값이나 추가요청 텍스트는 판별에 전혀 관여하지 않는다(과거엔 status==='예약주문' / additionalRequest 텍스트 매칭도 병행했으나, 신호가 여러 개라 혼란을 유발해 <code>reserve_date</code> 단일 기준으로 정리함).</p>
+<div class="tip">💡 <code>reserve_date</code>는 접수(confirmed) 이후에도, 심지어 배송완료·취소 이후에도 컬럼값이 유지되므로, 주문의 생애주기 전체에서 예약 기원 판별이 흔들리지 않는다.</div>
+
+<h3>8.7 예약 이벤트 날짜 범위·중복 신청 방지</h3>
+<ul>
+  <li><strong>날짜 범위</strong>: <code>_reserveSel['EVENT']</code>가 선택된 상태로 <code>openReservePopup()</code>이 호출되면 <code>_reserveDateMin=이벤트 deadline</code>, <code>_reserveDateMax=deadline+7일</code>로 재계산된다. 일반 예약주문(오늘+1~7일)과 달리 이벤트의 예약 가능일은 <strong>기한일 이후 1주일</strong>로 별도 규칙을 따른다.</li>
+  <li><strong>중복 방지</strong>: <code>POST /api/orders</code>에서 <code>items</code>에 <code>menuId==='EVENT'</code> 항목이 있으면, 같은 <code>phone</code>+같은 <code>reserve_date</code>로 <code>status!='cancelled'</code>인 기존 이벤트 주문이 있는지 조회한다(항목의 <code>menuId</code>를 JS에서 JSON 파싱 후 비교). 발견되면 INSERT 이전에 <code>409</code>로 거부 — 같은 고객이 같은 이벤트를 같은 날짜로 중복 신청하는 것을 막는다. 다른 날짜거나 일반 메뉴 예약은 이 검사 대상이 아니다.</li>
+</ul>
+
+<h3>8.8 갤러리 → 예약주문 다건 연결 (<code>openReserveMulti</code>)</h3>
+<p>갤러리의 AI추천 선택모드에서 체크된 메뉴 이름 배열을 <code>onban01.html?openReserveMulti=[...URL 인코딩된 JSON 배열...]</code> 쿼리로 전달한다. onban01.html의 <code>window.onload</code>가 이 쿼리를 파싱해 <code>_selectReserveItemsByNames(names)</code>를 호출 — 각 이름을 <code>_reserveAllMenus</code>에서 찾아 <code>_reserveSel</code>에 채운 뒤 예약주문 페이지로 이동하고 팝업까지 자동으로 연다. 기존 단건 딥링크(<code>?openReserve=</code>)는 이 함수의 1건짜리 호출로 재구현되어 하위호환을 유지한다.</p>
+
+<h3>8.9 개인취향(persona) 추천 로직</h3>
+<p><code>POST /api/recommend</code>에서 <code>scope==='persona'</code>이고 <code>deviceId</code>가 있으면, 메뉴 목록 자체는 <code>scope==='all'</code>과 동일한 전체 마스터 쿼리를 쓰되(즉 "오늘 등록 여부"에 제한받지 않음), 프롬프트에 다음 컨텍스트를 추가한다:</p>
+<ul>
+  <li><code>menu_click_log</code>를 <code>device_id</code>로 GROUP BY하여 조회 횟수 상위 5개 — "자주 살펴본 메뉴"</li>
+  <li><code>recommend_selection_log</code>에서 최근 5건의 <code>picks</code>를 모아 중복 제거 — "과거 AI추천에서 실제로 선택했던 메뉴"</li>
+</ul>
+<p>두 데이터가 모두 없는 신규 고객이면(아직 이력이 안 쌓인 상태) "인기 있는 메뉴 위주로 추천해주세요"라는 폴백 지시만 프롬프트에 추가되어, <strong>일반 추천과 사실상 동일하게 자연스러운 결과</strong>가 나온다. 폼에 입력한 다른 조건(식사 목적·예산 등)은 persona 스코프에서도 동일하게 함께 적용된다.</p>
+
+<hr>
+
+<!-- ════════════════ 9 ════════════════ -->
+<h2 id="s9">9. 실시간 동기화 (SSE)</h2>
+<p>클라이언트는 <code>window.onload</code>에서 <code>_startSSE()</code>로 <code>EventSource(API_URL+'/api/events')</code> 연결. 서버는 변경 API마다 <code>broadcast(type, payload)</code>로 모든 연결에 이벤트 전송. 클라이언트는 수신 시 <code>_debouncedRenderHistory()</code>(500ms 디바운스)로 주문내역을 갱신한다.</p>
+<table>
+  <tr><th>이벤트 type</th><th>발행 시점</th></tr>
+  <tr><td><code>order_new</code></td><td>주문 생성</td></tr>
+  <tr><td><code>order_status</code></td><td>상태 변경</td></tr>
+  <tr><td><code>order_request / order_memo / order_reply / order_ack / order_delete</code></td><td>각 항목 변경</td></tr>
+</table>
+<ul>
+  <li>서버: 25초 heartbeat(<code>:\n\n</code>)로 Railway 타임아웃 방어, <code>X-Accel-Buffering:no</code> 설정.</li>
+  <li>클라이언트: <code>onerror</code> 시 close 후 5초 뒤 자동 재연결.</li>
+  <li>입력 중(textarea/input focus)이면 재렌더를 blur 시점까지 지연하여 입력 방해 방지.</li>
+</ul>
+
+<hr>
+
+<!-- ════════════════ 10 ════════════════ -->
+<h2 id="s10">10. 외부 시스템 연동</h2>
+<h3>10.1 SMS / 카카오 알림톡</h3>
+<p>Google Apps Script Web App을 프록시로 사용한다(<code>gasUrl</code>은 서버 DB <code>settings</code>에만 저장, 서버 코드에서만 조회 — 프론트엔드에 노출되지 않음).</p>
+<div class="warn">⚠ 2026-08-08 발견·해결: 실제 운영 DB에 <code>gasUrl</code> 값 자체가 없어서 알림톡·SMS가 <strong>한 통도 발송되지 않고 있었다</strong>. 저장하는 코드가 프로젝트 어디에도 없었고, 발송 실패가 기록되지 않아 오랫동안 아무도 몰랐다. <code>settings.lastNotify</code>(발송 결과·실패 사유)·<code>lastNotifyTrigger</code>(어떤 주문의 어떤 상태에서 시도했는지)를 새로 기록하도록 만든 뒤에야 원인(주소 누락 + 솔라피 API 키의 IP 제한)을 찾아 해결했다.</div>
+<table>
+  <tr><th>시점</th><th>고객 알림톡</th><th>업주 SMS</th></tr>
+  <tr><td>주문 접수</td><td>기본 비활성 (아래 참고)</td><td>발송 — 새 주문 요약</td></tr>
+  <tr><td>접수완료 / 취소(관리자 처리)</td><td>기본 비활성</td><td>—</td></tr>
+  <tr><td><strong>배송완료</strong></td><td><strong>발송</strong></td><td>—</td></tr>
+  <tr><td>고객이 주문 저장(수량 등 변경)</td><td>—(<code>admin_reply</code>에 변경내역 기록으로 대체)</td><td>발송 — 변경 내역 + 현재 주문 상태</td></tr>
+  <tr><td>고객이 주문 취소</td><td>—</td><td>발송</td></tr>
+  <tr><td>배송업체 요청</td><td colspan="2">실제 업무에서 쓰지 않음. <code>settings.deliveryPhone</code>을 비워두면 발송 안 됨(코드는 남아있으나 운영에서 미사용)</td></tr>
+</table>
+<div class="note">📌 <strong>고객 알림톡을 주문 시점에 보내지 않는 이유</strong>: 알림톡은 카카오 채널 대화방에 도착하는데, 고객이 그 자리에서 답장하면 시스템 이전의 "카톡으로 주문받던" 방식으로 되돌아간다. 그래서 거래가 끝난 <strong>배송완료 시점만</strong> 기본 활성화했다. 설정은 <code>settings.notifyEvents</code>(배열, 기본값 <code>["delivered"]</code>)로 제어하며, <code>order</code>/<code>confirmed</code>/<code>cancelled</code>/<code>reply</code>를 추가하면 해당 시점도 함께 발송된다.</div>
+<table>
+  <tr><th>함수</th><th>역할</th></tr>
+  <tr><td><code>_sms(phone,msg,url,ns)</code></td><td>SMS(GAS 경유). <code>smsEnabled</code> 토글로 전체 on/off. 받는 번호가 비어있으면 그 문자만 발송 안 됨(전체를 끄지 않아도 배송업체 번호만 비워 그 문자만 막을 수 있음)</td></tr>
+  <tr><td><code>_alimtalk(phone,tplId,vars,fallback,url,ns)</code></td><td>카카오 알림톡. <code>alimtalkEnabled</code> 토글 + <code>notifyEvents</code> 시점 필터를 모두 통과해야 발송</td></tr>
+  <tr><td><code>_appendOrderLog(orderId,lines)</code></td><td>주문 변경·취소 내역을 <code>admin_reply</code>에 시각과 함께 누적 기록(거래 증명용). 고객 주문내역 화면에도 그대로 보인다</td></tr>
+  <tr><td><code>_notifyOwnerChange(orderId,label,lines)</code></td><td>업주에게 "지금 상태"로 SMS 재발송 — 최초 주문 문자와 실제 주문이 달라져 입금 대조가 안 되는 문제를 막기 위함</td></tr>
+</table>
+<div class="note">📌 <strong>보안 점검 결과(해결됨)</strong>: 과거에는 Apps Script URL·관리자 전화번호·계좌 기본값이 프론트엔드에 하드코딩되어 있었으나, 현재는 모두 서버 DB <code>settings</code> 테이블에서 동적으로 조회하도록 정리되었다. <code>gasUrl</code>·<code>adminPhone</code>·<code>deliveryPhone</code>은 서버 코드(server.js)에서만 다루고 클라이언트에는 응답하지 않으며, 계좌 정보(<code>BANK</code>)는 초기값이 빈 문자열로 항상 <code>/api/settings</code> 조회 결과로 채워진다.</div>
+
+<h3>10.2 결제</h3>
+<p>온라인 PG 미사용. <strong>계좌이체 수동 결제</strong> — 결제화면에서 계좌 안내 후 고객이 직접 이체, 관리자가 입금 확인 시 상태를 confirmed로 변경.</p>
+
+<hr>
+
+<!-- ════════════════ 11 ════════════════ -->
+<h2 id="s11">11. 데이터 정합성 · 마이그레이션</h2>
+<p>서버 기동 시 <code>initDB()</code>는 <code>CREATE TABLE IF NOT EXISTS</code>로 테이블을 생성한다. 과거에는 <code>settings</code> 테이블의 플래그 키로 스키마 변경·데이터 보정용 1회성 마이그레이션들(menu_id 정규화, icon 컬럼 도입, img_url 보강, 중복 메뉴 병합, customers_master 컬럼 정리 등)을 실행했으나, 운영 DB에 모두 반영 완료되어 <strong>더 이상 필요 없으므로 코드에서 전부 제거</strong>했다. 이후 스키마 변경이 필요하면 <code>CREATE TABLE</code> 정의 자체에 반영하거나, 필요 시점에 한해 별도 스크립트로 처리한다.</p>
+
+<hr>
+
+<!-- ════════════════ 12 ════════════════ -->
+<h2 id="s12">12. 비기능 요구사항 · 보안 고려사항</h2>
+
+<h3>12.1 비기능 요구사항</h3>
+<table>
+  <tr><th>항목</th><th>설계</th></tr>
+  <tr><td>성능</td><td>단일 HTML, 메뉴 조회 <code>cache:'no-store'</code>, 자동갱신 10초. DB 풀 10 커넥션</td></tr>
+  <tr><td>가용성</td><td>SSE 자동 재연결(5초), 25초 heartbeat. API 실패 시 UI 폴백·재시도 버튼</td></tr>
+  <tr><td>반응형</td><td>모바일 우선. viewport meta, 가로 스크롤 탭, 바텀시트 모달</td></tr>
+  <tr><td>오프라인 내성</td><td>주문내역 localStorage 캐시로 네트워크 오류 시에도 최근 내역 표시</td></tr>
+  <tr><td>확장성</td><td>menu_id 정규화로 메뉴명 변경·중복 병합에 안전</td></tr>
+</table>
+
+<h3>12.2 식별된 위험 및 개선 권고</h3>
+<table>
+  <tr><th>위험</th><th>현황</th><th>권고</th></tr>
+  <tr><td>민감정보 노출</td><td>Apps Script URL·관리자 전화·계좌 기본값 모두 DB settings 조회로 전환 완료(클라이언트 미노출) — <strong>해결됨</strong></td><td>완료. 관리자 비밀번호(ADMIN_PW)·ImgBB API Key는 여전히 JS 소스 평문이므로 별도 개선 필요(관리자 상세설계서 13장 참조)</td></tr>
+  <tr><td>API 인증 부재</td><td>모든 API가 무인증. 주문 변경·삭제도 누구나 호출 가능</td><td>최소한 device_id 소유 검증, 관리자 API 분리·인증</td></tr>
+  <tr><td>CORS 전면 허용</td><td><code>app.use(cors())</code> 와일드카드</td><td>허용 origin 화이트리스트</td></tr>
+  <tr><td>device_id 생성 함수 이원화</td><td><code>getDeviceId</code>/<code>_getDeviceId</code> 형식 불일치</td><td>UUID v4 단일 함수로 통일</td></tr>
+  <tr><td>이모지 매핑 중복</td><td>FE·BE에 동일 <code>_MENU_KW</code> 약 180건 중복 정의</td><td>공통 모듈/엔드포인트로 단일화</td></tr>
+  <tr><td>장바구니 휘발</td><td>새로고침 시 cart 소실(설계 의도)</td><td>필요 시 sessionStorage 보존 검토</td></tr>
+</table>
+
+<hr>
+
+<!-- ════════════════ 13 ════════════════ -->
+<h2 id="s13">13. 시퀀스 다이어그램 · 함수 호출 그래프</h2>
+
+<p class="legend">
+  <span><i></i> 요청/호출(동기)</span>
+  <span><i class="dash"></i> 응답/반환</span>
+  <span><i class="sse"></i> SSE 비동기 브로드캐스트</span>
+</p>
+
+<h3>13.1 [시퀀스] 신규 주문 생성 — 재고 검증부터 결제 안내까지</h3>
+<p>고객이 "주문 확정하기"를 누른 시점부터 클라이언트 재고 1차 검증, 서버 트랜잭션 재고 차감, 알림 발송, 결제 화면 전환까지의 흐름이다.</p>
+<div class="diagram">
+<svg viewBox="0 0 880 500" xmlns="http://www.w3.org/2000/svg" font-family="Malgun Gothic, sans-serif">
+  <defs>
+    <marker id="ah" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#1a4a4a"/></marker>
+    <marker id="ahd" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#777"/></marker>
+    <marker id="ahs" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#E9A826"/></marker>
+  </defs>
+  <!-- lifelines -->
+  <g text-anchor="middle" font-size="11" font-weight="bold">
+    <g><rect x="12" y="20" width="96" height="30" rx="6" fill="#086266"/><text x="60" y="40" fill="#fff">고객</text></g>
+    <g><rect x="172" y="20" width="120" height="30" rx="6" fill="#0a7a7f"/><text x="232" y="40" fill="#fff">SPA onban01</text></g>
+    <g><rect x="392" y="20" width="120" height="30" rx="6" fill="#378ADD"/><text x="452" y="40" fill="#fff">API server.js</text></g>
+    <g><rect x="600" y="20" width="110" height="30" rx="6" fill="#C0392B"/><text x="655" y="40" fill="#fff">MySQL</text></g>
+    <g><rect x="772" y="20" width="100" height="30" rx="6" fill="#E9A826"/><text x="822" y="40" fill="#fff">알림(GAS)</text></g>
+  </g>
+  <g stroke="#9adcda" stroke-width="1.4" stroke-dasharray="4 4">
+    <line x1="60" y1="50" x2="60" y2="478"/><line x1="232" y1="50" x2="232" y2="478"/>
+    <line x1="452" y1="50" x2="452" y2="478"/><line x1="655" y1="50" x2="655" y2="478"/>
+    <line x1="822" y1="50" x2="822" y2="478"/>
+  </g>
+  <g font-size="10.5" fill="#1a1a1a" text-anchor="middle">
+    <!-- 1 -->
+    <line x1="60" y1="80" x2="228" y2="80" stroke="#1a4a4a" stroke-width="1.6" marker-end="url(#ah)"/>
+    <text x="144" y="74">① 주문확정 클릭</text>
+    <!-- 2 verifyStock -->
+    <line x1="232" y1="110" x2="448" y2="110" stroke="#1a4a4a" stroke-width="1.6" marker-end="url(#ah)"/>
+    <text x="340" y="104">② GET /api/menu/:date (verifyStock)</text>
+    <!-- 3 -->
+    <line x1="452" y1="138" x2="651" y2="138" stroke="#1a4a4a" stroke-width="1.6" marker-end="url(#ah)"/>
+    <text x="552" y="132">SELECT stock</text>
+    <!-- 4 resp -->
+    <line x1="655" y1="162" x2="456" y2="162" stroke="#777" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#ahd)"/>
+    <text x="555" y="156" fill="#555">재고값</text>
+    <!-- 5 resp -->
+    <line x1="452" y1="186" x2="236" y2="186" stroke="#777" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#ahd)"/>
+    <text x="344" y="180" fill="#555">menus[]</text>
+    <!-- self compare -->
+    <path d="M232,206 h54 v18 h-50" fill="none" stroke="#1a4a4a" stroke-width="1.4" marker-end="url(#ah)"/>
+    <text x="300" y="203" text-anchor="start" fill="#b00">재고 비교 → 부족 시 중단·안내</text>
+    <!-- 7 POST -->
+    <line x1="232" y1="252" x2="448" y2="252" stroke="#1a4a4a" stroke-width="1.6" marker-end="url(#ah)"/>
+    <text x="340" y="246">③ POST /api/orders (saveOrder)</text>
+    <!-- 8 BEGIN FOR UPDATE -->
+    <line x1="452" y1="280" x2="651" y2="280" stroke="#1a4a4a" stroke-width="1.6" marker-end="url(#ah)"/>
+    <text x="552" y="274">BEGIN · SELECT…FOR UPDATE</text>
+    <!-- 9 update insert -->
+    <line x1="452" y1="306" x2="651" y2="306" stroke="#1a4a4a" stroke-width="1.6" marker-end="url(#ah)"/>
+    <text x="552" y="300">UPDATE stock−qty · INSERT · COMMIT</text>
+    <!-- 10 resp -->
+    <line x1="655" y1="330" x2="456" y2="330" stroke="#777" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#ahd)"/>
+    <text x="555" y="324" fill="#555">ok</text>
+    <!-- 11 resp to spa -->
+    <line x1="452" y1="354" x2="236" y2="354" stroke="#777" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#ahd)"/>
+    <text x="344" y="348" fill="#555">{success, soldOut?}</text>
+    <!-- 12 SSE -->
+    <line x1="452" y1="380" x2="236" y2="380" stroke="#E9A826" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#ahs)"/>
+    <text x="344" y="374" fill="#b8860b">SSE broadcast('order_new')</text>
+    <!-- 13 alim -->
+    <line x1="232" y1="408" x2="818" y2="408" stroke="#1a4a4a" stroke-width="1.6" marker-end="url(#ah)"/>
+    <text x="500" y="402">④ sendAlimtalk(고객) · sendSMS(관리자)</text>
+    <!-- 14 self goPage -->
+    <path d="M232,428 h54 v18 h-50" fill="none" stroke="#1a4a4a" stroke-width="1.4" marker-end="url(#ah)"/>
+    <text x="300" y="425" text-anchor="start">goPage('payment') · loadMenus(true)</text>
+  </g>
+</svg>
+</div>
+<div class="dgm-cap">그림 13-1. 신규 주문 생성 시퀀스 (verifyStock → saveOrder → 알림 → 결제)</div>
+
+<h3>13.2 [시퀀스] 주문내역 편집 — 저장 확정과 닫기 가드</h3>
+<p>수량·배송방법 변경은 화면에만 반영되고(<code>_histDirty=true</code>), <strong>저장</strong>을 눌러 확인해야 서버에 반영되며 이때만 업주에게 문자가 나간다(2026-08-08 재구현 — 예전엔 수량 버튼을 누를 때마다 자동 저장·자동 발송됐다). 저장하지 않고 닫으면 저장할지 되돌릴지 다시 확인한다.</p>
+<div class="diagram">
+<svg viewBox="0 0 880 470" xmlns="http://www.w3.org/2000/svg" font-family="Malgun Gothic, sans-serif">
+  <defs>
+    <marker id="bh" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#1a4a4a"/></marker>
+    <marker id="bhd" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#777"/></marker>
+  </defs>
+  <g text-anchor="middle" font-size="11" font-weight="bold">
+    <g><rect x="12" y="20" width="110" height="30" rx="6" fill="#086266"/><text x="67" y="40" fill="#fff">고객</text></g>
+    <g><rect x="212" y="20" width="190" height="30" rx="6" fill="#0a7a7f"/><text x="307" y="40" fill="#fff">SPA 주문상세 편집</text></g>
+    <g><rect x="500" y="20" width="130" height="30" rx="6" fill="#378ADD"/><text x="565" y="40" fill="#fff">API server.js</text></g>
+    <g><rect x="742" y="20" width="120" height="30" rx="6" fill="#C0392B"/><text x="802" y="40" fill="#fff">MySQL</text></g>
+  </g>
+  <g stroke="#9adcda" stroke-width="1.4" stroke-dasharray="4 4">
+    <line x1="67" y1="50" x2="67" y2="448"/><line x1="307" y1="50" x2="307" y2="448"/>
+    <line x1="565" y1="50" x2="565" y2="448"/><line x1="802" y1="50" x2="802" y2="448"/>
+  </g>
+  <g font-size="10.5" fill="#1a1a1a" text-anchor="middle">
+    <line x1="67" y1="82" x2="303" y2="82" stroke="#1a4a4a" stroke-width="1.6" marker-end="url(#bh)"/>
+    <text x="185" y="76">① 수량/배송방법 변경</text>
+    <path d="M307,98 h60 v16 h-56" fill="none" stroke="#1a4a4a" stroke-width="1.4" marker-end="url(#bh)"/>
+    <text x="375" y="97" text-anchor="start">화면에만 반영 · _histDirty=true</text>
+    <line x1="67" y1="140" x2="303" y2="140" stroke="#1a4a4a" stroke-width="1.6" marker-end="url(#bh)"/>
+    <text x="185" y="134">② 저장 클릭 → confirm("재주문하여도 괜찮아요?")</text>
+    <line x1="307" y1="172" x2="561" y2="172" stroke="#1a4a4a" stroke-width="1.6" marker-end="url(#bh)"/>
+    <text x="434" y="166">③ 네 → PUT /orders/:id/items</text>
+    <line x1="565" y1="196" x2="798" y2="196" stroke="#1a4a4a" stroke-width="1.6" marker-end="url(#bh)"/>
+    <text x="682" y="190">FOR UPDATE · 증감분만 재고 반영</text>
+    <line x1="565" y1="220" x2="798" y2="220" stroke="#1a4a4a" stroke-width="1.6" marker-end="url(#bh)"/>
+    <text x="682" y="214">items/total UPDATE (서버가 합계 재계산)</text>
+    <line x1="798" y1="244" x2="569" y2="244" stroke="#777" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#bhd)"/>
+    <text x="682" y="238" fill="#555">{success:true, total}</text>
+    <path d="M565,260 h60 v16 h-56" fill="none" stroke="#1a4a4a" stroke-width="1.4" marker-end="url(#bh)"/>
+    <text x="633" y="259" text-anchor="start">(비동기) admin_reply 로그 추가 · 업주 SMS 재발송</text>
+    <line x1="561" y1="292" x2="311" y2="292" stroke="#777" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#bhd)"/>
+    <text x="438" y="286" fill="#555">응답</text>
+    <path d="M307,308 h60 v16 h-56" fill="none" stroke="#1a4a4a" stroke-width="1.4" marker-end="url(#bh)"/>
+    <text x="375" y="307" text-anchor="start">_histDirty 삭제 · 팝업 닫기</text>
+    <!-- 저장하지 않고 닫기 분기 -->
+    <text x="72" y="345" text-anchor="start" font-weight="bold" fill="#E9A826">[저장 안 하고 닫기] →</text>
+    <line x1="67" y1="360" x2="303" y2="360" stroke="#1a4a4a" stroke-width="1.6" marker-end="url(#bh)"/>
+    <text x="185" y="354">④ 닫기 클릭 → _closeOrderDetailGuarded</text>
+    <path d="M307,376 h60 v16 h-56" fill="none" stroke="#1a4a4a" stroke-width="1.4" marker-end="url(#bh)"/>
+    <text x="375" y="375" text-anchor="start">확인창: 저장하고 닫기 / 되돌리고 닫기</text>
+    <line x1="307" y1="408" x2="561" y2="408" stroke="#1a4a4a" stroke-width="1.6" marker-end="url(#bh)"/>
+    <text x="434" y="402">⑤ (되돌리기 선택 시) GET /orders?deviceId=</text>
+    <line x1="561" y1="432" x2="311" y2="432" stroke="#777" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#bhd)"/>
+    <text x="438" y="426" fill="#555">서버 값(원본)</text>
+  </g>
+</svg>
+</div>
+<div class="dgm-cap">그림 13-2. 주문내역 편집 시퀀스 — 저장 확정 시에만 서버 반영·문자 발송, 미저장 닫기는 서버 값으로 되돌림</div>
+
+<h3>13.3 [시퀀스] SSE 실시간 동기화</h3>
+<p>관리자가 주문 상태를 바꾸면, 서버가 모든 SSE 연결로 이벤트를 푸시하고 각 고객 클라이언트는 디바운스 후 주문내역을 재렌더한다.</p>
+<div class="diagram">
+<svg viewBox="0 0 880 360" xmlns="http://www.w3.org/2000/svg" font-family="Malgun Gothic, sans-serif">
+  <defs>
+    <marker id="ch" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#1a4a4a"/></marker>
+    <marker id="chs" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#E9A826"/></marker>
+    <marker id="chd" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#777"/></marker>
+  </defs>
+  <g text-anchor="middle" font-size="11" font-weight="bold">
+    <g><rect x="12" y="20" width="130" height="30" rx="6" fill="#888780"/><text x="77" y="40" fill="#fff">관리자 페이지</text></g>
+    <g><rect x="312" y="20" width="150" height="30" rx="6" fill="#378ADD"/><text x="387" y="40" fill="#fff">API + SSE 풀</text></g>
+    <g><rect x="690" y="20" width="170" height="30" rx="6" fill="#0a7a7f"/><text x="775" y="40" fill="#fff">고객 SPA(EventSource)</text></g>
+  </g>
+  <g stroke="#9adcda" stroke-width="1.4" stroke-dasharray="4 4">
+    <line x1="77" y1="50" x2="77" y2="338"/><line x1="387" y1="50" x2="387" y2="338"/><line x1="775" y1="50" x2="775" y2="338"/>
+  </g>
+  <g font-size="10.5" fill="#1a1a1a" text-anchor="middle">
+    <line x1="775" y1="84" x2="391" y2="84" stroke="#1a4a4a" stroke-width="1.6" marker-end="url(#ch)"/>
+    <text x="583" y="78">① _startSSE: GET /api/events (구독)</text>
+    <line x1="387" y1="110" x2="771" y2="110" stroke="#777" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#chd)"/>
+    <text x="580" y="104" fill="#555">connected · 25s heartbeat 유지</text>
+    <line x1="77" y1="146" x2="383" y2="146" stroke="#1a4a4a" stroke-width="1.6" marker-end="url(#ch)"/>
+    <text x="230" y="140">② PUT /orders/:id/status</text>
+    <path d="M387,162 h60 v16 h-56" fill="none" stroke="#1a4a4a" stroke-width="1.4" marker-end="url(#ch)"/>
+    <text x="455" y="161" text-anchor="start">DB 갱신 · broadcast(type)</text>
+    <line x1="387" y1="204" x2="771" y2="204" stroke="#E9A826" stroke-width="1.6" stroke-dasharray="6 4" marker-end="url(#chs)"/>
+    <text x="580" y="198" fill="#b8860b">③ SSE data:{type:'order_status'}</text>
+    <path d="M775,220 h60 v16 h-56" fill="none" stroke="#1a4a4a" stroke-width="1.4" marker-end="url(#ch)"/>
+    <text x="773" y="219" text-anchor="end" >_debouncedRenderHistory(500ms)　</text>
+    <line x1="775" y1="262" x2="391" y2="262" stroke="#1a4a4a" stroke-width="1.6" marker-end="url(#ch)"/>
+    <text x="583" y="256">④ GET /api/orders?deviceId= (재조회)</text>
+    <line x1="387" y1="288" x2="771" y2="288" stroke="#777" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#chd)"/>
+    <text x="580" y="282" fill="#555">orders[] → 화면 갱신</text>
+    <text x="775" y="320" fill="#b00">※ 입력(focus) 중이면 blur 시점까지 재렌더 지연</text>
+  </g>
+</svg>
+</div>
+<div class="dgm-cap">그림 13-3. SSE 구독 → 브로드캐스트 → 디바운스 재렌더</div>
+
+<h3>13.4 [호출 그래프] 프론트엔드 함수 의존 관계</h3>
+<p>주요 진입점(<code>window.onload</code>, <code>goPage</code>)에서 출발하는 함수 호출 관계다. 화살표는 "호출" 방향이다.</p>
+<div class="diagram">
+<svg viewBox="0 0 880 560" xmlns="http://www.w3.org/2000/svg" font-family="Malgun Gothic, sans-serif" font-size="10">
+  <defs>
+    <marker id="g1" markerWidth="8" markerHeight="8" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#0a7a7f"/></marker>
+  </defs>
+  <style>
+    .nd rect{rx:7;stroke-width:1.4;}
+    .nd text{text-anchor:middle;font-weight:bold;fill:#0c2e2f;}
+    .entry rect{fill:#E9A826;stroke:#c98a10;} .entry text{fill:#3a1d00;}
+    .page rect{fill:#cfeeec;stroke:#6cc6c2;}
+    .api rect{fill:#dbeafe;stroke:#7aa7e0;}
+    .util rect{fill:#f0f0ee;stroke:#bdbdba;}
+    .edge{stroke:#0a7a7f;stroke-width:1.3;fill:none;marker-end:url(#g1);}
+    .elbl{font-size:8.5px;fill:#777;font-weight:normal;text-anchor:middle;}
+  </style>
+  <!-- nodes -->
+  <g class="nd entry"><rect x="20" y="30" width="120" height="30"/><text x="80" y="50">window.onload</text></g>
+  <g class="nd entry"><rect x="380" y="30" width="110" height="30"/><text x="435" y="50">goPage(name)</text></g>
+
+  <!-- onload children -->
+  <g class="nd api"><rect x="20" y="110" width="110" height="28"/><text x="75" y="129">loadMenus()</text></g>
+  <g class="nd util"><rect x="20" y="160" width="150" height="28"/><text x="95" y="179">_startMenuAutoRefresh</text></g>
+  <g class="nd util"><rect x="20" y="210" width="110" height="28"/><text x="75" y="229">_startSSE()</text></g>
+  <g class="nd util"><rect x="20" y="260" width="150" height="28"/><text x="95" y="279">_revertStaleItemEdits</text></g>
+
+  <!-- loadMenus children -->
+  <g class="nd util"><rect x="210" y="96" width="120" height="28"/><text x="270" y="115">renderCatTabs</text></g>
+  <g class="nd util"><rect x="210" y="138" width="120" height="28"/><text x="270" y="157">renderMenuGrid</text></g>
+  <g class="nd util"><rect x="360" y="138" width="120" height="28"/><text x="420" y="157">showMenuModal</text></g>
+  <g class="nd util"><rect x="360" y="180" width="130" height="28"/><text x="425" y="199">getMenuEmoji</text></g>
+
+  <!-- goPage children (pages) -->
+  <g class="nd page"><rect x="540" y="96" width="110" height="28"/><text x="595" y="115">renderCart</text></g>
+  <g class="nd page"><rect x="540" y="138" width="140" height="28"/><text x="610" y="157">renderOrdererPage</text></g>
+  <g class="nd page"><rect x="540" y="180" width="110" height="28"/><text x="595" y="199">renderOrder</text></g>
+  <g class="nd page"><rect x="540" y="222" width="120" height="28"/><text x="600" y="241">renderPayment</text></g>
+  <g class="nd page"><rect x="540" y="264" width="120" height="28"/><text x="600" y="283">renderHistory</text></g>
+
+  <!-- order pipeline -->
+  <g class="nd util"><rect x="540" y="330" width="90" height="28"/><text x="585" y="349">cartOrder</text></g>
+  <g class="nd api"><rect x="700" y="330" width="100" height="28"/><text x="750" y="349">verifyStock</text></g>
+  <g class="nd api"><rect x="700" y="372" width="100" height="28"/><text x="750" y="391">saveOrder</text></g>
+  <g class="nd api"><rect x="700" y="414" width="120" height="28"/><text x="760" y="433">POST /api/orders</text></g>
+  <g class="nd util"><rect x="540" y="414" width="130" height="28"/><text x="605" y="433">_notifyOutOfStock</text></g>
+  <g class="nd util"><rect x="540" y="372" width="150" height="28"/><text x="615" y="391">sendAlimtalk/sendSMS</text></g>
+
+  <!-- history pipeline -->
+  <g class="nd page"><rect x="700" y="470" width="130" height="28"/><text x="765" y="489">openOrderDetail</text></g>
+  <g class="nd util"><rect x="540" y="470" width="130" height="28"/><text x="605" y="489">_buildOrderCard</text></g>
+  <g class="nd util"><rect x="345" y="470" width="130" height="28"/><text x="410" y="489">histSaveItemsNow</text></g>
+  <g class="nd util"><rect x="200" y="470" width="140" height="28"/><text x="270" y="489">histEditQty/DelItem</text></g>
+  <g class="nd util"><rect x="200" y="512" width="160" height="28"/><text x="280" y="531">_histDirty 가드</text></g>
+
+  <!-- edges -->
+  <g class="edge">
+    <path d="M65,60 C55,85 70,90 75,108"/>
+    <path d="M70,60 C70,120 80,140 90,158"/>
+    <path d="M75,60 C60,140 70,190 70,208"/>
+    <path d="M80,60 C95,160 95,230 95,258"/>
+    <!-- loadMenus -> render -->
+    <path d="M130,118 C170,112 180,110 208,110"/>
+    <path d="M130,128 C170,140 180,150 208,152"/>
+    <!-- renderMenuGrid -> modal/emoji -->
+    <path d="M330,152 L358,152"/>
+    <path d="M330,160 C345,175 350,185 358,190"/>
+    <!-- goPage -> pages -->
+    <path d="M460,60 C500,80 515,95 538,108"/>
+    <path d="M470,60 C520,110 525,140 538,150"/>
+    <path d="M478,60 C530,140 530,180 538,192"/>
+    <path d="M486,60 C545,150 548,205 545,234"/>
+    <path d="M490,58 C560,150 560,235 562,262"/>
+    <!-- renderCart -> cartOrder -->
+    <path d="M595,124 C595,250 580,300 585,328"/>
+    <!-- cartOrder -> verifyStock -> saveOrder -->
+    <path d="M630,344 L698,344"/>
+    <path d="M750,358 L750,370"/>
+    <path d="M750,400 L758,412"/>
+    <!-- saveOrder -> alim, notify -->
+    <path d="M700,386 L690,386"/>
+    <path d="M700,395 C685,408 660,418 672,418" />
+    <!-- renderHistory -> openOrderDetail -> buildcard -->
+    <path d="M660,278 C720,330 745,430 765,468"/>
+    <path d="M700,484 L672,484"/>
+    <path d="M540,484 L462,484"/>
+    <!-- buildcard -> histEdit -> guard -->
+    <path d="M540,488 C460,492 380,486 342,484"/>
+    <path d="M270,498 L275,510"/>
+    <!-- histEdit -> save (변경 저장 확정) -->
+    <path d="M340,480 C352,478 356,478 358,480"/>
+  </g>
+  <g class="elbl">
+    <text x="186" y="108">render</text>
+    <text x="512" y="86">전환</text>
+    <text x="668" y="340">검증</text>
+    <text x="772" y="368">차감</text>
+  </g>
+</svg>
+</div>
+<div class="dgm-cap">그림 13-4. 프론트엔드 함수 호출 그래프 (노랑=진입점, 민트=페이지 렌더, 파랑=API 연동, 회색=유틸)</div>
+
+<h3>13.5 [호출 그래프] 백엔드 라우트 → DB 연산</h3>
+<p>각 API 라우트가 사용하는 DB 테이블과 SSE 브로드캐스트, 트랜잭션 사용 여부다.</p>
+<div class="diagram">
+<svg viewBox="0 0 880 430" xmlns="http://www.w3.org/2000/svg" font-family="Malgun Gothic, sans-serif" font-size="10">
+  <defs>
+    <marker id="g2" markerWidth="8" markerHeight="8" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#0a7a7f"/></marker>
+    <marker id="g2o" markerWidth="8" markerHeight="8" refX="7" refY="2.5" orient="auto"><path d="M0,0 L7,2.5 L0,5 Z" fill="#E9A826"/></marker>
+  </defs>
+  <style>
+    .r rect{rx:7;fill:#dbeafe;stroke:#7aa7e0;stroke-width:1.4;} .r text{text-anchor:middle;font-weight:bold;fill:#0c2e3a;}
+    .t rect{rx:7;fill:#fde2e0;stroke:#d98b85;stroke-width:1.4;} .t text{text-anchor:middle;font-weight:bold;fill:#5a1410;}
+    .s rect{rx:7;fill:#fff3d6;stroke:#e0b24e;stroke-width:1.4;} .s text{text-anchor:middle;font-weight:bold;fill:#5a3e00;}
+    .e{stroke:#0a7a7f;stroke-width:1.3;fill:none;marker-end:url(#g2);}
+    .eo{stroke:#E9A826;stroke-width:1.3;fill:none;marker-end:url(#g2o);stroke-dasharray:5 3;}
+    .txn{fill:#C0392B;font-size:8.5px;font-weight:bold;}
+  </style>
+  <!-- routes -->
+  <g class="r"><rect x="20" y="40" width="180" height="28"/><text x="110" y="59">GET /api/menu/:date</text></g>
+  <g class="r"><rect x="20" y="100" width="180" height="28"/><text x="110" y="119">POST /api/orders ⚙</text></g>
+  <g class="r"><rect x="20" y="160" width="180" height="28"/><text x="110" y="179">PUT /orders/:id/status ⚙</text></g>
+  <g class="r"><rect x="20" y="220" width="180" height="28"/><text x="110" y="239">PUT /orders/:id/request</text></g>
+  <g class="r"><rect x="20" y="280" width="180" height="28"/><text x="110" y="299">GET/POST /customers-master</text></g>
+  <g class="r"><rect x="20" y="340" width="180" height="28"/><text x="110" y="359">GET/POST /api/settings</text></g>
+
+  <!-- tables -->
+  <g class="t"><rect x="380" y="30" width="150" height="28"/><text x="455" y="49">daily_menus</text></g>
+  <g class="t"><rect x="380" y="78" width="150" height="28"/><text x="455" y="97">menus (master)</text></g>
+  <g class="t"><rect x="380" y="150" width="150" height="28"/><text x="455" y="169">orders</text></g>
+  <g class="t"><rect x="380" y="280" width="150" height="28"/><text x="455" y="299">customers_master</text></g>
+  <g class="t"><rect x="380" y="340" width="150" height="28"/><text x="455" y="359">settings</text></g>
+
+  <!-- SSE -->
+  <g class="s"><rect x="680" y="150" width="170" height="28"/><text x="765" y="169">broadcast() → SSE 풀</text></g>
+  <g class="s"><rect x="680" y="40" width="170" height="48"/><text x="765" y="60">SELECT … FOR UPDATE</text><text x="765" y="76">(트랜잭션 직렬화)</text></g>
+
+  <g class="e">
+    <path d="M200,54 C300,54 320,46 378,44"/>
+    <path d="M200,58 C300,70 330,86 378,90"/>
+    <!-- POST orders -->
+    <path d="M200,110 C300,90 330,60 378,52"/>
+    <path d="M200,116 C300,140 330,156 378,158"/>
+    <!-- status -->
+    <path d="M200,170 C300,168 330,162 378,160"/>
+    <path d="M200,176 C290,210 320,60 378,54"/>
+    <!-- request -->
+    <path d="M200,232 C290,210 330,180 378,168"/>
+    <!-- customers -->
+    <path d="M200,292 L378,292"/>
+    <!-- settings -->
+    <path d="M200,352 L378,352"/>
+  </g>
+  <g class="eo">
+    <path d="M200,120 C420,128 560,150 678,158"/>
+    <path d="M200,180 C430,196 560,172 678,166"/>
+    <path d="M200,228 C440,220 560,176 678,162"/>
+  </g>
+  <g class="e">
+    <path d="M530,150 C600,120 640,90 678,72"/>
+    <path d="M530,160 C600,150 640,150 678,160"/>
+  </g>
+  <text x="245" y="100" class="txn">⚙ = 트랜잭션</text>
+</svg>
+</div>
+<div class="dgm-cap">그림 13-5. 백엔드 라우트–테이블–SSE 매핑 (주황 점선=SSE 브로드캐스트, ⚙=트랜잭션 라우트)</div>
+
+<hr>
+
+<p style="text-align:center;color:#aaa;font-size:9.5pt;margin-top:46px;">
+  온반(溫飯) 고객 페이지 상세설계서 v1.0 ⓒ 2026<br>
+  본 문서는 <code>onban01.html</code> · <code>server/server.js</code> 소스 분석 및 고객페이지_사용매뉴얼을 기반으로 작성되었습니다.
+</p>
+
+</body>
+</html>

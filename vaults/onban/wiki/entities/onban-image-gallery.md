@@ -7,7 +7,7 @@ domain: onban
 tags: [온반, 이미지갤러리, AI추천]
 created: 2026-08-26
 updated: 2026-08-26
-related: [[onban-service]], [[onban-customer-page]], [[menu-manager-page]], [[ai-menu-recommendation]], [[onban-customer-manual]], [[onban-admin-manual]]
+related: [[onban-service]], [[onban-customer-page]], [[menu-manager-page]], [[ai-menu-recommendation]], [[onban-customer-manual]], [[onban-admin-manual]], [[onban-backend-api]], [[onban-customer-design-spec]]
 ---
 
 # 온반 메뉴 이미지 갤러리 (온반_메뉴_이미지갤러리.html)
@@ -24,5 +24,9 @@ related: [[onban-service]], [[onban-customer-page]], [[menu-manager-page]], [[ai
 ## AI 추천 기능 → [[ai-menu-recommendation]]
 추천 범위(오늘의 메뉴/전체 메뉴/개인취향) 선택 후 조건 입력 → AI가 3~6개 메뉴 추천 → 적용 시 체크박스로 선택 해제 가능 → 예약주문으로 일괄 전달 가능.
 
+## API (상세설계서 기준, 2026-08-26 추가)
+관리자 인라인 편집 저장은 `POST /api/menu/master/update`(`x-admin-token` 헤더 필요, 마스터 메뉴 단건만 갱신 — `POST /api/menu/all`처럼 전체 재동기화하지 않음, 2026-08 신설). 갤러리 진입/열람 시 무인증 공개 API로 행동 로그 기록: `POST /api/track/menu-click`(상세팝업 열람), `POST /api/track/recommend-apply`(AI추천 적용) → [[ai-menu-recommendation]]
+
 ## Related
 - [[onban-customer-manual]] 12장, [[onban-admin-manual]] 8장
+- 기술 상세: [[onban-customer-design-spec]] 4.11절, [[onban-backend-api]]

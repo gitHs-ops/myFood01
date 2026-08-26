@@ -29,5 +29,14 @@ related: [[onban-image-gallery]], [[onban-customer-page]], [[reservation-order]]
 ## 개인화의 데이터 기반
 로그인 없이 기기 식별 방식 — "나의 기록" 화면(고객 페이지)에서 AI추천 선택 이력(최근 10건, 추천 이유 포함)과 자주 살펴본 메뉴 TOP 10을 직접 확인 가능. 이 트래킹 데이터가 "개인취향으로 추천받기"의 입력이 된다.
 
+## 기술 구현 (상세설계서 기준, 2026-08-26 추가)
+- `POST /api/recommend` — Anthropic Messages API(`model:'claude-sonnet-5'`) 호출. `ANTHROPIC_API_KEY` 미설정 시 503. 메뉴 풀이 스코프별로 다름: `today`=오늘 daily_menus(없으면 404), `all`/`persona`=menus 전체(count DESC)
+- **개인취향(persona) 로직**: 메뉴 풀 자체는 `all`과 동일 전체 마스터 쿼리를 쓰되, 프롬프트에 `menu_click_log`(device_id GROUP BY, 조회 상위 5) + `recommend_selection_log`(최근 5건 picks, 중복제거) 컨텍스트를 추가. 두 데이터가 모두 없는 신규 고객이면 "인기 메뉴 위주로 추천해주세요" 폴백 지시만 추가되어 일반 추천과 사실상 동일한 결과가 나온다
+- 갤러리 열람 추적: `POST /api/track/menu-click`(무인증, fire-and-forget) — 실패해도 화면에 영향 없음
+- 추천 적용 추적: `POST /api/track/recommend-apply` → `recommend_selection_log` INSERT(conditions·picks는 JSON 직렬화)
+- 조회 API: `GET /api/tracker/mine?deviceId=` — recommend_selection_log 최근 10건 + menu_click_log COUNT 상위 10건을 한 번에 반환. "나의 기록" 화면 전용으로 신설된 유일한 백엔드 엔드포인트(주문·예약은 기존 `/api/orders` 재사용)
+- 위 4개 API는 전부 무인증 공개 API — device_id는 클라이언트 자체 생성값이라 서버가 소유권을 검증하지 않음(추천/트래커는 개인정보가 아니라 현재는 낮은 위험으로 판단) → [[device-id-identification]]
+
 ## Related
 [[onban-customer-manual]] 12장, 13장
+기술 상세: [[onban-customer-design-spec]] 4.11~4.13·7.4·8.9절, [[onban-backend-api]]

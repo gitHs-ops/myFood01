@@ -7,7 +7,7 @@ domain: onban
 tags: [온반, 관리자페이지, menu-manager]
 created: 2026-08-26
 updated: 2026-08-26
-related: [[onban-service]], [[onban-admin-manual]], [[onban-operator-manual-v1]], [[kakao-dispatch]], [[reservation-order]], [[menu-warehouse]], [[realtime-autosave]], [[onban-image-gallery]]
+related: [[onban-service]], [[onban-admin-manual]], [[onban-operator-manual-v1]], [[kakao-dispatch]], [[reservation-order]], [[menu-warehouse]], [[realtime-autosave]], [[onban-image-gallery]], [[onban-backend-api]], [[sse-realtime-sync]], [[notification-dispatch]], [[onban-admin-design-spec]]
 ---
 
 # 메뉴 관리 페이지 (menu-manager.html)
@@ -22,5 +22,9 @@ related: [[onban-service]], [[onban-admin-manual]], [[onban-operator-manual-v1]]
 - 카카오 발송 텍스트를 양방향으로 다룸: 오늘 메뉴 → 문구 생성, 문구 → 메뉴 재등록 → [[kakao-dispatch]]
 - 이미지 갤러리 페이지([[onban-image-gallery]])도 같은 비밀번호로 로그인된 기기에서는 관리자 모드로 동작
 
+## 인증 방식 (상세설계서 기준, 2026-08-26 추가)
+클라이언트 평문 비밀번호(`ONBAN_ADMIN_KEY`) 방식 — 서버 세션·JWT 아님. 로그인 유지값은 `localStorage.onban_admin_auth = 'ok_'+비밀번호`로 저장돼 비밀번호를 바꾸면 기존 로그인 기기가 전부 자동 차단된다. 이 값은 `menu-manager.html`·`index.html`·`온반_메뉴_이미지갤러리.html` 세 프론트 + Railway 환경변수 `ADMIN_TOKEN` **네 곳이 항상 같아야** 하며, 어긋나면 관리자 전용 API가 전부 401로 실패한다. 소스 보기(Ctrl+U)로 비밀번호 노출 가능 — 설계서에 명시된 미해결 보안 위험.
+
 ## Related
 - 사용법 상세: [[onban-admin-manual]] (최신, 2026-08-10), [[onban-operator-manual-v1]] (초기, 2026-04)
+- 기술 상세: [[onban-admin-design-spec]]

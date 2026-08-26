@@ -7,7 +7,7 @@ domain: onban
 tags: [온반, 서비스, 반찬주문]
 created: 2026-08-26
 updated: 2026-08-26
-related: [[menu-manager-page]], [[onban-customer-page]], [[onban-image-gallery]], [[onban-admin-manual]], [[onban-customer-manual]], [[onban-operator-manual-v1]]
+related: [[menu-manager-page]], [[onban-customer-page]], [[onban-image-gallery]], [[onban-backend-api]], [[onban-admin-manual]], [[onban-customer-manual]], [[onban-operator-manual-v1]], [[onban-customer-design-spec]], [[onban-admin-design-spec]]
 ---
 
 # 온반(溫飯)
@@ -22,6 +22,9 @@ related: [[menu-manager-page]], [[onban-customer-page]], [[onban-image-gallery]]
 - 주문 채널: 카카오톡 채널 공지 → 웹페이지 링크 클릭 → 온라인 주문. 관리자는 카카오 발송 문구를 앱에서 자동 생성
 - 배달 기준: 장바구니 합계 2만원 이상이면 배달 가능(배달료 1천원 추가), 미만이면 매장 픽업만 가능
 - 로그인 체계: 고객은 로그인 없이 기기 식별(device_id)로 개인화, 관리자는 비밀번호 1개로 전체 관리 페이지 보호
+
+## 기술 스택 (상세설계서 기준, 2026-08-26 추가)
+Vanilla JS(프레임워크 없음) 프론트 3개 + Node.js/Express 백엔드 1개(→ [[onban-backend-api]]) + MySQL(9테이블) + Railway 호스팅 + Google Apps Script(SMS·알림톡 프록시) + Anthropic Messages API(AI추천). 실시간은 SSE(+폴링 이중화), 결제는 PG 없이 계좌이체 수동 확인 방식.
 
 ## 구성 페이지
 | 페이지 | 파일 | 대상 |
