@@ -1901,7 +1901,7 @@ function _buildAddrItem(c, isMaster){
       var selBtn=document.createElement('button');
       selBtn.style.cssText='background:var(--teal);color:#fff;border:none;border-radius:8px;padding:4px 0;font-size:11px;font-weight:700;cursor:pointer;width:48px;flex-shrink:0;';
       selBtn.textContent='선택';
-      (function(addr){selBtn.onclick=function(){pickAddr(addr,c.memo||'');};})(a);
+      (function(addr){selBtn.onclick=function(){pickAddr(addr,c.memo||'',c.name||'');};})(a);
       row.appendChild(label);row.appendChild(txt);row.appendChild(selBtn);
       wrap.appendChild(row);
     });
@@ -1993,11 +1993,13 @@ function _showAddrForm(c,replaceEl){
     replaceEl.replaceWith(form);
   }
 }
-function pickAddr(addr,memo){
+function pickAddr(addr,memo,name){
   var addrId=_addrTarget==='reserve'?'reserveAddr':'ordererAddr';
   var memoId=_addrTarget==='reserve'?'reserveMemo':'ordererMemo';
+  var nameId=_addrTarget==='reserve'?'reserveName':'ordererName';
   document.getElementById(addrId).value=addr;
   if(memo!==undefined) document.getElementById(memoId).value=memo;
+  if(name){var nEl=document.getElementById(nameId);if(nEl&&!nEl.value)nEl.value=name;}
   document.getElementById('addrListOverlay').style.display='none';
 }
 function closeAddrList(e){
@@ -3045,21 +3047,19 @@ function _startSSE(){
 }
 
 function _toggleAddrListBtn(){
-  var name=(document.getElementById('ordererName').value||'').trim();
   var phone=(document.getElementById('ordererPhone').value||'').trim();
   var btn=document.getElementById('btnAddrList');
   if(!btn) return;
-  var ok=!!(name&&phone);
+  var ok=!!phone;
   btn.disabled=!ok;
   btn.style.opacity=ok?'1':'0.4';
   btn.style.cursor=ok?'pointer':'not-allowed';
 }
 function _toggleReserveAddrListBtn(){
-  var name=(document.getElementById('reserveName').value||'').trim();
   var phone=(document.getElementById('reservePhone').value||'').trim();
   var btn=document.getElementById('btnReserveAddrList');
   if(!btn) return;
-  var ok=!!(name&&phone);
+  var ok=!!phone;
   btn.disabled=!ok;
   btn.style.opacity=ok?'1':'0.4';
   btn.style.cursor=ok?'pointer':'not-allowed';
