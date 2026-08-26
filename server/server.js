@@ -1244,15 +1244,9 @@ app.post('/api/customers-master', async (req, res) => {
     const {name,addr1,addr2,addr3,memo,device_id} = req.body;
     const phone = (req.body.phone||'').replace(/[^0-9]/g,'');
     if(!phone) return err(res,'phone required',400);
-    const isAdmin = !!ADMIN_TOKEN && req.headers['x-admin-token'] === ADMIN_TOKEN;
-    if (!isAdmin) {
-      // 이미 다른 기기가 이 전화번호로 저장해둔 주소록이면 덮어쓰기 차단. device_id가 NULL인
-      // 레거시 레코드는 아직 누구 것도 아니므로(= GET 핸들러의 자동 연결 규칙과 동일) 허용.
-      const [existing] = await pool.execute('SELECT device_id FROM customers_master WHERE phone=?', [phone]);
-      if (existing.length && existing[0].device_id && existing[0].device_id !== device_id) {
-        return err(res, '인증이 필요합니다.', 401);
-      }
-    }
+    // 소유권 체크 없이 device_id를 항상 최신 값으로 재연결— 브라우저 데이터 초기화 등으로
+    // device_id가 바뀌면 예전엔 다음 주문부터 영영 자동완성이 안 됐음(재연결할 방법이 없어서).
+    // PUT(주소록 수정)·DELETE는 소유권 체크 유지.
     // 빈 값은 기존 값 유지 (addr 없이도 저장 허용 — 기존 addr 보존)
     await pool.execute(
       `INSERT INTO customers_master (name,phone,addr1,addr2,addr3,memo,device_id) VALUES (?,?,?,?,?,?,?)
