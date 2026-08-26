@@ -159,7 +159,7 @@ function switchPage(name) {
   <tr><td>DB</td><td>MySQL 8.0 (mysql2/promise)</td><td>Railway 내부 네트워크</td></tr>
   <tr><td>실시간</td><td>Server-Sent Events (SSE)</td><td><code>GET /api/events</code></td></tr>
   <tr><td>알림 프록시</td><td>Google Apps Script Web App</td><td>솔라피 SMS / 카카오 알림톡. GAS URL은 settings DB 저장</td></tr>
-  <tr><td>클라이언트 저장소</td><td>localStorage</td><td>카테고리·설정·계좌 임시 저장 (DB 로드 전 캐시)</td></tr>
+  <tr><td>클라이언트 저장소</td><td>localStorage</td><td>관리자 로그인 유지(<code>onban_admin_auth</code>)·기기ID(<code>onban_admin_device_id</code>) 등 세션 성격 값만. 카테고리·설정·계좌·관리자정보는 2026-08-08~10에 전부 제거되어 서버가 유일한 원본(§5.14 참고)</td></tr>
 </table>
 
 <div class="note">⚠ <strong>보안 주의</strong>: IMGBB_KEY가 JS 소스에 평문 노출됨. 관리자 전용 페이지이므로 현 시점에서는 허용하나, 공개 저장소 업로드 시 반드시 제외해야 함.</div>
@@ -499,7 +499,7 @@ var ONBAN_ADMIN_KEY = '········';
 <h4>설정 저장 흐름 (<code>syncSettingsToSheet()</code>)</h4>
 <div class="seq">
 <ol>
-  <li>설정 값을 localStorage에 우선 저장 (즉각 반영)</li>
+  <li>설정 값을 메모리 변수(<code>_settings</code> 등)에 우선 반영 (즉각 화면 반영, localStorage 아님 — 2026-08-10 <code>06a7a9a</code>로 전환됨)</li>
   <li><code>POST /api/settings {k, v}</code> 호출로 DB 동기화</li>
   <li>저장 완료 시 "✓ 저장되었습니다" 메시지 2초 표시</li>
 </ol>
@@ -508,8 +508,8 @@ var ONBAN_ADMIN_KEY = '········';
 <h4>계좌 관리 상세</h4>
 <table>
   <tr><th>함수</th><th>동작</th></tr>
-  <tr><td><code>getBanks()</code></td><td>localStorage <code>onban_banks</code> 조회. 없으면 빈 배열 반환 (하드코딩 기본값 제거됨)</td></tr>
-  <tr><td><code>saveBanks(banks)</code></td><td>localStorage 저장 + <code>syncSettingsToSheet()</code> 호출</td></tr>
+  <tr><td><code>getBanks()</code></td><td>메모리 변수 <code>_banks</code> 반환(localStorage 아님, 2026-08-10 전환). 서버에서 값 없으면 빈 배열</td></tr>
+  <tr><td><code>saveBanks(banks)</code></td><td><code>_banks</code> 갱신 + <code>syncSettingsToSheet()</code> 호출로 DB 저장</td></tr>
   <tr><td><code>addBank()</code></td><td>은행명·예금주·계좌번호 입력 폼에서 추가. 첫 계좌 = 자동 대표 설정</td></tr>
   <tr><td><code>setPrimaryBank(i)</code></td><td>선택 인덱스만 <code>primary:true</code>. 나머지 모두 false</td></tr>
   <tr><td><code>getPrimaryBank()</code></td><td>대표 계좌 반환. 없으면 첫 번째 반환</td></tr>
@@ -558,13 +558,13 @@ var ONBAN_ADMIN_KEY = '········';
 </table>
 
 <h3>7.2 localStorage 사용 목록</h3>
+<div class="warn">⚠ 2026-08-10(<code>06a7a9a</code>) 이후 <code>onban_settings</code>/<code>onban_banks</code>/<code>onban_admin</code> 세 키는 <strong>더 이상 존재하지 않는다</strong>. <code>getSettings()</code>/<code>getBanks()</code>/<code>getAdminInfo()</code>는 이제 메모리 변수(<code>_settings</code>/<code>_banks</code>/<code>_adminInfo</code>)를 반환하며, 그 값은 페이지를 열 때마다 서버에서 무조건 다시 받아온다(§5.14 참고). 즉 이 화면의 설정·계좌·관리자정보는 DB가 유일한 원본이고, 클라이언트 캐시는 세션(탭) 안의 메모리에만 존재한다 — 새로고침하면 서버 값으로 다시 채워진다.</div>
 <table>
-  <tr><th>키</th><th>내용</th><th>읽는 함수</th></tr>
-  <tr><td><code>onban_settings</code></td><td>재고 기본값 등 설정 (JSON)</td><td><code>getSettings()</code></td></tr>
-  <tr><td><code>onban_banks</code></td><td>계좌 정보 목록 (JSON)</td><td><code>getBanks()</code></td></tr>
-  <tr><td><code>onban_admin</code></td><td>관리자 연락처·이메일 (JSON)</td><td><code>getAdminInfo()</code></td></tr>
+  <tr><th>키</th><th>내용</th><th>비고</th></tr>
+  <tr><td><code>onban_admin_auth</code></td><td>관리자 로그인 유지 값(<code>'ok_'+비밀번호</code>)</td><td>세션 성격 — §4.2 참고. 계속 유지</td></tr>
+  <tr><td><code>onban_admin_device_id</code></td><td>관리자 기기 식별 UUID</td><td>시스템 로그 <code>X-Device-Id</code> 헤더용. 계속 유지</td></tr>
 </table>
-<div class="note">💡 localStorage는 DB 로드 이전에 화면을 빠르게 초기화하는 캐시 역할. 설정 저장 시 DB에도 동기화하므로 정본은 DB.</div>
+<div class="note">💡 위 두 키는 "로그인 상태"·"이 기기가 누구인지"처럼 브라우저별로 달라야 하는 값이라 localStorage가 적절한 경우다. 메뉴·주문·설정처럼 여러 관리자 기기가 같이 봐야 하는 데이터는 전부 DB가 원본이며 클라이언트에 영속 저장하지 않는다.</div>
 <div class="note">💡 카테고리(<code>onban_categories</code>)는 2026-08-08부로 localStorage에 저장하지 않는다. 원본이 이 기기에만 있어 관리자 폰을 바꾸면 통째로 사라지고 고객에게도 전파되지 않는 문제가 있었다. 지금은 <code>getCats()</code>가 메모리 변수 <code>_cats</code>를 반환하고, <code>setCats()</code>는 <code>POST /api/settings</code>로 즉시 서버에 저장한다. 페이지 로드 시 <code>loadCatsFromServer()</code>가 서버 값으로 맞추며, 이 기기에 옛 값이 남아 있고 서버엔 아직 없으면 1회 서버로 옮긴 뒤 로컬 값은 지운다.</div>
 
 <h3>7.3 렌더 함수 체계</h3>

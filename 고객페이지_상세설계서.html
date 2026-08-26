@@ -347,15 +347,15 @@
 </table>
 
 <h3>5.2 localStorage 키</h3>
+<div class="warn">⚠ <code>onban_admin</code>(관리자 연락처)은 더 이상 쓰이지 않는다 — 3.6절/171행에 이미 적혀 있듯 2026-08-08 정리로 서버(DB settings)가 유일한 원본이 됐다. 아래 표는 실제 코드(onban01.html)에 남아있는 두 키만 반영했다.</div>
 <table>
   <tr><th>키</th><th>내용</th></tr>
-  <tr><td><code>onban_device_id</code></td><td>UUID v4 디바이스 식별자(<code>_getDeviceId</code>). 최초 1회 생성·영구 보관</td></tr>
+  <tr><td><code>onban_device_id</code></td><td>UUID v4 디바이스 식별자(<code>getDeviceId()</code> 단일 함수). 최초 1회 생성·영구 보관</td></tr>
   <tr><td><code>orders</code></td><td>주문 내역 캐시 배열. 페이지 진입 시 서버 값으로 동기화되며, 항목 편집 중인 미저장 작업본도 이 배열 안에 함께 보관(저장 또는 되돌리기 전까지)</td></tr>
-  <tr><td><code>onban_admin</code></td><td>관리자 연락처(추가 SMS 발송 대상)</td></tr>
 </table>
 <div class="note">💡 카테고리 색상(<code>CAT_COLOR</code> 오버라이드)은 2026-08-08부로 localStorage가 아니라 <code>GET /api/settings</code>의 <code>categories</code> 값에서 받는다(<code>loadCatColorsFromServer()</code>, 페이지 로드 시 호출). 예전엔 이 기기의 localStorage를 읽었는데, 그 값을 쓰는 코드가 관리자 화면(다른 기기)에만 있어 고객에게는 항상 기본색만 보이던 문제가 있었다.</div>
 
-<div class="warn">⚠ <strong>device_id 함수 중복</strong>: <code>getDeviceId()</code>(prefix <code>dev-</code> 방식)와 <code>_getDeviceId()</code>(표준 UUID v4)가 공존한다. 동일 키(<code>onban_device_id</code>)를 사용하되 생성 형식이 달라, 최초 호출 함수에 따라 형식이 결정된다. → 유지보수 시 통일 권장.</div>
+<div class="note">💡 <strong>device_id 함수 중복 — 해결됨(2026-08-26 코드 확인)</strong>: 예전엔 <code>getDeviceId()</code>(prefix <code>dev-</code> 방식)와 <code>_getDeviceId()</code>(표준 UUID v4)가 공존했으나, 지금은 onban01.html·이미지갤러리 모두 <code>getDeviceId()</code> 단일 함수(표준 UUID v4)만 존재한다. 같은 키(<code>onban_device_id</code>)에 저장된 예전 형식(<code>dev-...</code>) 값은 그대로 남아있을 수 있으나, 다음에 그 기기가 값을 다시 쓸 일이 생기면 새 형식으로 갱신된다.</div>
 
 <h3>5.3 핵심 화면 흐름 (주문 시퀀스)</h3>
 <div class="seq">
