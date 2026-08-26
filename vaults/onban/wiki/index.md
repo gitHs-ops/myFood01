@@ -34,7 +34,7 @@ updated: 2026-08-26
 |---|---|---|
 | [[kakao-dispatch]] | 카카오 발송 문구 ↔ 메뉴 양방향 변환 규칙 | onban |
 | [[reservation-order]] | 예약주문 — 상태 체계, 날짜 규칙, 배송비, reserve_date 단일 판별 기준 | onban |
-| [[menu-warehouse]] | 메뉴 창고 — 일일 이력 vs 마스터 카탈로그, DB 조인 구조 | onban |
+| [[menu-warehouse]] | 메뉴 창고 — 일일 이력 vs 마스터 카탈로그, DB 조인 구조, 동명이카테고리 10쌍 현황(병합 안 함) | onban |
 | [[realtime-autosave]] | 일일 메뉴 저장 방식 변천사 (실시간→명시적 버튼 회귀, 2026-08-20) | onban |
 | [[ai-menu-recommendation]] | AI추천메뉴 — 추천 범위·조건·개인화, 추적 API | onban |
 | [[sse-realtime-sync]] | SSE 실시간 동기화 — 이벤트 타입, SSE+폴링 이중화 | onban |
