@@ -991,16 +991,22 @@ app.put('/api/orders/:id/status', async (req, res) => {
 // 주문 항목(수량·삭제) 저장 (PUT /api/orders/:id/items) — 대기중 주문만 직접 수정, 재고 검증 후 합계는 서버가 재계산
 app.put('/api/orders/:id/items', async (req, res) => {
   try {
-    const { items, memo } = req.body;
+    const { items, memo, deviceId } = req.body;
     if (!Array.isArray(items) || !items.length) return err(res, '항목 없음', 400);
+    const isAdmin = !!ADMIN_TOKEN && req.headers['x-admin-token'] === ADMIN_TOKEN;
 
     const conn = await pool.getConnection();
     await conn.beginTransaction();
     try {
       const [rows] = await conn.execute(
-        'SELECT status, date, items, memo, total, reserve_date FROM orders WHERE id=? FOR UPDATE', [req.params.id]
+        'SELECT status, date, items, memo, total, reserve_date, device_id FROM orders WHERE id=? FOR UPDATE', [req.params.id]
       );
       if (!rows.length) { await conn.rollback(); conn.release(); return err(res, '주문 없음', 404); }
+      // 본인 기기 주문만 수정 가능 (관리자는 예외) — 소유권 없으면 여기서 차단
+      if (!isAdmin) {
+        const ownsOrder = deviceId && rows[0].device_id && deviceId === rows[0].device_id;
+        if (!ownsOrder) { await conn.rollback(); conn.release(); return err(res, '인증이 필요합니다.', 401); }
+      }
       if (rows[0].status !== 'pending') { await conn.rollback(); conn.release(); return err(res, '대기중 주문만 수정할 수 있어요.', 409); }
 
       const orderDate  = toKSTDateStr(rows[0].date) || rows[0].date;
@@ -1090,7 +1096,13 @@ app.put('/api/orders/:id/items', async (req, res) => {
 // 추가요청 저장 (PUT /api/orders/:id/request)
 app.put('/api/orders/:id/request', async (req, res) => {
   try {
-    const { text } = req.body;
+    const { text, deviceId } = req.body;
+    const isAdmin = !!ADMIN_TOKEN && req.headers['x-admin-token'] === ADMIN_TOKEN;
+    if (!isAdmin) {
+      const [rows] = await pool.execute('SELECT device_id FROM orders WHERE id=?', [req.params.id]);
+      if (!rows.length) return err(res, '주문 없음', 404);
+      if (!deviceId || !rows[0].device_id || deviceId !== rows[0].device_id) return err(res, '인증이 필요합니다.', 401);
+    }
     // 고객이 추가요청사항을 저장할 때마다 관리자 확인 여부를 다시 미확인으로 돌려서
     // 관리자 페이지에 "새 추가 요청" 알림 배지가 뜨게 함
     await pool.execute('UPDATE orders SET additional_request=?, addreq_acked=0 WHERE id=?', [text||'', req.params.id]);
@@ -1107,7 +1119,13 @@ app.put('/api/orders/:id/memo', async (req, res) => {
     // 고객이 배송방법을 바꾸면 '저장'을 눌렀을 때 PUT /:id/items 로 함께 넘어오고,
     // 거기서 한 번만 기록·발송한다. 이 경로는 옛 memo 형식을 정리하는 1회성
     // 마이그레이션도 쓰기 때문에, 여기서 통보하면 화면을 열 때마다 문자가 나간다.
-    const { memo } = req.body;
+    const { memo, deviceId } = req.body;
+    const isAdmin = !!ADMIN_TOKEN && req.headers['x-admin-token'] === ADMIN_TOKEN;
+    if (!isAdmin) {
+      const [rows] = await pool.execute('SELECT device_id FROM orders WHERE id=?', [req.params.id]);
+      if (!rows.length) return err(res, '주문 없음', 404);
+      if (!deviceId || !rows[0].device_id || deviceId !== rows[0].device_id) return err(res, '인증이 필요합니다.', 401);
+    }
     await pool.execute('UPDATE orders SET memo=? WHERE id=?', [memo||'', req.params.id]);
     broadcast('order_memo', { orderId: req.params.id });
     ok(res);
@@ -1226,6 +1244,15 @@ app.post('/api/customers-master', async (req, res) => {
     const {name,addr1,addr2,addr3,memo,device_id} = req.body;
     const phone = (req.body.phone||'').replace(/[^0-9]/g,'');
     if(!phone) return err(res,'phone required',400);
+    const isAdmin = !!ADMIN_TOKEN && req.headers['x-admin-token'] === ADMIN_TOKEN;
+    if (!isAdmin) {
+      // 이미 다른 기기가 이 전화번호로 저장해둔 주소록이면 덮어쓰기 차단. device_id가 NULL인
+      // 레거시 레코드는 아직 누구 것도 아니므로(= GET 핸들러의 자동 연결 규칙과 동일) 허용.
+      const [existing] = await pool.execute('SELECT device_id FROM customers_master WHERE phone=?', [phone]);
+      if (existing.length && existing[0].device_id && existing[0].device_id !== device_id) {
+        return err(res, '인증이 필요합니다.', 401);
+      }
+    }
     // 빈 값은 기존 값 유지 (addr 없이도 저장 허용 — 기존 addr 보존)
     await pool.execute(
       `INSERT INTO customers_master (name,phone,addr1,addr2,addr3,memo,device_id) VALUES (?,?,?,?,?,?,?)
@@ -1247,6 +1274,14 @@ app.put('/api/customers-master/:id', async (req, res) => {
   try {
     const {name,addr1,addr2,addr3,memo,device_id} = req.body;
     const phone = (req.body.phone||'').replace(/[^0-9]/g,'');
+    const isAdmin = !!ADMIN_TOKEN && req.headers['x-admin-token'] === ADMIN_TOKEN;
+    if (!isAdmin) {
+      const [existing] = await pool.execute('SELECT device_id FROM customers_master WHERE id=?', [req.params.id]);
+      if (!existing.length) return err(res, '대상 없음', 404);
+      if (existing[0].device_id && existing[0].device_id !== device_id) {
+        return err(res, '인증이 필요합니다.', 401);
+      }
+    }
     await pool.execute(
       'UPDATE customers_master SET name=?,phone=?,addr1=?,addr2=?,addr3=?,memo=?,device_id=COALESCE(?,device_id) WHERE id=?',
       [name||'',phone,addr1,addr2||null,addr3||null,memo||'',device_id||null,req.params.id]

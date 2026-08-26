@@ -1555,7 +1555,7 @@ function saveExtraReq(id){
   if(!text){showToast('내용을 입력해주세요.');return;}
   var btn=wrap.querySelector('.extra-req-save');
   btn.disabled=true; btn.textContent='저장 중...';
-  fetch(API_URL+'/api/orders/'+encodeURIComponent(id)+'/request',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:text})})
+  fetch(API_URL+'/api/orders/'+encodeURIComponent(id)+'/request',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:text,deviceId:getDeviceId()})})
   .then(function(r){return r.json();})
   .then(function(d){
     if(d&&d.success){
@@ -2222,9 +2222,9 @@ function _migrateLegacyMemo(all){
       o.additionalRequest=existing?(note+'\n'+existing):note;
     }
     o.memo=method;
-    fetch(API_URL+'/api/orders/'+encodeURIComponent(o.id)+'/memo',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({memo:method})}).catch(function(){});
+    fetch(API_URL+'/api/orders/'+encodeURIComponent(o.id)+'/memo',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({memo:method,deviceId:getDeviceId()})}).catch(function(){});
     if(o.additionalRequest){
-      fetch(API_URL+'/api/orders/'+encodeURIComponent(o.id)+'/request',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:o.additionalRequest})}).catch(function(){});
+      fetch(API_URL+'/api/orders/'+encodeURIComponent(o.id)+'/request',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:o.additionalRequest,deviceId:getDeviceId()})}).catch(function(){});
     }
   });
 }
@@ -2783,7 +2783,7 @@ function _doSaveOrderItems(id,cb){
   _saveInFlight[id]=true;
   fetch(API_URL+'/api/orders/'+encodeURIComponent(id)+'/items',{
     method:'PUT',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({items:o.items,total:o.total,memo:o.memo||''})
+    body:JSON.stringify({items:o.items,total:o.total,memo:o.memo||'',deviceId:getDeviceId()})
   })
   .then(function(r){return r.json();})
   .then(function(d){
@@ -2949,7 +2949,7 @@ function histSaveExtra(id){
   document.getElementById('histextra-'+id).innerHTML=_histExtraHtml(id,text);
   fetch(API_URL+'/api/orders/'+encodeURIComponent(id)+'/request',{
     method:'PUT',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({text:text})
+    body:JSON.stringify({text:text,deviceId:getDeviceId()})
   }).catch(function(){});
 }
 function deleteHistOrder(orderId){
