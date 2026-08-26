@@ -689,41 +689,6 @@ app.post('/api/menu/daily', requireAdmin, async (req, res) => { await withMenuWr
   } catch(e) { err(res, e.message); }
 }); });
 
-// 특정 날짜 재고 업데이트 (PUT /api/menu/:date/stock)
-app.put('/api/menu/:date/stock', requireAdmin, async (req, res) => {
-  try {
-    const { name, stock, menuId } = req.body;
-    const byId = menuId != null;
-    await pool.execute(
-      byId ? 'UPDATE daily_menus SET stock=? WHERE date=? AND menu_id=?'
-           : 'UPDATE daily_menus SET stock=? WHERE date=? AND name=?',
-      [stock, req.params.date, byId ? menuId : name]
-    );
-    ok(res);
-  } catch(e) { err(res, e.message); }
-});
-
-// 재고 증감 (POST /api/menu/:date/stock-adjust)  delta = +N/-N
-app.post('/api/menu/:date/stock-adjust', requireAdmin, async (req, res) => {
-  try {
-    const items = req.body.items || [];
-    if (!items.length) return ok(res);
-    const conn = await pool.getConnection();
-    await conn.beginTransaction();
-    for (const it of items) {
-      const byId = it.menuId != null;
-      await conn.execute(
-        byId ? 'UPDATE daily_menus SET stock = GREATEST(0, stock + ?) WHERE date=? AND menu_id=?'
-             : 'UPDATE daily_menus SET stock = GREATEST(0, stock + ?) WHERE date=? AND name=?',
-        [it.delta, req.params.date, byId ? it.menuId : it.name]
-      );
-    }
-    await conn.commit();
-    conn.release();
-    ok(res);
-  } catch(e) { err(res, e.message); }
-});
-
 // ══════════════════════════════════════════════════════════════
 // 주문
 // ══════════════════════════════════════════════════════════════

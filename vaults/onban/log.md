@@ -34,3 +34,10 @@
 - 확인 결과: 저장소 전체 grep(server.js + 모든 html/js) — 두 엔드포인트는 server.js에 `requireAdmin`으로 정의는 돼 있으나 어떤 프론트엔드에서도 호출되지 않는 죽은 코드. 현재 재고 변경은 changeStock()의 로컬 상태 변경 + POST /api/menu/daily 일괄저장 경로 하나뿐
 - Pages updated: [[onban-backend-api]] ("죽은 엔드포인트 확인됨" 절 추가)
 ---
+
+## [2026-08-26] code-change | 죽은 재고 API 2개 삭제
+- 사용자 요청으로 server.js에서 PUT /api/menu/:date/stock, POST /api/menu/:date/stock-adjust 라우트 실제 삭제 (약 34줄)
+- node --check로 문법 확인, grep으로 잔여 참조 없음 확인
+- 상세설계서(raw/, source-note)는 갱신하지 않음 — 이제 코드가 설계서보다 최신인 상태로 명시적으로 남겨둠
+- Pages updated: [[onban-backend-api]] (삭제 사실 반영, "코드가 설계서보다 최신" 경고 추가)
+---
