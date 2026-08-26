@@ -1758,6 +1758,17 @@ function renderOrdererPage(){
       memo:memo,                       // 배송방법만 저장
       additionalRequest:directReq      // 요청사항은 추가요청사항으로 통일
     };
+    // 고객 정보 자동 저장 — 다음 방문 때 자동완성용. 예전엔 주문이 서버에 성공적으로
+    // 접수된 뒤에만 저장해서, 재고 부족 등으로 주문이 중간에 막히면 이름/연락처를
+    // 입력해도 다음에 또 빈칸으로 나왔다. 입력을 확정한 이 시점(주문 성공 여부와 무관)에
+    // 바로 저장해 매번 다시 치는 일이 없게 한다 (fire-and-forget).
+    if(ordererInfo.name&&ordererInfo.phone){
+      fetch(API_URL+'/api/customers-master',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({name:ordererInfo.name,phone:ordererInfo.phone,addr1:ordererInfo.addr||'',memo:ordererInfo.memo||'',device_id:getDeviceId()})
+      }).catch(function(){});
+    }
     lastOrderTotal=orderItems.reduce(function(s,c){return s+c.price*c.qty;},0)+_deliveryFee;
     // 중복 주문 방지 — 응답이 올 때까지 버튼 잠금
     var _btnHtml=btn.innerHTML;
@@ -2059,14 +2070,8 @@ function saveOrder(cb){
       var orders=JSON.parse(localStorage.getItem('orders')||'[]');
       orders.unshift(order);
       localStorage.setItem('orders',JSON.stringify(orders));
-      // 고객 정보 자동 저장 — 다음 주문 시 자동완성에 사용 (fire-and-forget)
-      if(order.name&&order.phone){
-        fetch(API_URL+'/api/customers-master',{
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({name:order.name,phone:order.phone,addr1:order.addr||'',memo:order.memo||'',device_id:getDeviceId()})
-        }).catch(function(){});
-      }
+      // 고객 정보 자동 저장은 주문 확정 버튼을 누른 시점(cartOrder 쪽)으로 옮겨졌다 —
+      // 여기(주문 성공 후)에서만 저장하면 재고 부족 등으로 막힌 시도는 저장이 안 됐었다.
       if(cb)cb({success:true,order:order});
     })
     .catch(function(){if(cb)cb({success:false,soldOut:[]});});
