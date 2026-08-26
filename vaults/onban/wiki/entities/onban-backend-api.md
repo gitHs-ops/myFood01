@@ -38,6 +38,9 @@ related: [[onban-service]], [[menu-manager-page]], [[onban-customer-page]], [[on
 ## 인증
 API 인증 없음(무인증) — 단, `POST /api/menu/master/update`(이미지 갤러리 관리자 인라인 편집)와 관리자 전용 `GET /api/settings` 필드는 `x-admin-token` 헤더 필요. **알려진 위험**: 주문 변경·삭제 등 대부분 API가 여전히 무인증(양쪽 상세설계서 12/13장에 공통 미해결 위험으로 명시).
 
+## 죽은 엔드포인트 확인됨 (2026-08-26, 코드 직접 확인)
+`PUT /api/menu/:date/stock`(재고 절대값 설정)과 `POST /api/menu/:date/stock-adjust`(재고 증감, `GREATEST(0,stock+delta)`)는 두 상세설계서 모두 "관리자용" API로 나열하지만, `server/server.js`에 `requireAdmin`으로 보호된 채 **정의만 되어 있고 실제로는 어느 프론트엔드(menu-manager.html·onban01.html·온반_메뉴_이미지갤러리.html)에서도 호출되지 않는다**(전체 저장소 grep으로 확인). 현재 관리자 재고 변경은 [[realtime-autosave]]에 정리된 대로 `changeStock()`이 로컬 상태만 바꾸고 `POST /api/menu/daily` 일괄저장으로 반영되는 경로 하나뿐 — 이 두 엔드포인트는 설계서 작성 시점(2026-06-30) 이후 프론트엔드가 다른 방식으로 리팩터링되며 남겨진 것으로 보인다. 삭제해도 프론트엔드에 영향 없음(제거 후보).
+
 ## Related
 - API 경로 전체 목록: [[onban-customer-design-spec]] 7장, [[onban-admin-design-spec]] 12장
 - 마이그레이션 이력: 과거 1회성 스키마 보정 스크립트(menu_id 정규화, icon 컬럼 도입 등)는 운영 DB에 전부 반영 완료되어 코드에서 제거됨

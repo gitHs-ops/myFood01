@@ -28,3 +28,9 @@
 - Pages updated: [[reservation-order]](reserve_date 단일 판별기준·API 보완조회 로직), [[menu-warehouse]](DB 조인구조), [[realtime-autosave]](설계서와 교차검증), [[ai-menu-recommendation]](persona 로직·추적API), [[onban-service]](기술스택), [[menu-manager-page]](인증방식), [[onban-customer-page]](저장확정모델·이중방어), [[onban-image-gallery]](관리자 편집 API)
 - 발견한 사실: 관리자 상세설계서 5.5절이 지난번 매뉴얼 정정(실시간저장→명시적버튼)과 서술이 일치 — 별도 출처(코드 grep vs 설계서 문서)로 같은 결론에 도달해 교차검증됨
 ---
+
+## [2026-08-26] verify | 재고 조정 API 사용 여부 코드 확인
+- 계기: 재고관리 질의응답 중 "PUT /api/menu/:date/stock, POST /api/menu/:date/stock-adjust가 지금도 쓰이는지"를 사용자가 코드로 직접 확인 요청
+- 확인 결과: 저장소 전체 grep(server.js + 모든 html/js) — 두 엔드포인트는 server.js에 `requireAdmin`으로 정의는 돼 있으나 어떤 프론트엔드에서도 호출되지 않는 죽은 코드. 현재 재고 변경은 changeStock()의 로컬 상태 변경 + POST /api/menu/daily 일괄저장 경로 하나뿐
+- Pages updated: [[onban-backend-api]] ("죽은 엔드포인트 확인됨" 절 추가)
+---
