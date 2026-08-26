@@ -7,7 +7,7 @@ domain: onban
 tags: [온반, 백엔드, API, MySQL, Express, SSE]
 created: 2026-08-26
 updated: 2026-08-26
-related: [[onban-service]], [[menu-manager-page]], [[onban-customer-page]], [[onban-image-gallery]], [[sse-realtime-sync]], [[notification-dispatch]], [[reservation-order]], [[onban-customer-design-spec]], [[onban-admin-design-spec]]
+related: [[onban-service]], [[menu-manager-page]], [[onban-customer-page]], [[onban-image-gallery]], [[sse-realtime-sync]], [[notification-dispatch]], [[system-log]], [[reservation-order]], [[onban-customer-design-spec]], [[onban-admin-design-spec]]
 ---
 
 # server.js (Backend API)
@@ -45,4 +45,5 @@ API 인증 없음(무인증) — 단, `POST /api/menu/master/update`(이미지 �
 
 ## Related
 - API 경로 전체 목록: [[onban-customer-design-spec]] 7장, [[onban-admin-design-spec]] 12장
+- 관찰가능성(system_log 테이블·관리자 진단 화면): [[system-log]]
 - 마이그레이션 이력: 과거 1회성 스키마 보정 스크립트(menu_id 정규화, icon 컬럼 도입 등)는 운영 DB에 전부 반영 완료되어 코드에서 제거됨

@@ -41,3 +41,12 @@
 - 상세설계서(raw/, source-note)는 갱신하지 않음 — 이제 코드가 설계서보다 최신인 상태로 명시적으로 남겨둠
 - Pages updated: [[onban-backend-api]] (삭제 사실 반영, "코드가 설계서보다 최신" 경고 추가)
 ---
+
+## [2026-08-26] feature+ingest | 마스터 메뉴 삭제 시스템 로그 추가
+- 사용자 발견: 관리자 마스터 메뉴 삭제 시 시스템 로그(시스템_로그.html)에 활동이 안 남는 것을 확인 요청
+- 코드 확인: POST /api/menu/master/delete뿐 아니라 /master/update, /master/merge 전부 sysLog 호출 없음 — 마스터 변경 API 전체가 애초에 로그 대상 밖이었음
+- 조치(요청 범위인 삭제만): server.js에 sysLog('menu_delete', ...) 추가, 시스템_로그.html에 대응 탭·배지·라벨(🗑 메뉴삭제) 추가. Browser로 UI 렌더링·클릭·활성화 검증 완료
+- vault에 처음 다루는 주제라 새 concept [[system-log]] 생성 (시스템 로그 전체 메커니즘, type 7종 표, update·merge는 여전히 로그 없다는 사실 포함)
+- Pages created: [[system-log]]
+- Pages updated: [[onban-backend-api]] (system-log 링크 추가)
+---

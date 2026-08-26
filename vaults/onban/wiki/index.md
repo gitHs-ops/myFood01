@@ -41,6 +41,7 @@ updated: 2026-08-26
 | [[notification-dispatch]] | 알림 발송 구조 — SMS·카카오알림톡, 2026-08-08 전면미발송 사고 | onban |
 | [[device-id-identification]] | device_id 기반 무로그인 식별 | onban |
 | [[localstorage-server-truth]] | localStorage 정리 — 서버 단일 원본화 (2026-08-08) | onban |
+| [[system-log]] | 시스템 로그 — sysLog 헬퍼, type 분류, 관리자 진단화면 | onban |
 
 ## 알아둘 점
 - [[onban-operator-manual-v1]]과 [[onban-admin-manual]]은 같은 페이지(menu-manager.html)의 신·구 매뉴얼 — 기본 흐름은 겹치지만 admin-manual이 최신
