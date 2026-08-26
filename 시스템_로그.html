@@ -61,6 +61,7 @@ html,body{min-height:100vh;font-family:'Noto Sans KR',sans-serif;background:line
 .log-badge.abnormal_access{background:#fff3e0;color:#b8860b;}
 .log-badge.abnormal_order{background:#fff0ee;color:#c0392b;}
 .log-badge.daily_menu_save{background:#e6f3fb;color:#0a6ebd;}
+.log-badge.menu_delete{background:#eef2f7;color:#4a5568;}
 .log-badge.error{background:#fde2e0;color:#c0392b;}
 .log-dt{font-size:11px;color:var(--light);white-space:nowrap;}
 .log-ip{font-size:10.5px;color:#ccc;margin-left:auto;white-space:nowrap;}
@@ -90,6 +91,7 @@ html,body{min-height:100vh;font-family:'Noto Sans KR',sans-serif;background:line
         <button type="button" class="tab" data-type="ai_recommend">🎯 AI추천</button>
         <button type="button" class="tab" data-type="order_customer">📦 주문고객정보</button>
         <button type="button" class="tab" data-type="daily_menu_save">🍱 일일메뉴저장</button>
+        <button type="button" class="tab" data-type="menu_delete">🗑 메뉴삭제</button>
         <button type="button" class="tab" data-type="abnormal_access">⚠️ 비정상접근</button>
         <button type="button" class="tab" data-type="abnormal_order">🚫 대량주문차단</button>
         <button type="button" class="tab" data-type="error">❌ 에러</button>
@@ -104,7 +106,7 @@ html,body{min-height:100vh;font-family:'Noto Sans KR',sans-serif;background:line
 <script>
 var API_URL='https://myfood01-production.up.railway.app';
 var ONBAN_ADMIN_KEY='onban@1dl34';
-var TYPE_LABEL={ai_recommend:'🎯 AI추천',order_customer:'📦 주문고객정보',daily_menu_save:'🍱 일일메뉴저장',abnormal_access:'⚠️ 비정상접근',abnormal_order:'🚫 대량주문차단',error:'❌ 에러'};
+var TYPE_LABEL={ai_recommend:'🎯 AI추천',order_customer:'📦 주문고객정보',daily_menu_save:'🍱 일일메뉴저장',menu_delete:'🗑 메뉴삭제',abnormal_access:'⚠️ 비정상접근',abnormal_order:'🚫 대량주문차단',error:'❌ 에러'};
 var curType='';
 var curLogs=[];
 var curLimit=200;

@@ -49,8 +49,8 @@ const pool = mysql.createPool({
   charset:           'utf8mb4'
 });
 
-// 시스템 로그 — AI추천(토큰 비용 발생) 호출 / 주문 고객정보 / 비정상 접근 / 서버 에러 기록.
-// type: 'ai_recommend' | 'order_customer' | 'abnormal_access' | 'error'
+// 시스템 로그 — AI추천(토큰 비용 발생) 호출 / 주문 고객정보 / 일일메뉴저장 / 마스터메뉴삭제 / 비정상 접근·주문 / 서버 에러 기록.
+// type: 'ai_recommend' | 'order_customer' | 'daily_menu_save' | 'menu_delete' | 'abnormal_access' | 'abnormal_order' | 'error'
 async function sysLog(type, summary, detail, ip, deviceId) {
   try {
     await pool.execute(
@@ -474,6 +474,8 @@ app.post('/api/menu/master/delete', requireAdmin, async (req, res) => {
     }
     if (id) await pool.execute('DELETE FROM menus WHERE id=?', [id]);
     else     await pool.execute('DELETE FROM menus WHERE name=?', [name]);
+    sysLog('menu_delete', '마스터 메뉴 삭제 — ' + (name || ('id:' + id)) + (force ? ' (연동된 일일메뉴도 강제삭제)' : ''),
+      { id, name, force }, req.ip, deviceIdOf(req)).catch(() => {});
     ok(res, { deleted: true });
   } catch(e) { err(res, e.message); }
 });
