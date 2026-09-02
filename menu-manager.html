@@ -292,6 +292,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
 .order-items{font-size:15px;font-weight:900;color:#086266;margin-bottom:10px;line-height:1.8;}
 .order-total{font-size:15px;font-weight:900;color:#086266;margin-bottom:12px;}
 .order-memo{font-size:12px;color:#b8860b;background:#fff8e1;padding:6px 10px;border-radius:6px;margin-bottom:10px;}
+.order-addr{font-size:12px;color:#086266;background:#e0f7f6;padding:6px 10px;border-radius:6px;margin-bottom:10px;word-break:break-all;overflow-wrap:anywhere;}
 .addreq-row-wrap{margin-bottom:10px;}
 .addreq-text-row{font-size:12px;color:#044f52;background:#c8ecea;border:1.5px solid #5abfbb;padding:8px 12px;border-radius:6px 6px 0 0;line-height:1.6;word-break:break-all;overflow-wrap:anywhere;font-weight:500;}
 .addreq-actions-row{display:flex;justify-content:flex-end;padding:4px 0 6px;background:#f0faf9;border-radius:0 0 6px 6px;border-top:1px solid #d6efee;}
@@ -3093,6 +3094,12 @@ function _buildAdminOrderCard(order){
       memo.className='order-memo';
       memo.textContent='🚚 '+(order.memo||'').split(' / ')[0].trim();
       card.appendChild(memo);
+    }
+    if(order.addr){
+      var addrRow=document.createElement('div');
+      addrRow.className='order-addr';
+      addrRow.textContent='📍 '+order.addr;
+      card.appendChild(addrRow);
     }
     // 추가요청 + 답변 텍스트박스 — 항상 고정 표시
     var addWrap=document.createElement('div');
