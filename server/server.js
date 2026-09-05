@@ -1476,18 +1476,22 @@ app.post('/api/recommend', async (req, res) => {
         tool_choice: { type: 'tool', name: 'recommend_menus' },
       }),
     });
-    // AI 추천은 호출될 때마다 Anthropic API 토큰 비용이 발생하므로, 성공/실패와 무관하게 호출 자체를 기록
+    // 응답 본문은 한 번만 읽을 수 있어 텍스트로 먼저 받아두고 성공/실패 양쪽에서 재사용한다.
+    const aiRawText = await aiRes.text().catch(() => '');
+    let aiData = null;
+    try { aiData = JSON.parse(aiRawText); } catch (e) {}
+    const usage = (aiData && aiData.usage) || null;
+    // AI 추천은 호출될 때마다 Anthropic API 토큰 비용이 발생하므로, 성공/실패와 무관하게 호출 자체(+토큰량)를 기록
     sysLog(
       'ai_recommend',
-      'AI추천 호출 — scope:' + scope + (deviceId ? (', device:' + deviceId) : ''),
-      { scope, deviceId, purpose, mealType, cuisine, broth, taste, temp, diet, mealKit, allergy, drinks, budget, httpStatus: aiRes.status },
+      'AI추천 호출 — scope:' + scope + (deviceId ? (', device:' + deviceId) : '') + (usage ? (', 토큰 입력' + usage.input_tokens + '/출력' + usage.output_tokens) : ''),
+      { scope, deviceId, purpose, mealType, cuisine, broth, taste, temp, diet, mealKit, allergy, drinks, budget, httpStatus: aiRes.status, usage },
       req.ip, deviceId
     ).catch(() => {});
     if (!aiRes.ok) {
-      const errText = await aiRes.text().catch(() => '');
-      return err(res, 'AI 호출 실패(' + aiRes.status + '): ' + errText.slice(0, 300));
+      return err(res, 'AI 호출 실패(' + aiRes.status + '): ' + aiRawText.slice(0, 300));
     }
-    const aiData = await aiRes.json();
+    if (!aiData) return err(res, 'AI 응답 파싱 오류');
     const toolBlock = (aiData.content || []).find(b => b.type === 'tool_use' && b.name === 'recommend_menus');
     if (!toolBlock) return err(res, 'AI 응답 형식 오류');
 
@@ -1612,6 +1616,31 @@ app.post('/api/system-log/delete', requireAdmin, async (req, res) => {
     const ph = ids.map(() => '?').join(',');
     const [r] = await pool.execute('DELETE FROM system_log WHERE id IN (' + ph + ')', ids);
     ok(res, { deleted: r.affectedRows });
+  } catch (e) { err(res, e.message); }
+});
+
+// GET /api/system-log/token-usage — 관리자 전용. AI추천(ai_recommend) 호출의 Anthropic 토큰 사용량을 오늘/전체 누적으로 집계.
+// usage는 이 집계 기능을 추가한 시점 이후의 ai_recommend 로그부터 기록되므로, 그 이전 호출은 calls에는 잡히되 토큰수는 0으로 집계된다.
+app.get('/api/system-log/token-usage', requireAdmin, async (req, res) => {
+  try {
+    const [rows] = await pool.execute("SELECT created_at, detail FROM system_log WHERE type='ai_recommend'");
+    const todayStr = toKSTDateStr(new Date());
+    const total = { calls: 0, inputTokens: 0, outputTokens: 0 };
+    const today = { calls: 0, inputTokens: 0, outputTokens: 0 };
+    for (const r of rows) {
+      let detail = null;
+      try { detail = typeof r.detail === 'string' ? JSON.parse(r.detail) : r.detail; } catch (e) {}
+      const usage = detail && detail.usage;
+      const isToday = toKSTDateStr(r.created_at) === todayStr;
+      total.calls++; if (isToday) today.calls++;
+      if (usage) {
+        const inTok = Number(usage.input_tokens) || 0;
+        const outTok = Number(usage.output_tokens) || 0;
+        total.inputTokens += inTok; total.outputTokens += outTok;
+        if (isToday) { today.inputTokens += inTok; today.outputTokens += outTok; }
+      }
+    }
+    ok(res, { today, total });
   } catch (e) { err(res, e.message); }
 });
 
