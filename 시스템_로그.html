@@ -4,9 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>시스템 로그 — 오늘의 반찬</title>
+<script src="admin-key.js"></script>
 <script>
 (function(){
-  var ONBAN_ADMIN_KEY='onban@1dl34';
   var AUTH_VAL='ok_'+ONBAN_ADMIN_KEY;
   if(localStorage.getItem('onban_admin_auth')===AUTH_VAL)return;
   var input=(prompt('관리자 비밀번호를 입력하세요 (영문 모드로 전환 후 입력)')||'').trim();
@@ -130,7 +130,6 @@ html,body{min-height:100vh;font-family:'Noto Sans KR',sans-serif;background:line
 
 <script>
 var API_URL='https://myfood01-production.up.railway.app';
-var ONBAN_ADMIN_KEY='onban@1dl34';
 var TYPE_LABEL={ai_recommend:'🎯 AI추천',order_customer:'📦 주문고객정보',daily_menu_save:'🍱 일일메뉴저장',menu_delete:'🗑 메뉴삭제',abnormal_access:'⚠️ 비정상접근',abnormal_order:'🚫 대량주문차단',error:'❌ 에러'};
 var curType='';
 var curLogs=[];
