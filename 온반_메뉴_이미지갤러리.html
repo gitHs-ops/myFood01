@@ -849,7 +849,7 @@
           var ev = (d && d.success && d.data && d.data.reserveEvent) || null;
           var todayStr = todayISO();
           var el = document.getElementById('reserveEventCard');
-          if (!ev || !ev.name || !ev.deadline || ev.deadline < todayStr) { el.innerHTML = ''; return; }
+          if (!ev || !ev.cat || !ev.deadline || ev.deadline < todayStr) { el.innerHTML = ''; return; }
           var safeDesc = (ev.desc || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
           el.innerHTML = '<div class="reserve-event-card" onclick="window.location.href=\'onban01.html?openReserveEvent=1\'">'
             + '<div style="display:flex;align-items:center;gap:8px;">'
