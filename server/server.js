@@ -1300,7 +1300,7 @@ app.delete('/api/customers-master/:id', requireAdmin, async (req, res) => {
 // 관리자 토큰이 있을 때만 내려준다 — 문자 발송 주소와 연락처가 새어나가지 않도록.
 // categories 는 별도 취급(아래) — settings 테이블이 아니라 categories 테이블이 원본이고,
 // 고객 화면도 색상이 필요하므로 인증 여부와 무관하게 항상 공개한다.
-const PUBLIC_SETTING_KEYS = ['banks', 'reserveEvent'];
+const PUBLIC_SETTING_KEYS = ['banks', 'reserveEvent', 'reserveEventMenu'];
 
 // 설정 로드 (GET /api/settings)
 app.get('/api/settings', async (req, res) => {

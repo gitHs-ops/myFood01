@@ -564,6 +564,10 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
     <div style="display:flex;gap:8px;margin-top:0;">
       <button class="copy-btn" id="parseKakaoBtn" onclick="parseKakaoToMenu()" style="flex:1;background:#086266;color:#fff;">카카오 톡 내용으로 일일 메뉴 생성</button>
     </div>
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <button class="copy-btn" onclick="saveAsReserveEventMenu()" style="flex:1;background:#d2691e;color:#fff;">🎉 예약 이벤트 메뉴로 저장</button>
+    </div>
+    <p style="font-size:12px;color:#aaa;margin-top:6px;">위 텍스트를 일일/마스터 메뉴와는 무관하게 예약 이벤트 전용 목록으로 저장합니다. 매년 이 버튼으로 새로 저장해 재사용할 수 있어요.</p>
   </div>
 </div>
 <div id="page-settings" class="page">
@@ -672,11 +676,8 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
   </div>
   <div class="setting-card">
     <div class="setting-title">🎉 예약 이벤트 관리</div>
-    <p style="font-size:12px;color:#aaa;margin-bottom:12px;">선택한 카테고리에 속한 메뉴 전체가 예약주문 페이지 상단 카드로 묶여서 노출됩니다. 카테고리를 "(선택 안 함)"으로 저장하면 노출되지 않습니다.</p>
-    <div class="setting-row">
-      <span class="setting-label">연결할 카테고리</span>
-      <select class="setting-input" id="cfgEventCat"></select>
-    </div>
+    <p style="font-size:12px;color:#aaa;margin-bottom:12px;">예약 이벤트 메뉴 목록 자체는 "카카오 발송" 탭의 🎉 버튼으로 저장합니다. 여기서는 안내 문구와 예약 기한만 지정하세요. 예약 기한을 비우고 저장하면 배너가 노출되지 않습니다.</p>
+    <div class="setting-row" id="cfgEventItemsInfo" style="font-size:13px;color:#555;margin-bottom:8px;"></div>
     <div class="setting-row">
       <span class="setting-label">안내 문구</span>
       <textarea class="setting-input" id="cfgEventDesc" rows="3" style="resize:vertical;" placeholder="예) 추석 예약 메뉴"></textarea>
@@ -2067,6 +2068,35 @@ function _confirmRegisterFromPreview(text,summaryMsg){
   showConfirm(msg,function(){_commitPreviewMenus(parsed);},'등록','취소');
 }
 function _registerFromPreview(text){ _confirmRegisterFromPreview(text); }
+// 카카오 텍스트 → 예약 이벤트 전용 메뉴 목록으로 저장. 일일/마스터 메뉴(menus·daily_menus) DB와는
+// 전혀 무관한 별도 설정값(reserveEventMenu)에 1회성으로 저장 — 카테고리 지정 없이 이름+가격만 필요.
+// 같은 화면(설정 탭)에서 예약 기한만 지정하면 고객 화면에 그대로 노출된다. 매년 이 텍스트를 새로
+// 붙여넣고 다시 누르면 통째로 교체되므로 내년에도 재사용 가능.
+function saveAsReserveEventMenu(){
+  var el=document.getElementById('kakaoText');
+  var text=(el.innerText||el.textContent||'').trim();
+  if(!text||text==='메뉴를 먼저 입력해주세요.'){showToast('먼저 메뉴를 입력해주세요.');return;}
+  var items;
+  if(text.indexOf('# 메뉴ID')>=0){
+    items=_parsePreviewTable(text).map(function(m){return{name:m.name,price:m.price,child:!!m.child};});
+  }else{
+    items=_parseRawKakao(text).filter(function(m){return m.name&&m.price>0;}).map(function(m){return{name:m.name,price:m.price,child:!!m.child};});
+  }
+  var byName={};
+  items.forEach(function(it){byName[it.name]=it;});   // 같은 이름 중복 라인은 마지막 값으로
+  items=Object.keys(byName).map(function(k){return byName[k];});
+  if(!items.length){showToast('저장할 메뉴가 없습니다. 금액이 있는 메뉴명 라인이 필요해요.');return;}
+  showConfirm(
+    items.length+'개 메뉴를 예약 이벤트 메뉴로 저장할까요?\n(기존 메뉴 DB와 무관한 별도 목록이며, 기존 예약 이벤트 메뉴는 대체됩니다)',
+    function(){
+      apiPost('/api/settings',{reserveEventMenu:items},function(err,d){
+        if(err||!d||d.success===false){showToast('⚠️ 저장 실패');return;}
+        showToast('🎉 예약 이벤트 메뉴 '+items.length+'개 저장 완료!');
+      });
+    },
+    '저장','취소'
+  );
+}
 var _histLoadDate=null,_histSubTab='dates';
 // 중복 클릭 방지 + 두 저장(마스터 전체 동기화 /api/menu/all, 오늘 목록 /api/menu/daily)을
 // 동시에 안 보내고 순서대로 보낸다 — 둘 다 menus 테이블의 겹치는 행을 건드리는데 동시에
@@ -3825,23 +3855,18 @@ function saveSendSettings(which){
 
 /* ── 예약 이벤트 관리 ── */
 function loadReserveEventForm(){
-  var sel=document.getElementById('cfgEventCat');
-  if(sel){
-    sel.innerHTML='<option value="">(선택 안 함)</option>'+getCats().map(function(c){
-      return '<option value="'+c.name+'">'+c.name+'</option>';
-    }).join('');
-  }
   apiFetch('/api/settings',function(err,d){
     if(err||!d||!d.success||!d.data)return;
     var ev=d.data.reserveEvent||{};
-    if(sel)sel.value=ev.cat||'';
+    var itemCnt=(d.data.reserveEventMenu||[]).length;
+    var info=document.getElementById('cfgEventItemsInfo');
+    if(info)info.textContent='현재 저장된 예약 이벤트 메뉴: '+itemCnt+'개 (카카오 발송 탭에서 변경)';
     document.getElementById('cfgEventDesc').value=ev.desc||'';
     document.getElementById('cfgEventDeadline').value=ev.deadline||'';
   });
 }
 function saveReserveEvent(){
   var ev={
-    cat:document.getElementById('cfgEventCat').value||'',
     desc:document.getElementById('cfgEventDesc').value.trim(),
     deadline:document.getElementById('cfgEventDeadline').value||''
   };
@@ -3853,8 +3878,7 @@ function saveReserveEvent(){
   });
 }
 function clearReserveEvent(){
-  showConfirm('예약 이벤트를 비울까요?',function(){
-    document.getElementById('cfgEventCat').value='';
+  showConfirm('예약 이벤트를 비울까요? (안내 문구·기한만 지워지고, 저장된 예약 이벤트 메뉴 목록은 남아있어 나중에 기한만 다시 넣으면 재사용할 수 있어요)',function(){
     document.getElementById('cfgEventDesc').value='';
     document.getElementById('cfgEventDeadline').value='';
     saveReserveEvent();
