@@ -1920,7 +1920,7 @@ function _parseRawKakao(text){
     if(line.match(/메뉴 안내$|메뉴 주문|https?:\/\//))return;
     var _stk=_parseStockFromParen(line);   // 괄호에서 재고 추출(없으면 null)
     line=line.replace(/\s*\([^)]*\)\s*$/,'').trim();
-    var m=line.match(/^(.+?)\s*(👧)?\s*(-?[\d,]+(?:\.\d+)?)\s*(천원|천|원)?\s*$/);
+    var m=line.match(/^(.+?)[\s_]*[₩$]?\s*(👧)?\s*(-?[\d,]+(?:\.\d+)?)\s*(천원|천|원)?\s*$/);
     if(m){
       var name=m[1].trim().replace(/\s*👧\s*/g,'').trim();
       var child=!!m[2]||line.indexOf('👧')>=0;
@@ -2237,34 +2237,131 @@ function switchHistSubTab(tab){
     loadEventMenuList();
   }
 }
-// 메뉴 창고 > "이벤트중인 예약 메뉴" — 카카오 발송 탭에서 저장한 reserveEventMenu를 그대로
-// 읽어와 목록으로만 보여준다(수정·삭제는 카카오 발송 탭에서 다시 저장하는 방식으로 처리).
+// 메뉴 창고 > "이벤트중인 예약 메뉴" — 카카오 발송 탭에서 저장한 reserveEventMenu를 마스터
+// 메뉴 목록과 같은 방식(체크선택+개별 삭제+가격/이름 인라인 수정)으로 관리한다. 다만 서버에는
+// 개별 행이 없고 reserveEventMenu 배열 통째로만 저장되므로, 어떤 변경이든 배열 전체를 즉시
+// 다시 POST해서 반영한다(마스터의 saveAllMenus 전체동기화 방식과 동일한 발상).
+var _eventMenuItems=[];
+var _eventMenuDesc='',_eventMenuDeadline='';
+var _selectedEventIdx=new Set();
+function _escEv(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function loadEventMenuList(){
   var em=document.getElementById('eventMenuList');
   apiFetch('/api/settings',function(err,d){
     if(!em)return;
     if(err||!d||!d.success||!d.data){em.innerHTML='<div style="text-align:center;padding:30px;color:#f55;font-size:13px;">불러오기 실패</div>';return;}
-    var items=d.data.reserveEventMenu||[];
     var ev=d.data.reserveEvent||{};
-    var _esc=function(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};
-    var head='<div style="font-size:13px;color:#666;margin-bottom:10px;">'
-      +(ev.desc?('📢 '+_esc(ev.desc)+'  '):'')
-      +(ev.deadline?('· 예약 기한 '+_esc(ev.deadline)+'까지  '):'')
-      +'· 총 '+items.length+'개'
-      +'</div>';
-    if(!items.length){
-      em.innerHTML=head+'<div class="empty">등록된 예약 이벤트 메뉴가 없어요. "카카오 발송" 탭에서 텍스트를 붙여넣고 🎉 버튼으로 저장해주세요.</div>';
-      return;
-    }
-    em.innerHTML=head+'<div class="menu-list">'+items.map(function(it,i){
+    _eventMenuDesc=ev.desc||'';
+    _eventMenuDeadline=ev.deadline||'';
+    _eventMenuItems=(d.data.reserveEventMenu||[]).map(function(it){return{name:it.name,price:Number(it.price)||0,child:!!it.child};});
+    _selectedEventIdx=new Set();
+    renderEventMenuList();
+  });
+}
+function renderEventMenuList(){
+  var em=document.getElementById('eventMenuList');
+  if(!em)return;
+  var head='<div style="font-size:13px;color:#666;margin-bottom:10px;">'
+    +(_eventMenuDesc?('📢 '+_escEv(_eventMenuDesc)+'  '):'')
+    +(_eventMenuDeadline?('· 예약 기한 '+_escEv(_eventMenuDeadline)+'까지  '):'')
+    +'· 총 '+_eventMenuItems.length+'개'
+    +'</div>';
+  if(!_eventMenuItems.length){
+    em.innerHTML=head+'<div class="empty">등록된 예약 이벤트 메뉴가 없어요. "카카오 발송" 탭에서 텍스트를 붙여넣고 🎉 버튼으로 저장해주세요.</div>';
+    return;
+  }
+  var delBtnOn=_selectedEventIdx.size>0;
+  em.innerHTML=head
+    +'<div style="display:flex;justify-content:flex-end;margin-bottom:8px;">'
+      +'<button id="deleteEventBtn" style="background:#e53935;color:#fff;border:none;border-radius:20px;padding:7px 14px;font-size:12px;font-weight:700;font-family:inherit;'+(delBtnOn?'cursor:pointer;':'cursor:not-allowed;opacity:.35;')+'" '+(delBtnOn?'':'disabled')+' onclick="deleteSelectedEventItems()">🗑 선택항목 삭제하기</button>'
+    +'</div>'
+    +'<div class="menu-list">'+_eventMenuItems.map(function(it,i){
+      var chk=_selectedEventIdx.has(i)?' checked':'';
       return '<div class="menu-item">'
         +'<span style="font-size:11px;color:#bbb;min-width:22px;text-align:right;flex-shrink:0;">'+(i+1)+'</span>'
+        +'<input type="checkbox" class="menu-cb"'+chk+' onchange="toggleEventSel('+i+',this)">'
         +'<div class="img-btn">'+getMenuEmoji(it.name,'')+'</div>'
-        +'<span style="flex:1;font-size:14px;font-weight:600;color:#222;">'+_esc(it.name)+(it.child?' 👧':'')+'</span>'
-        +'<span style="font-size:13px;font-weight:700;color:#086266;">'+(Number(it.price)||0).toLocaleString()+'천원</span>'
-        +'</div>';
+        +'<div class="name" style="flex:1;">'
+          +'<span class="name-edit" id="end_'+i+'" onclick="startEditEventName('+i+')">'+_escEv(it.name)+(it.child?' 👧':'')+' <span class="edit-pen">✏️</span></span>'
+          +'<input class="edit-input" id="eni_'+i+'" type="text" value="'+_escEv(it.name)+'" style="display:none;width:100%;" onblur="commitEventName('+i+')" onkeydown="if(event.key===\'Enter\')this.blur();if(event.key===\'Escape\')cancelEventName('+i+');">'
+        +'</div>'
+        +'<div class="price-wrap"><span class="price-display" id="epd_'+i+'" onclick="startEditEventPrice('+i+')">'+it.price.toLocaleString()+'천원</span><input class="price-input" id="epi_'+i+'" type="number" min="1" value="'+it.price+'" onblur="commitEventPrice('+i+')" onkeydown="if(event.key===\'Enter\')this.blur();if(event.key===\'Escape\')cancelEventPrice('+i+');"></div>'
+        +'<button class="del-btn" onclick="deleteEventMenuItem('+i+')">&#10005;</button>'
+      +'</div>';
     }).join('')+'</div>';
+}
+function toggleEventSel(i,cb){
+  if(cb.checked)_selectedEventIdx.add(i);else _selectedEventIdx.delete(i);
+  var btn=document.getElementById('deleteEventBtn');
+  if(btn){var on=_selectedEventIdx.size>0;btn.disabled=!on;btn.style.opacity=on?'':'0.35';btn.style.cursor=on?'pointer':'not-allowed';}
+}
+// reserveEventMenu는 개별 행이 아니라 배열 통째로 저장되는 값이라, 수정/삭제 때마다 전체를
+// 다시 POST한다 — 성공하든 실패하든 최신 화면을 다시 그려 서버 상태와 어긋나지 않게 한다.
+function _saveEventMenuItems(okMsg){
+  var payload=_eventMenuItems.map(function(it){return{name:it.name,price:it.price,child:!!it.child};});
+  apiPost('/api/settings',{reserveEventMenu:payload},function(err,d){
+    if(err||!d||d.success===false){showToast('⚠️ 저장 실패 — 다시 시도해주세요.');loadEventMenuList();return;}
+    if(okMsg)showToast(okMsg);
+    renderEventMenuList();
   });
+}
+function startEditEventName(i){
+  var disp=document.getElementById('end_'+i),inp=document.getElementById('eni_'+i);
+  if(!disp||!inp)return;
+  disp.style.display='none';inp.style.display='inline-block';inp.focus();inp.select();
+}
+function cancelEventName(i){
+  var disp=document.getElementById('end_'+i),inp=document.getElementById('eni_'+i);
+  if(inp)inp.value=_eventMenuItems[i].name;
+  if(disp)disp.style.display='';
+  if(inp)inp.style.display='none';
+}
+function commitEventName(i){
+  var inp=document.getElementById('eni_'+i);
+  if(!inp)return;
+  var val=inp.value.trim();
+  if(!val){cancelEventName(i);return;}
+  if(val===_eventMenuItems[i].name){cancelEventName(i);return;}
+  _eventMenuItems[i].name=val;
+  _saveEventMenuItems('메뉴명이 수정되었습니다.');
+}
+function startEditEventPrice(i){
+  var disp=document.getElementById('epd_'+i),inp=document.getElementById('epi_'+i);
+  if(!disp||!inp)return;
+  disp.style.display='none';inp.style.display='inline-block';inp.focus();inp.select();
+}
+function cancelEventPrice(i){
+  var disp=document.getElementById('epd_'+i),inp=document.getElementById('epi_'+i);
+  if(inp)inp.value=_eventMenuItems[i].price;
+  if(disp)disp.style.display='';
+  if(inp)inp.style.display='none';
+}
+function commitEventPrice(i){
+  var inp=document.getElementById('epi_'+i);
+  if(!inp)return;
+  var val=parseInt(inp.value)||0;
+  if(!_checkPriceUnit(val)){inp.focus();return;}
+  if(val===_eventMenuItems[i].price){cancelEventPrice(i);return;}
+  _eventMenuItems[i].price=val;
+  _saveEventMenuItems('가격이 수정되었습니다.');
+}
+function deleteEventMenuItem(i){
+  var it=_eventMenuItems[i];
+  if(!it)return;
+  showConfirm('['+it.name+'] 을(를) 예약 이벤트 메뉴에서 삭제할까요?',function(){
+    _eventMenuItems.splice(i,1);
+    _selectedEventIdx=new Set();
+    _saveEventMenuItems('['+it.name+'] 삭제 완료.');
+  },'삭제할게요');
+}
+function deleteSelectedEventItems(){
+  if(!_selectedEventIdx.size){showToast('메뉴를 선택해주세요.');return;}
+  var cnt=_selectedEventIdx.size;
+  showConfirm(cnt+'개 메뉴를 예약 이벤트 메뉴에서 삭제할까요?',function(){
+    _eventMenuItems=_eventMenuItems.filter(function(it,i){return !_selectedEventIdx.has(i);});
+    _selectedEventIdx=new Set();
+    _saveEventMenuItems(cnt+'개 삭제 완료.');
+  },'삭제할게요');
 }
 function loadReservedOrders(){
   var from=workDate||toISO(new Date());
