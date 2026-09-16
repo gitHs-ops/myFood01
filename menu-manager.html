@@ -738,6 +738,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
     <div id="allFilterTabs" class="tabs" style="display:none;margin-bottom:8px;"></div>
     <div id="allMenuList" style="display:none;"></div>
     <div id="reservedMenuList" style="display:none;"></div>
+    <div id="eventMenuList" style="display:none;"></div>
   </div>
 </div>
 
@@ -2086,8 +2087,15 @@ function saveAsReserveEventMenu(){
   items.forEach(function(it){byName[it.name]=it;});   // 같은 이름 중복 라인은 마지막 값으로
   items=Object.keys(byName).map(function(k){return byName[k];});
   if(!items.length){showToast('저장할 메뉴가 없습니다. 금액이 있는 메뉴명 라인이 필요해요.');return;}
+  // 안전장치: 카카오 탭에 들어오면 오늘의 정규 메뉴가 자동으로 채워지는데, 이걸 안 바꾸고
+  // 그대로 이 버튼을 누르면 예약 이벤트 메뉴가 오늘 메뉴로 조용히 덮어써진다(실제 발생 사고,
+  // 2026-09-16). 파싱된 이름 집합이 오늘 메뉴와 완전히 같으면 확인창에 강한 경고를 덧붙인다.
+  var todayNames=(menus||[]).map(function(m){return (m.name||'').trim();}).filter(Boolean).sort();
+  var pastedNames=items.map(function(it){return it.name;}).sort();
+  var looksLikeTodayMenu=!_kakaoUserEdited&&todayNames.length===pastedNames.length&&todayNames.every(function(n,i){return n===pastedNames[i];});
+  var warn=looksLikeTodayMenu?'⚠️ 이 내용이 오늘의 정규 메뉴 그대로인 것 같아요. 예약 이벤트용 텍스트가 맞는지 다시 확인해주세요!\n\n':'';
   showConfirm(
-    items.length+'개 메뉴를 예약 이벤트 메뉴로 저장할까요?\n(기존 메뉴 DB와 무관한 별도 목록이며, 기존 예약 이벤트 메뉴는 대체됩니다)',
+    warn+items.length+'개 메뉴를 예약 이벤트 메뉴로 저장할까요?\n(기존 메뉴 DB와 무관한 별도 목록이며, 기존 예약 이벤트 메뉴는 대체됩니다)',
     function(){
       apiPost('/api/settings',{reserveEventMenu:items},function(err,d){
         if(err||!d||d.success===false){showToast('⚠️ 저장 실패');return;}
@@ -2177,7 +2185,8 @@ function renderHistSubTabs(){
     '<button class="tab'+(_histSubTab==='dates'?' active':'')+'" onclick="switchHistSubTab(\'dates\')">날짜별 메뉴 묶음</button>'
     +dropdown
     +'<button class="tab'+(_histSubTab==='all'?' active':'')+'" onclick="switchHistSubTab(\'all\')">마스터 메뉴</button>'
-    +'<button class="tab'+(_histSubTab==='reserved'?' active':'')+'" onclick="switchHistSubTab(\'reserved\')">예약된 메뉴</button>';
+    +'<button class="tab'+(_histSubTab==='reserved'?' active':'')+'" onclick="switchHistSubTab(\'reserved\')">예약된 메뉴</button>'
+    +'<button class="tab'+(_histSubTab==='eventMenu'?' active':'')+'" onclick="switchHistSubTab(\'eventMenu\')">🎉 이벤트중인 예약 메뉴</button>';
 }
 function switchHistSubTab(tab){
   _histSubTab=tab;
@@ -2185,16 +2194,19 @@ function switchHistSubTab(tab){
   var ft=document.getElementById('allFilterTabs');
   var lg=document.getElementById('allCatLegend');
   var rl=document.getElementById('reservedMenuList');
+  var em=document.getElementById('eventMenuList');
   if(tab==='dates'){
     document.getElementById('historyList').style.display='';
     document.getElementById('allMenuList').style.display='none';
     if(rl)rl.style.display='none';
+    if(em)em.style.display='none';
     if(ft)ft.style.display='none';
     if(lg)lg.style.display='none';
     renderHistory();
   }else if(tab==='all'){
     document.getElementById('historyList').style.display='none';
     if(rl)rl.style.display='none';
+    if(em)em.style.display='none';
     if(ft)ft.style.display='none';
     if(lg)lg.style.display='';
     var el=document.getElementById('allMenuList');
@@ -2204,6 +2216,7 @@ function switchHistSubTab(tab){
   }else if(tab==='reserved'){
     document.getElementById('historyList').style.display='none';
     document.getElementById('allMenuList').style.display='none';
+    if(em)em.style.display='none';
     if(ft)ft.style.display='none';
     if(lg)lg.style.display='none';
     if(rl){
@@ -2211,7 +2224,47 @@ function switchHistSubTab(tab){
       rl.innerHTML='<div style="text-align:center;padding:30px;color:#aaa;font-size:13px;">불러오는 중...</div>';
     }
     loadReservedOrders();
+  }else if(tab==='eventMenu'){
+    document.getElementById('historyList').style.display='none';
+    document.getElementById('allMenuList').style.display='none';
+    if(rl)rl.style.display='none';
+    if(ft)ft.style.display='none';
+    if(lg)lg.style.display='none';
+    if(em){
+      em.style.display='';
+      em.innerHTML='<div style="text-align:center;padding:30px;color:#aaa;font-size:13px;">불러오는 중...</div>';
+    }
+    loadEventMenuList();
   }
+}
+// 메뉴 창고 > "이벤트중인 예약 메뉴" — 카카오 발송 탭에서 저장한 reserveEventMenu를 그대로
+// 읽어와 목록으로만 보여준다(수정·삭제는 카카오 발송 탭에서 다시 저장하는 방식으로 처리).
+function loadEventMenuList(){
+  var em=document.getElementById('eventMenuList');
+  apiFetch('/api/settings',function(err,d){
+    if(!em)return;
+    if(err||!d||!d.success||!d.data){em.innerHTML='<div style="text-align:center;padding:30px;color:#f55;font-size:13px;">불러오기 실패</div>';return;}
+    var items=d.data.reserveEventMenu||[];
+    var ev=d.data.reserveEvent||{};
+    var _esc=function(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};
+    var head='<div style="font-size:13px;color:#666;margin-bottom:10px;">'
+      +(ev.desc?('📢 '+_esc(ev.desc)+'  '):'')
+      +(ev.deadline?('· 예약 기한 '+_esc(ev.deadline)+'까지  '):'')
+      +'· 총 '+items.length+'개'
+      +'</div>';
+    if(!items.length){
+      em.innerHTML=head+'<div class="empty">등록된 예약 이벤트 메뉴가 없어요. "카카오 발송" 탭에서 텍스트를 붙여넣고 🎉 버튼으로 저장해주세요.</div>';
+      return;
+    }
+    em.innerHTML=head+'<div class="menu-list">'+items.map(function(it,i){
+      return '<div class="menu-item">'
+        +'<span style="font-size:11px;color:#bbb;min-width:22px;text-align:right;flex-shrink:0;">'+(i+1)+'</span>'
+        +'<div class="img-btn">'+getMenuEmoji(it.name,'')+'</div>'
+        +'<span style="flex:1;font-size:14px;font-weight:600;color:#222;">'+_esc(it.name)+(it.child?' 👧':'')+'</span>'
+        +'<span style="font-size:13px;font-weight:700;color:#086266;">'+(Number(it.price)||0).toLocaleString()+'천원</span>'
+        +'</div>';
+    }).join('')+'</div>';
+  });
 }
 function loadReservedOrders(){
   var from=workDate||toISO(new Date());
