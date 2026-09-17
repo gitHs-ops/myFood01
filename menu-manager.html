@@ -781,6 +781,20 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
     <button style="margin-top:8px;width:100%;background:#eee;color:#555;border:none;border-radius:10px;padding:9px;font-size:13px;cursor:pointer;font-family:inherit;" onclick="closeSendToTodayPopup()">취소</button>
   </div>
 </div>
+<!-- 예약 이벤트 메뉴 추가/대체 팝업 -->
+<div class="cal-overlay" id="eventAddReplaceOverlay" onclick="if(event.target===this)closeEventAddReplacePopup()">
+  <div style="background:#fff;border-radius:16px;padding:22px;width:320px;max-width:93vw;max-height:80vh;display:flex;flex-direction:column;position:relative;" onclick="event.stopPropagation()">
+    <button onclick="closeEventAddReplacePopup()" title="닫기" style="position:absolute;top:12px;right:12px;width:28px;height:28px;border-radius:50%;border:none;background:#f0f0f0;color:#888;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+    <div style="font-size:15px;font-weight:700;color:#1a1a1a;margin-bottom:6px;padding-right:26px;">🎉 예약 이벤트 메뉴 저장</div>
+    <div id="eventAddReplaceWarn" style="display:none;color:#e53935;font-size:12px;font-weight:700;margin-bottom:8px;"></div>
+    <div id="eventAddReplaceList" style="flex:1;overflow-y:auto;max-height:280px;margin-bottom:14px;"></div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-add" style="flex:1;font-size:14px;" onclick="confirmEventAddReplace('add')">추가</button>
+      <button class="btn btn-add" style="flex:1;font-size:14px;background:#E9A826;color:#3A1D1D;" onclick="confirmEventAddReplace('replace')">대체</button>
+    </div>
+    <button style="margin-top:8px;width:100%;background:#eee;color:#555;border:none;border-radius:10px;padding:9px;font-size:13px;cursor:pointer;font-family:inherit;" onclick="closeEventAddReplacePopup()">취소</button>
+  </div>
+</div>
 <!-- 메뉴 병합 모달 -->
 <div class="cal-overlay" id="mergeOverlay" onclick="if(event.target===this)closeMergeModal()">
   <div style="background:#fff;border-radius:16px;padding:22px;width:340px;max-width:93vw;" onclick="event.stopPropagation()">
@@ -1920,7 +1934,7 @@ function _parseRawKakao(text){
     if(line.match(/메뉴 안내$|메뉴 주문|https?:\/\//))return;
     var _stk=_parseStockFromParen(line);   // 괄호에서 재고 추출(없으면 null)
     line=line.replace(/\s*\([^)]*\)\s*$/,'').trim();
-    var m=line.match(/^(.+?)[\s_]*[₩$]?\s*(👧)?\s*(-?[\d,]+(?:\.\d+)?)\s*(천원|천|원)?\s*$/);
+    var m=line.match(/^(.+?)[\s_]*[₩$￦＄]?\s*(👧)?\s*(-?[\d,]+(?:\.\d+)?)\s*(천원|천|원)?\s*$/);
     if(m){
       var name=m[1].trim().replace(/\s*👧\s*/g,'').trim();
       var child=!!m[2]||line.indexOf('👧')>=0;
@@ -2093,17 +2107,54 @@ function saveAsReserveEventMenu(){
   var todayNames=(menus||[]).map(function(m){return (m.name||'').trim();}).filter(Boolean).sort();
   var pastedNames=items.map(function(it){return it.name;}).sort();
   var looksLikeTodayMenu=!_kakaoUserEdited&&todayNames.length===pastedNames.length&&todayNames.every(function(n,i){return n===pastedNames[i];});
-  var warn=looksLikeTodayMenu?'⚠️ 이 내용이 오늘의 정규 메뉴 그대로인 것 같아요. 예약 이벤트용 텍스트가 맞는지 다시 확인해주세요!\n\n':'';
-  showConfirm(
-    warn+items.length+'개 메뉴를 예약 이벤트 메뉴로 저장할까요?\n(기존 메뉴 DB와 무관한 별도 목록이며, 기존 예약 이벤트 메뉴는 대체됩니다)',
-    function(){
-      apiPost('/api/settings',{reserveEventMenu:items},function(err,d){
-        if(err||!d||d.success===false){showToast('⚠️ 저장 실패');return;}
-        showToast('🎉 예약 이벤트 메뉴 '+items.length+'개 저장 완료!');
-      });
-    },
-    '저장','취소'
-  );
+  openEventAddReplacePopup(items,looksLikeTodayMenu);
+}
+// 파싱된 목록을 바로 저장하지 않고 추가/대체 중 고르게 한다 — '일일메뉴 전송 팝업'과 같은 발상.
+var _pendingEventItems=[];
+function openEventAddReplacePopup(items,warnLooksLikeToday){
+  _pendingEventItems=items;
+  var warnEl=document.getElementById('eventAddReplaceWarn');
+  if(warnEl){
+    warnEl.style.display=warnLooksLikeToday?'block':'none';
+    warnEl.textContent=warnLooksLikeToday?'⚠️ 이 내용이 오늘의 정규 메뉴 그대로인 것 같아요. 예약 이벤트용 텍스트가 맞는지 다시 확인해주세요!':'';
+  }
+  document.getElementById('eventAddReplaceList').innerHTML='<div class="menu-list">'+items.map(function(it){
+    return '<div class="menu-item" style="padding:8px 10px;">'
+      +'<div class="name" style="flex:1;font-size:13px;font-weight:500;">'+_escEv(it.name)+(it.child?' 👧':'')+'</div>'
+      +'<span style="font-size:12px;color:#086266;font-weight:700;">'+it.price.toLocaleString()+'천원</span>'
+    +'</div>';
+  }).join('')+'</div>';
+  document.getElementById('eventAddReplaceOverlay').classList.add('open');
+}
+function closeEventAddReplacePopup(){
+  document.getElementById('eventAddReplaceOverlay').classList.remove('open');
+}
+function confirmEventAddReplace(mode){
+  var items=_pendingEventItems;
+  if(!items||!items.length){closeEventAddReplacePopup();return;}
+  if(mode==='replace'){
+    apiPost('/api/settings',{reserveEventMenu:items},function(err,d){
+      if(err||!d||d.success===false){showToast('⚠️ 저장 실패');return;}
+      showToast('🎉 예약 이벤트 메뉴 '+items.length+'개로 대체했어요!');
+      closeEventAddReplacePopup();
+    });
+    return;
+  }
+  // 추가: 화면에 떠 있던 상태가 오래됐을 수 있으니 서버의 최신 목록을 다시 받아 그 위에 병합
+  apiFetch('/api/settings',function(err,d){
+    if(err||!d||!d.success||!d.data){showToast('⚠️ 현재 목록을 불러오지 못했어요.');return;}
+    var existing=(d.data.reserveEventMenu||[]).slice();
+    var existNames={};existing.forEach(function(it){existNames[(it.name||'').trim()]=true;});
+    var added=0;
+    items.forEach(function(it){
+      if(!existNames[it.name]){existing.push(it);existNames[it.name]=true;added++;}
+    });
+    apiPost('/api/settings',{reserveEventMenu:existing},function(err2,d2){
+      if(err2||!d2||d2.success===false){showToast('⚠️ 저장 실패');return;}
+      showToast(added?added+'개를 예약 이벤트 메뉴에 추가했어요! (이미 있던 '+(items.length-added)+'개는 건너뜀)':'모두 이미 있는 메뉴예요 — 추가된 항목이 없어요.');
+      closeEventAddReplacePopup();
+    });
+  });
 }
 var _histLoadDate=null,_histSubTab='dates';
 // 중복 클릭 방지 + 두 저장(마스터 전체 동기화 /api/menu/all, 오늘 목록 /api/menu/daily)을
