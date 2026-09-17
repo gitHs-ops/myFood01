@@ -765,7 +765,7 @@ select.reserve-info-inp{appearance:none;-webkit-appearance:none;background:#fff 
         <button class="btn-addr-list" id="btnReserveAddrList" onclick="showAddrList('reserve')" disabled style="opacity:.4;cursor:not-allowed;">📋 목록</button>
       </div>
       <span class="reserve-info-lbl">배송 방법 *</span>
-      <select class="reserve-info-inp" id="reserveMemo" onchange="_updateReserveTotal()">
+      <select class="reserve-info-inp" id="reserveMemo" onchange="_updateReserveTotal();_applyReserveDateRange();">
         <option value="" disabled selected>배송방법 선택 (필수)</option>
         <option value="경비원실">경비원실</option>
         <option value="문앞">문앞</option>
@@ -3270,21 +3270,38 @@ function _cancelReserveSelection(){
   _renderReserveBar();
   goPage('list');
 }
-function openReservePopup(){
-  if(!Object.keys(_reserveSel).length){showToast('메뉴를 선택해주세요.');return;}
-  _reserveDateMin=toISO(new Date(new Date().getTime()+24*60*60*1000));
-  _reserveDateMax=toISO(new Date(new Date().getTime()+7*24*60*60*1000));
+// 예약 가능 날짜 범위를 계산해 날짜칸(min/max)과 안내문구에 반영한다. 이벤트 메뉴가 담겨
+// 있으면 이벤트 기한일(D-day) 기준으로 제한하되 배송 방법에 따라 폭이 다르다 — 매장픽업은
+// D-day~D+1일 중 선택 가능, 그 외(배송)는 D-day 당일만 선택 가능. 배송 방법을 바꿀 때도
+// 다시 계산해야 하므로 팝업을 열 때뿐 아니라 배송 방법 select의 onchange에서도 호출한다.
+function _applyReserveDateRange(){
   var hintEl=document.getElementById('reserveDateHint');
-  // 예약 이벤트 카테고리 항목이 담겨 있으면 예약일자는 이벤트 기한일 이후 1주일까지만 허용
   if(_reserveHasEventItem()){
-    _reserveDateMin=_reserveEventData.deadline;
-    _reserveDateMax=toISO(new Date(new Date(_reserveEventData.deadline+'T00:00:00').getTime()+7*24*60*60*1000));
-    if(hintEl)hintEl.textContent='('+fmtDate(_reserveDateMin)+'부터 1주일 이내)';
-  }else if(hintEl){
-    hintEl.textContent='(오늘로부터 1~7일)';
+    var memo=(document.getElementById('reserveMemo')||{}).value||'';
+    var isPickup=memo==='매장픽업';
+    var d=_reserveEventData.deadline;
+    _reserveDateMin=d;
+    if(isPickup){
+      _reserveDateMax=toISO(new Date(new Date(d+'T00:00:00').getTime()+24*60*60*1000));
+      if(hintEl)hintEl.textContent='(매장픽업: '+fmtDate(_reserveDateMin)+'~'+fmtDate(_reserveDateMax)+' 중 선택)';
+    }else{
+      _reserveDateMax=d;
+      if(hintEl)hintEl.textContent='(배송: '+fmtDate(d)+' 당일만 가능)';
+    }
+  }else{
+    _reserveDateMin=toISO(new Date(new Date().getTime()+24*60*60*1000));
+    _reserveDateMax=toISO(new Date(new Date().getTime()+7*24*60*60*1000));
+    if(hintEl)hintEl.textContent='(오늘로부터 1~7일)';
   }
   var rdi=document.getElementById('reserveDateInput');
-  if(rdi){rdi.min=_reserveDateMin;rdi.max=_reserveDateMax;if(!rdi.value||rdi.value<_reserveDateMin)rdi.value=_reserveDateMin;}
+  if(rdi){
+    rdi.min=_reserveDateMin;rdi.max=_reserveDateMax;
+    if(!rdi.value||rdi.value<_reserveDateMin||rdi.value>_reserveDateMax)rdi.value=_reserveDateMin;
+  }
+}
+function openReservePopup(){
+  if(!Object.keys(_reserveSel).length){showToast('메뉴를 선택해주세요.');return;}
+  _applyReserveDateRange();
   _renderReserveModalItems();
   document.getElementById('reserveOverlay').classList.add('open');
   // 고객 정보 자동완성 (비어있을 때만)
@@ -3368,7 +3385,8 @@ function submitReserveOrder(){
   if(!reserveDate){showToast('예약 날짜를 선택해주세요.');return;}
   if(reserveDate<_reserveDateMin||reserveDate>_reserveDateMax){
     var isEvt=_reserveHasEventItem();
-    showToast(isEvt?('예약 날짜는 '+fmtDate(_reserveDateMin)+'부터 1주일 이내로 선택해주세요.'):'예약 날짜는 내일부터 7일 이내로 선택해주세요.');
+    var rangeMsg=(_reserveDateMin===_reserveDateMax)?(fmtDate(_reserveDateMin)+' 당일만'):(fmtDate(_reserveDateMin)+'~'+fmtDate(_reserveDateMax)+' 중에서만');
+    showToast(isEvt?('예약 날짜는 '+rangeMsg+' 선택할 수 있어요.'):'예약 날짜는 내일부터 7일 이내로 선택해주세요.');
     return;
   }
   if(!memo){showToast('배송 방법을 선택해주세요.');return;}
