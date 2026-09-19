@@ -69,9 +69,11 @@ html,body{min-height:100vh;font-family:'Noto Sans KR',sans-serif;background:line
 .log-badge{font-size:10.5px;font-weight:800;border-radius:999px;padding:2px 9px;flex-shrink:0;}
 .log-badge.ai_recommend{background:#ede7f6;color:#6a1b9a;}
 .log-badge.order_customer{background:#e8f8f2;color:#0e6e4e;}
+.log-badge.order_reserve{background:#f3e5f5;color:#6a1b9a;}
 .log-badge.abnormal_access{background:#fff3e0;color:#b8860b;}
 .log-badge.abnormal_order{background:#fff0ee;color:#c0392b;}
 .log-badge.daily_menu_save{background:#e6f3fb;color:#0a6ebd;}
+.log-badge.daily_menu_delete{background:#fff1e0;color:#c25e00;}
 .log-badge.menu_delete{background:#eef2f7;color:#4a5568;}
 .log-badge.error{background:#fde2e0;color:#c0392b;}
 .log-dt{font-size:11px;color:var(--light);white-space:nowrap;}
@@ -90,7 +92,7 @@ html,body{min-height:100vh;font-family:'Noto Sans KR',sans-serif;background:line
 
 <div class="topbar">
   <h1>📊 시스템 로그</h1>
-  <div class="sub">AI추천 호출(토큰 비용) · 주문 고객정보 · 비정상 접근 · 서버 에러</div>
+  <div class="sub">AI추천 호출(토큰 비용) · 주문·예약주문 고객정보 · 일일 메뉴 저장·삭제 · 비정상 접근 · 서버 에러</div>
   <a class="back" href="index.html">← 처음으로</a>
 </div>
 
@@ -115,8 +117,10 @@ html,body{min-height:100vh;font-family:'Noto Sans KR',sans-serif;background:line
         <button type="button" class="tab active" data-type="">전체</button>
         <button type="button" class="tab" data-type="ai_recommend">🎯 AI추천</button>
         <button type="button" class="tab" data-type="order_customer">📦 주문고객정보</button>
+        <button type="button" class="tab" data-type="order_reserve">📅 예약주문</button>
         <button type="button" class="tab" data-type="daily_menu_save">🍱 일일메뉴저장</button>
-        <button type="button" class="tab" data-type="menu_delete">🗑 메뉴삭제</button>
+        <button type="button" class="tab" data-type="daily_menu_delete">🗑 일일메뉴삭제</button>
+        <button type="button" class="tab" data-type="menu_delete">🗑 마스터메뉴삭제</button>
         <button type="button" class="tab" data-type="abnormal_access">⚠️ 비정상접근</button>
         <button type="button" class="tab" data-type="abnormal_order">🚫 대량주문차단</button>
         <button type="button" class="tab" data-type="error">❌ 에러</button>
@@ -130,7 +134,7 @@ html,body{min-height:100vh;font-family:'Noto Sans KR',sans-serif;background:line
 
 <script>
 var API_URL='https://myfood01-production.up.railway.app';
-var TYPE_LABEL={ai_recommend:'🎯 AI추천',order_customer:'📦 주문고객정보',daily_menu_save:'🍱 일일메뉴저장',menu_delete:'🗑 메뉴삭제',abnormal_access:'⚠️ 비정상접근',abnormal_order:'🚫 대량주문차단',error:'❌ 에러'};
+var TYPE_LABEL={ai_recommend:'🎯 AI추천',order_customer:'📦 주문고객정보',order_reserve:'📅 예약주문',daily_menu_save:'🍱 일일메뉴저장',daily_menu_delete:'🗑 일일메뉴삭제',menu_delete:'🗑 마스터메뉴삭제',abnormal_access:'⚠️ 비정상접근',abnormal_order:'🚫 대량주문차단',error:'❌ 에러'};
 var curType='';
 var curLogs=[];
 var curLimit=200;

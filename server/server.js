@@ -49,8 +49,8 @@ const pool = mysql.createPool({
   charset:           'utf8mb4'
 });
 
-// 시스템 로그 — AI추천(토큰 비용 발생) 호출 / 주문 고객정보 / 일일메뉴저장 / 마스터메뉴삭제 / 비정상 접근·주문 / 서버 에러 기록.
-// type: 'ai_recommend' | 'order_customer' | 'daily_menu_save' | 'menu_delete' | 'abnormal_access' | 'abnormal_order' | 'error'
+// 시스템 로그 — AI추천(토큰 비용 발생) 호출 / 주문 고객정보 / 예약주문 / 일일메뉴저장·삭제 / 마스터메뉴삭제 / 비정상 접근·주문 / 서버 에러 기록.
+// type: 'ai_recommend' | 'order_customer' | 'order_reserve' | 'daily_menu_save' | 'daily_menu_delete' | 'menu_delete' | 'abnormal_access' | 'abnormal_order' | 'error'
 async function sysLog(type, summary, detail, ip, deviceId) {
   try {
     await pool.execute(
@@ -62,6 +62,44 @@ async function sysLog(type, summary, detail, ip, deviceId) {
 // 관리자 화면(X-Device-Id 헤더)·고객 화면(body.deviceId) 둘 다 지원 — 어느 기기가 요청을 보냈는지 로그에서 구분하기 위함
 function deviceIdOf(req) {
   return (req && req.headers && req.headers['x-device-id']) || (req && req.body && req.body.deviceId) || null;
+}
+
+// 로그 문구 만들기 — DB·요청 객체에 기대지 않는 순수 함수라 따로 떼어 검증하기 쉽다.
+// 주문 1건 → 로그 항목. 예약주문은 order_reserve로 갈라서 일반 주문(order_customer)과 로그 화면에서 따로 본다.
+function _orderLogEntry(order, items, total, isReserve) {
+  const who = (order.name || '(이름없음)') + '님';
+  const phone = order.phone || '연락처없음';
+  if (!isReserve) {
+    return {
+      type: 'order_customer', summary: who + ' 주문(' + phone + ')',
+      detail: { orderId: order.id, phone: order.phone || '', name: order.name || '', total, isReserve: false }
+    };
+  }
+  const isEventItem = it => it.menuId === 'EVENT' || it.cat === '이벤트' || String(it.menuId || '').startsWith('evt-');
+  const first = items[0] ? String(items[0].name || '') : '';
+  const itemText = first ? first + (items.length > 1 ? ' 외 ' + (items.length - 1) + '건' : '') : items.length + '건';
+  return {
+    type: 'order_reserve',
+    summary: who + ' 예약주문(' + phone + ') — 예약일 ' + order.reserveDate + ' · ' + itemText + ' · ' + total + '천원 · ' + (order.memo || '배송방법 없음'),
+    detail: { orderId: order.id, phone: order.phone || '', name: order.name || '', total, reserveDate: order.reserveDate,
+      itemCount: items.length, method: order.memo || '', isEvent: items.some(isEventItem) }
+  };
+}
+// 일일 메뉴 저장 요청 → 로그 항목들. 내용이 있는 날짜는 '저장', 빈 목록으로 비운 날짜(deleted)는 '삭제'로 나눠 남긴다.
+// (예전엔 삭제도 "일일 메뉴 저장 — 날짜 (0건)"으로만 남아 무엇이 지워졌는지 알 수 없었다.)
+function _dailyMenuLogEntries(dates, byDate, deleted) {
+  const out = [];
+  const savedDates = dates.filter(d => byDate[d].length);
+  if (savedDates.length) {
+    const count = savedDates.reduce((s, d) => s + byDate[d].length, 0);
+    out.push({ type: 'daily_menu_save', summary: '일일 메뉴 저장 — ' + savedDates.join(', ') + ' (' + count + '건)', detail: { dates: savedDates, count } });
+  }
+  deleted.forEach(dl => out.push({
+    type: 'daily_menu_delete',
+    summary: '일일 메뉴 삭제 — ' + dl.date + ' (' + dl.count + '건)' + (dl.purgeArchive ? ' · 메뉴 창고 이력까지 삭제(' + dl.archiveCount + '건)' : ''),
+    detail: { date: dl.date, count: dl.count, names: dl.names.slice(0, 100), purgeArchive: dl.purgeArchive, archiveCount: dl.archiveCount }
+  }));
+  return out;
 }
 
 const ok  = (res, data={}) => res.json({ success: true,  ...data });
@@ -592,6 +630,7 @@ app.post('/api/menu/daily', requireAdmin, async (req, res) => { await withMenuWr
 
     const dates = Object.keys(byDate);
     await withDeadlockRetry(async () => {
+    const deleted = [];   // 이번 요청으로 통째로 비워진 날짜 — 커밋 뒤 '일일 메뉴 삭제' 로그를 남기려고 모은다(재시도마다 새로 시작)
     const conn = await pool.getConnection();
     await conn.beginTransaction();
     try {
@@ -619,6 +658,7 @@ app.post('/api/menu/daily', requireAdmin, async (req, res) => { await withMenuWr
       };
 
       await conn.execute('DELETE FROM daily_menus WHERE date=?', [date]);
+      let purgedArchive = 0;   // purgeArchive로 지운 창고(daily_menus_archive) 행 수 — 삭제 로그용
       const archiveRows = [];
       for (const m of byDate[date]) {
         const catId = catMap[(m.cat || '').trim() || '기타'];
@@ -668,15 +708,25 @@ app.post('/api/menu/daily', requireAdmin, async (req, res) => { await withMenuWr
           );
         }
       } else if (purgeArchive) {
-        await conn.execute('DELETE FROM daily_menus_archive WHERE date=?', [date]);
+        const [pr] = await conn.execute('DELETE FROM daily_menus_archive WHERE date=?', [date]);
+        purgedArchive = (pr && pr.affectedRows) || 0;
+      }
+      // 빈 목록으로 이 날짜를 비웠다 = 일일 메뉴 삭제. 지워진 게 실제로 있을 때만 기록 대상(이미 빈 날짜는 무시)
+      if (!byDate[date].length && (prevRows.length || purgedArchive)) {
+        deleted.push({ date, count: prevRows.length, names: prevRows.map(r => r.name), purgeArchive, archiveCount: purgedArchive });
       }
     }
     await conn.commit();
     conn.release();
     // 같은 날짜를 보고 있는 다른 탭·다른 관리자가 3초 폴링 없이도 즉시 반영받도록
     broadcast('menu_daily_saved', { dates });
-    sysLog('daily_menu_save', '일일 메뉴 저장 — ' + dates.join(', ') + ' (' + list.length + '건)',
-      { dates, count: list.length }, req.ip, deviceIdOf(req)).catch(() => {});
+    // 이미 커밋·release 된 뒤라 여기서 예외가 나면 바깥 catch가 같은 연결을 또 release/rollback 하게 된다 —
+    // 로그 때문에 저장 응답이 깨지거나 연결이 꼬이지 않도록 통째로 감싼다.
+    try {
+      for (const l of _dailyMenuLogEntries(dates, byDate, deleted)) {
+        sysLog(l.type, l.summary, l.detail, req.ip, deviceIdOf(req)).catch(() => {});
+      }
+    } catch (logErr) { console.error('일일 메뉴 로그 실패:', logErr.message); }
     ok(res, { sheets: dates.length, count: list.length });
     } catch(e) {
       await conn.rollback(); conn.release();
@@ -895,12 +945,12 @@ app.post('/api/orders', async (req, res) => {
       broadcast('order_new', { orderId: order.id, date });
       ok(res, { action: 'inserted' });
       _notifyOrder(order, !!order.isReorder);
-      sysLog(
-        'order_customer',
-        (order.name || '(이름없음)') + '님 주문(' + (order.phone || '연락처없음') + ')' + (isReserve ? ' — 예약주문' : ''),
-        { orderId: order.id, phone: order.phone || '', name: order.name || '', total: serverTotal, isReserve },
-        req.ip, deviceIdOf(req)
-      ).catch(() => {});
+      // 일반 주문은 order_customer, 예약주문은 order_reserve로 갈라 남긴다. 이미 커밋·release·응답이 끝난 뒤라
+      // 여기서 예외가 나도 바깥 catch가 연결을 또 release 하지 않도록 감싼다.
+      try {
+        const lg = _orderLogEntry(order, items, serverTotal, isReserve);
+        sysLog(lg.type, lg.summary, lg.detail, req.ip, deviceIdOf(req)).catch(() => {});
+      } catch (logErr) { console.error('주문 로그 실패:', logErr.message); }
     } catch(e) { await conn.rollback(); conn.release(); throw e; }
   } catch(e) { err(res, e.message); }
 });
@@ -1590,7 +1640,12 @@ app.get('/api/system-log', requireAdmin, async (req, res) => {
     const limit = Math.min(Math.max(Number(req.query.limit) || 200, 1), 1000);
     let sql = 'SELECT id, created_at, type, summary, detail, ip, device_id FROM system_log';
     const params = [];
-    if (type) { sql += ' WHERE type=?'; params.push(type); }
+    // 예약주문 종류(order_reserve)를 만들기 전엔 예약주문이 order_customer에 detail.isReserve=true로 섞여 있었다.
+    // 저장된 데이터는 건드리지 않고 조회할 때만 갈라서, 예약주문 탭엔 이전 기록까지 함께 보이고 주문고객정보 탭엔 일반 주문만 남게 한다.
+    const LEGACY_RESERVE = `(type='order_customer' AND COALESCE(detail,'') LIKE '%"isReserve":true%')`;
+    if (type === 'order_reserve')       sql += ` WHERE (type='order_reserve' OR ${LEGACY_RESERVE})`;
+    else if (type === 'order_customer') sql += ` WHERE type='order_customer' AND NOT ${LEGACY_RESERVE}`;
+    else if (type) { sql += ' WHERE type=?'; params.push(type); }
     sql += ' ORDER BY created_at DESC, id DESC LIMIT ' + limit;
     const [rows] = await pool.execute(sql, params);
     const toTS = d => { if (!d) return null; const ms = d instanceof Date ? d.getTime() : new Date(String(d).replace(' ', 'T')).getTime(); return isNaN(ms) ? null : ms + 9 * 60 * 60 * 1000; };
