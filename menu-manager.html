@@ -359,6 +359,10 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
   border:1.5px solid #d6efee;background:#fff;color:#555;cursor:pointer;font-family:inherit;
 }
 .order-filter-tab.active{background:#086266;color:#fff;border-color:#086266;}
+/* 예약주문 필터 버튼 — 필터 행에서 빼서 주문 관리 카드 바로 위에 따로 둔다(예약주문 보라색 계열) */
+.order-reserve-top{margin-bottom:10px;}
+.order-filter-tab.order-reserve-top-btn{padding:7px 18px;font-size:13px;font-weight:700;background:#ede7f6;color:#6a1b9a;border-color:#d1c4e9;}
+.order-filter-tab.order-reserve-top-btn.active{background:#6a1b9a;color:#fff;border-color:#6a1b9a;}
 /* ── 설정 ── */
 .setting-card{background:#fff;border-radius:14px;padding:20px;margin-bottom:14px;box-shadow:0 2px 12px rgba(8,98,102,.08);}
 .setting-title{font-size:14px;font-weight:700;color:#086266;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid #e8f5f4;}
@@ -707,6 +711,9 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
 </div>
 
 <div id="page-orders" class="page">
+  <div class="order-reserve-top">
+    <button class="order-filter-tab order-reserve-top-btn" id="reserveOrderTopBtn" data-f="예약주문" onclick="setOrderFilter('예약주문')">📅 예약주문</button>
+  </div>
   <div class="card">
     <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
       <span>📦 주문 관리</span>
@@ -3207,11 +3214,13 @@ function renderOrdersList(today,todayOrders){
     '<div class="order-stat"><div class="order-stat-num" style="color:#999;">'+cancelled+'</div><div class="order-stat-lbl">취소된주문</div></div>'+
     (reserve?'<div class="order-stat"><div class="order-stat-num" style="color:#6a1b9a;">'+reserve+'</div><div class="order-stat-lbl">예약주문</div></div>':'');
 
-  // 필터 탭
-  var filterLabels=[['all','전체'],['pending','대기중'],['confirmed','주문접수'],['delivered','배송완료'],['cancelled','취소된주문'],['예약주문','예약주문']];
+  // 필터 탭 — '예약주문'은 카드 위 별도 버튼(reserveOrderTopBtn)으로 뺐다
+  var filterLabels=[['all','전체'],['pending','대기중'],['confirmed','주문접수'],['delivered','배송완료'],['cancelled','취소된주문']];
   document.getElementById('orderFilterTabs').innerHTML=filterLabels.map(function(f){
     return '<button class="order-filter-tab'+(orderFilter===f[0]?' active':'')+'" data-f="'+f[0]+'">'+f[1]+'</button>';
   }).join('');
+  var _rsvTop=document.getElementById('reserveOrderTopBtn');
+  if(_rsvTop)_rsvTop.classList.toggle('active',orderFilter==='예약주문');
   document.querySelectorAll('.order-filter-tab').forEach(function(btn){
     btn.onclick=function(){setOrderFilter(this.getAttribute('data-f'));};
   });
