@@ -347,8 +347,6 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
 .adm-order-overlay.open{display:flex;}
 .adm-order-popup{position:relative;width:100%;max-width:480px;}
 .adm-order-close{display:block;margin:0 14px 8px auto;width:34px;height:34px;border-radius:50%;border:none;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.18);font-size:15px;color:#666;cursor:pointer;}
-.orders-refresh-btn{font-size:11px;font-weight:600;color:#086266;background:#e0f7f6;border:1px solid #9adcda;border-radius:20px;padding:3px 10px;cursor:pointer;white-space:nowrap;animation:orders-blink 2s ease-in-out infinite;}
-@keyframes orders-blink{0%,100%{opacity:1;}50%{opacity:.4;}}
 .order-stats{display:flex;gap:4px;margin-bottom:16px;}
 .order-stat{flex:1;min-width:0;background:#f0faf9;border-radius:10px;padding:8px 2px;text-align:center;}
 .order-stat-num{font-size:15px;font-weight:900;color:#086266;}
@@ -363,6 +361,34 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
 .order-reserve-top{margin-bottom:10px;}
 .order-filter-tab.order-reserve-top-btn{padding:7px 18px;font-size:13px;font-weight:700;background:#ede7f6;color:#6a1b9a;border-color:#d1c4e9;}
 .order-filter-tab.order-reserve-top-btn.active{background:#6a1b9a;color:#fff;border-color:#6a1b9a;}
+/* ── 예약된 메뉴 목록 내보내기(PDF 저장·텍스트 저장·인쇄하기) ── */
+.rsv-export-bar{display:flex;gap:8px;margin-top:14px;}
+.rsv-export-btn{flex:1 1 0;min-width:0;padding:9px 4px;font-size:13px;line-height:1.25;color:#fff;word-break:keep-all;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;}
+.rsv-export-btn .ic{font-size:18px;line-height:1;}
+.rsv-export-btn.pdf{background:#086266;}
+.rsv-export-btn.txt{background:#1D9E75;}
+.rsv-export-btn.prt{background:#555;}
+/* 인쇄용 시트 — 화면에는 숨기고, 인쇄할 때만 이것만 보이게 한다(printReservedOrders가 body에 printing-reserved를 붙임) */
+#reservedPrintSheet{display:none;}
+.rp-title{font-size:20px;font-weight:800;color:#111;margin-bottom:4px;}
+.rp-meta{font-size:11px;color:#555;line-height:1.6;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid #086266;}
+.rp-blk{border:1px solid #9aa;border-radius:6px;padding:8px 10px;margin:0 0 8px;break-inside:avoid;page-break-inside:avoid;}
+.rp-head{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;border-bottom:1px solid #ddd;padding-bottom:5px;margin-bottom:5px;font-size:13px;}
+.rp-no{font-size:11px;color:#888;min-width:16px;}
+.rp-date{font-weight:700;color:#6a1b9a;}
+.rp-name{font-size:14px;}
+.rp-phone{color:#444;}
+.rp-status{margin-left:auto;font-size:11px;font-weight:700;color:#086266;}
+.rp-row{display:flex;gap:8px;font-size:12px;line-height:1.55;}
+.rp-lb{flex:0 0 34px;color:#777;}
+.rp-val{flex:1;word-break:break-all;}
+.rp-sub{color:#777;font-size:11px;}
+@page{size:A4;margin:12mm;}
+@media print{
+  body.printing-reserved{background:#fff !important;padding:0 !important;min-height:0 !important;}
+  body.printing-reserved > *:not(#reservedPrintSheet){display:none !important;}
+  body.printing-reserved #reservedPrintSheet{display:block !important;}
+}
 /* ── 설정 ── */
 .setting-card{background:#fff;border-radius:14px;padding:20px;margin-bottom:14px;box-shadow:0 2px 12px rgba(8,98,102,.08);}
 .setting-title{font-size:14px;font-weight:700;color:#086266;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid #e8f5f4;}
@@ -718,7 +744,6 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
     <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
       <span>📦 주문 관리</span>
       <div style="display:flex;align-items:center;gap:8px;">
-        <span class="orders-refresh-btn" onclick="renderOrders()">실시간 변경 확인  !</span>
         <span id="pollLabel" style="font-size:12px;font-weight:700;color:#fff;background:rgba(8,98,102,.6);border-radius:20px;padding:3px 10px;white-space:nowrap;min-width:46px;text-align:center;">🔄 15</span>
       </div>
     </div>
@@ -882,6 +907,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
     </div>
   </div>
 </div>
+<div id="reservedPrintSheet"></div>
 <script>
 var IMGBB_KEY='b5a6e9481bb9cb4791108cf50761a459';
 var DEFAULT_CATS=[
@@ -2438,6 +2464,7 @@ function loadReservedOrders(){
 function renderReservedOrders(orders){
   var el=document.getElementById('reservedMenuList');
   if(!el)return;
+  _reservedExportOrders=orders;
   if(!orders.length){
     el.innerHTML='<div class="order-empty">📭 작업일자 이후 예약주문이 없어요.</div>';
     return;
@@ -2459,6 +2486,218 @@ function renderReservedOrders(orders){
     (function(o){row.onclick=function(){openAdminOrderDetailDirect(o);};})(order);
     el.appendChild(row);
   });
+  // 목록 맨 끝 — 지금 제시된 목록 그대로 PDF·텍스트로 저장하거나 인쇄
+  var bar=document.createElement('div');
+  bar.className='rsv-export-bar';
+  bar.innerHTML='<button class="btn rsv-export-btn pdf" onclick="saveReservedPdf()"><span class="ic">📄</span><span>PDF 저장</span></button>'
+    +'<button class="btn rsv-export-btn txt" onclick="saveReservedText()"><span class="ic">📝</span><span>텍스트 저장</span></button>'
+    +'<button class="btn rsv-export-btn prt" onclick="printReservedOrders()"><span class="ic">🖨</span><span>인쇄하기</span></button>';
+  el.appendChild(bar);
+}
+
+/* ── 예약된 메뉴 목록 내보내기(PDF 저장·텍스트 저장·인쇄하기) ── */
+var _reservedExportOrders=[];   // 화면에 제시된 예약주문 목록 — 세 버튼이 이 목록 그대로를 내보낸다
+// 화면 목록 → 내보내기용 평문 모델. 텍스트·인쇄·PDF 세 형식이 같은 모델을 쓴다.
+function _reservedReport(orders){
+  var statusLbl={pending:'대기중',confirmed:'접수완료',delivered:'배송완료',cancelled:'취소'};
+  var kst=new Date(Date.now()+9*60*60*1000);
+  var rows=orders.map(function(o){
+    return {
+      date:o.reserveDate||'',
+      name:o.name||'',
+      phone:o.phone?fmtPhone(o.phone):'',
+      status:statusLbl[o.status]||o.status||'',
+      method:(o.memo||'').split(' / ')[0].trim(),
+      addr:o.addr||'',
+      items:(o.items||[]).map(function(i){return menuDisplayName(i.name,i.cat||_itemCat(i.name))+' '+(i.qty||1)+'개';}),
+      total:Number(o.total)||0,
+      request:(o.additionalRequest||'').replace(/\s*[\r\n]+\s*/g,' / ').trim(),
+      created:fmtDateTime(o.createdDate||o.date,o.time)
+    };
+  });
+  return {
+    title:'예약주문 목록',
+    basis:'작업일자 '+(workDate||toISO(new Date()))+' 이후 예약주문',
+    printedAt:toISO(new Date())+' '+String(kst.getUTCHours()).padStart(2,'0')+':'+String(kst.getUTCMinutes()).padStart(2,'0'),
+    count:rows.length,
+    sum:rows.reduce(function(s,r){return s+r.total;},0),
+    rows:rows
+  };
+}
+function _reservedFileStamp(){return toISO(new Date()).replace(/-/g,'');}
+function _downloadBlob(blob,filename){
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;a.download=filename;a.style.display='none';
+  document.body.appendChild(a);a.click();
+  setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(url);},1500);
+}
+// ① 텍스트 저장 — UTF-8(BOM)+CRLF라 윈도우 메모장에서도 한글이 안 깨진다
+function _reservedReportText(rp){
+  var L=[rp.title,'='.repeat(32),'기준: '+rp.basis,'출력: '+rp.printedAt,'총 '+rp.count+'건 / 합계 '+rp.sum.toLocaleString()+'천원',''];
+  rp.rows.forEach(function(r,i){
+    L.push('['+(i+1)+'] 예약일 '+r.date+' | '+r.name+(r.phone?' | '+r.phone:'')+' | '+r.status);
+    if(r.method)L.push('  배송방법: '+r.method);
+    if(r.addr)L.push('  주소: '+r.addr);
+    L.push('  주문내역: '+(r.items.join(', ')||'-'));
+    L.push('  합계: '+r.total.toLocaleString()+'천원');
+    if(r.request)L.push('  요청사항: '+r.request);
+    L.push('  접수: '+r.created);
+    L.push('');
+  });
+  return L.join('\r\n');
+}
+function saveReservedText(){
+  if(!_reservedExportOrders.length){showToast('저장할 예약주문이 없어요.');return;}
+  var text=_reservedReportText(_reservedReport(_reservedExportOrders));
+  _downloadBlob(new Blob(['﻿'+text],{type:'text/plain;charset=utf-8'}),'예약주문목록_'+_reservedFileStamp()+'.txt');
+  showToast('텍스트로 저장했어요.');
+}
+// ② 인쇄하기 — 화면 목록이 아니라 인쇄 전용 시트(#reservedPrintSheet)를 채워 그것만 인쇄한다
+function _reservedReportHtml(rp){
+  var e=_escEv;
+  var h='<div class="rp-title">'+e(rp.title)+'</div>'
+    +'<div class="rp-meta">'+e(rp.basis)+' · 출력 '+e(rp.printedAt)+'<br>총 '+rp.count+'건 · 합계 '+rp.sum.toLocaleString()+'천원</div>';
+  rp.rows.forEach(function(r,i){
+    var dv=[r.method,r.addr].filter(Boolean).join(' · ');
+    h+='<div class="rp-blk">'
+      +'<div class="rp-head"><span class="rp-no">'+(i+1)+'</span><span class="rp-date">예약 '+e(r.date)+'</span><b class="rp-name">'+e(r.name)+'</b>'
+      +(r.phone?'<span class="rp-phone">'+e(r.phone)+'</span>':'')+'<span class="rp-status">'+e(r.status)+'</span></div>'
+      +(dv?'<div class="rp-row"><span class="rp-lb">배송</span><span class="rp-val">'+e(dv)+'</span></div>':'')
+      +'<div class="rp-row"><span class="rp-lb">주문</span><span class="rp-val">'+(r.items.length?e(r.items.join(', ')):'-')+'</span></div>'
+      +'<div class="rp-row"><span class="rp-lb">합계</span><span class="rp-val"><b>'+r.total.toLocaleString()+'천원</b></span></div>'
+      +(r.request?'<div class="rp-row"><span class="rp-lb">요청</span><span class="rp-val">'+e(r.request)+'</span></div>':'')
+      +'<div class="rp-row rp-sub"><span class="rp-lb">접수</span><span class="rp-val">'+e(r.created)+'</span></div>'
+      +'</div>';
+  });
+  return h;
+}
+function printReservedOrders(){
+  if(!_reservedExportOrders.length){showToast('인쇄할 예약주문이 없어요.');return;}
+  document.getElementById('reservedPrintSheet').innerHTML=_reservedReportHtml(_reservedReport(_reservedExportOrders));
+  var done=function(){document.body.classList.remove('printing-reserved');window.removeEventListener('afterprint',done);};
+  window.addEventListener('afterprint',done);
+  document.body.classList.add('printing-reserved');
+  setTimeout(function(){window.print();},50);   // 클래스가 반영된 뒤 인쇄
+}
+// ③ PDF 저장 — 외부 라이브러리 없이 canvas로 A4 페이지를 그려 JPEG로 굽고 최소 PDF 구조에 싣는다.
+// (한글 폰트를 PDF에 심을 방법이 없어 페이지를 이미지로 만든다 — 글자 선택은 안 되지만 선명하다.
+//  이 관리자 화면에는 관리자 키가 있어서 CDN 스크립트를 끌어오지 않는 쪽으로 했다.)
+function _rsvDataUrlBytes(url){var b=atob(url.split(',')[1]);var u=new Uint8Array(b.length);for(var i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u;}
+function _rsvJpegsToPdf(imgs){
+  var enc=new TextEncoder(),chunks=[],off=[],pos=0,PW=595.28,PH=841.89,N=imgs.length;
+  function put(x){var u=typeof x==='string'?enc.encode(x):x;chunks.push(u);pos+=u.length;}
+  function begin(n){off[n]=pos;put(n+' 0 obj\n');}
+  // 객체 번호: 1=Catalog, 2=Pages, 페이지 i(0부터) = page 3+3i · content 4+3i · image 5+3i
+  put('%PDF-1.4\n');put(new Uint8Array([0x25,0xE2,0xE3,0xCF,0xD3,0x0A]));
+  begin(1);put('<< /Type /Catalog /Pages 2 0 R >>\nendobj\n');
+  begin(2);put('<< /Type /Pages /Kids ['+imgs.map(function(_,i){return (3+3*i)+' 0 R';}).join(' ')+'] /Count '+N+' >>\nendobj\n');
+  imgs.forEach(function(im,i){
+    var pg=3+3*i,ct=4+3*i,ig=5+3*i,draw='q '+PW+' 0 0 '+PH+' 0 0 cm /Im0 Do Q';
+    begin(pg);put('<< /Type /Page /Parent 2 0 R /MediaBox [0 0 '+PW+' '+PH+'] /Resources << /XObject << /Im0 '+ig+' 0 R >> >> /Contents '+ct+' 0 R >>\nendobj\n');
+    begin(ct);put('<< /Length '+draw.length+' >>\nstream\n'+draw+'\nendstream\nendobj\n');
+    begin(ig);put('<< /Type /XObject /Subtype /Image /Width '+im.w+' /Height '+im.h+' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length '+im.bytes.length+' >>\nstream\n');
+    put(im.bytes);put('\nendstream\nendobj\n');
+  });
+  var xrefPos=pos,total=3+3*N,x='xref\n0 '+total+'\n0000000000 65535 f \n';
+  for(var n=1;n<total;n++)x+=String(off[n]).padStart(10,'0')+' 00000 n \n';
+  put(x);put('trailer\n<< /Size '+total+' /Root 1 0 R >>\nstartxref\n'+xrefPos+'\n%%EOF\n');
+  return new Blob(chunks,{type:'application/pdf'});
+}
+function _reservedReportPdf(rp){
+  var W=1240,H=1754,M=90,CW=W-2*M;                       // A4 @150dpi
+  var PAD=20,LBW=96,HEAD=48,LH=32,GAP=16,FOOT=80,HDR=170;
+  var FONT='"Noto Sans KR","Malgun Gothic","Apple SD Gothic Neo",sans-serif';
+  var cv=document.createElement('canvas');cv.width=W;cv.height=H;
+  var ctx=cv.getContext('2d');
+  function font(px,bold){ctx.font=(bold?'700 ':'400 ')+px+'px '+FONT;}
+  // 한글은 글자 단위, 띄어쓰기·쉼표가 있으면 거기서 우선 줄바꿈
+  function wrap(text,px,bold,maxW){
+    font(px,bold);
+    var toks=String(text).match(/[^\s,·]+[\s,·]*|\s+/g)||[];
+    var lines=[],cur='';
+    toks.forEach(function(t){
+      if(ctx.measureText(cur+t).width<=maxW){cur+=t;return;}
+      if(cur){lines.push(cur.replace(/\s+$/,''));cur='';}
+      if(ctx.measureText(t).width<=maxW){cur=t;return;}
+      t.split('').forEach(function(ch){
+        if(cur&&ctx.measureText(cur+ch).width>maxW){lines.push(cur);cur='';}
+        cur+=ch;
+      });
+    });
+    if(cur)lines.push(cur.replace(/\s+$/,''));
+    return lines.length?lines:[''];
+  }
+  function roundRect(x,yy,w,h,r){
+    ctx.beginPath();ctx.moveTo(x+r,yy);
+    ctx.arcTo(x+w,yy,x+w,yy+h,r);ctx.arcTo(x+w,yy+h,x,yy+h,r);
+    ctx.arcTo(x,yy+h,x,yy,r);ctx.arcTo(x,yy,x+w,yy,r);ctx.closePath();
+  }
+  var need=JSON.stringify(rp);   // 이 글자들이 들어 있는 폰트 조각을 미리 받아둔다
+  var ready=(document.fonts&&document.fonts.load)
+    ?Promise.all([document.fonts.load('400 22px "Noto Sans KR"',need),document.fonts.load('700 22px "Noto Sans KR"',need)]).catch(function(){})
+    :Promise.resolve();
+  return ready.then(function(){
+    // 1단계: 블록별 높이를 재서 페이지에 나눠 담는다(한 예약이 페이지 사이에서 잘리지 않게)
+    var blocks=rp.rows.map(function(r,i){
+      var defs=[],dv=[r.method,r.addr].filter(Boolean).join(' · ');
+      if(dv)defs.push(['배송',dv,false]);
+      defs.push(['주문',r.items.length?r.items.join(', '):'-',false]);
+      defs.push(['합계',r.total.toLocaleString()+'천원',true]);
+      if(r.request)defs.push(['요청',r.request,false]);
+      defs.push(['접수',r.created,false]);
+      var laid=defs.map(function(d){return {lb:d[0],bold:d[2],lines:wrap(d[1],22,d[2],CW-2*PAD-LBW)};});
+      var h=PAD+HEAD+laid.reduce(function(s,l){return s+l.lines.length*LH+4;},0)+PAD;
+      return {i:i,r:r,laid:laid,h:h};
+    });
+    var pagesDef=[],cur=[],yy=M+HDR;
+    blocks.forEach(function(b){
+      if(cur.length&&yy+b.h>H-FOOT){pagesDef.push(cur);cur=[];yy=M;}
+      cur.push({b:b,y:yy});yy+=b.h+GAP;
+    });
+    pagesDef.push(cur);
+    // 2단계: 한 캔버스를 재사용해 페이지를 하나씩 그리고 곧바로 JPEG로 굽는다(메모리 절약)
+    var jpegs=[];
+    pagesDef.forEach(function(pg,pi){
+      ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);
+      ctx.textBaseline='top';ctx.textAlign='left';
+      if(pi===0){
+        font(46,true);ctx.fillStyle='#111';ctx.fillText(rp.title,M,M);
+        font(21,false);ctx.fillStyle='#555';
+        ctx.fillText('기준: '+rp.basis,M,M+68);
+        ctx.fillText('출력 '+rp.printedAt+'  ·  총 '+rp.count+'건  ·  합계 '+rp.sum.toLocaleString()+'천원',M,M+100);
+        ctx.fillStyle='#086266';ctx.fillRect(M,M+140,CW,4);
+      }
+      pg.forEach(function(p){
+        var b=p.b,r=b.r,y=p.y;
+        ctx.lineWidth=2;ctx.strokeStyle='#9aa8a8';roundRect(M,y,CW,b.h,10);ctx.stroke();
+        var hx=M+PAD,hy=y+PAD;
+        font(20,false);ctx.fillStyle='#888';ctx.fillText(String(b.i+1),hx,hy+5);hx+=44;
+        font(24,true);ctx.fillStyle='#6a1b9a';var dt='예약 '+r.date;ctx.fillText(dt,hx,hy+2);hx+=ctx.measureText(dt).width+24;
+        font(26,true);ctx.fillStyle='#111';ctx.fillText(r.name,hx,hy);hx+=ctx.measureText(r.name).width+22;
+        if(r.phone){font(22,false);ctx.fillStyle='#444';ctx.fillText(r.phone,hx,hy+3);}
+        font(22,true);ctx.fillStyle='#086266';ctx.textAlign='right';ctx.fillText(r.status,M+CW-PAD,hy+3);ctx.textAlign='left';
+        ctx.fillStyle='#ddd';ctx.fillRect(M+PAD,y+PAD+HEAD-12,CW-2*PAD,2);
+        var ry=y+PAD+HEAD;
+        b.laid.forEach(function(l){
+          font(22,false);ctx.fillStyle='#777';ctx.fillText(l.lb,M+PAD,ry);
+          font(22,l.bold);ctx.fillStyle='#111';
+          l.lines.forEach(function(ln,k){ctx.fillText(ln,M+PAD+LBW,ry+k*LH);});
+          ry+=l.lines.length*LH+4;
+        });
+      });
+      font(20,false);ctx.fillStyle='#888';ctx.textAlign='center';ctx.fillText((pi+1)+' / '+pagesDef.length,W/2,H-56);
+      jpegs.push({w:W,h:H,bytes:_rsvDataUrlBytes(cv.toDataURL('image/jpeg',0.8))});
+    });
+    return _rsvJpegsToPdf(jpegs);
+  });
+}
+function saveReservedPdf(){
+  if(!_reservedExportOrders.length){showToast('저장할 예약주문이 없어요.');return;}
+  showToast('PDF 만드는 중...');
+  _reservedReportPdf(_reservedReport(_reservedExportOrders))
+    .then(function(blob){_downloadBlob(blob,'예약주문목록_'+_reservedFileStamp()+'.pdf');showToast('PDF로 저장했어요.');})
+    .catch(function(e){console.error('PDF 생성 실패',e);showToast('⚠️ PDF 만들기 실패 — 인쇄하기에서 PDF로 저장해주세요.');});
 }
 // allMenus 수정 → menus(일일) 실시간 동기화
 function syncAllMenuToMenus(m, oldName){
