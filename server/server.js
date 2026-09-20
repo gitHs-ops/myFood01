@@ -64,6 +64,16 @@ function deviceIdOf(req) {
   return (req && req.headers && req.headers['x-device-id']) || (req && req.body && req.body.deviceId) || null;
 }
 
+// 예약 이벤트 항목 판별 — 새 방식(menuId 'evt-N' / cat '이벤트')과 옛 단일 이벤트(menuId 'EVENT') 모두.
+// 이벤트 항목은 마스터·일일 메뉴 어디에도 단가가 없다(화면의 이벤트 목록이 원본).
+function _isEventItem(it) {
+  return !!it && (it.menuId === 'EVENT' || it.cat === '이벤트' || String(it.menuId || '').startsWith('evt-'));
+}
+// 주문의 '이벤트 메뉴 구성' 서명 — 이름×수량을 정렬해 이은 문자열. 담은 순서·단가와 무관하게 같은 구성이면 같다.
+function _eventSignature(items) {
+  return (items || []).filter(_isEventItem).map(it => String(it.name || '').trim() + '×' + (Number(it.qty) || 1)).sort().join('|');
+}
+
 // 로그 문구 만들기 — DB·요청 객체에 기대지 않는 순수 함수라 따로 떼어 검증하기 쉽다.
 // 주문 1건 → 로그 항목. 예약주문은 order_reserve로 갈라서 일반 주문(order_customer)과 로그 화면에서 따로 본다.
 function _orderLogEntry(order, items, total, isReserve) {
@@ -75,14 +85,13 @@ function _orderLogEntry(order, items, total, isReserve) {
       detail: { orderId: order.id, phone: order.phone || '', name: order.name || '', total, isReserve: false }
     };
   }
-  const isEventItem = it => it.menuId === 'EVENT' || it.cat === '이벤트' || String(it.menuId || '').startsWith('evt-');
   const first = items[0] ? String(items[0].name || '') : '';
   const itemText = first ? first + (items.length > 1 ? ' 외 ' + (items.length - 1) + '건' : '') : items.length + '건';
   return {
     type: 'order_reserve',
     summary: who + ' 예약주문(' + phone + ') — 예약일 ' + order.reserveDate + ' · ' + itemText + ' · ' + total + '천원 · ' + (order.memo || '배송방법 없음'),
     detail: { orderId: order.id, phone: order.phone || '', name: order.name || '', total, reserveDate: order.reserveDate,
-      itemCount: items.length, method: order.memo || '', isEvent: items.some(isEventItem) }
+      itemCount: items.length, method: order.memo || '', isEvent: items.some(_isEventItem) }
   };
 }
 // 일일 메뉴 저장 요청 → 로그 항목들. 내용이 있는 날짜는 '저장', 빈 목록으로 비운 날짜(deleted)는 '삭제'로 나눠 남긴다.
@@ -834,7 +843,6 @@ app.post('/api/orders', async (req, res) => {
     const items  = order.items || [];
     const date   = order.date;
     const isReserve = !!order.reserveDate;
-    const isEventOrder = items.some(it => it.menuId === 'EVENT');
 
     // 항목이 비정상적으로 많으면(예: 화면에서 실수로 전체선택 후 제출) 뒤의 가격검산 루프가
     // 항목 수만큼 순차 쿼리를 돌게 되어 요청이 타임아웃되고, 그 경우 에러가 catch에 닿지 못해
@@ -846,17 +854,21 @@ app.post('/api/orders', async (req, res) => {
       return err(res, '한 번에 담을 수 있는 메뉴는 최대 ' + MAX_ORDER_ITEMS + '개예요. 선택한 메뉴를 줄여서 다시 시도해주세요.', 400);
     }
 
-    // 같은 전화번호로 같은 날짜에 동일 예약 이벤트를 중복 신청하는 것을 방지
-    if (isEventOrder && order.reserveDate && order.phone) {
+    // 같은 손님(전화번호)이 같은 예약일에 '이벤트 메뉴 구성이 똑같은' 주문을 또 넣는 것만 막는다(재전송 같은 실수 방지).
+    // 이벤트가 메뉴 1개짜리였을 땐 "같은 날짜 1건"으로 막았지만, 여러 메뉴 중 고르는 지금은 다른 구성으로 여러 번
+    // 신청하는 게 정상이라 구성(이름×수량)이 완전히 같을 때만 중복으로 본다. 취소된 주문은 제외.
+    const eventSig = _eventSignature(items);
+    if (eventSig && order.reserveDate && order.phone) {
       const [dupRows] = await pool.execute(
         `SELECT items FROM orders WHERE phone=? AND reserve_date=? AND status!='cancelled'`,
         [order.phone, order.reserveDate]
       );
       const hasDup = dupRows.some(r => {
-        const its = typeof r.items === 'string' ? JSON.parse(r.items) : (r.items || []);
-        return its.some(it => it.menuId === 'EVENT');
+        let its = [];
+        try { its = typeof r.items === 'string' ? JSON.parse(r.items) : (r.items || []); } catch (e) {}
+        return _eventSignature(its) === eventSig;
       });
-      if (hasDup) return err(res, '이미 같은 날짜로 예약 이벤트를 신청하셨어요.', 409);
+      if (hasDup) return err(res, '이미 같은 날짜로 같은 구성의 이벤트 메뉴를 신청하셨어요.', 409);
     }
 
     const conn   = await pool.getConnection();
@@ -897,8 +909,12 @@ app.post('/api/orders', async (req, res) => {
       // 예약 이벤트처럼 어디에도 없는 항목은 화면 값을 그대로 둔다.
       const fixes = [];
       for (const item of items) {
+        // 이벤트 항목은 아래 조회를 건너뛴다. 옛 단일 이벤트('EVENT')만 건너뛰던 것을 새 이벤트 항목('evt-N')으로 넓히지
+        // 않아서, 이름이 우연히 같은 그날 일일 메뉴가 있으면 그 단가로 덮어써졌다(예: 알배추물김치 일반 6 vs 이벤트 12
+        // → 이벤트 주문 3건이 6천원으로 저장됨, 2026-09-20 발견).
+        if (_isEventItem(item)) continue;
         let dbPrice = null;
-        if (item.menuId != null && item.menuId !== 'EVENT') {
+        if (item.menuId != null) {
           const [dr] = await conn.execute(
             'SELECT price FROM daily_menus WHERE date=? AND menu_id=? LIMIT 1', [date, item.menuId]);
           if (dr.length) dbPrice = Number(dr[0].price);
