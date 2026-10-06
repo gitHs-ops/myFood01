@@ -1,5 +1,8 @@
 *.txt
 
+# npm 의존성 설치 산출물 (각자 npm install로 복원)
+node_modules/
+
 # 1회성 유틸리티 스크립트/데이터 (웹 서비스 운용과 무관)
 generate_menu_images_full.py
 retry_error_menus.py

@@ -33,6 +33,12 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// 루트(/)로 접속 시 관리자 허브(index.html, 비밀번호 게이트)가 아니라 고객 주문 페이지로
+// 보낸다 — URL에서 경로를 지우고 도메인만 입력해도 관리자 화면이 노출되지 않도록 하는 안전장치.
+// (GitHub Pages는 서버가 없어 이 라우트가 적용되지 않음 — Railway·GitHub Pages 혼용 운영 중이라
+// index.html 파일명 자체는 바꾸지 않기로 함)
+app.get('/', (req, res) => res.redirect('/onban01.html'));
+
 // HTML 정적 파일 서빙 (repo 루트)
 app.use(express.static(path.join(__dirname, '..')));
 
