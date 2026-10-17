@@ -33,6 +33,12 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// 루트(/)로 접속 시 관리자 허브(index.html, 비밀번호 게이트)가 아니라 고객 주문 페이지로
+// 보낸다 — URL에서 경로를 지우고 도메인만 입력해도 관리자 화면이 노출되지 않도록 하는 안전장치.
+// (GitHub Pages는 서버가 없어 이 라우트가 적용되지 않음 — Railway·GitHub Pages 혼용 운영 중이라
+// index.html 파일명 자체는 바꾸지 않기로 함)
+app.get('/', (req, res) => res.redirect('/onban01.html'));
+
 // HTML 정적 파일 서빙 (repo 루트)
 app.use(express.static(path.join(__dirname, '..')));
 
@@ -823,6 +829,53 @@ app.get('/api/orders/pending-summary', requireAdmin, async (req, res) => {
       dates,
       totalCount:  dates.reduce((s, r) => s + r.count, 0),
       totalAmount: dates.reduce((s, r) => s + r.amount, 0)
+    });
+  } catch(e) { err(res, e.message); }
+});
+
+// 기간별/메뉴별 주문 통계 (GET /api/stats/orders?from=YYYY-MM-DD&to=YYYY-MM-DD)
+// 취소된 주문은 실제 판매가 아니므로 제외. 메뉴별 매출은 품목 단가×수량 합산이라
+// 배송비가 빠져 있다 — 총 매출(summary.totalRevenue)은 주문 total(배송비 포함) 합계라
+// 둘이 정확히 일치하지는 않는다(의도된 차이).
+app.get('/api/stats/orders', requireAdmin, async (req, res) => {
+  try {
+    const from = (req.query.from || '').slice(0, 10);
+    const to   = (req.query.to   || '').slice(0, 10);
+    if (!from || !to) return err(res, 'from, to 필요', 400);
+    const [rows] = await pool.execute(
+      `SELECT date, total, items FROM orders WHERE date BETWEEN ? AND ? AND status<>'cancelled'`,
+      [from, to]
+    );
+    const dailyMap = new Map();
+    const menuMap  = new Map();
+    let totalRevenue = 0;
+    for (const r of rows) {
+      const d   = toKSTDateStr(r.date);
+      const amt = Number(r.total) || 0;
+      totalRevenue += amt;
+      const day = dailyMap.get(d) || { date: d, count: 0, revenue: 0 };
+      day.count   += 1;
+      day.revenue += amt;
+      dailyMap.set(d, day);
+
+      let items = [];
+      try { items = typeof r.items === 'string' ? JSON.parse(r.items) : (r.items || []); } catch (e) {}
+      for (const it of items) {
+        const name = it.name || '(이름없음)';
+        const qty  = Number(it.qty) || 1;
+        const line = (Number(it.price) || 0) * qty;
+        const m = menuMap.get(name) || { name, qty: 0, revenue: 0 };
+        m.qty     += qty;
+        m.revenue += line;
+        menuMap.set(name, m);
+      }
+    }
+    const daily  = Array.from(dailyMap.values()).sort((a, b) => a.date < b.date ? -1 : 1);
+    const byMenu = Array.from(menuMap.values()).sort((a, b) => b.qty - a.qty);
+    ok(res, {
+      period: { from, to },
+      summary: { orderCount: rows.length, totalRevenue },
+      daily, byMenu
     });
   } catch(e) { err(res, e.message); }
 });

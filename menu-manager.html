@@ -530,6 +530,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
   <button class="nav-tab active" onclick="switchPage('manage')"><span class="ti">🍱</span><span class="tl">메뉴 관리</span></button>
   <button class="nav-tab" onclick="switchPage('kakao')"><span class="ti">💬</span><span class="tl">카카오 발송</span></button>
   <button class="nav-tab" id="navTabOrders" onclick="switchPage('orders')"><span class="ti">📦</span><span class="tl">주문 관리</span><span class="nav-tab-badge" id="addreqBadge"></span></button>
+  <button class="nav-tab" onclick="switchPage('stats')"><span class="ti">📊</span><span class="tl">통계</span></button>
   <button class="nav-tab" onclick="switchPage('history')"><span class="ti">🗄</span><span class="tl">메뉴 창고</span></button>
   <button class="nav-tab" onclick="switchPage('settings')"><span class="ti">⚙</span><span class="tl">설정</span></button>
 </div>
@@ -758,6 +759,23 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
   <div class="adm-order-popup">
     <button class="adm-order-close" onclick="closeAdminOrderDetail()">✕</button>
     <div id="admOrderDetailContent"></div>
+  </div>
+</div>
+
+<div id="page-stats" class="page">
+  <div class="card">
+    <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+      <span>📊 주문 통계</span>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <input type="date" id="statsFrom" style="border:1px solid #ddd;border-radius:8px;padding:5px 7px;font-family:inherit;font-size:12px;">
+        <span style="color:#999;font-size:12px;">~</span>
+        <input type="date" id="statsTo" style="border:1px solid #ddd;border-radius:8px;padding:5px 7px;font-family:inherit;font-size:12px;">
+        <button onclick="loadStats()" style="background:#086266;color:#fff;border:none;border-radius:20px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">조회</button>
+      </div>
+    </div>
+    <div class="order-stats" id="statsSummary"></div>
+    <div class="tabs" id="statsSubTabs"></div>
+    <div id="statsBody"></div>
   </div>
 </div>
 
@@ -3200,7 +3218,7 @@ function switchPage(name){
     document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
     document.querySelectorAll('.nav-tab').forEach(function(t){t.classList.remove('active');});
     document.getElementById('page-'+name).classList.add('active');
-    var tabs=['manage','kakao','orders','history','settings'];
+    var tabs=['manage','kakao','orders','stats','history','settings'];
     var idx=tabs.indexOf(name);
     if(idx>=0)document.querySelectorAll('.nav-tab')[idx].classList.add('active');
     var dateBtn=document.getElementById('dateDisplayBtn');
@@ -3219,6 +3237,14 @@ function switchPage(name){
       switchHistSubTab('dates');   // 진입 시 항상 '날짜별 메뉴 묶음' + 컨테이너 표시 정리 + 목록 로드
     }
     if(name==='orders')renderOrders();
+    if(name==='stats'){
+      if(!document.getElementById('statsFrom').value){
+        var _sr=_statsDefaultRange();
+        document.getElementById('statsFrom').value=_sr.from;
+        document.getElementById('statsTo').value=_sr.to;
+      }
+      loadStats();
+    }
     if(name==='settings'){loadSettingsForm();renderCatSettings();}
     _updateSaveBtn();
   }
@@ -4036,6 +4062,96 @@ function startSSE(){
 
 function startOrderPolling(){startSSE();}
 
+/* ════ 통계 ════ */
+var _statsSubTab='daily';
+var _statsData=null;
+function _statsDefaultRange(){
+  // 기본 조회 기간: 최근 7일(오늘 포함)
+  var to=toISO(new Date());
+  var fromD=new Date(); fromD.setDate(fromD.getDate()-6);
+  return {from:toISO(fromD),to:to};
+}
+function loadStats(){
+  var from=document.getElementById('statsFrom').value;
+  var to=document.getElementById('statsTo').value;
+  if(!from||!to){showToast('조회 기간을 선택해주세요.');return;}
+  if(from>to){showToast('시작일이 종료일보다 늦어요.');return;}
+  var body=document.getElementById('statsBody');
+  body.innerHTML='<div style="padding:30px;text-align:center;color:#999;font-size:13px;">불러오는 중...</div>';
+  document.getElementById('statsSummary').innerHTML='';
+  document.getElementById('statsSubTabs').innerHTML='';
+  fetch(API_URL+'/api/stats/orders?from='+from+'&to='+to)
+    .then(function(r){return r.json();})
+    .then(function(res){
+      if(!res.success){showToast(res.error||'통계를 불러오지 못했어요.');body.innerHTML='';return;}
+      _statsData=res;
+      renderStatsSummary(res);
+      renderStatsSubTabs();
+      renderStatsBody();
+    })
+    .catch(function(){showToast('네트워크 오류로 통계를 불러오지 못했어요.');body.innerHTML='';});
+}
+function renderStatsSummary(res){
+  var s=res.summary;
+  var avg=s.orderCount?Math.round(s.totalRevenue/s.orderCount):0;
+  document.getElementById('statsSummary').innerHTML=
+    '<div class="order-stat"><div class="order-stat-num">'+s.orderCount.toLocaleString()+'건</div><div class="order-stat-lbl">총 주문</div></div>'+
+    '<div class="order-stat"><div class="order-stat-num">'+s.totalRevenue.toLocaleString()+'</div><div class="order-stat-lbl">총 매출(천원)</div></div>'+
+    '<div class="order-stat"><div class="order-stat-num">'+avg.toLocaleString()+'</div><div class="order-stat-lbl">평균 주문액(천원)</div></div>';
+}
+function renderStatsSubTabs(){
+  document.getElementById('statsSubTabs').innerHTML=
+    '<button class="tab'+(_statsSubTab==='daily'?' active':'')+'" onclick="switchStatsSubTab(\'daily\')">📅 기간별</button>'+
+    '<button class="tab'+(_statsSubTab==='menu'?' active':'')+'" onclick="switchStatsSubTab(\'menu\')">🍱 메뉴별</button>';
+}
+function switchStatsSubTab(t){_statsSubTab=t;renderStatsSubTabs();renderStatsBody();}
+function renderStatsBody(){
+  if(!_statsData)return;
+  var body=document.getElementById('statsBody');
+  if(_statsSubTab==='daily'){
+    body.innerHTML=renderDailyChart(_statsData.daily)+renderDailyTable(_statsData.daily);
+  }else{
+    body.innerHTML=renderMenuTable(_statsData.byMenu);
+  }
+}
+function renderDailyChart(daily){
+  if(!daily.length)return '<div style="padding:20px;text-align:center;color:#999;font-size:13px;">데이터가 없어요.</div>';
+  var max=0; daily.forEach(function(d){if(d.revenue>max)max=d.revenue;}); if(!max)max=1;
+  var barW=28,gap=16,chartH=140;
+  var bars=daily.map(function(d,i){
+    var h=Math.max(Math.round((d.revenue/max)*(chartH-10)),2);
+    var x=i*(barW+gap)+gap/2;
+    var y=chartH-h;
+    var label=d.date.slice(5).replace('-','/');
+    return '<rect x="'+x+'" y="'+y+'" width="'+barW+'" height="'+h+'" rx="4" fill="#086266">'+
+        '<title>'+label+' · '+d.count+'건 · '+d.revenue.toLocaleString()+'천원</title></rect>'+
+      '<text x="'+(x+barW/2)+'" y="'+(chartH+14)+'" font-size="10" fill="#888" text-anchor="middle">'+label+'</text>';
+  }).join('');
+  var totalW=daily.length*(barW+gap)+gap;
+  return '<div style="font-size:11px;color:#999;margin-top:6px;">매출 기준(천원) · 막대에 마우스를 올리면 상세 표시</div>'+
+    '<div style="overflow-x:auto;padding:8px 0 4px;">'+
+      '<svg width="'+Math.max(totalW,200)+'" height="'+(chartH+28)+'" style="display:block;">'+bars+'</svg>'+
+    '</div>';
+}
+function renderDailyTable(daily){
+  if(!daily.length)return '';
+  var rows=daily.map(function(d){
+    return '<tr><td style="padding:6px 4px;">'+fmtDate(d.date)+'</td><td style="padding:6px 4px;text-align:right;">'+d.count.toLocaleString()+'건</td><td style="padding:6px 4px;text-align:right;">'+d.revenue.toLocaleString()+'천원</td></tr>';
+  }).join('');
+  return '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:10px;">'+
+    '<thead><tr style="color:#888;text-align:left;border-bottom:1px solid #eee;"><th style="padding:6px 4px;">날짜</th><th style="padding:6px 4px;text-align:right;">주문</th><th style="padding:6px 4px;text-align:right;">매출</th></tr></thead>'+
+    '<tbody>'+rows+'</tbody></table>';
+}
+function renderMenuTable(byMenu){
+  if(!byMenu.length)return '<div style="padding:20px;text-align:center;color:#999;font-size:13px;">데이터가 없어요.</div>';
+  var rows=byMenu.map(function(m,i){
+    return '<tr><td style="padding:6px 4px;color:#999;">'+(i+1)+'</td><td style="padding:6px 4px;">'+m.name+'</td><td style="padding:6px 4px;text-align:right;">'+m.qty.toLocaleString()+'개</td><td style="padding:6px 4px;text-align:right;">'+m.revenue.toLocaleString()+'천원</td></tr>';
+  }).join('');
+  return '<div style="font-size:11px;color:#999;margin-bottom:4px;">판매량(개) 많은 순 · 메뉴별 매출은 배송비 제외</div>'+
+    '<table style="width:100%;border-collapse:collapse;font-size:12px;">'+
+    '<thead><tr style="color:#888;text-align:left;border-bottom:1px solid #eee;"><th style="padding:6px 4px;">#</th><th style="padding:6px 4px;">메뉴</th><th style="padding:6px 4px;text-align:right;">판매량</th><th style="padding:6px 4px;text-align:right;">매출(천원)</th></tr></thead>'+
+    '<tbody>'+rows+'</tbody></table>';
+}
 
 /* ════ 설정 ════ */
 var API_URL='https://myfood01-production.up.railway.app';
