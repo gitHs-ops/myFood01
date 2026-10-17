@@ -109,6 +109,7 @@ npx serve -l 5174 .
 | GET/POST | `/api/settings` | 계좌정보/카테고리/발송설정 등 |
 | GET | `/api/dates`, `/api/events` | 히스토리 날짜 목록, 예약 이벤트 |
 | (SSE) | `/api/orders/stream` 계열 | 관리자 화면 실시간 주문 알림 |
+| GET | `/api/stats/orders?from=&to=` | 기간별/메뉴별 주문 통계 (관리자 페이지 "통계" 탭) |
 
 ---
 
