@@ -110,7 +110,7 @@ npx serve -l 5174 .
 | GET | `/api/dates`, `/api/events` | 히스토리 날짜 목록, 예약 이벤트 |
 | (SSE) | `/api/orders/stream` 계열 | 관리자 화면 실시간 주문 알림 |
 | GET | `/api/stats/orders?from=&to=` | 기간별/메뉴별 주문 통계 (관리자 페이지 "통계" 탭) |
-| POST | `/api/recommend/daily-plan` | 오늘 메뉴 구성 AI 추천(관리자용) — 최근 7일 구성이력·판매량·계절 반영, ANTHROPIC_API_KEY 필요 |
+| POST | `/api/recommend/daily-plan` | 오늘 메뉴 구성 AI 추천(관리자용) — 최근 7일 구성이력·판매량·계절 + 보유 식재료(`ingredients`, 선택) 반영, ANTHROPIC_API_KEY 필요 |
 
 ---
 

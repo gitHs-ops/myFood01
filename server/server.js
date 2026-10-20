@@ -1627,6 +1627,8 @@ app.post('/api/recommend', async (req, res) => {
 app.post('/api/recommend/daily-plan', requireAdmin, async (req, res) => {
   try {
     if (!process.env.ANTHROPIC_API_KEY) return err(res, 'AI 추천 기능이 아직 설정되지 않았습니다.', 503);
+    // 오늘 보유 식재료(선택, 자유 입력) — 예: "배추 10포기, 무 5개, 돼지 앞다리 3kg"
+    const ingredients = String((req.body && req.body.ingredients) || '').trim().slice(0, 500);
 
     const [menuRows] = await pool.execute('SELECT id, name, cat, price, child FROM menus ORDER BY count DESC, name');
     if (!menuRows.length) return err(res, '추천할 메뉴가 없습니다. 마스터 메뉴를 먼저 등록해주세요.', 404);
@@ -1674,6 +1676,12 @@ app.post('/api/recommend/daily-plan', requireAdmin, async (req, res) => {
       + '며칠이나 오늘의 메뉴로 구성됐는지와, 그 기간 실제 판매량이 적혀 있습니다.\n\n'
       + menuLines + '\n\n'
       + '오늘(' + todayStr + ')은 계절상 ' + season + '입니다.\n\n'
+      + (ingredients
+        ? '오늘 보유 식재료: ' + ingredients + '\n'
+          + '이 식재료를 활용할 수 있는 메뉴를 우선 골라 재료가 남지 않게 구성하세요(주재료는 메뉴 이름으로 판단). '
+          + '식재료 수량이 적혀 있으면 그 양으로 만들 수 있는 수준에 맞춰 해당 메뉴의 추천 재고 수량을 잡아주세요'
+          + '(이런 메뉴는 아래의 판매량 기준보다 이 기준을 우선).\n\n'
+        : '')
       + '위 데이터를 참고해서 오늘 "오늘의 메뉴"로 구성할 메뉴를 30개 내외(28~32개)로 골라주세요. '
       + '최근 판매가 잘 된 메뉴는 우선 반영하고, ' + season + '에 어울리는 메뉴를 적절히 섞고, '
       + '최근 7일 내내 반복된 메뉴만 있지 않도록 다양성도 고려해주세요. '
@@ -1725,7 +1733,7 @@ app.post('/api/recommend/daily-plan', requireAdmin, async (req, res) => {
     sysLog(
       'ai_recommend',
       'AI 일일메뉴 구성 추천 호출' + (usage ? (', 토큰 입력' + usage.input_tokens + '/출력' + usage.output_tokens) : ''),
-      { scope: 'daily_plan', season, from: fromStr, to: toStr, httpStatus: aiRes.status, usage },
+      { scope: 'daily_plan', season, from: fromStr, to: toStr, ingredients, httpStatus: aiRes.status, usage },
       req.ip, deviceIdOf(req)
     ).catch(() => {});
     if (!aiRes.ok) return err(res, 'AI 호출 실패(' + aiRes.status + '): ' + aiRawText.slice(0, 300));

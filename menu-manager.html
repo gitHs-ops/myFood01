@@ -904,6 +904,18 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
     <button style="width:100%;background:#086266;color:#fff;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:600;cursor:pointer;" onclick="closeGenericAlert()">확인</button>
   </div>
 </div>
+<!-- AI 메뉴 추천 — 오늘 보유 식재료 입력 모달 -->
+<div class="cal-overlay" id="recIngredientsOverlay" style="z-index:1000;" onclick="if(event.target===this)closeRecIngredients()">
+  <div style="background:#fff;border-radius:16px;padding:22px;width:320px;max-width:calc(100vw - 32px);box-sizing:border-box;" onclick="event.stopPropagation()">
+    <div style="font-size:15px;font-weight:700;color:#1a1a1a;margin-bottom:6px;">🎯 오늘 보유 식재료</div>
+    <div style="font-size:12px;color:#888;margin-bottom:10px;line-height:1.5;">적어주시면 이 재료를 활용하는 메뉴 위주로 추천해요. 수량까지 적으면 추천 재고량에도 반영돼요. 비워두면 식재료 없이 추천합니다.</div>
+    <textarea id="recIngredientsInput" rows="4" maxlength="500" placeholder="예) 배추 10포기, 무 5개, 돼지 앞다리 3kg, 두부 8모" style="width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:10px;padding:10px;font-family:inherit;font-size:14px;resize:vertical;"></textarea>
+    <div style="display:flex;gap:10px;margin-top:14px;">
+      <button style="flex:1;background:#eee;color:#555;border:none;border-radius:10px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;" onclick="closeRecIngredients()">취소</button>
+      <button style="flex:1;background:#6b46c1;color:#fff;border:none;border-radius:10px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;" onclick="submitRecIngredients()">추천 받기</button>
+    </div>
+  </div>
+</div>
 <!-- 카카오 파싱 등록 방식 선택 모달 -->
 <div class="cal-overlay" id="importParsedConfirmOverlay" style="z-index:1000;" onclick="if(event.target===this)closeImportParsedConfirm()">
   <div style="background:#fff;border-radius:16px;padding:24px;width:280px;text-align:center;" onclick="event.stopPropagation()">
@@ -2131,20 +2143,40 @@ function _commitPreviewMenus(parsed){
   });
 }
 // 오늘 메뉴 구성 AI 추천 — "메뉴 관리" 탭과 "카카오 발송" 탭 양쪽에서 호출(버튼 id만 다름).
-// 서버가 반환한 picks(name·cat·price·child·qty)를 _commitPreviewMenus가 받는 형태로 바꿔
-// 그대로 넘긴다 — 카카오 파싱 결과를 등록하는 경로와 동일한 커밋 로직을 재사용.
+// 먼저 보유 식재료 입력창을 띄우고, 서버가 반환한 picks(name·cat·price·child·qty)를
+// _commitPreviewMenus가 받는 형태로 바꿔 넘긴다 — 카카오 파싱 결과 등록과 같은 커밋 로직 재사용.
+// 마지막 입력값은 같은 화면 안에서만 기억한다(localStorage 사용 금지 규칙).
+var _lastRecIngredients='';
+var _recIngredientsBtnId=null;
 function runDailyMenuRecommend(btnId){
+  _recIngredientsBtnId=btnId;
+  var ta=document.getElementById('recIngredientsInput');
+  ta.value=_lastRecIngredients;
+  document.getElementById('recIngredientsOverlay').classList.add('open');
+  setTimeout(function(){ta.focus();},50);
+}
+function closeRecIngredients(){
+  document.getElementById('recIngredientsOverlay').classList.remove('open');
+}
+function submitRecIngredients(){
+  var ingredients=document.getElementById('recIngredientsInput').value.trim();
+  _lastRecIngredients=ingredients;
+  closeRecIngredients();
+  _requestDailyMenuRecommend(_recIngredientsBtnId,ingredients);
+}
+function _requestDailyMenuRecommend(btnId,ingredients){
   var btn=document.getElementById(btnId);
   var prevText=btn?btn.textContent:'';
   function resetBtn(){if(btn){btn.disabled=false;btn.textContent=prevText;}}
   if(btn){btn.disabled=true;btn.textContent='🎯 추천 받는 중...';}
-  fetch(API_URL+'/api/recommend/daily-plan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})})
+  fetch(API_URL+'/api/recommend/daily-plan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ingredients:ingredients})})
     .then(function(r){return r.json();})
     .then(function(res){
       resetBtn();
       if(!res.success){showToast(res.error||'추천을 받지 못했어요.');return;}
       var parsed=res.picks.map(function(p){return{name:p.name,cat:p.cat,price:p.price,child:!!p.child,stock:p.qty};});
-      var msg='AI가 '+res.season+' 제철과 최근 1주일 판매 데이터를 반영해 '+parsed.length+'개 메뉴를 추천했어요.\n'
+      var basis=(ingredients?'보유 식재료, ':'')+res.season+' 제철, 최근 1주일 판매 데이터';
+      var msg='AI가 '+basis+'를 반영해 '+parsed.length+'개 메뉴를 추천했어요.\n'
         +(res.reason?('"'+res.reason+'"\n\n'):'\n')
         +'이대로 오늘의 메뉴로 등록할까요?\n(기존 메뉴는 초기화됩니다)';
       showConfirm(msg,function(){_commitPreviewMenus(parsed);},'등록','취소');
