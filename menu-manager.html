@@ -908,8 +908,14 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
 <div class="cal-overlay" id="recIngredientsOverlay" style="z-index:1000;" onclick="if(event.target===this)closeRecIngredients()">
   <div style="background:#fff;border-radius:16px;padding:22px;width:320px;max-width:calc(100vw - 32px);box-sizing:border-box;" onclick="event.stopPropagation()">
     <div style="font-size:15px;font-weight:700;color:#1a1a1a;margin-bottom:6px;">🎯 오늘 보유 식재료</div>
-    <div style="font-size:12px;color:#888;margin-bottom:10px;line-height:1.5;">적어주시면 이 재료를 활용하는 메뉴 위주로 추천해요. 수량까지 적으면 추천 재고량에도 반영돼요. 비워두면 식재료 없이 추천합니다.</div>
+    <div style="font-size:12px;color:#888;margin-bottom:10px;line-height:1.5;">적거나 사진으로 올려주시면 이 재료를 활용하는 메뉴 위주로 추천해요. 수량이 있으면 추천 재고량에도 반영돼요. 비워두면 식재료 없이 추천합니다.</div>
     <textarea id="recIngredientsInput" rows="4" maxlength="500" placeholder="예) 배추 10포기, 무 5개, 돼지 앞다리 3kg, 두부 8모" style="width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:10px;padding:10px;font-family:inherit;font-size:14px;resize:vertical;"></textarea>
+    <input type="file" id="recPhotoInput" accept="image/*" multiple style="display:none" onchange="onRecPhotosSelected(event)">
+    <div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap;">
+      <button type="button" onclick="document.getElementById('recPhotoInput').click()" style="background:#f3effc;color:#6b46c1;border:1px solid #d9cdf5;border-radius:10px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">📷 사진 첨부</button>
+      <span style="font-size:11px;color:#999;line-height:1.4;">최대 3장 · 영수증·거래명세서 사진이면 수량이 더 정확해요</span>
+    </div>
+    <div id="recPhotoThumbs" style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;"></div>
     <div style="display:flex;gap:10px;margin-top:14px;">
       <button style="flex:1;background:#eee;color:#555;border:none;border-radius:10px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;" onclick="closeRecIngredients()">취소</button>
       <button style="flex:1;background:#6b46c1;color:#fff;border:none;border-radius:10px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;" onclick="submitRecIngredients()">추천 받기</button>
@@ -2145,38 +2151,82 @@ function _commitPreviewMenus(parsed){
 // 오늘 메뉴 구성 AI 추천 — "메뉴 관리" 탭과 "카카오 발송" 탭 양쪽에서 호출(버튼 id만 다름).
 // 먼저 보유 식재료 입력창을 띄우고, 서버가 반환한 picks(name·cat·price·child·qty)를
 // _commitPreviewMenus가 받는 형태로 바꿔 넘긴다 — 카카오 파싱 결과 등록과 같은 커밋 로직 재사용.
-// 마지막 입력값은 같은 화면 안에서만 기억한다(localStorage 사용 금지 규칙).
+// 마지막 입력값·사진은 같은 화면 안에서만 기억한다(localStorage 사용 금지 규칙).
 var _lastRecIngredients='';
 var _recIngredientsBtnId=null;
+var _recPhotos=[];   // 축소된 JPEG base64(접두어 없이)
+var REC_PHOTO_MAX=3;
 function runDailyMenuRecommend(btnId){
   _recIngredientsBtnId=btnId;
   var ta=document.getElementById('recIngredientsInput');
   ta.value=_lastRecIngredients;
+  _renderRecPhotoThumbs();
   document.getElementById('recIngredientsOverlay').classList.add('open');
   setTimeout(function(){ta.focus();},50);
 }
 function closeRecIngredients(){
   document.getElementById('recIngredientsOverlay').classList.remove('open');
 }
+function _renderRecPhotoThumbs(){
+  document.getElementById('recPhotoThumbs').innerHTML=_recPhotos.map(function(b64,i){
+    return '<div style="position:relative;width:64px;height:64px;">'
+      +'<img src="data:image/jpeg;base64,'+b64+'" style="width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid #ddd;">'
+      +'<button type="button" onclick="removeRecPhoto('+i+')" title="사진 빼기" style="position:absolute;top:-7px;right:-7px;width:22px;height:22px;border-radius:50%;border:none;background:#555;color:#fff;font-size:11px;line-height:22px;padding:0;cursor:pointer;">✕</button>'
+      +'</div>';
+  }).join('');
+}
+function removeRecPhoto(i){_recPhotos.splice(i,1);_renderRecPhotoThumbs();}
+function onRecPhotosSelected(e){
+  var files=Array.prototype.slice.call(e.target.files||[]);
+  e.target.value='';   // 같은 사진을 다시 골라도 change가 뜨도록
+  var room=REC_PHOTO_MAX-_recPhotos.length;
+  if(files.length>room){showToast('사진은 최대 '+REC_PHOTO_MAX+'장까지 올릴 수 있어요.');files=files.slice(0,Math.max(room,0));}
+  files.forEach(function(file){
+    _shrinkPhotoForAI(file,function(b64){
+      if(!b64){showToast('이 사진은 읽을 수 없어요. JPG·PNG 사진으로 다시 시도해주세요.');return;}
+      if(_recPhotos.length>=REC_PHOTO_MAX)return;
+      _recPhotos.push(b64);_renderRecPhotoThumbs();
+    });
+  });
+}
+// 긴 변 1568px JPEG로 축소 — AI가 그보다 큰 사진은 어차피 줄여서 보고, 영수증 글씨는 읽힐 정도로 남는다.
+function _shrinkPhotoForAI(file,cb){
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    var img=new Image();
+    img.onload=function(){
+      var MAX=1568,w=img.width,h=img.height;
+      if(w>MAX||h>MAX){if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;}}
+      var c=document.createElement('canvas');c.width=w;c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      cb(c.toDataURL('image/jpeg',0.82).split(',')[1]);
+    };
+    img.onerror=function(){cb(null);};
+    img.src=ev.target.result;
+  };
+  reader.onerror=function(){cb(null);};
+  reader.readAsDataURL(file);
+}
 function submitRecIngredients(){
   var ingredients=document.getElementById('recIngredientsInput').value.trim();
   _lastRecIngredients=ingredients;
   closeRecIngredients();
-  _requestDailyMenuRecommend(_recIngredientsBtnId,ingredients);
+  _requestDailyMenuRecommend(_recIngredientsBtnId,ingredients,_recPhotos.slice());
 }
-function _requestDailyMenuRecommend(btnId,ingredients){
+function _requestDailyMenuRecommend(btnId,ingredients,photos){
   var btn=document.getElementById(btnId);
   var prevText=btn?btn.textContent:'';
   function resetBtn(){if(btn){btn.disabled=false;btn.textContent=prevText;}}
   if(btn){btn.disabled=true;btn.textContent='🎯 추천 받는 중...';}
-  fetch(API_URL+'/api/recommend/daily-plan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ingredients:ingredients})})
+  fetch(API_URL+'/api/recommend/daily-plan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ingredients:ingredients,photos:photos})})
     .then(function(r){return r.json();})
     .then(function(res){
       resetBtn();
       if(!res.success){showToast(res.error||'추천을 받지 못했어요.');return;}
       var parsed=res.picks.map(function(p){return{name:p.name,cat:p.cat,price:p.price,child:!!p.child,stock:p.qty};});
-      var basis=(ingredients?'보유 식재료, ':'')+res.season+' 제철, 최근 1주일 판매 데이터';
+      var basis=((ingredients||photos.length)?'보유 식재료, ':'')+res.season+' 제철, 최근 1주일 판매 데이터';
       var msg='AI가 '+basis+'를 반영해 '+parsed.length+'개 메뉴를 추천했어요.\n'
+        +(res.detected?('📷 사진에서 알아본 식재료: '+res.detected+'\n'):'')
         +(res.reason?('"'+res.reason+'"\n\n'):'\n')
         +'이대로 오늘의 메뉴로 등록할까요?\n(기존 메뉴는 초기화됩니다)';
       showConfirm(msg,function(){_commitPreviewMenus(parsed);},'등록','취소');

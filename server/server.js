@@ -1629,6 +1629,13 @@ app.post('/api/recommend/daily-plan', requireAdmin, async (req, res) => {
     if (!process.env.ANTHROPIC_API_KEY) return err(res, 'AI 추천 기능이 아직 설정되지 않았습니다.', 503);
     // 오늘 보유 식재료(선택, 자유 입력) — 예: "배추 10포기, 무 5개, 돼지 앞다리 3kg"
     const ingredients = String((req.body && req.body.ingredients) || '').trim().slice(0, 500);
+    // 보유 식재료 사진(선택, 최대 3장) — 화면에서 긴 변 1568px JPEG로 줄인 base64. 비정상적으로 큰 값은 버린다.
+    const photos = (Array.isArray(req.body && req.body.photos) ? req.body.photos : [])
+      .filter(p => typeof p === 'string')
+      .map(p => p.replace(/^data:image\/[a-z]+;base64,/, ''))
+      .filter(p => p.length > 0 && p.length <= 4000000)
+      .slice(0, 3);
+    const hasStockInfo = !!(ingredients || photos.length);
 
     const [menuRows] = await pool.execute('SELECT id, name, cat, price, child FROM menus ORDER BY count DESC, name');
     if (!menuRows.length) return err(res, '추천할 메뉴가 없습니다. 마스터 메뉴를 먼저 등록해주세요.', 404);
@@ -1676,10 +1683,14 @@ app.post('/api/recommend/daily-plan', requireAdmin, async (req, res) => {
       + '며칠이나 오늘의 메뉴로 구성됐는지와, 그 기간 실제 판매량이 적혀 있습니다.\n\n'
       + menuLines + '\n\n'
       + '오늘(' + todayStr + ')은 계절상 ' + season + '입니다.\n\n'
-      + (ingredients
-        ? '오늘 보유 식재료: ' + ingredients + '\n'
-          + '이 식재료를 활용할 수 있는 메뉴를 우선 골라 재료가 남지 않게 구성하세요(주재료는 메뉴 이름으로 판단). '
-          + '식재료 수량이 적혀 있으면 그 양으로 만들 수 있는 수준에 맞춰 해당 메뉴의 추천 재고 수량을 잡아주세요'
+      + (ingredients ? '오늘 보유 식재료: ' + ingredients + '\n' : '')
+      + (photos.length
+        ? '함께 첨부한 사진 ' + photos.length + '장은 오늘 보유한 식재료를 찍은 것(또는 장 본 영수증·거래명세서)입니다. '
+          + '사진에 보이는 식재료와 대략적인 수량도 보유 식재료로 간주하고, 알아본 내용을 detected_ingredients에 짧게 적어주세요.\n'
+        : '')
+      + (hasStockInfo
+        ? '이 식재료를 활용할 수 있는 메뉴를 우선 골라 재료가 남지 않게 구성하세요(주재료는 메뉴 이름으로 판단). '
+          + '식재료 수량을 알 수 있으면 그 양으로 만들 수 있는 수준에 맞춰 해당 메뉴의 추천 재고 수량을 잡아주세요'
           + '(이런 메뉴는 아래의 판매량 기준보다 이 기준을 우선).\n\n'
         : '')
       + '위 데이터를 참고해서 오늘 "오늘의 메뉴"로 구성할 메뉴를 30개 내외(28~32개)로 골라주세요. '
@@ -1699,7 +1710,14 @@ app.post('/api/recommend/daily-plan', requireAdmin, async (req, res) => {
       body: JSON.stringify({
         model: 'claude-sonnet-5',
         max_tokens: 4096,
-        messages: [{ role: 'user', content: prompt }],
+        messages: [{
+          role: 'user',
+          // 사진이 있으면 사진을 먼저, 지시문을 뒤에 둔다
+          content: photos.length
+            ? photos.map(data => ({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data } }))
+                .concat([{ type: 'text', text: prompt }])
+            : prompt,
+        }],
         tools: [{
           name: 'propose_daily_menu',
           description: '오늘의 메뉴로 구성할 메뉴와 추천 재고 수량을 제안한다',
@@ -1719,6 +1737,7 @@ app.post('/api/recommend/daily-plan', requireAdmin, async (req, res) => {
                 description: '오늘 구성할 메뉴와 추천 수량, 28~32개 정도',
               },
               reason: { type: 'string', description: '전체 구성 의도(계절감·인기 반영 등) 한두 문장' },
+              detected_ingredients: { type: 'string', description: '첨부 사진에서 알아본 식재료와 대략적인 수량 요약. 사진이 없으면 빈 문자열' },
             },
             required: ['picks', 'reason'],
           },
@@ -1733,7 +1752,7 @@ app.post('/api/recommend/daily-plan', requireAdmin, async (req, res) => {
     sysLog(
       'ai_recommend',
       'AI 일일메뉴 구성 추천 호출' + (usage ? (', 토큰 입력' + usage.input_tokens + '/출력' + usage.output_tokens) : ''),
-      { scope: 'daily_plan', season, from: fromStr, to: toStr, ingredients, httpStatus: aiRes.status, usage },
+      { scope: 'daily_plan', season, from: fromStr, to: toStr, ingredients, photoCount: photos.length, httpStatus: aiRes.status, usage },
       req.ip, deviceIdOf(req)
     ).catch(() => {});
     if (!aiRes.ok) return err(res, 'AI 호출 실패(' + aiRes.status + '): ' + aiRawText.slice(0, 300));
@@ -1750,7 +1769,8 @@ app.post('/api/recommend/daily-plan', requireAdmin, async (req, res) => {
       });
     if (!picks.length) return err(res, toolBlock.input.reason || '조건에 맞는 메뉴를 찾지 못했습니다.', 404);
 
-    ok(res, { picks, reason: toolBlock.input.reason || '', season, period: { from: fromStr, to: toStr } });
+    const detected = photos.length ? String(toolBlock.input.detected_ingredients || '').slice(0, 300) : '';
+    ok(res, { picks, reason: toolBlock.input.reason || '', detected, season, period: { from: fromStr, to: toStr } });
   } catch (e) { err(res, e.message); }
 });
 
