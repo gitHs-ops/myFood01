@@ -2224,7 +2224,7 @@ function _requestDailyMenuRecommend(btnId,ingredients,photos){
       resetBtn();
       if(!res.success){showToast(res.error||'추천을 받지 못했어요.');return;}
       var parsed=res.picks.map(function(p){return{name:p.name,cat:p.cat,price:p.price,child:!!p.child,stock:p.qty};});
-      var basis=((ingredients||photos.length)?'보유 식재료, ':'')+res.season+' 제철, 최근 1주일 판매 데이터';
+      var basis=((ingredients||photos.length)?'보유 식재료, ':'')+res.season+' 제철, 최근 한 달 판매 데이터';
       var msg='AI가 '+basis+'를 반영해 '+parsed.length+'개 메뉴를 추천했어요.\n'
         +(res.detected?('📷 사진에서 알아본 식재료: '+res.detected+'\n'):'')
         +(res.reason?('"'+res.reason+'"\n\n'):'\n')

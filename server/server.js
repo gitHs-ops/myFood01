@@ -1622,7 +1622,7 @@ app.post('/api/recommend', async (req, res) => {
   } catch (e) { err(res, e.message); }
 });
 
-// 오늘의 메뉴 구성 추천 (관리자용) — 최근 1주일 구성 이력 + 판매량 + 계절감을 반영해 ~30개 추천.
+// 오늘의 메뉴 구성 추천 (관리자용) — 최근 30일 구성 이력 + 판매량 + 계절감을 반영해 ~30개 추천.
 // 관리자 페이지("메뉴 관리"/"카카오 발송")에서 호출 — 고객용 /api/recommend와 별개 엔드포인트.
 app.post('/api/recommend/daily-plan', requireAdmin, async (req, res) => {
   try {
@@ -1640,13 +1640,14 @@ app.post('/api/recommend/daily-plan', requireAdmin, async (req, res) => {
     const [menuRows] = await pool.execute('SELECT id, name, cat, price, child FROM menus ORDER BY count DESC, name');
     if (!menuRows.length) return err(res, '추천할 메뉴가 없습니다. 마스터 메뉴를 먼저 등록해주세요.', 404);
 
+    const HISTORY_DAYS = 30;   // 분석 기간: 어제까지 최근 30일
     const todayStr = toKSTDateStr(new Date());
-    const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
-    const weekAgo   = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
-    const fromStr = toKSTDateStr(weekAgo);
+    const yesterday   = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+    const periodStart = new Date(); periodStart.setDate(periodStart.getDate() - HISTORY_DAYS);
+    const fromStr = toKSTDateStr(periodStart);
     const toStr   = toKSTDateStr(yesterday);
 
-    // 최근 1주일 구성 이력 — daily_menus는 '일일 메뉴 삭제'로 지워질 수 있어, 안 지워지는 창고(archive)를 기준으로 삼는다.
+    // 최근 30일 구성 이력 — daily_menus는 '일일 메뉴 삭제'로 지워질 수 있어, 안 지워지는 창고(archive)를 기준으로 삼는다.
     const [histRows] = await pool.execute(
       'SELECT name, COUNT(DISTINCT date) AS days FROM daily_menus_archive WHERE date BETWEEN ? AND ? GROUP BY name',
       [fromStr, toStr]
@@ -1671,16 +1672,20 @@ app.post('/api/recommend/daily-plan', requireAdmin, async (req, res) => {
     const month = Number(todayStr.slice(5, 7));
     const season = (month >= 3 && month <= 5) ? '봄' : (month >= 6 && month <= 8) ? '여름' : (month >= 9 && month <= 11) ? '가을' : '겨울';
 
+    // 재고 추천은 하루치라서 기간 합계가 아니라 '구성된 날 하루 평균 판매량'을 함께 준다
+    // (30일 합계를 그대로 참고하면 하루 재고를 몇 배로 과하게 잡을 수 있다).
     const menuLines = menuRows.map(r => {
       const days = histMap.get(r.name) || 0;
       const qty  = qtyMap.get(r.name) || 0;
+      const avg  = days ? Math.round(qty / days * 10) / 10 : null;
       return r.name + ' (' + (r.cat || '기타') + ', ' + Math.round((Number(r.price) || 0) * 1000).toLocaleString() + '원)'
-        + ' — 최근7일 구성 ' + days + '일 / 판매 ' + qty + '개';
+        + ' — 최근' + HISTORY_DAYS + '일 구성 ' + days + '일 / 판매 ' + qty + '개'
+        + (avg !== null ? ' / 구성일 평균 ' + avg + '개' : '');
     }).join('\n');
 
     const prompt = '당신은 반찬가게 "온반"의 일일 메뉴 구성 담당자입니다.\n\n'
-      + '아래는 전체 마스터 메뉴 목록입니다. 각 줄 끝에는 최근 7일(' + fromStr + '~' + toStr + ') 동안 '
-      + '며칠이나 오늘의 메뉴로 구성됐는지와, 그 기간 실제 판매량이 적혀 있습니다.\n\n'
+      + '아래는 전체 마스터 메뉴 목록입니다. 각 줄 끝에는 최근 ' + HISTORY_DAYS + '일(' + fromStr + '~' + toStr + ') 동안 '
+      + '며칠이나 오늘의 메뉴로 구성됐는지, 그 기간 실제 판매량 합계, 그리고 구성된 날의 하루 평균 판매량(구성일 평균)이 적혀 있습니다.\n\n'
       + menuLines + '\n\n'
       + '오늘(' + todayStr + ')은 계절상 ' + season + '입니다.\n\n'
       + (ingredients ? '오늘 보유 식재료: ' + ingredients + '\n' : '')
@@ -1695,9 +1700,9 @@ app.post('/api/recommend/daily-plan', requireAdmin, async (req, res) => {
         : '')
       + '위 데이터를 참고해서 오늘 "오늘의 메뉴"로 구성할 메뉴를 30개 내외(28~32개)로 골라주세요. '
       + '최근 판매가 잘 된 메뉴는 우선 반영하고, ' + season + '에 어울리는 메뉴를 적절히 섞고, '
-      + '최근 7일 내내 반복된 메뉴만 있지 않도록 다양성도 고려해주세요. '
-      + '각 메뉴마다 추천 재고 수량(qty)도 함께 제시하세요 — 최근 판매량이 있으면 그 수치를 참고해 비슷한 수준으로, '
-      + '최근 판매 이력이 없는 메뉴는 5~10개 정도의 무난한 수량으로 제안하세요. '
+      + '최근 ' + HISTORY_DAYS + '일 동안 자주 나온 메뉴만으로 채우지 말고, 한동안 안 나온 메뉴도 섞어 다양성을 고려해주세요. '
+      + '각 메뉴마다 오늘 하루치 추천 재고 수량(qty)도 함께 제시하세요 — 구성일 평균이 있으면 그 수치를 기준으로 잡고'
+      + '(기간 합계 판매량을 그대로 쓰지 마세요), 판매 이력이 없는 메뉴는 5~10개 정도의 무난한 수량으로 제안하세요. '
       + '반드시 목록에 있는 이름을 정확히 그대로 사용하세요(오타·변형 금지).';
 
     const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
