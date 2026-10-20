@@ -540,6 +540,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
     <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
       <span>일일 메뉴 추가 등록</span>
       <span style="display:flex;align-items:center;gap:6px;">
+        <button id="recommendDailyBtnManage" onclick="runDailyMenuRecommend('recommendDailyBtnManage')" style="background:#6b46c1;color:#fff;border:none;border-radius:20px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;">🎯 AI 추천</button>
         <input type="text" id="addSearchInput" placeholder="메뉴 검색" onkeydown="if(event.key==='Enter'){event.preventDefault();searchAddMenu();}" style="width:100px;height:30px;padding:0 9px;border:1px solid #ddd;border-radius:8px;font-family:inherit;font-size:13px;box-sizing:border-box;">
         <button onclick="searchAddMenu(event)" style="background:#086266;color:#fff;border:none;border-radius:8px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">찾기</button>
         <button onclick="_setAddMenuNew()" style="background:#1D9E75;color:#fff;border:none;border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">+신 메뉴</button>
@@ -591,6 +592,9 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
     <div style="display:flex;gap:8px;margin-top:0;margin-bottom:8px;">
       <button class="copy-btn" onclick="loadTodayToKakao()" style="flex:1;background:#1D9E75;color:#fff;">오늘메뉴에서 가져오기</button>
       <button class="copy-btn" id="copyBtn" onclick="copyKakao()" style="flex:1;">텍스트 복사하기</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:0;margin-bottom:8px;">
+      <button class="copy-btn" id="recommendDailyBtnKakao" onclick="runDailyMenuRecommend('recommendDailyBtnKakao')" style="flex:1;background:#6b46c1;color:#fff;">🎯 AI로 오늘 메뉴 추천받기</button>
     </div>
     <div style="display:flex;gap:8px;margin-top:0;">
       <button class="copy-btn" id="parseKakaoBtn" onclick="parseKakaoToMenu()" style="flex:1;background:#086266;color:#fff;">카카오 톡 내용으로 일일 메뉴 생성</button>
@@ -2125,6 +2129,27 @@ function _commitPreviewMenus(parsed){
     }
     else showToast('⚠️ 서버 저장 실패 — 관리자 로그인/네트워크 확인 후 다시 시도해주세요.');
   });
+}
+// 오늘 메뉴 구성 AI 추천 — "메뉴 관리" 탭과 "카카오 발송" 탭 양쪽에서 호출(버튼 id만 다름).
+// 서버가 반환한 picks(name·cat·price·child·qty)를 _commitPreviewMenus가 받는 형태로 바꿔
+// 그대로 넘긴다 — 카카오 파싱 결과를 등록하는 경로와 동일한 커밋 로직을 재사용.
+function runDailyMenuRecommend(btnId){
+  var btn=document.getElementById(btnId);
+  var prevText=btn?btn.textContent:'';
+  function resetBtn(){if(btn){btn.disabled=false;btn.textContent=prevText;}}
+  if(btn){btn.disabled=true;btn.textContent='🎯 추천 받는 중...';}
+  fetch(API_URL+'/api/recommend/daily-plan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})})
+    .then(function(r){return r.json();})
+    .then(function(res){
+      resetBtn();
+      if(!res.success){showToast(res.error||'추천을 받지 못했어요.');return;}
+      var parsed=res.picks.map(function(p){return{name:p.name,cat:p.cat,price:p.price,child:!!p.child,stock:p.qty};});
+      var msg='AI가 '+res.season+' 제철과 최근 1주일 판매 데이터를 반영해 '+parsed.length+'개 메뉴를 추천했어요.\n'
+        +(res.reason?('"'+res.reason+'"\n\n'):'\n')
+        +'이대로 오늘의 메뉴로 등록할까요?\n(기존 메뉴는 초기화됩니다)';
+      showConfirm(msg,function(){_commitPreviewMenus(parsed);},'등록','취소');
+    })
+    .catch(function(){resetBtn();showToast('네트워크 오류로 추천을 받지 못했어요.');});
 }
 // 미리보기 표 → 확인창(취소/등록). summaryMsg 있으면 그 문구로 표시.
 function _confirmRegisterFromPreview(text,summaryMsg){
