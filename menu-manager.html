@@ -872,7 +872,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
       <button onclick="document.getElementById('histPreviewOverlay').classList.remove('open')" style="background:none;border:none;font-size:20px;color:#aaa;cursor:pointer;line-height:1;">✕</button>
     </div>
     <div id="histPreviewBody" style="overflow-y:auto;flex:1;"></div>
-    <button onclick="document.getElementById('histPreviewOverlay').classList.remove('open');openHistLoadModal(_histPreviewDate)"
+    <button onclick="document.getElementById('histPreviewOverlay').classList.remove('open');openHistLoadModal(_histPreviewDate,_histPreviewKind)"
       style="margin-top:14px;width:100%;background:#086266;color:#fff;border:none;border-radius:10px;padding:10px;font-size:14px;font-weight:700;cursor:pointer;">
       이 메뉴 선택하기 →
     </button>
@@ -2179,14 +2179,15 @@ function runDailyMenuRecommend(btnId){
   document.getElementById('recIngredientsOverlay').classList.add('open');
   setTimeout(function(){ta.focus();},50);
 }
+// "10/21(오늘)" 같은 짧은 날짜 표시
+function _shortDay(iso){var p=iso.split('-');return (+p[1])+'/'+(+p[2])+(iso===toISO(new Date())?'(오늘)':'');}
 // 식재료 입력 탭의 그날(상단 날짜) 사입 내역을 모달 위에 보여주고 추천에 함께 반영한다.
 // 그 탭에 같은 날짜를 저장 전 편집 중이면 화면의 표를 그대로 쓰고, 아니면 서버에서 최신 내역을 불러온다.
 function _loadRecPurchases(){
   var title=document.getElementById('recPurchaseTitle');
   var list=document.getElementById('recPurchaseList');
   var submit=document.getElementById('recSubmitBtn');
-  var p=workDate.split('-');
-  var day=(+p[1])+'/'+(+p[2])+(workDate===toISO(new Date())?'(오늘)':'');
+  var day=_shortDay(workDate);
   var seq=++_recPurchaseSeq;
   function setSubmit(on){submit.disabled=!on;submit.style.opacity=on?'':'.5';}
   function show(items,unsaved){
@@ -2261,9 +2262,27 @@ function submitRecIngredients(){
   var ingredients=[_recPurchaseText,typed].filter(Boolean).join(', ');
   _requestDailyMenuRecommend(_recIngredientsBtnId,ingredients,_recPhotos.slice(),_recPurchaseCount);
 }
+// AI 추천 결과를 메뉴 창고의 'AI 추천 메뉴' 묶음으로 저장(같은 날짜 묶음은 교체) — 오늘의 메뉴는 그대로 둔다.
+// 쓰려면 메뉴 창고 목록에서 그 묶음의 [선택 →]으로 추가/대체한다.
+function _saveAiBundle(date,parsed,note){
+  var items=parsed.map(function(m){return{name:m.name,cat:m.cat,price:m.price,child:!!m.child,stock:m.stock};});
+  fetch(API_URL+'/api/recommend/bundles/'+date,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({menus:items,note:note})})
+    .then(function(r){return r.json();})
+    .then(function(res){
+      if(!res.success){showToast(res.error||'메뉴 창고에 저장하지 못했어요.');return;}
+      showToast('메뉴 창고에 '+_shortDay(date)+' AI 추천 메뉴 '+res.count+'개를 '+(res.replaced?'새로 바꿔 ':'')+'저장했어요');
+      _aiBundles=null;   // 서버 기준으로 다시 불러온다
+      if(_histYM!=='전체'&&_histYM!==date.slice(0,7))_histYM='전체';   // 다른 달만 보고 있었으면 새 묶음이 보이도록
+      if(document.getElementById('page-history').classList.contains('active'))switchHistSubTab('dates');
+    })
+    .catch(function(){showToast('네트워크 오류로 메뉴 창고에 저장하지 못했어요.');});
+}
 function _requestDailyMenuRecommend(btnId,ingredients,photos,purchaseCount){
   var btn=document.getElementById(btnId);
   var prevText=btn?btn.textContent:'';
+  // 메뉴 창고에서 누른 추천은 오늘의 메뉴를 바꾸지 않고 메뉴 창고에 'AI 추천 메뉴' 묶음으로 저장한다.
+  // 날짜는 요청한 때의 상단 날짜(사입 내역도 이 날짜 기준) — 추천을 기다리는 동안 날짜를 옮겨도 그대로.
+  var bundleDate=(btnId==='recommendDailyBtnHistory')?workDate:null;
   function resetBtn(){if(btn){btn.disabled=false;btn.textContent=prevText;}}
   if(btn){btn.disabled=true;btn.textContent='🎯 추천 받는 중...';}
   fetch(API_URL+'/api/recommend/daily-plan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ingredients:ingredients,photos:photos})})
@@ -2275,8 +2294,15 @@ function _requestDailyMenuRecommend(btnId,ingredients,photos,purchaseCount){
       var basis=((ingredients||photos.length)?'보유 식재료'+(purchaseCount?'(사입 내역 '+purchaseCount+'개 포함)':'')+', ':'')+res.season+' 제철, 최근 한 달 판매 데이터';
       var msg='AI가 '+basis+'를 반영해 '+parsed.length+'개 메뉴를 추천했어요.\n'
         +(res.detected?('📷 사진에서 알아본 식재료: '+res.detected+'\n'):'')
-        +(res.reason?('"'+res.reason+'"\n\n'):'\n')
-        +'이대로 오늘의 메뉴로 등록할까요?\n(기존 메뉴는 초기화됩니다)';
+        +(res.reason?('"'+res.reason+'"\n\n'):'\n');
+      if(bundleDate){
+        var exists=(_aiBundles||[]).some(function(b){return b.date===bundleDate;});
+        msg+='메뉴 창고에 '+_shortDay(bundleDate)+' \'AI 추천 메뉴\' 묶음으로 저장할까요?\n오늘의 메뉴 목록은 바뀌지 않아요.'
+          +(exists?'\n(이 날짜의 AI 추천 묶음은 새 추천으로 바뀌어요)':'');
+        showConfirm(msg,function(){_saveAiBundle(bundleDate,parsed,res.reason||'');},'저장','취소');
+        return;
+      }
+      msg+='이대로 오늘의 메뉴로 등록할까요?\n(기존 메뉴는 초기화됩니다)';
       showConfirm(msg,function(){_commitPreviewMenus(parsed);},'등록','취소');
     })
     .catch(function(){resetBtn();showToast('네트워크 오류로 추천을 받지 못했어요.');});
@@ -2362,7 +2388,7 @@ function confirmEventAddReplace(mode){
     });
   });
 }
-var _histLoadDate=null,_histSubTab='dates';
+var _histLoadDate=null,_histLoadKind='archive',_histSubTab='dates';   // _histLoadKind: 'archive'(날짜별 묶음) | 'ai'(AI 추천 묶음)
 // 중복 클릭 방지 + 두 저장(마스터 전체 동기화 /api/menu/all, 오늘 목록 /api/menu/daily)을
 // 동시에 안 보내고 순서대로 보낸다 — 둘 다 menus 테이블의 겹치는 행을 건드리는데 동시에
 // 보내면 서로 다른 순서로 락을 잡다가 데드락이 남(2026-08-20 실제 발생 확인).
@@ -2425,7 +2451,7 @@ function exportMenuToSheet(date,cb){
 var _histYM='전체';
 function renderHistSubTabs(){
   var ymSet={};
-  _datesCache.forEach(function(d){var ym=d.slice(0,7);ymSet[ym]=true;});
+  _histAllDates().forEach(function(d){var ym=d.slice(0,7);ymSet[ym]=true;});
   var ymList=Object.keys(ymSet).sort().reverse();
   if(ymList.indexOf(_histYM)<0)_histYM='전체';
   var dropdown=(_histSubTab==='dates'&&ymList.length)
@@ -3335,42 +3361,60 @@ function confirmSendToToday(mode){
   closeSendToTodayPopup();
 }
 var _datesCache=[];
+// 메뉴 창고에서 받은 AI 추천 묶음 [{date,count}] — null이면 아직 안 불러옴. 날짜별 메뉴 묶음 목록에 함께 보여준다.
+var _aiBundles=null,_aiBundlesSeq=0;
+function _histAllDates(){return _datesCache.concat((_aiBundles||[]).map(function(b){return b.date;}));}
 function renderHistory(){
   renderHistSubTabs();
   if(_histSubTab==='all'){renderAllMenus();return;}
   var el=document.getElementById('historyList');
-  if(!_datesCache.length){
-    el.innerHTML='<div class="empty">불러오는 중...</div>';
-    apiFetch('/api/menu/archive/dates',function(err,d){
-      if(err||!d||!d.dates||!d.dates.length){el.innerHTML='<div class="empty">저장된 날짜별 메뉴가 없어요.</div>';return;}
-      _datesCache=d.dates;
-      renderHistSubTabs();
-      _renderDateList(el);
-    });
-    return;
+  var needDates=!_datesCache.length,needAi=_aiBundles===null;
+  if(!needDates&&!needAi){_renderDateList(el);return;}
+  if(needDates)el.innerHTML='<div class="empty">불러오는 중...</div>';
+  else _renderDateList(el);   // 있는 것부터 보여주고 AI 묶음이 오면 다시 그린다
+  var left=(needDates?1:0)+(needAi?1:0);
+  function done(){
+    if(--left)return;
+    if(!_histAllDates().length){el.innerHTML='<div class="empty">저장된 날짜별 메뉴가 없어요.</div>';return;}
+    renderHistSubTabs();
+    _renderDateList(el);
   }
-  _renderDateList(el);
+  if(needDates)apiFetch('/api/menu/archive/dates',function(err,d){if(!err&&d&&d.dates)_datesCache=d.dates;done();});
+  if(needAi){
+    var seq=++_aiBundlesSeq;
+    // 못 받아도 날짜별 묶음은 그대로 보여준다 — 다음에 메뉴 창고에 들어올 때 다시 불러옴
+    apiFetch('/api/recommend/bundles',function(err,d){
+      if(seq===_aiBundlesSeq)_aiBundles=(!err&&d&&d.success&&d.bundles)||[];
+      done();
+    });
+  }
 }
 function _renderDateList(el){
   var ymSet={};
-  _datesCache.forEach(function(date){var ym=date.slice(0,7);ymSet[ym]=true;});
+  _histAllDates().forEach(function(date){var ym=date.slice(0,7);ymSet[ym]=true;});
   var ymList=Object.keys(ymSet).sort().reverse();
   if(ymList.indexOf(_histYM)<0)_histYM='전체';
   var filterTabs='';
-  var filtered=_histYM==='전체'?_datesCache:_datesCache.filter(function(d){return d.slice(0,7)===_histYM;});
+  function inYM(d){return _histYM==='전체'||d.slice(0,7)===_histYM;}
+  // 날짜 내림차순 — 같은 날짜면 AI 추천 묶음을 위에
+  var entries=_datesCache.filter(inYM).map(function(d){return{date:d,ai:false};})
+    .concat((_aiBundles||[]).filter(function(b){return inYM(b.date);}).map(function(b){return{date:b.date,ai:true,count:b.count};}));
+  entries.sort(function(a,b){return b.date.localeCompare(a.date)||(b.ai-a.ai);});
   var today=toISO(new Date());
-  var items=filtered.map(function(date){
-    var isToday=date===today,isCur=date===workDate;
+  var items=entries.map(function(e){
+    var date=e.date,isToday=date===today,isCur=date===workDate;
     var label=new Date(date+'T00:00:00').toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'short'});
-    var border=isCur?'border:2px solid #086266;':'';
-    var badge=isCur?' <span style="font-size:10px;background:#086266;color:#fff;padding:1px 6px;border-radius:999px;">지금 작업중</span>'
+    var kindArg=e.ai?',\'ai\'':'';
+    var border=e.ai?'border-color:#d9ccf5;background:#faf7ff;':(isCur?'border:2px solid #086266;':'');
+    var badge=e.ai?' <span style="font-size:10px;background:#6b46c1;color:#fff;padding:1px 6px;border-radius:999px;white-space:nowrap;">🤖 AI 추천 메뉴 '+e.count+'개</span>'
+             :isCur?' <span style="font-size:10px;background:#086266;color:#fff;padding:1px 6px;border-radius:999px;">지금 작업중</span>'
              :(isToday?' <span style="font-size:10px;background:#e8f5f4;color:#086266;padding:1px 6px;border-radius:999px;">오늘</span>':'');
     var actBtns='<div class="hist-act-btns">'
-      +'<button class="hist-btn-preview" onclick="event.stopPropagation();openHistPreview(\''+date+'\')">🔍 미리보기</button>'
-      +'<button class="hist-btn-select" onclick="event.stopPropagation();openHistLoadModal(\''+date+'\')">선택 →</button>'
+      +'<button class="hist-btn-preview" onclick="event.stopPropagation();openHistPreview(\''+date+'\''+kindArg+')">🔍 미리보기</button>'
+      +'<button class="hist-btn-select" onclick="event.stopPropagation();openHistLoadModal(\''+date+'\''+kindArg+')">선택 →</button>'
       +'</div>';
-    return '<div class="history-item" style="'+border+'"><div class="history-item-header" style="gap:10px;">'
-      +'<input type="checkbox" class="hist-check" value="'+date+'" onclick="event.stopPropagation();" style="width:18px;height:18px;flex-shrink:0;cursor:pointer;">'
+    return '<div class="history-item'+(e.ai?' hist-ai':'')+'" style="'+border+'"><div class="history-item-header" style="gap:10px;">'
+      +'<input type="checkbox" class="hist-check" value="'+date+'"'+(e.ai?' data-kind="ai"':'')+' onclick="event.stopPropagation();" style="width:18px;height:18px;flex-shrink:0;cursor:pointer;">'
       +'<div style="flex:1;min-width:0;"><div class="history-date">'+label+badge+'</div></div>'
       +actBtns+'</div></div>';
   }).join('');
@@ -3383,13 +3427,34 @@ function setHistYM(ym){_histYM=ym;renderHistSubTabs();_renderDateList(document.g
 // 선택한 날짜별 메뉴 묶음 삭제 — /api/menu/daily 에 빈 목록+purgeArchive:true 저장 = 그 날짜 완전 삭제(창고 이력 포함)
 // 참고: 일일메뉴 페이지의 '일일 메뉴 삭제'는 purgeArchive를 안 보내서 창고 이력은 보존됨(deleteToday 참고)
 function deleteSelectedHistDates(){
-  var dates=[].slice.call(document.querySelectorAll('#historyList .hist-check:checked')).map(function(c){return c.value;});
-  if(!dates.length){showToast('삭제할 날짜를 선택해주세요.');return;}
+  var checked=[].slice.call(document.querySelectorAll('#historyList .hist-check:checked'));
+  function isAi(c){return c.getAttribute('data-kind')==='ai';}
+  var dates=checked.filter(function(c){return !isAi(c);}).map(function(c){return c.value;});
+  // AI 추천 묶음은 그 묶음만 지운다 — 같은 날짜의 실제 메뉴·창고 이력은 건드리지 않음
+  var aiDates=checked.filter(isAi).map(function(c){return c.value;});
+  if(!dates.length&&!aiDates.length){showToast('삭제할 날짜를 선택해주세요.');return;}
   var workSel=dates.indexOf(workDate)>=0;
-  var msg=dates.length+'개 날짜의 메뉴 묶음을 삭제할까요?'+(workSel?'\n(지금 작업중인 날짜 포함)':'')+'\n되돌릴 수 없습니다.';
+  var msg=(aiDates.length?(dates.length+aiDates.length)+'개 메뉴 묶음을 삭제할까요?\n(AI 추천 메뉴 '+aiDates.length+'개 포함)'
+                         :dates.length+'개 날짜의 메뉴 묶음을 삭제할까요?')
+    +(workSel?'\n(지금 작업중인 날짜 포함)':'')+'\n되돌릴 수 없습니다.';
   showConfirm(msg,function(){
+    var parts=(dates.length?1:0)+(aiDates.length?1:0),failAny=false;
+    function partDone(){
+      if(--parts)return;
+      showToast(failAny?'일부 삭제 실패 — 다시 시도해주세요.':(dates.length+aiDates.length)+'개 삭제 완료');
+      renderHistory();
+    }
+    var aiLeft=aiDates.length;
+    aiDates.forEach(function(date){
+      fetch(API_URL+'/api/recommend/bundles/'+date,{method:'DELETE'})
+        .then(function(r){return r.json();})
+        .then(function(d){if(!(d&&d.success!==false))failAny=true;})
+        .catch(function(){failAny=true;})
+        .then(function(){if(--aiLeft)return;_aiBundles=null;partDone();});   // 서버 기준으로 다시 불러온다
+    });
+    if(!dates.length)return;
     _queueMenuWrite(function(queueDone){
-      var finished=0,failAny=false;
+      var finished=0;
       dates.forEach(function(date){
         fetch(API_URL+'/api/menu/daily',{method:'POST',headers:{'Content-Type':'application/json','X-Device-Id':getAdminDeviceId()},body:JSON.stringify({data:[],date:date,purgeArchive:true})})
           .then(function(r){return r.json();})
@@ -3401,32 +3466,34 @@ function deleteSelectedHistDates(){
             queueDone();
             _datesCache=_datesCache.filter(function(d){return dates.indexOf(d)<0;});
             if(workSel){menus=[];renderAll();}   // 작업중 날짜를 지웠으면 현재 목록도 비움
-            showToast(failAny?'일부 삭제 실패 — 다시 시도해주세요.':dates.length+'개 삭제 완료');
-            renderHistory();
+            partDone();
           });
       });
     });
   },'삭제','취소');
 }
 function fetchHistoryFromSheet(){_datesCache=[];renderHistory();}
-var _histPreviewDate = null;
-function openHistPreview(date){
+var _histPreviewDate = null, _histPreviewKind = 'archive';
+function openHistPreview(date,kind){
   _histPreviewDate = date;
+  _histPreviewKind = kind||'archive';
+  var ai=_histPreviewKind==='ai';
   var label=new Date(date+'T00:00:00').toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'short'});
-  document.getElementById('histPreviewTitle').textContent=label+' 메뉴';
+  document.getElementById('histPreviewTitle').textContent=label+(ai?' 🤖 AI 추천 메뉴':' 메뉴');
   document.getElementById('histPreviewOverlay').classList.add('open');
 
   document.getElementById('histPreviewBody').innerHTML='<div style="text-align:center;padding:24px;color:#aaa;">메뉴 불러오는 중...</div>';
-  fetch(API_URL+'/api/menu/archive/'+date)
+  fetch(API_URL+(ai?'/api/recommend/bundles/':'/api/menu/archive/')+date)
     .then(function(r){if(!r.ok)throw new Error('날짜 없음');return r.json();})
     .then(function(d){
-      renderPreviewBody(d.menus||[]);
+      renderPreviewBody(d.menus||[],ai?{note:d.note||''}:null);
     })
     .catch(function(){
       document.getElementById('histPreviewBody').innerHTML='<div style="text-align:center;padding:24px;color:#e05;">불러오기 실패.</div>';
     });
 }
-function renderPreviewBody(menus){
+// ai: AI 추천 묶음이면 {note} — 추천 이유를 위에 두고, 메뉴마다 AI가 제안한 재고 수량을 붙인다
+function renderPreviewBody(menus,ai){
   var catOrder=VALID_CATS.slice();
   var catMap={};
   menus.forEach(function(m){var c=m.cat||'기타';if(!catMap[c])catMap[c]=[];catMap[c].push(m);});
@@ -3438,20 +3505,22 @@ function renderPreviewBody(menus){
       +catMap[cat].map(function(m){
         return '<div class="preview-menu-row">'
           +'<span>'+m.name+(m.child?' <span style="font-size:11px;">👧</span>':'')+'</span>'
-          +'<span style="color:#086266;font-weight:700;flex-shrink:0;margin-left:8px;">'+(m.price||0).toLocaleString()+'천원</span>'
+          +'<span style="color:#086266;font-weight:700;flex-shrink:0;margin-left:8px;">'+(m.price||0).toLocaleString()+'천원'+(ai&&m.stock>0?' · '+m.stock+'개':'')+'</span>'
           +'</div>';
       }).join('')
       +'</div>';
   }).join('');
-  document.getElementById('histPreviewBody').innerHTML=html||'<div style="text-align:center;padding:24px;color:#aaa;">메뉴 데이터 없음</div>';
+  var note=(ai&&ai.note)?'<div style="background:#f6f2ff;color:#4c2f99;border-radius:10px;padding:8px 10px;font-size:12px;line-height:1.5;margin-bottom:10px;">🤖 '+_escEv(ai.note)+'</div>':'';
+  document.getElementById('histPreviewBody').innerHTML=html?note+html:'<div style="text-align:center;padding:24px;color:#aaa;">메뉴 데이터 없음</div>';
 }
-function openHistLoadModal(date){
+function openHistLoadModal(date,kind){
   _histLoadDate=date;
+  _histLoadKind=kind||'archive';
   var label=new Date(date+'T00:00:00').toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'});
-  document.getElementById('histLoadTitle').textContent=label+' 메뉴';
+  document.getElementById('histLoadTitle').textContent=label+(_histLoadKind==='ai'?' AI 추천 메뉴':' 메뉴');
   // 작업 날짜와 같아도 추가/대체로 의도가 구분되므로 막지 않는다 — 특히 '대체'는
   // 오늘 창고 저장본(스냅샷)으로 되돌리는 용도로 유용함(예: 일일 메뉴 삭제 후 복구).
-  var isSameDate=date===workDate;
+  var isSameDate=_histLoadKind!=='ai'&&date===workDate;
   var addBtn=document.querySelector('#histLoadOverlay .btn-add');
   var replBtn=document.querySelector('#histLoadOverlay .btn:not(.btn-add)');
   var desc=document.querySelector('#histLoadOverlay p');
@@ -3468,12 +3537,13 @@ function confirmHistLoad(mode){
   var date=_histLoadDate;
   document.getElementById('histLoadOverlay').classList.remove('open');
   if(!date)return;
-  importFromSheetByDate(date,mode);
+  importFromSheetByDate(date,mode,_histLoadKind);
 }
 var _pendingImport=null;  // {date,mode,imported} — 고아 메뉴 팝업 처리 대기 컨텍스트
-function importFromSheetByDate(date,mode){
-  showToast('메뉴 창고에서 불러오는 중...');
-  fetch(API_URL+'/api/menu/archive/'+date)
+function importFromSheetByDate(date,mode,kind){
+  var ai=kind==='ai';
+  showToast(ai?'AI 추천 메뉴 불러오는 중...':'메뉴 창고에서 불러오는 중...');
+  fetch(API_URL+(ai?'/api/recommend/bundles/':'/api/menu/archive/')+date)
     .then(function(r){if(!r.ok)throw new Error(date+' 날짜를 찾을 수 없습니다.');return r.json();})
     .then(function(d){
       var imported=(d.menus||[]).map(function(m){
@@ -3484,12 +3554,13 @@ function importFromSheetByDate(date,mode){
       // 마스터(메뉴 창고)에 없는 메뉴 검출
       var masterNames={};allMenus.forEach(function(m){masterNames[(m.name||'').trim()]=true;});
       var orphans=imported.filter(function(m){return !masterNames[(m.name||'').trim()];});
+      var shown=ai?date+' AI 추천':date;   // 적용 완료 안내에 쓰는 이름
       if(orphans.length){
-        _pendingImport={date:date,mode:mode,imported:imported,orphans:orphans};
+        _pendingImport={date:shown,mode:mode,imported:imported,orphans:orphans};
         openOrphanModal(orphans);
         return;
       }
-      _applyImportToToday(date,mode,imported);
+      _applyImportToToday(shown,mode,imported);
     })
     .catch(function(e){showToast('❌ '+e.message);});
 }
@@ -3566,7 +3637,7 @@ function switchPage(name){
     }
     if(name==='kakao')renderKakao();
     if(name==='history'){
-      _datesCache=[];
+      _datesCache=[];_aiBundles=null;
       switchHistSubTab('dates');   // 진입 시 항상 '날짜별 메뉴 묶음' + 컨테이너 표시 정리 + 목록 로드
     }
     if(name==='orders')renderOrders();

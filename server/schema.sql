@@ -74,3 +74,14 @@ CREATE TABLE IF NOT EXISTS ingredient_purchases (
   created_at DATETIME DEFAULT NOW(),
   INDEX idx_date (date)
 );
+
+-- AI 추천 메뉴 묶음 (메뉴 창고에서 받은 AI 추천, 날짜당 한 묶음). 실제 구성 이력(daily_menus_archive)과 별개.
+-- items: [{name,cat,price,child,stock}] — stock은 AI가 제안한 재고 수량
+CREATE TABLE IF NOT EXISTS ai_menu_bundles (
+  id         INT AUTO_INCREMENT PRIMARY KEY,
+  date       DATE NOT NULL,
+  items      JSON NOT NULL,
+  note       VARCHAR(1000) DEFAULT '',
+  created_at DATETIME DEFAULT NOW(),
+  UNIQUE KEY uq_date (date)
+);
