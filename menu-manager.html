@@ -2499,20 +2499,24 @@ function _ingOnDateChange(){
 }
 function _ingBlank(it){return !String(it.name||'').trim()&&!String(it.qty||'').trim()&&!String(it.amount==null?'':it.amount).trim();}
 function _ingTotal(){return _ingItems.reduce(function(s,it){return s+(Number(it.amount)||0);},0);}
+// 한 줄 HTML — 맨 끝 빈 줄(tail)은 지울 게 없으니 ✕를 숨긴다
+function _ingRowHtml(it,i,isTail){
+  return '<div id="ingRow_'+i+'" style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">'
+    +'<input type="text" class="ing-name" value="'+_escEv(it.name)+'" placeholder="재료명" maxlength="200" oninput="_ingSet('+i+',\'name\',this.value)" onkeydown="_ingKey(event)" style="flex:2;min-width:0;'+ING_INPUT_CSS+'">'
+    +'<input type="text" value="'+_escEv(it.qty)+'" placeholder="예) 10포기" maxlength="100" oninput="_ingSet('+i+',\'qty\',this.value)" onkeydown="_ingKey(event)" style="flex:1.2;min-width:0;'+ING_INPUT_CSS+'">'
+    +'<input type="number" inputmode="numeric" min="0" step="1" value="'+_escEv(it.amount)+'" placeholder="0" oninput="_ingSet('+i+',\'amount\',this.value)" onkeydown="_ingKey(event)" style="flex:1.4;min-width:0;text-align:right;'+ING_INPUT_CSS+'">'
+    +'<button type="button" class="ing-del" onclick="_ingRemove('+i+')" title="이 줄 삭제" style="flex:0 0 28px;height:28px;border:none;border-radius:50%;background:#f0f0f0;color:#888;font-size:13px;cursor:pointer;padding:0;'+(isTail?'visibility:hidden;':'')+'">✕</button>'
+    +'</div>';
+}
 function renderIngredients(){
   var panel=document.getElementById('ingredientPanel');
-  if(!_ingItems.length)_ingItems.push({name:'',qty:'',amount:''});
-  var rows=_ingItems.map(function(it,i){
-    return '<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">'
-      +'<input type="text" class="ing-name" value="'+_escEv(it.name)+'" placeholder="재료명" maxlength="200" oninput="_ingSet('+i+',\'name\',this.value)" style="flex:2;min-width:0;'+ING_INPUT_CSS+'">'
-      +'<input type="text" value="'+_escEv(it.qty)+'" placeholder="예) 10포기" maxlength="100" oninput="_ingSet('+i+',\'qty\',this.value)" style="flex:1.2;min-width:0;'+ING_INPUT_CSS+'">'
-      +'<input type="number" inputmode="numeric" min="0" step="1" value="'+_escEv(it.amount)+'" placeholder="0" oninput="_ingSet('+i+',\'amount\',this.value)" style="flex:1.4;min-width:0;text-align:right;'+ING_INPUT_CSS+'">'
-      +'<button type="button" onclick="_ingRemove('+i+')" title="이 줄 삭제" style="flex:0 0 28px;height:28px;border:none;border-radius:50%;background:#f0f0f0;color:#888;font-size:13px;cursor:pointer;padding:0;">✕</button>'
-      +'</div>';
-  }).join('');
+  // 빈 줄은 맨 끝 한 줄만 남긴다 — 불러오기·저장·사진 입력 뒤에도 항상 바로 입력할 빈칸이 있도록
+  _ingItems=_ingItems.filter(function(it,i){return !_ingBlank(it)||i===_ingItems.length-1;});
+  if(!_ingItems.length||!_ingBlank(_ingItems[_ingItems.length-1]))_ingItems.push({name:'',qty:'',amount:''});
+  var rows=_ingItems.map(function(it,i){return _ingRowHtml(it,i,i===_ingItems.length-1);}).join('');
   var dateNote=(_ingDate!==workDate)
     ?'<div style="font-size:12px;color:#c0392b;margin-bottom:6px;">상단에서 고른 날짜와 다른 날짜의 내역을 편집 중이에요. 저장하면 상단 날짜 내역을 불러와요.</div>'
-    :'<div style="font-size:12px;color:#999;margin-bottom:6px;">상단 날짜를 바꾸면 그 날짜 내역을 불러와요. 사입금액은 원 단위예요.</div>';
+    :'<div style="font-size:12px;color:#999;margin-bottom:6px;">상단 날짜를 바꾸면 그 날짜 내역을 불러와요. 사입금액은 원 단위예요. Enter를 누르면 다음 칸으로 넘어가요.</div>';
   panel.innerHTML=
     '<div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px;margin-bottom:4px;">'
       +'<div style="font-size:14px;font-weight:700;color:#086266;">🥬 '+fmtDate(_ingDate)+' 사입 내역</div>'
@@ -2526,20 +2530,37 @@ function renderIngredients(){
     +'<div style="display:flex;gap:6px;font-size:11px;color:#888;font-weight:600;margin-bottom:4px;">'
       +'<span style="flex:2;">재료명</span><span style="flex:1.2;">수량</span><span style="flex:1.4;text-align:right;">사입금액(원)</span><span style="flex:0 0 28px;"></span>'
     +'</div>'
-    +rows
+    +'<div id="ingRows">'+rows+'</div>'
     +'<button type="button" id="ingSaveBtn" onclick="saveIngredients()" style="width:100%;margin-top:10px;background:#086266;color:#fff;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">💾 저장</button>';
 }
 function _ingSet(i,field,val){
   if(!_ingItems[i])return;
   _ingItems[i][field]=val;_ingDirty=true;
   if(field==='amount'){var t=document.getElementById('ingTotal');if(t)t.textContent=_ingTotal().toLocaleString();}
+  // 맨 끝 빈 줄에 입력을 시작하면 그 아래에 새 빈 줄을 붙인다. 표 전체를 다시 그리지 않아 커서가 그대로 유지된다.
+  if(i===_ingItems.length-1&&!_ingBlank(_ingItems[i])){
+    var del=document.querySelector('#ingRow_'+i+' .ing-del');if(del)del.style.visibility='';
+    _ingItems.push({name:'',qty:'',amount:''});
+    document.getElementById('ingRows').insertAdjacentHTML('beforeend',_ingRowHtml(_ingItems[i+1],i+1,true));
+  }
 }
-// 직접 입력 — 맨 끝 줄이 비어 있으면 그 줄로, 아니면 새 줄을 만들어 커서를 옮긴다
+// Enter로 다음 칸으로 — 금액 칸에서 누르면 다음 줄 재료명으로 넘어간다(한글 조합 중 Enter는 무시)
+function _ingKey(e){
+  if(e.key!=='Enter'||e.isComposing||e.keyCode===229)return;
+  e.preventDefault();
+  var inputs=Array.prototype.slice.call(document.querySelectorAll('#ingRows input'));
+  var k=inputs.indexOf(e.target);
+  if(k>=0&&k<inputs.length-1)inputs[k+1].focus();
+}
+function _ingFocusTail(){
+  var names=document.querySelectorAll('#ingRows .ing-name');
+  if(names.length)names[names.length-1].focus();
+}
+// 직접 입력 — 맨 끝 빈 줄로 커서를 옮긴다
 function _ingAddRow(){
   var last=_ingItems[_ingItems.length-1];
-  if(!last||!_ingBlank(last)){_ingItems.push({name:'',qty:'',amount:''});renderIngredients();}
-  var inputs=document.querySelectorAll('#ingredientPanel .ing-name');
-  if(inputs.length)inputs[inputs.length-1].focus();
+  if(!last||!_ingBlank(last))renderIngredients();   // renderIngredients가 끝에 빈 줄을 붙인다
+  _ingFocusTail();
 }
 function _ingRemove(i){
   _ingItems.splice(i,1);_ingDirty=true;
@@ -2602,6 +2623,7 @@ function saveIngredients(){
       if(date!==workDate){loadIngredients();return;}
       _ingItems=items;
       renderIngredients();
+      _ingFocusTail();   // 저장 뒤 바로 이어서 입력할 수 있게 빈 줄로
     })
     .catch(function(){fail('네트워크 오류로 저장하지 못했어요.');});
 }
