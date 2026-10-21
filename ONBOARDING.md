@@ -76,6 +76,7 @@ npx serve -l 5174 .
 - **customers_master** — 고객 저장 주소록 (전화번호로 매칭, device_id로 자동 인식)
 - **settings** — 키-값 설정 저장소
 - **access_log** — 접근 로그
+- **ingredient_purchases** — 식재료 사입 내역 (메뉴 창고 > 식재료 입력). 날짜별 통째 교체 저장, `amount`는 **원 단위**(메뉴 가격의 천원 단위와 다름)
 
 ---
 
@@ -111,6 +112,8 @@ npx serve -l 5174 .
 | (SSE) | `/api/orders/stream` 계열 | 관리자 화면 실시간 주문 알림 |
 | GET | `/api/stats/orders?from=&to=` | 기간별/메뉴별 주문 통계 (관리자 페이지 "통계" 탭) |
 | POST | `/api/recommend/daily-plan` | 오늘 메뉴 구성 AI 추천(관리자용) — 최근 30일 구성이력·판매량(구성일 평균)·계절 + 보유 식재료(`ingredients` 글, `photos` 사진 최대 3장 — 둘 다 선택) 반영, ANTHROPIC_API_KEY 필요 |
+| GET/PUT | `/api/ingredients?date=` · `/api/ingredients/:date` | 식재료 사입 내역 조회 / 그 날짜 내역 통째 교체 저장 (관리자) |
+| POST | `/api/ingredients/extract` | 영수증·거래명세서 사진(최대 3장)에서 재료명·수량·사입금액 읽기 — 저장은 안 함, ANTHROPIC_API_KEY 필요 |
 
 ---
 

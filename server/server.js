@@ -1622,6 +1622,15 @@ app.post('/api/recommend', async (req, res) => {
   } catch (e) { err(res, e.message); }
 });
 
+// 화면에서 긴 변 1568px JPEG로 줄여 보낸 사진(base64) 목록 정리 — 최대 3장, 비정상적으로 큰 값은 버린다.
+function _cleanPhotos(raw) {
+  return (Array.isArray(raw) ? raw : [])
+    .filter(p => typeof p === 'string')
+    .map(p => p.replace(/^data:image\/[a-z]+;base64,/, ''))
+    .filter(p => p.length > 0 && p.length <= 4000000)
+    .slice(0, 3);
+}
+
 // 오늘의 메뉴 구성 추천 (관리자용) — 최근 30일 구성 이력 + 판매량 + 계절감을 반영해 ~30개 추천.
 // 관리자 페이지("메뉴 관리"/"카카오 발송")에서 호출 — 고객용 /api/recommend와 별개 엔드포인트.
 app.post('/api/recommend/daily-plan', requireAdmin, async (req, res) => {
@@ -1629,12 +1638,8 @@ app.post('/api/recommend/daily-plan', requireAdmin, async (req, res) => {
     if (!process.env.ANTHROPIC_API_KEY) return err(res, 'AI 추천 기능이 아직 설정되지 않았습니다.', 503);
     // 오늘 보유 식재료(선택, 자유 입력) — 예: "배추 10포기, 무 5개, 돼지 앞다리 3kg"
     const ingredients = String((req.body && req.body.ingredients) || '').trim().slice(0, 500);
-    // 보유 식재료 사진(선택, 최대 3장) — 화면에서 긴 변 1568px JPEG로 줄인 base64. 비정상적으로 큰 값은 버린다.
-    const photos = (Array.isArray(req.body && req.body.photos) ? req.body.photos : [])
-      .filter(p => typeof p === 'string')
-      .map(p => p.replace(/^data:image\/[a-z]+;base64,/, ''))
-      .filter(p => p.length > 0 && p.length <= 4000000)
-      .slice(0, 3);
+    // 보유 식재료 사진(선택, 최대 3장)
+    const photos = _cleanPhotos(req.body && req.body.photos);
     const hasStockInfo = !!(ingredients || photos.length);
 
     const [menuRows] = await pool.execute('SELECT id, name, cat, price, child FROM menus ORDER BY count DESC, name');
@@ -1776,6 +1781,139 @@ app.post('/api/recommend/daily-plan', requireAdmin, async (req, res) => {
 
     const detected = photos.length ? String(toolBlock.input.detected_ingredients || '').slice(0, 300) : '';
     ok(res, { picks, reason: toolBlock.input.reason || '', detected, season, period: { from: fromStr, to: toStr } });
+  } catch (e) { err(res, e.message); }
+});
+
+// ── 식재료 사입 내역 (메뉴 창고 > 식재료 입력) — 관리자 전용 ──────────────
+const _isYMD = s => /^\d{4}-\d{2}-\d{2}$/.test(s);
+// 재료명·수량은 글자 그대로, 사입금액은 원 단위 정수(쉼표·"원" 등은 떼고 읽는다).
+// 음수(할인 줄 등)는 0으로 — 부호까지 떼면 -1,000원 할인이 +1,000원 사입으로 바뀐다.
+function _cleanIngredientItem(it) {
+  const raw = it && it.amount;
+  const n = typeof raw === 'number' ? raw : Number(String(raw ?? '').replace(/[^0-9.-]/g, ''));
+  const amount = Math.round(n) || 0;
+  return {
+    name: String((it && it.name) || '').trim().slice(0, 200),
+    qty: String((it && it.qty) || '').trim().slice(0, 100),
+    amount: Math.min(Math.max(amount, 0), 2000000000),
+  };
+}
+
+// GET /api/ingredients?date=YYYY-MM-DD
+app.get('/api/ingredients', requireAdmin, async (req, res) => {
+  try {
+    const date = String(req.query.date || '');
+    if (!_isYMD(date)) return err(res, 'date 형식 오류(YYYY-MM-DD)', 400);
+    const [rows] = await pool.execute(
+      'SELECT id, name, qty, amount FROM ingredient_purchases WHERE date=? ORDER BY id', [date]
+    );
+    ok(res, { items: rows.map(r => ({ id: r.id, name: r.name, qty: r.qty || '', amount: Number(r.amount) || 0 })) });
+  } catch (e) { err(res, e.message); }
+});
+
+// PUT /api/ingredients/:date — 그 날짜 내역을 보낸 목록으로 통째로 교체한다(빈 배열이면 그날 내역 삭제).
+app.put('/api/ingredients/:date', requireAdmin, async (req, res) => {
+  const date = String(req.params.date || '');
+  if (!_isYMD(date)) return err(res, 'date 형식 오류(YYYY-MM-DD)', 400);
+  const raw = req.body && req.body.items;
+  if (!Array.isArray(raw)) return err(res, 'items 배열 필요', 400);
+  if (raw.length > 300) return err(res, '한 번에 최대 300개까지 저장할 수 있어요.', 400);
+  const items = raw.map(_cleanIngredientItem).filter(it => it.name);
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    await conn.beginTransaction();
+    await conn.execute('DELETE FROM ingredient_purchases WHERE date=?', [date]);
+    for (const it of items) {
+      await conn.execute(
+        'INSERT INTO ingredient_purchases (date,name,qty,amount) VALUES (?,?,?,?)', [date, it.name, it.qty, it.amount]
+      );
+    }
+    await conn.commit();
+    ok(res, { count: items.length, total: items.reduce((s, it) => s + it.amount, 0) });
+  } catch (e) {
+    if (conn) await conn.rollback().catch(() => {});
+    err(res, e.message);
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+// POST /api/ingredients/extract — 영수증·거래명세서(또는 식재료) 사진에서 재료명·수량·사입금액을 읽는다.
+// 저장은 하지 않는다 — 화면 표에 채워서 관리자가 확인·수정한 뒤 PUT으로 저장한다.
+app.post('/api/ingredients/extract', requireAdmin, async (req, res) => {
+  try {
+    if (!process.env.ANTHROPIC_API_KEY) return err(res, 'AI 기능이 아직 설정되지 않았습니다.', 503);
+    const photos = _cleanPhotos(req.body && req.body.photos);
+    if (!photos.length) return err(res, '읽을 사진이 없습니다.', 400);
+
+    const prompt = '첨부한 사진은 반찬가게 "온반"이 식재료를 사 온 영수증·거래명세서이거나, 사 온 식재료를 찍은 사진입니다. '
+      + '사진에서 식재료 품목마다 재료명, 수량(단위 포함, 예: 10포기, 3kg, 2박스), 사입금액(원 단위 숫자)을 읽어 items에 담아주세요.\n'
+      + '- 영수증·거래명세서면 품목 줄마다 하나씩 담고, 합계·소계·부가세·할인·봉투값·배달비 같은 줄은 빼세요.\n'
+      + '- 사입금액은 그 품목 줄의 최종 금액(수량×단가)입니다. 금액이 안 보이면 0으로 두세요.\n'
+      + '- 식재료를 찍은 사진이라 금액을 알 수 없으면 amount는 0으로 두고, 수량은 보이는 대로 대략 적어주세요.\n'
+      + '- 확실히 읽을 수 없는 글씨는 추측해서 채우지 말고, 어떤 부분이 불확실한지 note에 짧게 적어주세요.';
+
+    const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-5',
+        max_tokens: 4096,
+        messages: [{
+          role: 'user',
+          content: photos.map(data => ({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data } }))
+            .concat([{ type: 'text', text: prompt }]),
+        }],
+        tools: [{
+          name: 'record_ingredient_purchases',
+          description: '사진에서 읽은 식재료 사입 품목을 기록한다',
+          input_schema: {
+            type: 'object',
+            properties: {
+              items: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    name:   { type: 'string',  description: '재료명' },
+                    qty:    { type: 'string',  description: '수량(단위 포함). 모르면 빈 문자열' },
+                    amount: { type: 'integer', description: '사입금액(원). 모르면 0' },
+                  },
+                  required: ['name', 'qty', 'amount'],
+                },
+              },
+              note: { type: 'string', description: '읽기 어려웠던 부분 등 참고 사항. 없으면 빈 문자열' },
+            },
+            required: ['items', 'note'],
+          },
+        }],
+        tool_choice: { type: 'tool', name: 'record_ingredient_purchases' },
+      }),
+    });
+    const aiRawText = await aiRes.text().catch(() => '');
+    let aiData = null;
+    try { aiData = JSON.parse(aiRawText); } catch (e) {}
+    const usage = (aiData && aiData.usage) || null;
+    // 토큰 비용 집계(GET /api/system-log/token-usage)에 함께 잡히도록 ai_recommend 타입으로 남긴다
+    sysLog(
+      'ai_recommend',
+      'AI 식재료 사진 인식 호출' + (usage ? (', 토큰 입력' + usage.input_tokens + '/출력' + usage.output_tokens) : ''),
+      { scope: 'ingredient_extract', photoCount: photos.length, httpStatus: aiRes.status, usage },
+      req.ip, deviceIdOf(req)
+    ).catch(() => {});
+    if (!aiRes.ok) return err(res, 'AI 호출 실패(' + aiRes.status + '): ' + aiRawText.slice(0, 300));
+    if (!aiData) return err(res, 'AI 응답 파싱 오류');
+    const toolBlock = (aiData.content || []).find(b => b.type === 'tool_use' && b.name === 'record_ingredient_purchases');
+    if (!toolBlock) return err(res, 'AI 응답 형식 오류');
+
+    const items = (Array.isArray(toolBlock.input.items) ? toolBlock.input.items : [])
+      .slice(0, 300).map(_cleanIngredientItem).filter(it => it.name);
+    ok(res, { items, note: String(toolBlock.input.note || '').slice(0, 300) });
   } catch (e) { err(res, e.message); }
 });
 
@@ -2054,6 +2192,16 @@ async function initDB() {
       device_id VARCHAR(64),
       INDEX idx_type (type),
       INDEX idx_created (created_at)
+    )`,
+    // 식재료 사입 내역 — 메뉴 창고 > 식재료 입력. 날짜별로 통째로 저장(교체)한다. amount는 원 단위(메뉴 가격의 천원 단위와 다름).
+    `CREATE TABLE IF NOT EXISTS ingredient_purchases (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      date DATE NOT NULL,
+      name VARCHAR(200) NOT NULL,
+      qty VARCHAR(100) DEFAULT '',
+      amount INT DEFAULT 0,
+      created_at DATETIME DEFAULT NOW(),
+      INDEX idx_date (date)
     )`
   ];
   const conn = await pool.getConnection();

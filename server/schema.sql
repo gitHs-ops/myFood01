@@ -63,3 +63,14 @@ CREATE TABLE IF NOT EXISTS access_log (
   referrer   VARCHAR(500),
   page       VARCHAR(100)
 );
+
+-- 식재료 사입 내역 (메뉴 창고 > 식재료 입력). amount는 원 단위.
+CREATE TABLE IF NOT EXISTS ingredient_purchases (
+  id         INT AUTO_INCREMENT PRIMARY KEY,
+  date       DATE NOT NULL,
+  name       VARCHAR(200) NOT NULL,
+  qty        VARCHAR(100) DEFAULT '',
+  amount     INT DEFAULT 0,
+  created_at DATETIME DEFAULT NOW(),
+  INDEX idx_date (date)
+);
