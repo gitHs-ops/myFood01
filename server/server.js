@@ -1636,8 +1636,9 @@ function _cleanPhotos(raw) {
 app.post('/api/recommend/daily-plan', requireAdmin, async (req, res) => {
   try {
     if (!process.env.ANTHROPIC_API_KEY) return err(res, 'AI 추천 기능이 아직 설정되지 않았습니다.', 503);
-    // 오늘 보유 식재료(선택, 자유 입력) — 예: "배추 10포기, 무 5개, 돼지 앞다리 3kg"
-    const ingredients = String((req.body && req.body.ingredients) || '').trim().slice(0, 500);
+    // 오늘 보유 식재료(선택) — 화면이 식재료 입력 탭의 그날 사입 내역과 직접 적은 글을 합쳐 보낸다.
+    // 예: "배추 10포기, 무 5개, 돼지 앞다리 3kg". 사입 내역이 길 수 있어 2000자까지 받는다.
+    const ingredients = String((req.body && req.body.ingredients) || '').trim().slice(0, 2000);
     // 보유 식재료 사진(선택, 최대 3장)
     const photos = _cleanPhotos(req.body && req.body.photos);
     const hasStockInfo = !!(ingredients || photos.length);
