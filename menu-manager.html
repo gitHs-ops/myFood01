@@ -540,7 +540,6 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
     <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
       <span>일일 메뉴 추가 등록</span>
       <span style="display:flex;align-items:center;gap:6px;">
-        <button id="recommendDailyBtnManage" onclick="runDailyMenuRecommend('recommendDailyBtnManage')" style="background:#6b46c1;color:#fff;border:none;border-radius:20px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;">🎯 AI 추천</button>
         <input type="text" id="addSearchInput" placeholder="메뉴 검색" onkeydown="if(event.key==='Enter'){event.preventDefault();searchAddMenu();}" style="width:100px;height:30px;padding:0 9px;border:1px solid #ddd;border-radius:8px;font-family:inherit;font-size:13px;box-sizing:border-box;">
         <button onclick="searchAddMenu(event)" style="background:#086266;color:#fff;border:none;border-radius:8px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">찾기</button>
         <button onclick="_setAddMenuNew()" style="background:#1D9E75;color:#fff;border:none;border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">+신 메뉴</button>
@@ -592,9 +591,6 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
     <div style="display:flex;gap:8px;margin-top:0;margin-bottom:8px;">
       <button class="copy-btn" onclick="loadTodayToKakao()" style="flex:1;background:#1D9E75;color:#fff;">오늘메뉴에서 가져오기</button>
       <button class="copy-btn" id="copyBtn" onclick="copyKakao()" style="flex:1;">텍스트 복사하기</button>
-    </div>
-    <div style="display:flex;gap:8px;margin-top:0;margin-bottom:8px;">
-      <button class="copy-btn" id="recommendDailyBtnKakao" onclick="runDailyMenuRecommend('recommendDailyBtnKakao')" style="flex:1;background:#6b46c1;color:#fff;">🎯 AI로 오늘 메뉴 추천받기</button>
     </div>
     <div style="display:flex;gap:8px;margin-top:0;">
       <button class="copy-btn" id="parseKakaoBtn" onclick="parseKakaoToMenu()" style="flex:1;background:#086266;color:#fff;">카카오 톡 내용으로 일일 메뉴 생성</button>
@@ -2159,9 +2155,9 @@ function _commitPreviewMenus(parsed){
     else showToast('⚠️ 서버 저장 실패 — 관리자 로그인/네트워크 확인 후 다시 시도해주세요.');
   });
 }
-// 오늘 메뉴 구성 AI 추천 — "메뉴 관리" 탭과 "카카오 발송" 탭 양쪽에서 호출(버튼 id만 다름).
+// 오늘 메뉴 구성 AI 추천 — 메뉴 창고의 🎯 AI 추천 버튼에서만 부른다(메뉴 관리·카카오 발송 버튼은 2026-10-21 제거).
 // 먼저 보유 식재료 입력창을 띄우고, 서버가 반환한 picks(name·cat·price·child·qty)를
-// _commitPreviewMenus가 받는 형태로 바꿔 넘긴다 — 카카오 파싱 결과 등록과 같은 커밋 로직 재사용.
+// 메뉴 창고의 'AI 추천 메뉴' 묶음으로 저장한다 — 오늘 메뉴에 쓰려면 그 묶음의 [선택 →]으로 추가/대체.
 // 마지막 입력값·사진은 같은 화면 안에서만 기억한다(localStorage 사용 금지 규칙).
 var _lastRecIngredients='';
 var _recIngredientsBtnId=null;
@@ -2280,30 +2276,27 @@ function _saveAiBundle(date,parsed,note){
 function _requestDailyMenuRecommend(btnId,ingredients,photos,purchaseCount){
   var btn=document.getElementById(btnId);
   var prevText=btn?btn.textContent:'';
-  // 메뉴 창고에서 누른 추천은 오늘의 메뉴를 바꾸지 않고 메뉴 창고에 'AI 추천 메뉴' 묶음으로 저장한다.
+  // 결과는 오늘의 메뉴를 바꾸지 않고 메뉴 창고에 'AI 추천 메뉴' 묶음으로 저장한다.
   // 날짜는 요청한 때의 상단 날짜(사입 내역도 이 날짜 기준) — 추천을 기다리는 동안 날짜를 옮겨도 그대로.
-  var bundleDate=(btnId==='recommendDailyBtnHistory')?workDate:null;
+  var bundleDate=workDate;
   function resetBtn(){if(btn){btn.disabled=false;btn.textContent=prevText;}}
   if(btn){btn.disabled=true;btn.textContent='🎯 추천 받는 중...';}
+  showToast('🎯 AI 추천 받는 중... 잠시만 기다려주세요',0);   // 응답이 올 때까지 띄워 둔다(성공 시 확인창 전에 닫고, 실패 시 오류 안내로 바뀜)
   fetch(API_URL+'/api/recommend/daily-plan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ingredients:ingredients,photos:photos})})
     .then(function(r){return r.json();})
     .then(function(res){
       resetBtn();
       if(!res.success){showToast(res.error||'추천을 받지 못했어요.');return;}
+      hideToast();
       var parsed=res.picks.map(function(p){return{name:p.name,cat:p.cat,price:p.price,child:!!p.child,stock:p.qty};});
       var basis=((ingredients||photos.length)?'보유 식재료'+(purchaseCount?'(사입 내역 '+purchaseCount+'개 포함)':'')+', ':'')+res.season+' 제철, 최근 한 달 판매 데이터';
       var msg='AI가 '+basis+'를 반영해 '+parsed.length+'개 메뉴를 추천했어요.\n'
         +(res.detected?('📷 사진에서 알아본 식재료: '+res.detected+'\n'):'')
         +(res.reason?('"'+res.reason+'"\n\n'):'\n');
-      if(bundleDate){
-        var exists=(_aiBundles||[]).some(function(b){return b.date===bundleDate;});
-        msg+='메뉴 창고에 '+_shortDay(bundleDate)+' \'AI 추천 메뉴\' 묶음으로 저장할까요?\n오늘의 메뉴 목록은 바뀌지 않아요.'
-          +(exists?'\n(이 날짜의 AI 추천 묶음은 새 추천으로 바뀌어요)':'');
-        showConfirm(msg,function(){_saveAiBundle(bundleDate,parsed,res.reason||'');},'저장','취소');
-        return;
-      }
-      msg+='이대로 오늘의 메뉴로 등록할까요?\n(기존 메뉴는 초기화됩니다)';
-      showConfirm(msg,function(){_commitPreviewMenus(parsed);},'등록','취소');
+      var exists=(_aiBundles||[]).some(function(b){return b.date===bundleDate;});
+      msg+='메뉴 창고에 '+_shortDay(bundleDate)+' \'AI 추천 메뉴\' 묶음으로 저장할까요?\n오늘의 메뉴 목록은 바뀌지 않아요.'
+        +(exists?'\n(이 날짜의 AI 추천 묶음은 새 추천으로 바뀌어요)':'');
+      showConfirm(msg,function(){_saveAiBundle(bundleDate,parsed,res.reason||'');},'저장','취소');
     })
     .catch(function(){resetBtn();showToast('네트워크 오류로 추천을 받지 못했어요.');});
 }
@@ -4308,7 +4301,8 @@ function deleteOrder(id){
 }
 
 
-function showToast(msg){
+// ms: 보이는 시간(기본 2.5초). 0이면 다음 showToast·hideToast 전까지 계속 보인다 — AI 추천처럼 오래 걸리는 작업 안내용
+function showToast(msg,ms){
   var existing=document.getElementById('mgr-toast');
   if(!existing){
     existing=document.createElement('div');
@@ -4320,10 +4314,15 @@ function showToast(msg){
   existing.style.opacity='1';
   existing.style.transform='translate(-50%,-50%)';
   clearTimeout(existing._t);
-  existing._t=setTimeout(function(){
-    existing.style.opacity='0';
-    existing.style.transform='translate(-50%,calc(-50% + 10px))';
-  },2500);
+  if(ms===0)return;
+  existing._t=setTimeout(hideToast,ms||2500);
+}
+function hideToast(){
+  var t=document.getElementById('mgr-toast');
+  if(!t)return;
+  clearTimeout(t._t);
+  t.style.opacity='0';
+  t.style.transform='translate(-50%,calc(-50% + 10px))';
 }
 
 /* ════ SSE 실시간 동기화 ════ */
