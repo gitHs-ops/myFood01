@@ -1622,22 +1622,32 @@ app.post('/api/recommend', async (req, res) => {
   } catch (e) { err(res, e.message); }
 });
 
-// 오늘의 메뉴 구성 추천 (관리자용) — 최근 1주일 구성 이력 + 판매량 + 계절감을 반영해 ~30개 추천.
+// 오늘의 메뉴 구성 추천 (관리자용) — 최근 30일 구성 이력 + 판매량 + 계절감을 반영해 ~30개 추천.
 // 관리자 페이지("메뉴 관리"/"카카오 발송")에서 호출 — 고객용 /api/recommend와 별개 엔드포인트.
 app.post('/api/recommend/daily-plan', requireAdmin, async (req, res) => {
   try {
     if (!process.env.ANTHROPIC_API_KEY) return err(res, 'AI 추천 기능이 아직 설정되지 않았습니다.', 503);
+    // 오늘 보유 식재료(선택, 자유 입력) — 예: "배추 10포기, 무 5개, 돼지 앞다리 3kg"
+    const ingredients = String((req.body && req.body.ingredients) || '').trim().slice(0, 500);
+    // 보유 식재료 사진(선택, 최대 3장) — 화면에서 긴 변 1568px JPEG로 줄인 base64. 비정상적으로 큰 값은 버린다.
+    const photos = (Array.isArray(req.body && req.body.photos) ? req.body.photos : [])
+      .filter(p => typeof p === 'string')
+      .map(p => p.replace(/^data:image\/[a-z]+;base64,/, ''))
+      .filter(p => p.length > 0 && p.length <= 4000000)
+      .slice(0, 3);
+    const hasStockInfo = !!(ingredients || photos.length);
 
     const [menuRows] = await pool.execute('SELECT id, name, cat, price, child FROM menus ORDER BY count DESC, name');
     if (!menuRows.length) return err(res, '추천할 메뉴가 없습니다. 마스터 메뉴를 먼저 등록해주세요.', 404);
 
+    const HISTORY_DAYS = 30;   // 분석 기간: 어제까지 최근 30일
     const todayStr = toKSTDateStr(new Date());
-    const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
-    const weekAgo   = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
-    const fromStr = toKSTDateStr(weekAgo);
+    const yesterday   = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+    const periodStart = new Date(); periodStart.setDate(periodStart.getDate() - HISTORY_DAYS);
+    const fromStr = toKSTDateStr(periodStart);
     const toStr   = toKSTDateStr(yesterday);
 
-    // 최근 1주일 구성 이력 — daily_menus는 '일일 메뉴 삭제'로 지워질 수 있어, 안 지워지는 창고(archive)를 기준으로 삼는다.
+    // 최근 30일 구성 이력 — daily_menus는 '일일 메뉴 삭제'로 지워질 수 있어, 안 지워지는 창고(archive)를 기준으로 삼는다.
     const [histRows] = await pool.execute(
       'SELECT name, COUNT(DISTINCT date) AS days FROM daily_menus_archive WHERE date BETWEEN ? AND ? GROUP BY name',
       [fromStr, toStr]
@@ -1662,23 +1672,37 @@ app.post('/api/recommend/daily-plan', requireAdmin, async (req, res) => {
     const month = Number(todayStr.slice(5, 7));
     const season = (month >= 3 && month <= 5) ? '봄' : (month >= 6 && month <= 8) ? '여름' : (month >= 9 && month <= 11) ? '가을' : '겨울';
 
+    // 재고 추천은 하루치라서 기간 합계가 아니라 '구성된 날 하루 평균 판매량'을 함께 준다
+    // (30일 합계를 그대로 참고하면 하루 재고를 몇 배로 과하게 잡을 수 있다).
     const menuLines = menuRows.map(r => {
       const days = histMap.get(r.name) || 0;
       const qty  = qtyMap.get(r.name) || 0;
+      const avg  = days ? Math.round(qty / days * 10) / 10 : null;
       return r.name + ' (' + (r.cat || '기타') + ', ' + Math.round((Number(r.price) || 0) * 1000).toLocaleString() + '원)'
-        + ' — 최근7일 구성 ' + days + '일 / 판매 ' + qty + '개';
+        + ' — 최근' + HISTORY_DAYS + '일 구성 ' + days + '일 / 판매 ' + qty + '개'
+        + (avg !== null ? ' / 구성일 평균 ' + avg + '개' : '');
     }).join('\n');
 
     const prompt = '당신은 반찬가게 "온반"의 일일 메뉴 구성 담당자입니다.\n\n'
-      + '아래는 전체 마스터 메뉴 목록입니다. 각 줄 끝에는 최근 7일(' + fromStr + '~' + toStr + ') 동안 '
-      + '며칠이나 오늘의 메뉴로 구성됐는지와, 그 기간 실제 판매량이 적혀 있습니다.\n\n'
+      + '아래는 전체 마스터 메뉴 목록입니다. 각 줄 끝에는 최근 ' + HISTORY_DAYS + '일(' + fromStr + '~' + toStr + ') 동안 '
+      + '며칠이나 오늘의 메뉴로 구성됐는지, 그 기간 실제 판매량 합계, 그리고 구성된 날의 하루 평균 판매량(구성일 평균)이 적혀 있습니다.\n\n'
       + menuLines + '\n\n'
       + '오늘(' + todayStr + ')은 계절상 ' + season + '입니다.\n\n'
+      + (ingredients ? '오늘 보유 식재료: ' + ingredients + '\n' : '')
+      + (photos.length
+        ? '함께 첨부한 사진 ' + photos.length + '장은 오늘 보유한 식재료를 찍은 것(또는 장 본 영수증·거래명세서)입니다. '
+          + '사진에 보이는 식재료와 대략적인 수량도 보유 식재료로 간주하고, 알아본 내용을 detected_ingredients에 짧게 적어주세요.\n'
+        : '')
+      + (hasStockInfo
+        ? '이 식재료를 활용할 수 있는 메뉴를 우선 골라 재료가 남지 않게 구성하세요(주재료는 메뉴 이름으로 판단). '
+          + '식재료 수량을 알 수 있으면 그 양으로 만들 수 있는 수준에 맞춰 해당 메뉴의 추천 재고 수량을 잡아주세요'
+          + '(이런 메뉴는 아래의 판매량 기준보다 이 기준을 우선).\n\n'
+        : '')
       + '위 데이터를 참고해서 오늘 "오늘의 메뉴"로 구성할 메뉴를 30개 내외(28~32개)로 골라주세요. '
       + '최근 판매가 잘 된 메뉴는 우선 반영하고, ' + season + '에 어울리는 메뉴를 적절히 섞고, '
-      + '최근 7일 내내 반복된 메뉴만 있지 않도록 다양성도 고려해주세요. '
-      + '각 메뉴마다 추천 재고 수량(qty)도 함께 제시하세요 — 최근 판매량이 있으면 그 수치를 참고해 비슷한 수준으로, '
-      + '최근 판매 이력이 없는 메뉴는 5~10개 정도의 무난한 수량으로 제안하세요. '
+      + '최근 ' + HISTORY_DAYS + '일 동안 자주 나온 메뉴만으로 채우지 말고, 한동안 안 나온 메뉴도 섞어 다양성을 고려해주세요. '
+      + '각 메뉴마다 오늘 하루치 추천 재고 수량(qty)도 함께 제시하세요 — 구성일 평균이 있으면 그 수치를 기준으로 잡고'
+      + '(기간 합계 판매량을 그대로 쓰지 마세요), 판매 이력이 없는 메뉴는 5~10개 정도의 무난한 수량으로 제안하세요. '
       + '반드시 목록에 있는 이름을 정확히 그대로 사용하세요(오타·변형 금지).';
 
     const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
@@ -1691,7 +1715,14 @@ app.post('/api/recommend/daily-plan', requireAdmin, async (req, res) => {
       body: JSON.stringify({
         model: 'claude-sonnet-5',
         max_tokens: 4096,
-        messages: [{ role: 'user', content: prompt }],
+        messages: [{
+          role: 'user',
+          // 사진이 있으면 사진을 먼저, 지시문을 뒤에 둔다
+          content: photos.length
+            ? photos.map(data => ({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data } }))
+                .concat([{ type: 'text', text: prompt }])
+            : prompt,
+        }],
         tools: [{
           name: 'propose_daily_menu',
           description: '오늘의 메뉴로 구성할 메뉴와 추천 재고 수량을 제안한다',
@@ -1711,6 +1742,7 @@ app.post('/api/recommend/daily-plan', requireAdmin, async (req, res) => {
                 description: '오늘 구성할 메뉴와 추천 수량, 28~32개 정도',
               },
               reason: { type: 'string', description: '전체 구성 의도(계절감·인기 반영 등) 한두 문장' },
+              detected_ingredients: { type: 'string', description: '첨부 사진에서 알아본 식재료와 대략적인 수량 요약. 사진이 없으면 빈 문자열' },
             },
             required: ['picks', 'reason'],
           },
@@ -1725,7 +1757,7 @@ app.post('/api/recommend/daily-plan', requireAdmin, async (req, res) => {
     sysLog(
       'ai_recommend',
       'AI 일일메뉴 구성 추천 호출' + (usage ? (', 토큰 입력' + usage.input_tokens + '/출력' + usage.output_tokens) : ''),
-      { scope: 'daily_plan', season, from: fromStr, to: toStr, httpStatus: aiRes.status, usage },
+      { scope: 'daily_plan', season, from: fromStr, to: toStr, ingredients, photoCount: photos.length, httpStatus: aiRes.status, usage },
       req.ip, deviceIdOf(req)
     ).catch(() => {});
     if (!aiRes.ok) return err(res, 'AI 호출 실패(' + aiRes.status + '): ' + aiRawText.slice(0, 300));
@@ -1742,7 +1774,8 @@ app.post('/api/recommend/daily-plan', requireAdmin, async (req, res) => {
       });
     if (!picks.length) return err(res, toolBlock.input.reason || '조건에 맞는 메뉴를 찾지 못했습니다.', 404);
 
-    ok(res, { picks, reason: toolBlock.input.reason || '', season, period: { from: fromStr, to: toStr } });
+    const detected = photos.length ? String(toolBlock.input.detected_ingredients || '').slice(0, 300) : '';
+    ok(res, { picks, reason: toolBlock.input.reason || '', detected, season, period: { from: fromStr, to: toStr } });
   } catch (e) { err(res, e.message); }
 });
 
