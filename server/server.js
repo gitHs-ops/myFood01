@@ -1918,6 +1918,92 @@ app.post('/api/ingredients/extract', requireAdmin, async (req, res) => {
   } catch (e) { err(res, e.message); }
 });
 
+// ── AI 추천 메뉴 묶음 (메뉴 창고 > 날짜별 메뉴 묶음에 '🤖 AI 추천 메뉴'로 표시) — 관리자 전용 ──────
+// 메뉴 창고에서 받은 AI 추천은 오늘의 메뉴를 바꾸지 않고 여기에 날짜당 한 묶음으로 저장한다(다시 받으면 교체).
+// 실제 구성 이력(daily_menus_archive)과 따로 두는 이유: 그 이력은 AI 추천의 "최근 30일 구성" 근거라
+// 쓰지도 않은 추천이 섞이면 안 되고, 같은 날짜의 실제 메뉴 기록을 덮어써서도 안 된다.
+function _cleanBundleItem(it) {
+  const stock = Math.round(Number(it && it.stock));
+  return {
+    name: String((it && it.name) || '').trim().slice(0, 200),
+    cat: String((it && it.cat) || '').trim().slice(0, 50) || '기타',
+    price: Math.max(Number(it && it.price) || 0, 0),
+    child: !!(it && it.child),
+    stock: Number.isFinite(stock) ? Math.min(Math.max(stock, -1), 9999) : 0,
+  };
+}
+// JSON 컬럼은 드라이버가 이미 풀어서 주기도, 문자열로 주기도 한다
+function _bundleItems(v) {
+  try { const a = typeof v === 'string' ? JSON.parse(v) : v; return Array.isArray(a) ? a : []; }
+  catch (_) { return []; }
+}
+
+app.get('/api/recommend/bundles', requireAdmin, async (req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      "SELECT DATE_FORMAT(date,'%Y-%m-%d') AS d, items FROM ai_menu_bundles ORDER BY date DESC"
+    );
+    ok(res, { bundles: rows.map(r => ({ date: r.d, count: _bundleItems(r.items).length })) });
+  } catch (e) { err(res, e.message); }
+});
+
+// 날짜별 메뉴 묶음(/api/menu/archive/:date)과 같은 모양으로 돌려준다 — 마스터의 현재 정보(id·사진·설명·가격)를 붙여서.
+// 사진(imgUrl)이 빠진 채 오늘 메뉴로 불러와 저장하면 마스터 사진이 지워지므로 꼭 채운다.
+app.get('/api/recommend/bundles/:date', requireAdmin, async (req, res) => {
+  try {
+    const date = req.params.date;
+    if (!_isYMD(date)) return err(res, '날짜 형식 오류', 400);
+    const [[row]] = await pool.execute('SELECT items, note FROM ai_menu_bundles WHERE date=?', [date]);
+    if (!row) return err(res, `${date} AI 추천 메뉴 없음`, 404);
+    const items = _bundleItems(row.items);
+    const names = [...new Set(items.map(it => it.name))];
+    const [masters] = names.length
+      ? await pool.execute(
+          `SELECT id, name, cat, price, child, img_url AS imgUrl, icon, menu_desc AS \`desc\`
+           FROM menus WHERE name IN (${names.map(() => '?').join(',')}) ORDER BY id`, names)
+      : [[]];
+    const menus = items.map(it => {
+      // 같은 이름이 카테고리별로 여럿일 수 있다(예: 부대찌개 메인/밀키트) — 카테고리까지 맞는 것 우선
+      const same = masters.filter(m => m.name === it.name);
+      const m = same.find(x => x.cat === it.cat) || same[0];
+      if (!m) return { menuId: null, name: it.name, cat: it.cat, price: Number(it.price) || 0, stock: it.stock,
+                       child: !!it.child, imgUrl: '', icon: null, desc: '' };
+      return { menuId: m.id, name: m.name, cat: m.cat || '기타', price: Number(m.price || 0), stock: it.stock,
+               child: !!m.child, imgUrl: m.imgUrl || '', icon: m.icon || null, desc: m.desc || '' };
+    });
+    ok(res, { date, menus, note: row.note || '' });
+  } catch (e) { err(res, e.message); }
+});
+
+app.put('/api/recommend/bundles/:date', requireAdmin, async (req, res) => {
+  try {
+    const date = req.params.date;
+    if (!_isYMD(date)) return err(res, '날짜 형식 오류', 400);
+    const raw = req.body && req.body.menus;
+    if (!Array.isArray(raw)) return err(res, '데이터 없음', 400);
+    if (raw.length > 300) return err(res, '메뉴는 한 번에 300개까지 저장할 수 있어요.', 400);
+    const items = raw.map(_cleanBundleItem).filter(it => it.name);
+    if (!items.length) return err(res, '저장할 메뉴가 없습니다.', 400);
+    const note = String((req.body && req.body.note) || '').trim().slice(0, 1000);
+    const [prev] = await pool.execute('SELECT id FROM ai_menu_bundles WHERE date=?', [date]);
+    await pool.execute(
+      `INSERT INTO ai_menu_bundles (date, items, note) VALUES (?,?,?)
+       ON DUPLICATE KEY UPDATE items=VALUES(items), note=VALUES(note), created_at=NOW()`,
+      [date, JSON.stringify(items), note]
+    );
+    ok(res, { date, count: items.length, replaced: prev.length > 0 });
+  } catch (e) { err(res, e.message); }
+});
+
+app.delete('/api/recommend/bundles/:date', requireAdmin, async (req, res) => {
+  try {
+    const date = req.params.date;
+    if (!_isYMD(date)) return err(res, '날짜 형식 오류', 400);
+    const [r] = await pool.execute('DELETE FROM ai_menu_bundles WHERE date=?', [date]);
+    ok(res, { deleted: (r && r.affectedRows) || 0 });
+  } catch (e) { err(res, e.message); }
+});
+
 // ── 고객 개인별 취향/행동 추적 로그 (주문·예약은 기존 orders.device_id로 이미 저장됨) ──
 app.post('/api/track/menu-click', async (req, res) => {
   try {
@@ -2203,6 +2289,16 @@ async function initDB() {
       amount INT DEFAULT 0,
       created_at DATETIME DEFAULT NOW(),
       INDEX idx_date (date)
+    )`,
+    // AI 추천 메뉴 묶음 — 메뉴 창고에서 받은 AI 추천을 날짜당 한 묶음으로 보관(실제 구성 이력 daily_menus_archive와 별개).
+    // items: [{name,cat,price,child,stock}] — stock은 AI가 제안한 재고 수량
+    `CREATE TABLE IF NOT EXISTS ai_menu_bundles (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      date DATE NOT NULL,
+      items JSON NOT NULL,
+      note VARCHAR(1000) DEFAULT '',
+      created_at DATETIME DEFAULT NOW(),
+      UNIQUE KEY uq_date (date)
     )`
   ];
   const conn = await pool.getConnection();

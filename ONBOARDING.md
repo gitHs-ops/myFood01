@@ -77,6 +77,7 @@ npx serve -l 5174 .
 - **settings** — 키-값 설정 저장소
 - **access_log** — 접근 로그
 - **ingredient_purchases** — 식재료 사입 내역 (메뉴 창고 > 식재료 입력). 날짜별 통째 교체 저장, `amount`는 **원 단위**(메뉴 가격의 천원 단위와 다름)
+- **ai_menu_bundles** — 메뉴 창고에서 받은 AI 추천 메뉴 묶음 (날짜당 1개, 다시 받으면 교체). 날짜별 메뉴 묶음 목록에 "🤖 AI 추천 메뉴"로 함께 표시. 실제 구성 이력(`daily_menus_archive`)과 일부러 분리 — 그 이력은 AI 추천의 "최근 30일 구성" 근거라 쓰지 않은 추천이 섞이면 안 됨
 
 ---
 
@@ -114,6 +115,7 @@ npx serve -l 5174 .
 | POST | `/api/recommend/daily-plan` | 오늘 메뉴 구성 AI 추천(관리자용) — 최근 30일 구성이력·판매량(구성일 평균)·계절 + 보유 식재료(`ingredients` 글 최대 2000자 — 화면이 그날 식재료 입력 사입 내역 + 직접 적은 글을 합쳐 보냄, `photos` 사진 최대 3장 — 둘 다 선택) 반영, ANTHROPIC_API_KEY 필요 |
 | GET/PUT | `/api/ingredients?date=` · `/api/ingredients/:date` | 식재료 사입 내역 조회 / 그 날짜 내역 통째 교체 저장 (관리자) |
 | POST | `/api/ingredients/extract` | 영수증·거래명세서 사진(최대 3장)에서 재료명·수량·사입금액 읽기 — 저장은 안 함, ANTHROPIC_API_KEY 필요 |
+| GET/PUT/DELETE | `/api/recommend/bundles` · `/api/recommend/bundles/:date` | AI 추천 메뉴 묶음 목록 / 그 날짜 묶음 조회(마스터의 id·사진을 붙여 날짜별 묶음과 같은 모양) · 저장(교체) · 삭제 (관리자) |
 
 ---
 
