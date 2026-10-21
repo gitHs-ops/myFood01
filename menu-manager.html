@@ -914,7 +914,11 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
 <div class="cal-overlay" id="recIngredientsOverlay" style="z-index:1000;" onclick="if(event.target===this)closeRecIngredients()">
   <div style="background:#fff;border-radius:16px;padding:22px;width:320px;max-width:calc(100vw - 32px);box-sizing:border-box;" onclick="event.stopPropagation()">
     <div style="font-size:15px;font-weight:700;color:#1a1a1a;margin-bottom:6px;">🎯 오늘 보유 식재료</div>
-    <div style="font-size:12px;color:#888;margin-bottom:10px;line-height:1.5;">적거나 사진으로 올려주시면 이 재료를 활용하는 메뉴 위주로 추천해요. 수량이 있으면 추천 재고량에도 반영돼요. 비워두면 식재료 없이 추천합니다.</div>
+    <div id="recPurchaseBox" style="display:none;background:#f0faf9;border-radius:10px;padding:8px 10px;margin-bottom:10px;font-size:12px;line-height:1.5;">
+      <div id="recPurchaseTitle" style="color:#086266;font-weight:700;"></div>
+      <div id="recPurchaseList" style="color:#555;"></div>
+    </div>
+    <div style="font-size:12px;color:#888;margin-bottom:10px;line-height:1.5;">더 있는 재료는 적거나 사진으로 올려주세요. 이 재료를 활용하는 메뉴 위주로 추천하고, 수량이 있으면 추천 재고량에도 반영돼요.</div>
     <textarea id="recIngredientsInput" rows="4" maxlength="500" placeholder="예) 배추 10포기, 무 5개, 돼지 앞다리 3kg, 두부 8모" style="width:100%;box-sizing:border-box;border:1px solid #ddd;border-radius:10px;padding:10px;font-family:inherit;font-size:14px;resize:vertical;"></textarea>
     <input type="file" id="recPhotoInput" accept="image/*" multiple style="display:none" onchange="onRecPhotosSelected(event)">
     <div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap;">
@@ -924,7 +928,7 @@ select{width:100%;padding:9px 10px;border:1.5px solid #cde8e7;border-radius:10px
     <div id="recPhotoThumbs" style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;"></div>
     <div style="display:flex;gap:10px;margin-top:14px;">
       <button style="flex:1;background:#eee;color:#555;border:none;border-radius:10px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;" onclick="closeRecIngredients()">취소</button>
-      <button style="flex:1;background:#6b46c1;color:#fff;border:none;border-radius:10px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;" onclick="submitRecIngredients()">추천 받기</button>
+      <button id="recSubmitBtn" style="flex:1;background:#6b46c1;color:#fff;border:none;border-radius:10px;padding:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;" onclick="submitRecIngredients()">추천 받기</button>
     </div>
   </div>
 </div>
@@ -2163,13 +2167,49 @@ var _lastRecIngredients='';
 var _recIngredientsBtnId=null;
 var _recPhotos=[];   // 축소된 JPEG base64(접두어 없이)
 var REC_PHOTO_MAX=3;
+var _recPurchaseText='';   // 메뉴 창고 > 식재료 입력의 그날 사입 내역("배추 10포기, 무 5개") — 추천에 함께 보낸다
+var _recPurchaseCount=0;
+var _recPurchaseSeq=0;     // 모달을 다시 열었을 때 앞서 보낸 요청의 늦은 응답이 덮어쓰지 않게
 function runDailyMenuRecommend(btnId){
   _recIngredientsBtnId=btnId;
   var ta=document.getElementById('recIngredientsInput');
   ta.value=_lastRecIngredients;
   _renderRecPhotoThumbs();
+  _loadRecPurchases();
   document.getElementById('recIngredientsOverlay').classList.add('open');
   setTimeout(function(){ta.focus();},50);
+}
+// 식재료 입력 탭의 그날(상단 날짜) 사입 내역을 모달 위에 보여주고 추천에 함께 반영한다.
+// 그 탭에 같은 날짜를 저장 전 편집 중이면 화면의 표를 그대로 쓰고, 아니면 서버에서 최신 내역을 불러온다.
+function _loadRecPurchases(){
+  var title=document.getElementById('recPurchaseTitle');
+  var list=document.getElementById('recPurchaseList');
+  var submit=document.getElementById('recSubmitBtn');
+  var p=workDate.split('-');
+  var day=(+p[1])+'/'+(+p[2])+(workDate===toISO(new Date())?'(오늘)':'');
+  var seq=++_recPurchaseSeq;
+  function setSubmit(on){submit.disabled=!on;submit.style.opacity=on?'':'.5';}
+  function show(items,unsaved){
+    var named=(items||[]).filter(function(it){return String(it.name||'').trim();});
+    _recPurchaseCount=named.length;
+    _recPurchaseText=named.map(function(it){var q=String(it.qty||'').trim();return String(it.name).trim()+(q?' '+q:'');}).join(', ');
+    title.textContent=named.length?('📦 '+day+' 사입 내역 '+named.length+'개가 함께 반영돼요'+(unsaved?' (아직 저장 안 됨)':'')):'';
+    list.textContent=named.length?_recPurchaseText:(day+' 사입 내역이 없어요. 메뉴 창고 > 식재료 입력에 저장하면 여기에 자동으로 반영돼요.');
+    setSubmit(true);
+  }
+  _recPurchaseText='';_recPurchaseCount=0;
+  document.getElementById('recPurchaseBox').style.display='';
+  if(_ingDirty&&_ingDate===workDate){show(_ingItems,true);return;}
+  title.textContent='';list.textContent=day+' 사입 내역 불러오는 중...';
+  setSubmit(false);
+  apiFetch('/api/ingredients?date='+workDate,function(err,d){
+    if(seq!==_recPurchaseSeq)return;
+    if(err||!d||!d.success){
+      title.textContent='';list.textContent=day+' 사입 내역을 불러오지 못했어요. 필요한 재료는 아래에 적어주세요.';
+      setSubmit(true);return;
+    }
+    show(d.items,false);
+  });
 }
 function closeRecIngredients(){
   document.getElementById('recIngredientsOverlay').classList.remove('open');
@@ -2215,12 +2255,13 @@ function _shrinkPhotoForAI(file,cb){
   reader.readAsDataURL(file);
 }
 function submitRecIngredients(){
-  var ingredients=document.getElementById('recIngredientsInput').value.trim();
-  _lastRecIngredients=ingredients;
+  var typed=document.getElementById('recIngredientsInput').value.trim();
+  _lastRecIngredients=typed;
   closeRecIngredients();
-  _requestDailyMenuRecommend(_recIngredientsBtnId,ingredients,_recPhotos.slice());
+  var ingredients=[_recPurchaseText,typed].filter(Boolean).join(', ');
+  _requestDailyMenuRecommend(_recIngredientsBtnId,ingredients,_recPhotos.slice(),_recPurchaseCount);
 }
-function _requestDailyMenuRecommend(btnId,ingredients,photos){
+function _requestDailyMenuRecommend(btnId,ingredients,photos,purchaseCount){
   var btn=document.getElementById(btnId);
   var prevText=btn?btn.textContent:'';
   function resetBtn(){if(btn){btn.disabled=false;btn.textContent=prevText;}}
@@ -2231,7 +2272,7 @@ function _requestDailyMenuRecommend(btnId,ingredients,photos){
       resetBtn();
       if(!res.success){showToast(res.error||'추천을 받지 못했어요.');return;}
       var parsed=res.picks.map(function(p){return{name:p.name,cat:p.cat,price:p.price,child:!!p.child,stock:p.qty};});
-      var basis=((ingredients||photos.length)?'보유 식재료, ':'')+res.season+' 제철, 최근 한 달 판매 데이터';
+      var basis=((ingredients||photos.length)?'보유 식재료'+(purchaseCount?'(사입 내역 '+purchaseCount+'개 포함)':'')+', ':'')+res.season+' 제철, 최근 한 달 판매 데이터';
       var msg='AI가 '+basis+'를 반영해 '+parsed.length+'개 메뉴를 추천했어요.\n'
         +(res.detected?('📷 사진에서 알아본 식재료: '+res.detected+'\n'):'')
         +(res.reason?('"'+res.reason+'"\n\n'):'\n')
