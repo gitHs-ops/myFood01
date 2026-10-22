@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS access_log (
   page       VARCHAR(100)
 );
 
--- 식재료 사입 내역 (메뉴 창고 > 식재료 입력). amount는 원 단위.
+-- 식재료 재고 (메뉴 창고 > 식재료 입력). 날짜별이 아닌 현재 재고 한 목록 — date는 입력일(정렬 기준), amount는 사입금액(원 단위).
 CREATE TABLE IF NOT EXISTS ingredient_purchases (
   id         INT AUTO_INCREMENT PRIMARY KEY,
   date       DATE NOT NULL,

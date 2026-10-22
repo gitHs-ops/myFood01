@@ -1541,7 +1541,6 @@ function selectDate(iso){
   document.getElementById('dateDisplayBtn').textContent=fmtDate(iso);
   loadMenus(iso);filterCat='전체';renderAll();renderHistory();renderOrders();
   if(_histSubTab==='reserved')loadReservedOrders();
-  if(_histSubTab==='ingredients'&&document.getElementById('page-history').classList.contains('active'))_ingOnDateChange();
   _startMenuSSE(iso);
   document.getElementById('calOverlay').classList.remove('open');
 }
@@ -2167,7 +2166,7 @@ var _lastRecIngredients='';
 var _recIngredientsBtnId=null;
 var _recPhotos=[];   // 축소된 JPEG base64(접두어 없이)
 var REC_PHOTO_MAX=3;
-var _recPurchaseText='';   // 메뉴 창고 > 식재료 입력의 그날 사입 내역("배추 10포기, 무 5개") — 추천에 함께 보낸다
+var _recPurchaseText='';   // 메뉴 창고 > 식재료 입력의 현재 재고("배추 10포기, 무 5개", 수량 0 제외) — 추천에 함께 보낸다
 var _recPurchaseCount=0;
 var _recPurchaseSeq=0;     // 모달을 다시 열었을 때 앞서 보낸 요청의 늦은 응답이 덮어쓰지 않게
 function runDailyMenuRecommend(btnId){
@@ -2181,32 +2180,35 @@ function runDailyMenuRecommend(btnId){
 }
 // "10/21(오늘)" 같은 짧은 날짜 표시
 function _shortDay(iso){var p=iso.split('-');return (+p[1])+'/'+(+p[2])+(iso===toISO(new Date())?'(오늘)':'');}
-// 식재료 입력 탭의 그날(상단 날짜) 사입 내역을 모달 위에 보여주고 추천에 함께 반영한다.
-// 그 탭에 같은 날짜를 저장 전 편집 중이면 화면의 표를 그대로 쓰고, 아니면 서버에서 최신 내역을 불러온다.
+// 식재료 입력 탭의 현재 재고를 모달 위에 보여주고 추천에 함께 반영한다 — 수량이 0인 재료는 뺀다.
+// 그 탭에서 저장 전 편집 중이면 화면의 표를 그대로 쓰고, 아니면 서버에서 최신 재고를 불러온다.
 function _loadRecPurchases(){
   var title=document.getElementById('recPurchaseTitle');
   var list=document.getElementById('recPurchaseList');
   var submit=document.getElementById('recSubmitBtn');
-  var day=_shortDay(workDate);
   var seq=++_recPurchaseSeq;
   function setSubmit(on){submit.disabled=!on;submit.style.opacity=on?'':'.5';}
   function show(items,unsaved){
     var named=(items||[]).filter(function(it){return String(it.name||'').trim();});
-    _recPurchaseCount=named.length;
-    _recPurchaseText=named.map(function(it){var q=String(it.qty||'').trim();return String(it.name).trim()+(q?' '+q:'');}).join(', ');
-    title.textContent=named.length?('📦 '+day+' 사입 내역 '+named.length+'개가 함께 반영돼요'+(unsaved?' (아직 저장 안 됨)':'')):'';
-    list.textContent=named.length?_recPurchaseText:(day+' 사입 내역이 없어요. 메뉴 창고 > 식재료 입력에 저장하면 여기에 자동으로 반영돼요.');
+    var have=named.filter(function(it){return !_ingQtyZero(it.qty);});
+    var zero=named.length-have.length;
+    _recPurchaseCount=have.length;
+    _recPurchaseText=have.map(function(it){var q=String(it.qty||'').trim();return String(it.name).trim()+(q?' '+q:'');}).join(', ');
+    title.textContent=have.length?('📦 식재료 재고 '+have.length+'개가 함께 반영돼요'+(zero?' (수량 0인 '+zero+'개 제외)':'')+(unsaved?' (아직 저장 안 됨)':'')):'';
+    list.textContent=have.length?_recPurchaseText
+      :zero?('재고가 남은 식재료가 없어요 (수량 0인 '+zero+'개 제외).')
+      :'메뉴 창고 > 식재료 입력에 재고를 저장하면 여기에 자동으로 반영돼요.';
     setSubmit(true);
   }
   _recPurchaseText='';_recPurchaseCount=0;
   document.getElementById('recPurchaseBox').style.display='';
-  if(_ingDirty&&_ingDate===workDate){show(_ingItems,true);return;}
-  title.textContent='';list.textContent=day+' 사입 내역 불러오는 중...';
+  if(_ingDirty&&_ingLoaded){show(_ingItems,true);return;}
+  title.textContent='';list.textContent='식재료 재고 불러오는 중...';
   setSubmit(false);
-  apiFetch('/api/ingredients?date='+workDate,function(err,d){
+  apiFetch('/api/ingredients',function(err,d){
     if(seq!==_recPurchaseSeq)return;
     if(err||!d||!d.success){
-      title.textContent='';list.textContent=day+' 사입 내역을 불러오지 못했어요. 필요한 재료는 아래에 적어주세요.';
+      title.textContent='';list.textContent='식재료 재고를 불러오지 못했어요. 필요한 재료는 아래에 적어주세요.';
       setSubmit(true);return;
     }
     show(d.items,false);
@@ -2281,7 +2283,7 @@ function _requestDailyMenuRecommend(btnId,ingredients,photos,purchaseCount){
   var btn=document.getElementById(btnId);
   var prevText=btn?btn.textContent:'';
   // 결과는 오늘의 메뉴를 바꾸지 않고 메뉴 창고에 'AI 추천 메뉴' 묶음으로 저장한다.
-  // 날짜는 요청한 때의 상단 날짜(사입 내역도 이 날짜 기준) — 추천을 기다리는 동안 날짜를 옮겨도 그대로.
+  // 날짜는 요청한 때의 상단 날짜 — 추천을 기다리는 동안 날짜를 옮겨도 그대로.
   var bundleDate=workDate;
   function resetBtn(){if(btn){btn.disabled=false;btn.textContent=prevText;}}
   if(btn){btn.disabled=true;btn.textContent='🎯 추천 받는 중...';}
@@ -2293,7 +2295,7 @@ function _requestDailyMenuRecommend(btnId,ingredients,photos,purchaseCount){
       if(!res.success){showToast(res.error||'추천을 받지 못했어요.');return;}
       hideToast();
       var parsed=res.picks.map(function(p){return{name:p.name,cat:p.cat,price:p.price,child:!!p.child,stock:p.qty};});
-      var basis=((ingredients||photos.length)?'보유 식재료'+(purchaseCount?'(사입 내역 '+purchaseCount+'개 포함)':'')+', ':'')+res.season+' 제철, 최근 한 달 판매 데이터';
+      var basis=((ingredients||photos.length)?'보유 식재료'+(purchaseCount?'(재고 '+purchaseCount+'개 포함)':'')+', ':'')+res.season+' 제철, 최근 한 달 판매 데이터';
       var exists=(_aiBundles||[]).some(function(b){return b.date===bundleDate;});
       // 굵은 글씨는 질문만 짧게 — 추천 이유·사진 인식 결과는 길어질 수 있어 아래 작은 상자(스크롤)로 뺀다
       var msg='AI가 '+parsed.length+'개 메뉴를 추천했어요.\n메뉴 창고에 '+_shortDay(bundleDate)+' \'AI 추천 메뉴\' 묶음으로 저장할까요?'
@@ -2532,48 +2534,47 @@ function switchHistSubTab(tab){
   }
 }
 /* ════ 메뉴 창고 > 식재료 입력 ════ */
-// 그날 사 온 식재료(재료명·수량·사입금액)를 날짜별로 기록한다. 직접 입력하거나, 영수증·거래명세서 사진을
-// AI로 읽어 표에 채운 뒤 확인하고 저장한다. 저장은 그 날짜 내역을 통째로 교체(일일 메뉴 저장과 같은 방식).
+// 지금 가진 식재료 재고(재료명·수량·사입금액)를 한 목록으로 관리한다 — 날짜별 기록이 아니다(2026-10-22 변경).
+// 줄마다 입력일(그 재료를 적은 날)이 붙고 목록은 입력일 순. 수량이 0이 돼도 지우지 않고 남긴다(빨간 글씨).
+// 직접 입력하거나, 영수증·거래명세서 사진을 AI로 읽어 표에 채운 뒤 확인하고 저장한다. 저장은 목록 전체를 통째로 교체.
 // 사입금액은 원 단위 — 메뉴 가격(천원 단위)과 다르다.
-var _ingDate=null;    // 표에 불러온 날짜 — 저장도 이 날짜로 한다
-var _ingItems=[];     // [{name,qty,amount}]
+var _ingLoaded=false;    // 서버 재고를 불러왔는지 — 못 불러온 채 저장하면 재고 전체가 덮이므로 그땐 저장을 막는다
+var _ingSavedCount=0;    // 서버에 저장돼 있는 재료 수 — 전부 지우고 저장할 때만 한 번 더 묻는다
+var _ingItems=[];        // [{date,name,qty,amount}] — date는 입력일(YYYY-MM-DD), 아직 안 적은 맨 끝 빈 줄은 ''
 var _ingDirty=false;
 var ING_INPUT_CSS='box-sizing:border-box;height:34px;padding:0 8px;border:1px solid #ddd;border-radius:8px;font-family:inherit;font-size:13px;';
 var ING_BTN_CSS='flex:1;border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;';
+var ING_ZERO_CSS='color:#c0392b;border-color:#f3b4ae;background:#fff6f5;';
 function openIngredientsTab(){
-  if(_ingDirty&&_ingDate){renderIngredients();return;}   // 저장 안 한 편집 내용은 그대로 다시 보여준다
+  if(_ingDirty&&_ingLoaded){renderIngredients();return;}   // 저장 안 한 편집 내용은 그대로 다시 보여준다
   loadIngredients();
 }
 function loadIngredients(){
   var panel=document.getElementById('ingredientPanel');
-  var date=workDate;
   panel.innerHTML='<div style="text-align:center;padding:30px;color:#aaa;font-size:13px;">불러오는 중...</div>';
-  apiFetch('/api/ingredients?date='+date,function(err,d){
+  apiFetch('/api/ingredients',function(err,d){
     if(err||!d||!d.success){
-      panel.innerHTML='<div style="text-align:center;padding:30px;color:#c0392b;font-size:13px;">식재료 내역을 불러오지 못했어요.'+(d&&d.error?'<br>'+_escEv(d.error):'')+'</div>';
+      panel.innerHTML='<div style="text-align:center;padding:30px;color:#c0392b;font-size:13px;">식재료 재고를 불러오지 못했어요.'+(d&&d.error?'<br>'+_escEv(d.error):'')+'</div>';
       return;
     }
-    _ingDate=date;_ingDirty=false;
-    _ingItems=(d.items||[]).map(function(it){return{name:it.name,qty:it.qty||'',amount:it.amount};});
+    _ingLoaded=true;_ingDirty=false;
+    _ingItems=(d.items||[]).map(function(it){return{date:it.date||'',name:it.name,qty:it.qty||'',amount:it.amount};});
+    _ingSavedCount=_ingItems.length;
     renderIngredients();
   });
 }
-// 상단 날짜를 바꿨을 때 — 저장 안 한 편집이 있으면 먼저 묻는다
-function _ingOnDateChange(){
-  if(_ingDirty&&_ingDate!==workDate){
-    renderIngredients();   // "다른 날짜 편집 중" 안내를 띄워 둔다
-    showConfirm('저장하지 않은 식재료 입력 내용이 있어요.\n버리고 '+fmtDate(workDate)+' 내역을 불러올까요?',function(){_ingDirty=false;loadIngredients();},'불러오기','계속 편집');
-    return;
-  }
-  loadIngredients();
-}
+// 수량 글의 첫 숫자가 0이면 재고 없음("0", "0kg", "0포기") — 숫자가 없으면 알 수 없으니 있는 것으로 본다
+function _ingQtyZero(q){var m=String(q||'').match(/\d+(?:\.\d+)?/);return !!m&&Number(m[0])===0;}
+// 입력일 표시 "10/21" — 아직 안 적은 맨 끝 빈 줄은 오늘 날짜(흐리게)
+function _ingDayLabel(iso){var p=String(iso||toISO(new Date())).split('-');return (+p[1])+'/'+(+p[2]);}
 function _ingBlank(it){return !String(it.name||'').trim()&&!String(it.qty||'').trim()&&!String(it.amount==null?'':it.amount).trim();}
 function _ingTotal(){return _ingItems.reduce(function(s,it){return s+(Number(it.amount)||0);},0);}
 // 한 줄 HTML — 맨 끝 빈 줄(tail)은 지울 게 없으니 ✕를 숨긴다
 function _ingRowHtml(it,i,isTail){
   return '<div id="ingRow_'+i+'" style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">'
+    +'<span class="ing-day" style="flex:0 0 34px;font-size:11px;text-align:center;color:'+(it.date?'#888':'#ccc')+';">'+_ingDayLabel(it.date)+'</span>'
     +'<input type="text" class="ing-name" value="'+_escEv(it.name)+'" placeholder="재료명" maxlength="200" oninput="_ingSet('+i+',\'name\',this.value)" onkeydown="_ingKey(event)" style="flex:2;min-width:0;'+ING_INPUT_CSS+'">'
-    +'<input type="text" value="'+_escEv(it.qty)+'" placeholder="예) 10포기" maxlength="100" oninput="_ingSet('+i+',\'qty\',this.value)" onkeydown="_ingKey(event)" style="flex:1.2;min-width:0;'+ING_INPUT_CSS+'">'
+    +'<input type="text" class="ing-qty" value="'+_escEv(it.qty)+'" placeholder="예) 10포기" maxlength="100" oninput="_ingSet('+i+',\'qty\',this.value)" onkeydown="_ingKey(event)" style="flex:1.2;min-width:0;'+ING_INPUT_CSS+(_ingQtyZero(it.qty)?ING_ZERO_CSS:'')+'">'
     +'<input type="number" inputmode="numeric" min="0" step="1" value="'+_escEv(it.amount)+'" placeholder="0" oninput="_ingSet('+i+',\'amount\',this.value)" onkeydown="_ingKey(event)" style="flex:1.4;min-width:0;text-align:right;'+ING_INPUT_CSS+'">'
     +'<button type="button" class="ing-del" onclick="_ingRemove('+i+')" title="이 줄 삭제" style="flex:0 0 28px;height:28px;border:none;border-radius:50%;background:#f0f0f0;color:#888;font-size:13px;cursor:pointer;padding:0;'+(isTail?'visibility:hidden;':'')+'">✕</button>'
     +'</div>';
@@ -2582,37 +2583,51 @@ function renderIngredients(){
   var panel=document.getElementById('ingredientPanel');
   // 빈 줄은 맨 끝 한 줄만 남긴다 — 불러오기·저장·사진 입력 뒤에도 항상 바로 입력할 빈칸이 있도록
   _ingItems=_ingItems.filter(function(it,i){return !_ingBlank(it)||i===_ingItems.length-1;});
-  if(!_ingItems.length||!_ingBlank(_ingItems[_ingItems.length-1]))_ingItems.push({name:'',qty:'',amount:''});
+  if(!_ingItems.length||!_ingBlank(_ingItems[_ingItems.length-1]))_ingItems.push({date:'',name:'',qty:'',amount:''});
   var rows=_ingItems.map(function(it,i){return _ingRowHtml(it,i,i===_ingItems.length-1);}).join('');
-  var dateNote=(_ingDate!==workDate)
-    ?'<div style="font-size:12px;color:#c0392b;margin-bottom:6px;">상단에서 고른 날짜와 다른 날짜의 내역을 편집 중이에요. 저장하면 상단 날짜 내역을 불러와요.</div>'
-    :'<div style="font-size:12px;color:#999;margin-bottom:6px;">상단 날짜를 바꾸면 그 날짜 내역을 불러와요. 사입금액은 원 단위예요. Enter를 누르면 다음 칸으로 넘어가요.</div>';
   panel.innerHTML=
     '<div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px;margin-bottom:4px;">'
-      +'<div style="font-size:14px;font-weight:700;color:#086266;">🥬 '+fmtDate(_ingDate)+' 사입 내역</div>'
-      +'<div style="font-size:13px;color:#555;">합계 <b id="ingTotal" style="color:#086266;">'+_ingTotal().toLocaleString()+'</b>원</div>'
+      +'<div style="font-size:14px;font-weight:700;color:#086266;">🥬 현재 식재료 재고 <span id="ingCount" style="font-size:12px;color:#888;font-weight:600;"></span></div>'
+      +'<div style="font-size:13px;color:#555;">사입금액 합계 <b id="ingTotal" style="color:#086266;"></b>원</div>'
     +'</div>'
-    +dateNote
+    +'<div style="font-size:12px;color:#999;margin-bottom:6px;">입력한 날짜 순으로 보여요. 수량이 0이 돼도 목록에 남아요(빨간 글씨). 사입금액은 원 단위 · Enter를 누르면 다음 칸으로 넘어가요.</div>'
     +'<div style="display:flex;gap:8px;margin:10px 0 12px;">'
       +'<button type="button" onclick="_ingAddRow()" style="'+ING_BTN_CSS+'background:#e8f5f4;color:#086266;">✏️ 직접 입력</button>'
       +'<button type="button" id="ingPhotoBtn" onclick="document.getElementById(\'ingPhotoInput\').click()" style="'+ING_BTN_CSS+'background:#f3effc;color:#6b46c1;">📷 사진으로 입력</button>'
     +'</div>'
     +'<div style="display:flex;gap:6px;font-size:11px;color:#888;font-weight:600;margin-bottom:4px;">'
-      +'<span style="flex:2;">재료명</span><span style="flex:1.2;">수량</span><span style="flex:1.4;text-align:right;">사입금액(원)</span><span style="flex:0 0 28px;"></span>'
+      +'<span style="flex:0 0 34px;text-align:center;white-space:nowrap;letter-spacing:-0.5px;">입력일</span><span style="flex:2;">재료명</span><span style="flex:1.2;">수량</span><span style="flex:1.4;text-align:right;">사입금액(원)</span><span style="flex:0 0 28px;"></span>'
     +'</div>'
     +'<div id="ingRows">'+rows+'</div>'
     +'<button type="button" id="ingSaveBtn" onclick="saveIngredients()" style="width:100%;margin-top:10px;background:#086266;color:#fff;border:none;border-radius:10px;padding:11px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">💾 저장</button>';
+  _ingUpdateSummary();
+}
+// 제목 옆 재료 수(재고 없음 포함)와 사입금액 합계 — 입력할 때마다 다시 센다
+function _ingUpdateSummary(){
+  var named=_ingItems.filter(function(it){return String(it.name||'').trim();});
+  var zero=named.filter(function(it){return _ingQtyZero(it.qty);}).length;
+  var c=document.getElementById('ingCount');if(c)c.textContent=named.length+'개'+(zero?' · 재고 없음 '+zero+'개':'');
+  var t=document.getElementById('ingTotal');if(t)t.textContent=_ingTotal().toLocaleString();
 }
 function _ingSet(i,field,val){
   if(!_ingItems[i])return;
   _ingItems[i][field]=val;_ingDirty=true;
-  if(field==='amount'){var t=document.getElementById('ingTotal');if(t)t.textContent=_ingTotal().toLocaleString();}
-  // 맨 끝 빈 줄에 입력을 시작하면 그 아래에 새 빈 줄을 붙인다. 표 전체를 다시 그리지 않아 커서가 그대로 유지된다.
+  if(field==='qty'){
+    var q=document.querySelector('#ingRow_'+i+' .ing-qty'),z=_ingQtyZero(val);
+    if(q){q.style.color=z?'#c0392b':'';q.style.borderColor=z?'#f3b4ae':'#ddd';q.style.background=z?'#fff6f5':'';}
+  }
+  // 맨 끝 빈 줄에 입력을 시작하면 그 줄의 입력일을 오늘로 정하고 아래에 새 빈 줄을 붙인다.
+  // 표 전체를 다시 그리지 않아 커서가 그대로 유지된다.
   if(i===_ingItems.length-1&&!_ingBlank(_ingItems[i])){
+    if(!_ingItems[i].date){
+      _ingItems[i].date=toISO(new Date());
+      var day=document.querySelector('#ingRow_'+i+' .ing-day');if(day){day.textContent=_ingDayLabel(_ingItems[i].date);day.style.color='#888';}
+    }
     var del=document.querySelector('#ingRow_'+i+' .ing-del');if(del)del.style.visibility='';
-    _ingItems.push({name:'',qty:'',amount:''});
+    _ingItems.push({date:'',name:'',qty:'',amount:''});
     document.getElementById('ingRows').insertAdjacentHTML('beforeend',_ingRowHtml(_ingItems[i+1],i+1,true));
   }
+  _ingUpdateSummary();
 }
 // Enter로 다음 칸으로 — 금액 칸에서 누르면 다음 줄 재료명으로 넘어간다(한글 조합 중 Enter는 무시)
 function _ingKey(e){
@@ -2643,7 +2658,6 @@ function onIngPhotosSelected(e){
   if(!all.length)return;
   if(all.length>3)showToast('사진은 한 번에 3장까지 읽을 수 있어요. 앞의 3장만 읽을게요.');
   var files=all.slice(0,3);
-  var forDate=_ingDate;
   var btn=document.getElementById('ingPhotoBtn');
   if(btn){btn.disabled=true;btn.textContent='📷 사진 읽는 중...';}
   function done(){var b=document.getElementById('ingPhotoBtn');if(b){b.disabled=false;b.textContent='📷 사진으로 입력';}}
@@ -2661,11 +2675,11 @@ function onIngPhotosSelected(e){
       .then(function(res){
         done();
         if(!res.success){showToast(res.error||'사진에서 식재료를 읽지 못했어요.');return;}
-        if(_ingDate!==forDate){showAlertPopup('사진을 읽는 동안 날짜가 바뀌어서 표에 넣지 않았어요.\n원하는 날짜에서 다시 시도해주세요.');return;}
         var got=res.items||[];
         if(!got.length){showAlertPopup('사진에서 식재료 항목을 찾지 못했어요.'+(res.note?'\n'+res.note:''));return;}
         _ingItems=_ingItems.filter(function(it){return !_ingBlank(it);});
-        got.forEach(function(it){_ingItems.push({name:it.name,qty:it.qty||'',amount:it.amount});});
+        var today=toISO(new Date());
+        got.forEach(function(it){_ingItems.push({date:today,name:it.name,qty:it.qty||'',amount:it.amount});});
         _ingDirty=true;
         renderIngredients();
         showAlertPopup(got.length+'개 항목을 사진에서 읽어 표에 추가했어요.\n수량·금액이 맞는지 확인한 뒤 💾 저장을 눌러주세요.'+(res.note?'\n\n참고: '+res.note:''));
@@ -2674,23 +2688,32 @@ function onIngPhotosSelected(e){
   }
 }
 function saveIngredients(){
-  if(!_ingDate)return;
+  if(!_ingLoaded)return;
   var noName=_ingItems.filter(function(it){return !String(it.name||'').trim()&&!_ingBlank(it);}).length;
   if(noName){showToast('재료명이 빈 줄이 있어요. 재료명을 적거나 ✕로 지워주세요.');return;}
+  var today=toISO(new Date());
   var items=_ingItems.filter(function(it){return String(it.name||'').trim();}).map(function(it){
-    return{name:String(it.name).trim(),qty:String(it.qty||'').trim(),amount:Math.max(0,Math.round(Number(it.amount)||0))};
+    return{date:it.date||today,name:String(it.name).trim(),qty:String(it.qty||'').trim(),amount:Math.max(0,Math.round(Number(it.amount)||0))};
   });
-  var date=_ingDate;
+  items.sort(function(a,b){return a.date.localeCompare(b.date);});   // 서버와 같은 입력일 순(같은 날은 순서 유지)
+  if(!items.length){
+    if(!_ingSavedCount){showToast('저장할 재료가 없어요.');return;}
+    showConfirm('식재료 재고 목록을 모두 비울까요?\n저장돼 있던 '+_ingSavedCount+'개가 지워져요.',function(){_ingPut(items,true);},'모두 비우기','취소');
+    return;
+  }
+  _ingPut(items,false);
+}
+function _ingPut(items,clear){
   var btn=document.getElementById('ingSaveBtn');
   if(btn){btn.disabled=true;btn.textContent='저장 중...';}
   function fail(msg){var b=document.getElementById('ingSaveBtn');if(b){b.disabled=false;b.textContent='💾 저장';}showToast(msg);}
-  fetch(API_URL+'/api/ingredients/'+date,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:items})})
+  fetch(API_URL+'/api/ingredients',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:items,clear:clear})})
     .then(function(r){return r.json();})
     .then(function(res){
       if(!res.success){fail(res.error||'저장하지 못했어요.');return;}
       _ingDirty=false;
-      showToast('식재료 '+res.count+'개를 저장했어요 (합계 '+Number(res.total||0).toLocaleString()+'원)');
-      if(date!==workDate){loadIngredients();return;}
+      _ingSavedCount=items.length;
+      showToast('식재료 재고 '+res.count+'개를 저장했어요 (사입금액 합계 '+Number(res.total||0).toLocaleString()+'원)');
       _ingItems=items;
       renderIngredients();
       _ingFocusTail();   // 저장 뒤 바로 이어서 입력할 수 있게 빈 줄로

@@ -1636,8 +1636,8 @@ function _cleanPhotos(raw) {
 app.post('/api/recommend/daily-plan', requireAdmin, async (req, res) => {
   try {
     if (!process.env.ANTHROPIC_API_KEY) return err(res, 'AI 추천 기능이 아직 설정되지 않았습니다.', 503);
-    // 오늘 보유 식재료(선택) — 화면이 식재료 입력 탭의 그날 사입 내역과 직접 적은 글을 합쳐 보낸다.
-    // 예: "배추 10포기, 무 5개, 돼지 앞다리 3kg". 사입 내역이 길 수 있어 2000자까지 받는다.
+    // 오늘 보유 식재료(선택) — 화면이 식재료 입력 탭의 현재 재고(수량 0 제외)와 직접 적은 글을 합쳐 보낸다.
+    // 예: "배추 10포기, 무 5개, 돼지 앞다리 3kg". 재고 목록이 길 수 있어 2000자까지 받는다.
     const ingredients = String((req.body && req.body.ingredients) || '').trim().slice(0, 2000);
     // 보유 식재료 사진(선택, 최대 3장)
     const photos = _cleanPhotos(req.body && req.body.photos);
@@ -1785,7 +1785,10 @@ app.post('/api/recommend/daily-plan', requireAdmin, async (req, res) => {
   } catch (e) { err(res, e.message); }
 });
 
-// ── 식재료 사입 내역 (메뉴 창고 > 식재료 입력) — 관리자 전용 ──────────────
+// ── 식재료 재고 (메뉴 창고 > 식재료 입력) — 관리자 전용 ──────────────
+// 날짜별 사입 내역이 아니라 "지금 가진 재고" 한 목록이다(2026-10-22 변경). date는 그 재료를 적은 날(입력일)이고,
+// 목록은 입력일 순(같은 날은 적은 순서)으로 보여 준다. 수량이 0이 돼도 지우지 않고 남긴다.
+// 테이블 이름(ingredient_purchases)은 그대로 — 예전 날짜별 내역은 그 날짜를 입력일로 한 재고 행이 된다.
 const _isYMD = s => /^\d{4}-\d{2}-\d{2}$/.test(s);
 // 재료명·수량은 글자 그대로, 사입금액은 원 단위 정수(쉼표·"원" 등은 떼고 읽는다).
 // 음수(할인 줄 등)는 0으로 — 부호까지 떼면 -1,000원 할인이 +1,000원 사입으로 바뀐다.
@@ -1800,34 +1803,38 @@ function _cleanIngredientItem(it) {
   };
 }
 
-// GET /api/ingredients?date=YYYY-MM-DD
+// GET /api/ingredients — 재고 전체, 입력일 순
 app.get('/api/ingredients', requireAdmin, async (req, res) => {
   try {
-    const date = String(req.query.date || '');
-    if (!_isYMD(date)) return err(res, 'date 형식 오류(YYYY-MM-DD)', 400);
     const [rows] = await pool.execute(
-      'SELECT id, name, qty, amount FROM ingredient_purchases WHERE date=? ORDER BY id', [date]
+      "SELECT id, DATE_FORMAT(date,'%Y-%m-%d') AS d, name, qty, amount FROM ingredient_purchases ORDER BY date, id"
     );
-    ok(res, { items: rows.map(r => ({ id: r.id, name: r.name, qty: r.qty || '', amount: Number(r.amount) || 0 })) });
+    ok(res, { items: rows.map(r => ({ id: r.id, date: r.d, name: r.name, qty: r.qty || '', amount: Number(r.amount) || 0 })) });
   } catch (e) { err(res, e.message); }
 });
 
-// PUT /api/ingredients/:date — 그 날짜 내역을 보낸 목록으로 통째로 교체한다(빈 배열이면 그날 내역 삭제).
-app.put('/api/ingredients/:date', requireAdmin, async (req, res) => {
-  const date = String(req.params.date || '');
-  if (!_isYMD(date)) return err(res, 'date 형식 오류(YYYY-MM-DD)', 400);
+// PUT /api/ingredients — 재고 목록을 보낸 목록으로 통째로 교체한다.
+// 항목마다 화면이 보낸 입력일(date)을 지키고, 없거나 형식이 틀리면 오늘(KST)로 둔다.
+// 전부 비우는 저장은 clear:true를 같이 보낼 때만 받는다 — 화면 오류로 빈 목록이 와서 재고가 통째로 지워지는 걸 막는다.
+// (예전의 날짜별 교체 PUT /api/ingredients/:date는 없앴다 — 옛 화면이 전체 재고를 한 날짜로 덮어쓰지 않도록)
+app.put('/api/ingredients', requireAdmin, async (req, res) => {
   const raw = req.body && req.body.items;
   if (!Array.isArray(raw)) return err(res, 'items 배열 필요', 400);
-  if (raw.length > 300) return err(res, '한 번에 최대 300개까지 저장할 수 있어요.', 400);
-  const items = raw.map(_cleanIngredientItem).filter(it => it.name);
+  if (raw.length > 1000) return err(res, '한 번에 최대 1000개까지 저장할 수 있어요.', 400);
+  const today = toKSTDateStr(new Date());
+  const items = raw
+    .map(it => Object.assign(_cleanIngredientItem(it), { date: _isYMD(String((it && it.date) || '')) ? String(it.date) : today }))
+    .filter(it => it.name);
+  if (!items.length && !(req.body && req.body.clear === true)) return err(res, '저장할 재료가 없어요.', 400);
+  items.sort((a, b) => a.date.localeCompare(b.date));   // 입력일 순 — 같은 날은 보낸 순서 유지(안정 정렬)
   let conn;
   try {
     conn = await pool.getConnection();
     await conn.beginTransaction();
-    await conn.execute('DELETE FROM ingredient_purchases WHERE date=?', [date]);
+    await conn.execute('DELETE FROM ingredient_purchases');
     for (const it of items) {
       await conn.execute(
-        'INSERT INTO ingredient_purchases (date,name,qty,amount) VALUES (?,?,?,?)', [date, it.name, it.qty, it.amount]
+        'INSERT INTO ingredient_purchases (date,name,qty,amount) VALUES (?,?,?,?)', [it.date, it.name, it.qty, it.amount]
       );
     }
     await conn.commit();
@@ -2280,7 +2287,8 @@ async function initDB() {
       INDEX idx_type (type),
       INDEX idx_created (created_at)
     )`,
-    // 식재료 사입 내역 — 메뉴 창고 > 식재료 입력. 날짜별로 통째로 저장(교체)한다. amount는 원 단위(메뉴 가격의 천원 단위와 다름).
+    // 식재료 재고 — 메뉴 창고 > 식재료 입력. 재고 목록 전체를 통째로 저장(교체)한다. date는 입력일(목록 정렬 기준).
+    // amount는 사입금액, 원 단위(메뉴 가격의 천원 단위와 다름).
     `CREATE TABLE IF NOT EXISTS ingredient_purchases (
       id INT AUTO_INCREMENT PRIMARY KEY,
       date DATE NOT NULL,
