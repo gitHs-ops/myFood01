@@ -354,7 +354,9 @@ app.get('/api/events', (req, res) => {
 
 // ── 헬스체크 ────────────────────────────────────────────────
 // build 표식 — 설정을 바꾸기 전에 배포가 실제로 반영됐는지 확인하는 용도
-app.get('/health', (req, res) => res.json({ ok: true, build: 'tracker-nolimit-1' }));
+// 배포 반영 확인용 — build는 서버를 고칠 때 올리는 표식, commit은 Railway가 배포할 때 넣어 주는 커밋(로컬에선 없음).
+// 화면(GitHub Pages)만 새로 뜨고 서버가 옛 버전이면 기능이 어긋나므로, 병합 뒤 여기서 commit이 바뀌었는지 본다.
+app.get('/health', (req, res) => res.json({ ok: true, build: 'ingredient-stock-1', commit: (process.env.RAILWAY_GIT_COMMIT_SHA || '').slice(0, 7) || undefined }));
 
 // ══════════════════════════════════════════════════════════════
 // 메뉴 창고 (등록된모든메뉴)
